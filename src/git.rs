@@ -139,6 +139,21 @@ pub fn create_commit(repo: &Repository, files: &[&str], message: &str) -> Result
     Ok(())
 }
 
+pub fn get_repo_slug(repo: &Repository, remote_name: &str) -> Option<String> {
+    let remote = repo.find_remote(remote_name).ok()?;
+    let url = remote.url()?.to_string();
+
+    let after = if url.contains("github.com/") {
+        url.split("github.com/").nth(1)?
+    } else if url.contains("github.com:") {
+        url.split("github.com:").nth(1)?
+    } else {
+        return None;
+    };
+
+    Some(after.trim_end_matches(".git").to_string())
+}
+
 pub fn push(repo: &Repository, remote_name: &str, branch: &str, tags: &[&str]) -> Result<()> {
     let mut remote = repo
         .find_remote(remote_name)

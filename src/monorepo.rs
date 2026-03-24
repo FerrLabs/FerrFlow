@@ -1,11 +1,12 @@
-use crate::changelog::update_changelog;
+use crate::changelog::{build_section, update_changelog};
 use crate::config::{Config, PackageConfig};
 use crate::conventional_commits::{BumpType, determine_bump};
 use crate::formats::{read_version, write_version};
 use crate::git::{
     create_commit, create_tag, get_changed_files, get_commits_since_last_tag, get_repo_root,
-    open_repo, push,
+    get_repo_slug, open_repo, push,
 };
+use crate::release::create_github_release;
 use crate::versioning::bump_version;
 use anyhow::Result;
 use colored::Colorize;
@@ -59,7 +60,7 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
 
     let mut any_bumped = false;
     let mut files_to_commit: Vec<String> = Vec::new();
-    let mut tags_to_create: Vec<(String, String)> = Vec::new();
+    let mut tags_to_create: Vec<(String, String, String)> = Vec::new();
 
     for pkg in &config.packages {
         let touched = is_package_touched(pkg, &changed_files, config.is_monorepo());
@@ -149,7 +150,8 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
             }
 
             let tag = format!("{}@v{}", pkg.name, new_version);
-            tags_to_create.push((tag.clone(), format!("Release {tag}")));
+            let body = build_section(&new_version, &commits);
+            tags_to_create.push((tag.clone(), format!("Release {tag}"), body));
         }
 
         any_bumped = true;
@@ -160,12 +162,12 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
         create_commit(&repo, &file_refs, "chore: release [skip ci]")?;
         println!("  ✓ Committed release changes");
 
-        for (tag_name, tag_msg) in &tags_to_create {
+        for (tag_name, tag_msg, _) in &tags_to_create {
             create_tag(&repo, tag_name, tag_msg)?;
             println!("  ✓ Created tag {}", tag_name.cyan());
         }
 
-        let tag_refs: Vec<&str> = tags_to_create.iter().map(|(t, _)| t.as_str()).collect();
+        let tag_refs: Vec<&str> = tags_to_create.iter().map(|(t, _, _)| t.as_str()).collect();
         push(
             &repo,
             &config.workspace.remote,
@@ -176,6 +178,15 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
             "  ✓ Pushed to {}/{}",
             config.workspace.remote, config.workspace.branch
         );
+
+        if let Ok(token) = std::env::var("GITHUB_TOKEN")
+            && let Some(slug) = get_repo_slug(&repo, &config.workspace.remote)
+        {
+            for (tag_name, _, body) in &tags_to_create {
+                create_github_release(&token, &slug, tag_name, body)?;
+                println!("  ✓ GitHub Release {}", tag_name.cyan());
+            }
+        }
     }
 
     if !any_bumped && !verbose {

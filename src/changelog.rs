@@ -82,18 +82,7 @@ pub fn generate_only(dry_run: bool) -> Result<()> {
     Ok(())
 }
 
-pub fn update_changelog(
-    changelog_path: &Path,
-    package_name: &str,
-    new_version: &str,
-    commits: &[GitLog],
-    bump: BumpType,
-    dry_run: bool,
-) -> Result<()> {
-    if bump == BumpType::None {
-        return Ok(());
-    }
-
+pub fn build_section(new_version: &str, commits: &[GitLog]) -> String {
     let date = Local::now().format("%Y-%m-%d").to_string();
     let mut features = Vec::new();
     let mut fixes = Vec::new();
@@ -129,6 +118,23 @@ pub fn update_changelog(
         section.push_str(&fixes.join("\n"));
         section.push('\n');
     }
+
+    section
+}
+
+pub fn update_changelog(
+    changelog_path: &Path,
+    package_name: &str,
+    new_version: &str,
+    commits: &[GitLog],
+    bump: BumpType,
+    dry_run: bool,
+) -> Result<()> {
+    if bump == BumpType::None {
+        return Ok(());
+    }
+
+    let section = build_section(new_version, commits);
 
     if dry_run {
         println!(
