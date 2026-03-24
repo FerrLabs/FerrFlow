@@ -1,23 +1,29 @@
 {
-  "name": "ferrflow",
-  "version": "0.1.0",
+  "bin": {
+    "ferrflow": "./bin/ferrflow.js"
+  },
   "description": "Universal semantic versioning for monorepos and classic repos",
-  "keywords": ["semver", "versioning", "monorepo", "changelog", "release"],
+  "homepage": "https://github.com/FerrFlow/FerrFlow",
+  "keywords": [
+    "semver",
+    "versioning",
+    "monorepo",
+    "changelog",
+    "release"
+  ],
   "license": "MIT",
+  "name": "ferrflow",
+  "optionalDependencies": {
+    "ferrflow-darwin-arm64": "0.1.0",
+    "ferrflow-darwin-x64": "0.1.0",
+    "ferrflow-linux-arm64": "0.1.0",
+    "ferrflow-linux-x64": "0.1.0",
+    "ferrflow-windows-x64": "0.1.0"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/FerrFlow/FerrFlow.git"
   },
-  "homepage": "https://github.com/FerrFlow/FerrFlow",
-  "bin": {
-    "ferrflow": "./bin/ferrflow.js"
-  },
   "type": "module",
-  "optionalDependencies": {
-    "ferrflow-linux-x64": "0.1.0",
-    "ferrflow-linux-arm64": "0.1.0",
-    "ferrflow-darwin-x64": "0.1.0",
-    "ferrflow-darwin-arm64": "0.1.0",
-    "ferrflow-windows-x64": "0.1.0"
-  }
+  "version": "0.2.0"
 }
