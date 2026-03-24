@@ -132,7 +132,7 @@ pub fn create_commit(repo: &Repository, files: &[&str], message: &str) -> Result
     Ok(())
 }
 
-pub fn push(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
+pub fn push(repo: &Repository, remote_name: &str, branch: &str, tags: &[&str]) -> Result<()> {
     let mut remote = repo
         .find_remote(remote_name)
         .with_context(|| format!("Remote '{}' not found", remote_name))?;
@@ -152,11 +152,12 @@ pub fn push(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
     let mut push_options = PushOptions::new();
     push_options.remote_callbacks(callbacks);
 
-    let branch_refspec = format!("refs/heads/{branch}:refs/heads/{branch}");
-    remote.push(
-        &[branch_refspec.as_str(), "+refs/tags/*:refs/tags/*"],
-        Some(&mut push_options),
-    )?;
+    let mut refspecs: Vec<String> = vec![format!("refs/heads/{branch}:refs/heads/{branch}")];
+    for tag in tags {
+        refspecs.push(format!("refs/tags/{tag}:refs/tags/{tag}"));
+    }
+    let refspec_refs: Vec<&str> = refspecs.iter().map(String::as_str).collect();
+    remote.push(&refspec_refs, Some(&mut push_options))?;
 
     Ok(())
 }

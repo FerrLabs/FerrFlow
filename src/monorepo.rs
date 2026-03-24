@@ -165,7 +165,13 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
             println!("  ✓ Created tag {}", tag_name.cyan());
         }
 
-        push(&repo, &config.workspace.remote, &config.workspace.branch)?;
+        let tag_refs: Vec<&str> = tags_to_create.iter().map(|(t, _)| t.as_str()).collect();
+        push(
+            &repo,
+            &config.workspace.remote,
+            &config.workspace.branch,
+            &tag_refs,
+        )?;
         println!(
             "  ✓ Pushed to {}/{}",
             config.workspace.remote, config.workspace.branch
