@@ -1,7 +1,7 @@
 use crate::changelog::{build_section, update_changelog};
 use crate::config::{Config, PackageConfig};
 use crate::conventional_commits::{BumpType, determine_bump};
-use crate::formats::{read_version, write_version};
+use crate::formats::{get_handler, read_version, write_version};
 use crate::git::{
     create_commit, create_tag, get_changed_files, get_commits_since_last_tag, get_repo_root,
     get_repo_slug, open_repo, push,
@@ -132,8 +132,10 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
         if !dry_run {
             for vf in &pkg.versioned_files {
                 write_version(vf, root, &new_version)?;
-                println!("  ✓ Updated {}", vf.path);
-                files_to_commit.push(vf.path.clone());
+                if get_handler(&vf.format).modifies_file() {
+                    println!("  ✓ Updated {}", vf.path);
+                    files_to_commit.push(vf.path.clone());
+                }
             }
 
             if let Some(changelog_rel) = &pkg.changelog {

@@ -177,6 +177,27 @@ fn prompt_bool(question: &str, default: bool) -> bool {
     }
 }
 
+const ALLOWED_FORMATS: &[&str] = &["toml", "json", "xml", "gradle", "gomod"];
+
+fn prompt_format(indent: bool) -> String {
+    let question = if indent {
+        "  Version file format [toml/json/xml/gradle/gomod]"
+    } else {
+        "Version file format [toml/json/xml/gradle/gomod]"
+    };
+    loop {
+        let input = prompt(question, "toml");
+        let normalized = input.trim().to_lowercase();
+        if ALLOWED_FORMATS.contains(&normalized.as_str()) {
+            return normalized;
+        }
+        eprintln!(
+            "Invalid format '{}'. Allowed values: toml, json, xml, gradle, gomod.",
+            input
+        );
+    }
+}
+
 fn default_version_file(format: &str) -> &'static str {
     match format {
         "json" => "package.json",
@@ -205,14 +226,7 @@ fn collect_package(path_default: &str, monorepo: bool) -> String {
 
     let path = prompt(if monorepo { "  Path" } else { "Path" }, path_default);
 
-    let format = prompt(
-        if monorepo {
-            "  Version file format [toml/json/xml/gradle/gomod]"
-        } else {
-            "Version file format [toml/json/xml/gradle/gomod]"
-        },
-        "toml",
-    );
+    let format = prompt_format(monorepo);
 
     let version_file_default = default_version_file(&format);
     let version_file_path = if path == "." {
@@ -266,23 +280,32 @@ pub fn init() -> Result<()> {
 
     if monorepo {
         println!("Add packages (leave name empty to finish):");
+        let mut count = 0;
         loop {
-            let name_check = prompt("  Package name", "");
-            if name_check.is_empty() {
+            let name = prompt("  Package name", "");
+            if name.is_empty() {
+                if count == 0 {
+                    eprintln!("At least one package is required.");
+                    continue;
+                }
                 break;
             }
-            // Re-collect with the name already entered — ask remaining fields
-            let path = prompt("  Path", &name_check);
-            let format = prompt("  Version file format [toml/json/xml/gradle/gomod]", "toml");
+            let path = prompt("  Path", &name);
+            let format = prompt_format(true);
             let version_file_default = default_version_file(&format);
-            let version_file_path = prompt(
-                "  Version file path",
-                &format!("{path}/{version_file_default}"),
-            );
+            let version_file_path = if path == "." {
+                prompt("  Version file path", version_file_default)
+            } else {
+                prompt(
+                    "  Version file path",
+                    &format!("{path}/{version_file_default}"),
+                )
+            };
             let changelog = prompt("  Changelog path", &format!("{path}/CHANGELOG.md"));
             output.push_str(&format!(
-                "\n[[package]]\nname = \"{name_check}\"\npath = \"{path}\"\nchangelog = \"{changelog}\"\n\n[[package.versioned_files]]\npath = \"{version_file_path}\"\nformat = \"{format}\"\n"
+                "\n[[package]]\nname = \"{name}\"\npath = \"{path}\"\nchangelog = \"{changelog}\"\n\n[[package.versioned_files]]\npath = \"{version_file_path}\"\nformat = \"{format}\"\n"
             ));
+            count += 1;
         }
     } else {
         output.push_str(&collect_package(".", false));
