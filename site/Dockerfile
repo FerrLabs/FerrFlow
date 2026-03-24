@@ -1,9 +1,25 @@
-# For development/testing only - production will be built separately when site is implemented
-FROM node:22-alpine
+# Build stage
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# This is a placeholder - actual Dockerfile will be created when site package is implemented
-RUN echo "Site package not yet implemented" > README.txt
+RUN npm install -g pnpm@9
 
-CMD ["cat", "README.txt"]
+COPY package.json pnpm-workspace.yaml ./
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/site/package.json ./packages/site/
+
+RUN pnpm install --frozen-lockfile
+
+COPY packages/shared ./packages/shared
+COPY packages/site ./packages/site
+
+RUN pnpm --filter @ferrflow/site build
+
+# Runtime stage
+FROM nginx:alpine
+
+COPY --from=builder /app/packages/site/dist /usr/share/nginx/html
+
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
