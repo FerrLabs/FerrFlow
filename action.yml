@@ -45,8 +45,11 @@ runs:
           URL="https://github.com/FerrFlow-Org/ferrflow/releases/download/ferrflow%40v${{ inputs.version }}/${ARCHIVE}"
         fi
 
-        curl -sSL "$URL" | tar -xz -C /usr/local/bin
-        chmod +x /usr/local/bin/ferrflow
+        INSTALL_DIR="${RUNNER_TEMP:-$HOME/.local/bin}/ferrflow-bin"
+        mkdir -p "$INSTALL_DIR"
+        curl -sSL "$URL" | tar -xz -C "$INSTALL_DIR"
+        chmod +x "$INSTALL_DIR/ferrflow"
+        echo "$INSTALL_DIR" >> "$GITHUB_PATH"
 
     - name: Run FerrFlow release
       shell: bash
