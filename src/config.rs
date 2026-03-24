@@ -23,8 +23,19 @@ pub struct WorkspaceConfig {
 fn default_remote() -> String {
     "origin".to_string()
 }
+
 fn default_branch() -> String {
-    "main".to_string()
+    // Try to detect the default branch from the remote HEAD ref
+    let detected = std::process::Command::new("git")
+        .args(["symbolic-ref", "--short", "refs/remotes/origin/HEAD"])
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .and_then(|o| String::from_utf8(o.stdout).ok())
+        .map(|s| s.trim().trim_start_matches("origin/").to_string())
+        .filter(|s| !s.is_empty());
+
+    detected.unwrap_or_else(|| "main".to_string())
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
