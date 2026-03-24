@@ -107,6 +107,9 @@ jobs:
     name: Update major version tag
     needs: release
     runs-on: ubuntu-latest
+    concurrency:
+      group: update-major-tag-${{ github.ref_name }}
+      cancel-in-progress: false
     permissions:
       contents: write
     steps:

@@ -22,6 +22,8 @@ runs:
     - name: Install FerrFlow
       shell: bash
       run: |
+        set -euo pipefail
+
         OS=$(uname -s | tr '[:upper:]' '[:lower:]')
         ARCH=$(uname -m)
 
@@ -47,7 +49,7 @@ runs:
 
         INSTALL_DIR="${RUNNER_TEMP:-$HOME/.local/bin}/ferrflow-bin"
         mkdir -p "$INSTALL_DIR"
-        curl -sSL "$URL" | tar -xz -C "$INSTALL_DIR"
+        curl --fail --location --silent --show-error "$URL" | tar -xz -C "$INSTALL_DIR"
         chmod +x "$INSTALL_DIR/ferrflow"
         echo "$INSTALL_DIR" >> "$GITHUB_PATH"
 
