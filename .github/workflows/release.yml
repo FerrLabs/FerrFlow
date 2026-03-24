@@ -103,6 +103,20 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+  update-major-tag:
+    name: Update major version tag
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Move major version tag
+        run: |
+          MAJOR="v$(echo "${GITHUB_REF_NAME#ferrflow@v}" | cut -d. -f1)"
+          git tag -f "$MAJOR"
+          git push origin "$MAJOR" --force
+
   publish-docker:
     name: Publish Docker
     needs: release
