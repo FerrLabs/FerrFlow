@@ -19,7 +19,7 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Install ferrflow
+    - name: Install FerrFlow
       shell: bash
       run: |
         OS=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -48,6 +48,6 @@ runs:
         curl -sSL "$URL" | tar -xz -C /usr/local/bin
         chmod +x /usr/local/bin/ferrflow
 
-    - name: Run ferrflow release
+    - name: Run FerrFlow release
       shell: bash
       run: ferrflow ${{ inputs.dry_run == 'true' && '--dry-run' || '' }} release
