@@ -4,6 +4,11 @@ on:
   push:
     tags:
       - 'ferrflow@v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build (e.g. ferrflow@v0.4.0)'
+        required: true
 
 jobs:
   build:
@@ -33,7 +38,18 @@ jobs:
             binary: ferrflow.exe
             archive: ferrflow-windows-x64.zip
     steps:
+      - name: Resolve tag
+        id: tag
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "name=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.tag.outputs.name }}
       - uses: dtolnay/rust-toolchain@nightly
         with:
           targets: ${{ matrix.target }}
@@ -70,19 +86,31 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "name=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.tag.outputs.name }}
       - uses: actions/download-artifact@v4
         with:
           path: artifacts/
           merge-multiple: true
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.tag.outputs.name }}
           files: artifacts/*
-          generate_release_notes: true
+          generate_release_notes: false
 
   publish-crate:
     name: Publish crates.io
     needs: release
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -92,6 +120,7 @@ jobs:
   publish-npm:
     name: Publish npm
     needs: release
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -106,6 +135,7 @@ jobs:
   update-major-tag:
     name: Update major version tag
     needs: release
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     concurrency:
       group: update-major-tag-${{ github.ref_name }}
@@ -123,6 +153,7 @@ jobs:
   publish-docker:
     name: Publish Docker
     needs: release
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
