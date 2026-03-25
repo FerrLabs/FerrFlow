@@ -195,6 +195,21 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
                 }
             }
         }
+
+        if let Ok(summary_path) = std::env::var("GITHUB_STEP_SUMMARY") {
+            use std::io::Write;
+            if let Ok(mut file) = std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(&summary_path)
+            {
+                let _ = writeln!(file, "## Released\n");
+                for (tag_name, _, body) in &tags_to_create {
+                    let _ = writeln!(file, "### {tag_name}\n");
+                    let _ = writeln!(file, "{body}");
+                }
+            }
+        }
     }
 
     if !any_bumped && !verbose {
