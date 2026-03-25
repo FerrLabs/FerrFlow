@@ -47,6 +47,31 @@ pub fn get_commits_since_last_tag(repo: &Repository, tag_prefix: &str) -> Result
     Ok(commits)
 }
 
+pub fn find_last_tag_name(repo: &Repository, prefix: &str) -> Result<Option<String>> {
+    let mut latest: Option<(i64, String)> = None;
+
+    repo.tag_foreach(|oid, name| {
+        let name = String::from_utf8_lossy(name);
+        let tag_name = name.trim_start_matches("refs/tags/");
+        if tag_name.starts_with(prefix) {
+            let commit_oid = if let Ok(tag_obj) = repo.find_tag(oid) {
+                tag_obj.target_id()
+            } else {
+                oid
+            };
+            if let Ok(commit) = repo.find_commit(commit_oid) {
+                let time = commit.time().seconds();
+                if latest.is_none() || time > latest.as_ref().unwrap().0 {
+                    latest = Some((time, tag_name.to_string()));
+                }
+            }
+        }
+        true
+    })?;
+
+    Ok(latest.map(|(_, name)| name))
+}
+
 fn find_last_tag_commit(repo: &Repository, prefix: &str) -> Result<Option<git2::Oid>> {
     let mut latest: Option<(i64, git2::Oid)> = None;
 

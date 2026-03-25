@@ -1,6 +1,8 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 
+use crate::status::OutputFormat;
+
 #[derive(Parser)]
 #[command(name = "ferrflow")]
 #[command(about = "Universal semantic versioning for monorepos and classic repos")]
@@ -28,6 +30,12 @@ pub enum Commands {
     Changelog,
     /// Scaffold a ferrflow.toml configuration file
     Init,
+    /// Print each package name, current version, and last release tag
+    Status {
+        /// Output format
+        #[arg(long, value_enum, default_value = "text")]
+        output: OutputFormat,
+    },
 }
 
 impl Cli {
@@ -37,6 +45,7 @@ impl Cli {
             Commands::Release => crate::monorepo::release(self.dry_run, self.verbose),
             Commands::Changelog => crate::changelog::generate_only(self.dry_run),
             Commands::Init => crate::config::init(),
+            Commands::Status { output } => crate::status::run(&output),
         }
     }
 }

@@ -6,6 +6,7 @@ mod formats;
 mod git;
 mod monorepo;
 mod release;
+mod status;
 mod versioning;
 
 use anyhow::Result;
