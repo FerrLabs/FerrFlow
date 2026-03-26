@@ -1,6 +1,5 @@
 {
   "dependencies": {
-    "@astrojs/tailwind": "^6.0.0",
     "@ferrflow/shared": "workspace:*",
     "astro": "^5.0.0"
   },
