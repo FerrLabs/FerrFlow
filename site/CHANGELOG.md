@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.1] - 2026-03-26
+
+### Bug Fixes
+
+- fix: add tailwind v4 css entry point and theme config
+- fix: remove invalid manager keys from renovate config
+- fix: update rust builder image to 1.85
+
 ## [0.3.0] - 2026-03-26
 
 ### Features
