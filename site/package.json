@@ -1,14 +1,4 @@
 {
-  "name": "@ferrflow/site",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "dev": "astro dev",
-    "build": "astro build",
-    "preview": "astro preview",
-    "typecheck": "tsc --noEmit"
-  },
   "dependencies": {
     "@astrojs/tailwind": "^6.0.0",
     "@ferrflow/shared": "workspace:*",
@@ -22,5 +12,15 @@
   "engines": {
     "node": ">=22.0.0",
     "pnpm": ">=9.0.0"
-  }
+  },
+  "name": "@ferrflow/site",
+  "private": true,
+  "scripts": {
+    "build": "astro build",
+    "dev": "astro dev",
+    "preview": "astro preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "type": "module",
+  "version": "0.2.0"
 }
