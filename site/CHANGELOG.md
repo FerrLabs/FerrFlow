@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.3.0] - 2026-03-26
+
+### Features
+
+- feat(site): redesign landing page with pastel orange theme
+
 ## [0.2.2] - 2026-03-26
 
 ### Bug Fixes
