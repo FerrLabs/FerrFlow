@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.2] - 2026-03-26
+
+### Bug Fixes
+
+- fix: use fully-qualified image names and fix API build context for buildah
+
 ## [0.2.1] - 2026-03-26
 
 ### Bug Fixes
