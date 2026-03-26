@@ -1,5 +1,5 @@
 # Build stage
-FROM node:22-alpine AS builder
+FROM docker.io/library/node:22-alpine AS builder
 
 WORKDIR /app
 
@@ -18,7 +18,7 @@ COPY packages/site ./packages/site
 RUN pnpm --filter @ferrflow/site build
 
 # Runtime stage
-FROM nginx:alpine
+FROM docker.io/library/nginx:alpine
 
 COPY --from=builder /app/packages/site/dist /usr/share/nginx/html
 
