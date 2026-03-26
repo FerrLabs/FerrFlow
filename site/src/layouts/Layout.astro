@@ -16,8 +16,20 @@ const { title, description = 'Universal semantic versioning for monorepos and cl
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="generator" content={Astro.generator} />
     <title>{title}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;0,9..144,900;1,9..144,400;1,9..144,900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <style>
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        font-family: 'Fraunces', Georgia, serif;
+        -webkit-font-smoothing: antialiased;
+      }
+    </style>
   </head>
-  <body class="bg-white">
+  <body class="bg-primary-50 text-primary-950">
     <slot />
   </body>
 </html>
