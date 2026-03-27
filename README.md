@@ -1,5 +1,10 @@
 # FerrFlow
 
+[![CI](https://github.com/FerrFlow-Org/FerrFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/FerrFlow-Org/FerrFlow/actions/workflows/ci.yml)
+[![Release](https://github.com/FerrFlow-Org/FerrFlow/actions/workflows/release.yml/badge.svg)](https://github.com/FerrFlow-Org/FerrFlow/actions/workflows/release.yml)
+[![Latest release](https://img.shields.io/github/v/release/FerrFlow-Org/FerrFlow)](https://github.com/FerrFlow-Org/FerrFlow/releases/latest)
+[![License](https://img.shields.io/github/license/FerrFlow-Org/FerrFlow)](LICENSE)
+
 Universal semantic versioning for monorepos and classic repos.
 
 FerrFlow reads your commit history, determines the right version bump, updates your version files, generates a changelog, and creates a tagged release — for any language, any repo layout.
