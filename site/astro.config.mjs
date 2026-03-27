@@ -16,9 +16,12 @@ export default defineConfig({
       customCss: ['./src/styles/docs.css'],
       expressiveCode: {
         styleOverrides: {
-          borderRadius: '0.375rem',
+          borderRadius: '1rem',
           codeFontFamily: "'DM Mono', ui-monospace, monospace",
           uiFontFamily: "'Fraunces', Georgia, serif",
+          frames: {
+            shadowColor: 'rgba(232, 115, 58, 0.15)',
+          },
         },
       },
       plugins: [

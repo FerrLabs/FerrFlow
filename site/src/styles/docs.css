@@ -6,39 +6,10 @@
   --sl-font-mono: 'DM Mono', ui-monospace, monospace;
 }
 
-/* ── Dark mode ─────────────────────────────────────────────────── */
+/* ── Light mode (forced — dark mode disabled) ───────────────────── */
 :root,
+:root[data-theme='light'],
 :root[data-theme='dark'] {
-  --sl-color-accent-low:  #6B270E;
-  --sl-color-accent:      #F07230;
-  --sl-color-accent-high: #FFB07A;
-
-  --sl-color-white:  #FFF8F2;
-  --sl-color-gray-1: #F0D8C0;
-  --sl-color-gray-2: #C89070;
-  --sl-color-gray-3: #8A4820;
-  --sl-color-gray-4: #5A2812;
-  --sl-color-gray-5: #3A1A08;
-  --sl-color-gray-6: #261008;
-  --sl-color-black:  #1A0D07;
-
-  --sl-color-bg:             #1A0D07;
-  --sl-color-bg-nav:         #1A0D07;
-  --sl-color-bg-sidebar:     #1A0D07;
-  --sl-color-bg-inline-code: #3A1A08;
-  --sl-color-bg-accent:      #6B270E;
-
-  --sl-color-hairline:       #3A1A08;
-  --sl-color-hairline-light: #3A1A08;
-  --sl-color-hairline-shade: #261008;
-
-  --sl-color-text:        #F0D8C0;
-  --sl-color-text-accent: #F07230;
-  --sl-color-text-invert: #1A0D07;
-}
-
-/* ── Light mode ────────────────────────────────────────────────── */
-:root[data-theme='light'] {
   --sl-color-accent-low:  #FFE8D2;
   --sl-color-accent:      #E8733A;
   --sl-color-accent-high: #9E3F1A;
@@ -65,4 +36,25 @@
   --sl-color-text:        #2D1B0E;
   --sl-color-text-accent: #C85A2C;
   --sl-color-text-invert: #FFF8F2;
+}
+
+/* Hide the dark/light toggle — light only */
+starlight-theme-select {
+  display: none;
+}
+
+/* ── Code blocks — alignement visuel avec le terminal homepage ──────── */
+
+:root .expressive-code .frame {
+  --ec-brdCol: #FFE8D2;
+  box-shadow: 0 4px 16px rgba(232, 115, 58, 0.08) !important;
+}
+
+:root .expressive-code pre {
+  background-color: #FFF8F2 !important;
+}
+
+:root .expressive-code .header {
+  background-color: #FFF0E6 !important;
+  border-bottom-color: #FFE8D2 !important;
 }
