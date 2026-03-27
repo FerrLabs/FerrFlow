@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.5.0] - 2026-03-27
+
+### Features
+
+- feat: merge docs into site, drop packages/docs
+
 ## [0.4.0] - 2026-03-27
 
 ### Features
