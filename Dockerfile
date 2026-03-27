@@ -1,6 +1,6 @@
 # Build stage
 FROM rustlang/rust:nightly-alpine AS builder
-RUN apk add --no-cache musl-dev openssl-dev pkgconfig cmake make
+RUN apk add --no-cache musl-dev openssl-dev pkgconfig cmake make perl
 WORKDIR /app
 # Cache dependencies
 COPY Cargo.toml Cargo.lock ./
