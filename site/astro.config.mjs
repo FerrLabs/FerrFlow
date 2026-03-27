@@ -1,6 +1,7 @@
 import { defineConfig } from 'astro/config';
 import tailwindcss from '@tailwindcss/vite';
 import starlight from '@astrojs/starlight';
+import starlightVersions from 'starlight-versions';
 
 export default defineConfig({
   output: 'static',
@@ -12,6 +13,11 @@ export default defineConfig({
         { icon: 'github', label: 'GitHub', href: 'https://github.com/FerrFlow-Org/FerrFlow' },
       ],
       customCss: ['./src/styles/docs.css'],
+      plugins: [
+        starlightVersions({
+          versions: [{ slug: 'v0', label: 'v0' }],
+        }),
+      ],
       sidebar: [
         {
           label: 'Getting Started',
