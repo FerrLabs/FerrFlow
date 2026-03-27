@@ -48,6 +48,7 @@ pub fn get_commits_since_last_tag(repo: &Repository, tag_prefix: &str) -> Result
 }
 
 pub fn find_last_tag_name(repo: &Repository, prefix: &str) -> Result<Option<String>> {
+    let head = repo.head()?.peel_to_commit()?.id();
     let mut latest: Option<(i64, String)> = None;
 
     repo.tag_foreach(|oid, name| {
@@ -60,6 +61,11 @@ pub fn find_last_tag_name(repo: &Repository, prefix: &str) -> Result<Option<Stri
                 oid
             };
             if let Ok(commit) = repo.find_commit(commit_oid) {
+                let reachable = head == commit_oid
+                    || repo.graph_descendant_of(head, commit_oid).unwrap_or(false);
+                if !reachable {
+                    return true;
+                }
                 let time = commit.time().seconds();
                 if latest.is_none() || time > latest.as_ref().unwrap().0 {
                     latest = Some((time, tag_name.to_string()));
@@ -73,6 +79,7 @@ pub fn find_last_tag_name(repo: &Repository, prefix: &str) -> Result<Option<Stri
 }
 
 fn find_last_tag_commit(repo: &Repository, prefix: &str) -> Result<Option<git2::Oid>> {
+    let head = repo.head()?.peel_to_commit()?.id();
     let mut latest: Option<(i64, git2::Oid)> = None;
 
     repo.tag_foreach(|oid, name| {
@@ -85,6 +92,11 @@ fn find_last_tag_commit(repo: &Repository, prefix: &str) -> Result<Option<git2::
                 oid
             };
             if let Ok(commit) = repo.find_commit(commit_oid) {
+                let reachable = head == commit_oid
+                    || repo.graph_descendant_of(head, commit_oid).unwrap_or(false);
+                if !reachable {
+                    return true;
+                }
                 let time = commit.time().seconds();
                 if latest.is_none() || time > latest.unwrap().0 {
                     latest = Some((time, commit_oid));
