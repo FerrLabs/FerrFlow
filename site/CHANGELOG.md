@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.3.2] - 2026-03-27
+
+### Bug Fixes
+
+- fix: remove app.ferrflow.com links, replace with github ctас
+
 ## [0.3.1] - 2026-03-26
 
 ### Bug Fixes
