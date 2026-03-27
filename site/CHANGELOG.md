@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.4.0] - 2026-03-27
+
+### Features
+
+- feat(docs): add starlight docs site at /docs
+
 ## [0.3.2] - 2026-03-27
 
 ### Bug Fixes
