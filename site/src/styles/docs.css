@@ -1,0 +1,25 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;0,9..144,900;1,9..144,400&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --sl-font: 'Fraunces', Georgia, serif;
+  --sl-font-mono: 'DM Mono', ui-monospace, 'Cascadia Code', monospace;
+
+  --sl-color-accent-low:  #FFE8D2;
+  --sl-color-accent:      #F07230;
+  --sl-color-accent-high: #C85A2C;
+
+  --sl-color-white:  #FFF8F2;
+  --sl-color-gray-1: #FFE8D2;
+  --sl-color-gray-2: #FFCBA4;
+  --sl-color-gray-3: #C85A2C;
+  --sl-color-gray-4: #9E3F1A;
+  --sl-color-gray-5: #6B270E;
+  --sl-color-gray-6: #2D1B0E;
+  --sl-color-black:  #1A0D07;
+}
+
+:root[data-theme='light'] {
+  --sl-color-accent-low:  #FFE8D2;
+  --sl-color-accent:      #E8733A;
+  --sl-color-accent-high: #9E3F1A;
+}
