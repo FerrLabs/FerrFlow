@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.6.0] - 2026-03-27
+
+### Features
+
+- feat: add SEO, sitemap, robots.txt and favicon
+- feat: add versioned docs with starlight-versions, snapshot v0
+
+### Bug Fixes
+
+- fix: update docs links to /docs/introduction
+- fix: remove eyebrow badge from hero
+
 ## [0.5.0] - 2026-03-27
 
 ### Features
