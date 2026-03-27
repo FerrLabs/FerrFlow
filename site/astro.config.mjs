@@ -13,6 +13,13 @@ export default defineConfig({
         { icon: 'github', label: 'GitHub', href: 'https://github.com/FerrFlow-Org/FerrFlow' },
       ],
       customCss: ['./src/styles/docs.css'],
+      expressiveCode: {
+        styleOverrides: {
+          borderRadius: '0.375rem',
+          codeFontFamily: "'DM Mono', ui-monospace, monospace",
+          uiFontFamily: "'Fraunces', Georgia, serif",
+        },
+      },
       plugins: [
         starlightVersions({
           versions: [{ slug: 'v0', label: 'v0' }],
