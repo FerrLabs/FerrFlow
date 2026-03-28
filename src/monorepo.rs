@@ -7,6 +7,7 @@ use crate::git::{
     get_repo_root, get_repo_slug, open_repo, push,
 };
 use crate::release::create_github_release;
+use crate::telemetry;
 use crate::versioning::bump_version;
 use anyhow::Result;
 use colored::Colorize;
@@ -20,7 +21,13 @@ pub fn check(verbose: bool) -> Result<()> {
     println!("{}", "FerrFlow — Check (dry run)".bold().blue());
     println!();
 
-    run_release_logic(&root, &config, true, verbose)
+    let result = run_release_logic(&root, &config, true, verbose);
+
+    if config.workspace.telemetry {
+        telemetry::send_event("check", None, None, None);
+    }
+
+    result
 }
 
 pub fn release(dry_run: bool, verbose: bool) -> Result<()> {
@@ -198,6 +205,15 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
             "  ✓ Pushed to {}/{}",
             config.workspace.remote, config.workspace.branch
         );
+
+        if config.workspace.telemetry {
+            for (tag_name, _, _) in &tags_to_create {
+                // Parse "name@vX.Y.Z" into package name and version
+                if let Some((name, version)) = tag_name.split_once("@v") {
+                    telemetry::send_event("release", Some(name), Some(version), None);
+                }
+            }
+        }
 
         if let Ok(token) = std::env::var("GITHUB_TOKEN")
             && let Some(slug) = get_repo_slug(&repo, &config.workspace.remote)
