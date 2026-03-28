@@ -43,7 +43,7 @@ pub fn generate_only(config_path: Option<&Path>, dry_run: bool) -> Result<()> {
             println!(
                 "{}",
                 format!(
-                    "  Skipping {}: no versioned_files configured, cannot determine version.",
+                    "  Skipping {}: no versioned files configured, cannot determine version.",
                     pkg.name
                 )
                 .yellow()
