@@ -2,7 +2,9 @@ use std::io::Write;
 
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use ferrflow::changelog::{build_section, update_changelog};
+use ferrflow::config::FileFormat;
 use ferrflow::conventional_commits::{BumpType, determine_bump};
+use ferrflow::formats::get_handler;
 use ferrflow::git::GitLog;
 use tempfile::NamedTempFile;
 
@@ -77,5 +79,57 @@ fn bench_changelog(c: &mut Criterion) {
     }
 }
 
-criterion_group!(benches, bench_commit_parsing, bench_changelog);
+fn bench_version_files(c: &mut Criterion) {
+    let cases: Vec<(&str, FileFormat, &str)> = vec![
+        (
+            "toml",
+            FileFormat::Toml,
+            "[package]\nname = \"foo\"\nversion = \"1.2.3\"\nedition = \"2021\"\n\n[dependencies]\nserde = \"1\"\n",
+        ),
+        (
+            "json",
+            FileFormat::Json,
+            r#"{"name":"foo","version":"1.2.3","description":"a package","main":"index.js"}"#,
+        ),
+        (
+            "xml",
+            FileFormat::Xml,
+            "<project>\n  <modelVersion>4.0.0</modelVersion>\n  <groupId>com.example</groupId>\n  <artifactId>foo</artifactId>\n  <version>1.2.3</version>\n</project>\n",
+        ),
+        (
+            "gradle",
+            FileFormat::Gradle,
+            "plugins { id 'java' }\nversion = \"1.2.3\"\ngroup = 'com.example'\n",
+        ),
+    ];
+
+    for (name, format, content) in &cases {
+        let handler = get_handler(format);
+
+        c.bench_function(&format!("version_files/{name}_read"), |b| {
+            let mut f = NamedTempFile::new().unwrap();
+            f.write_all(content.as_bytes()).unwrap();
+            let path = f.path().to_path_buf();
+            b.iter(|| {
+                black_box(handler.read_version(&path).unwrap());
+            });
+        });
+
+        c.bench_function(&format!("version_files/{name}_write"), |b| {
+            let mut f = NamedTempFile::new().unwrap();
+            f.write_all(content.as_bytes()).unwrap();
+            let path = f.path().to_path_buf();
+            b.iter(|| {
+                black_box(handler.write_version(&path, "2.0.0").unwrap());
+            });
+        });
+    }
+}
+
+criterion_group!(
+    benches,
+    bench_commit_parsing,
+    bench_changelog,
+    bench_version_files
+);
 criterion_main!(benches);
