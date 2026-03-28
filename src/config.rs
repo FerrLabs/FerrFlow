@@ -27,6 +27,7 @@ pub struct WorkspaceConfig {
     pub telemetry: bool,
     #[serde(default)]
     pub versioning: VersioningStrategy,
+    pub tag_prefix: Option<String>,
 }
 
 fn default_telemetry() -> bool {
@@ -60,6 +61,7 @@ pub struct PackageConfig {
     #[serde(default)]
     pub shared_paths: Vec<String>,
     pub versioning: Option<VersioningStrategy>,
+    pub tag_prefix: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Default)]
@@ -77,6 +79,15 @@ pub enum VersioningStrategy {
 impl PackageConfig {
     pub fn effective_versioning(&self, workspace: &WorkspaceConfig) -> VersioningStrategy {
         self.versioning.unwrap_or(workspace.versioning)
+    }
+
+    pub fn effective_tag_prefix(&self, workspace: &WorkspaceConfig, is_monorepo: bool) -> String {
+        let template = self
+            .tag_prefix
+            .as_deref()
+            .or(workspace.tag_prefix.as_deref())
+            .unwrap_or(if is_monorepo { "{name}@v" } else { "v" });
+        template.replace("{name}", &self.name)
     }
 }
 
@@ -321,6 +332,7 @@ impl Config {
                     changelog: Some("CHANGELOG.md".to_string()),
                     shared_paths: Vec::new(),
                     versioning: None,
+                    tag_prefix: None,
                 }]
             },
         }
@@ -491,6 +503,7 @@ fn collect_package(path_default: &str, monorepo: bool) -> PackageConfig {
         changelog: Some(changelog),
         shared_paths: Vec::new(),
         versioning: None,
+        tag_prefix: None,
     }
 }
 

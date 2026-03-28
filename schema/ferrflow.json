@@ -33,6 +33,11 @@
           "description": "Default versioning strategy for all packages.",
           "enum": ["semver", "calver", "calver-short", "calver-seq", "sequential", "zerover"],
           "default": "semver"
+        },
+        "tag_prefix": {
+          "type": "string",
+          "description": "Tag prefix template. Use {name} as placeholder for package name. Default: 'v' for single repos, '{name}@v' for monorepos.",
+          "examples": ["v", "{name}@v", "{name}/v"]
         }
       },
       "additionalProperties": false
@@ -87,6 +92,11 @@
             "type": "string",
             "description": "Versioning strategy for this package. Overrides workspace default.",
             "enum": ["semver", "calver", "calver-short", "calver-seq", "sequential", "zerover"]
+          },
+          "tag_prefix": {
+            "type": "string",
+            "description": "Tag prefix template for this package. Use {name} as placeholder. Overrides workspace default.",
+            "examples": ["v", "{name}@v", "{name}/v"]
           }
         },
         "additionalProperties": false

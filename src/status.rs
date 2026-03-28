@@ -36,7 +36,7 @@ pub fn run(config_path: Option<&std::path::Path>, output: &OutputFormat) -> Resu
     let mut statuses: Vec<PackageStatus> = Vec::new();
 
     for pkg in &config.packages {
-        let tag_prefix = format!("{}@v", pkg.name);
+        let tag_prefix = pkg.effective_tag_prefix(&config.workspace, config.is_monorepo());
         let last_tag = find_last_tag_name(&repo, &tag_prefix)?;
 
         let version = if let Some(vf) = pkg.versioned_files.first() {
