@@ -118,6 +118,12 @@ jobs:
             exit 0
           fi
 
+          # Check if a release exists for this tag
+          if ! gh release view "$TAG" --json tagName -q '.tagName' >/dev/null 2>&1; then
+            echo "No release found for tag $TAG, skipping"
+            exit 0
+          fi
+
           # Get current release body
           CURRENT_BODY=$(gh release view "$TAG" --json body -q '.body' 2>/dev/null || echo "")
 
