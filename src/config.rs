@@ -176,7 +176,16 @@ pub fn format_handler(fmt: ConfigFileFormat) -> &'static dyn ConfigFormatHandler
 // ---------------------------------------------------------------------------
 
 impl Config {
-    pub fn load(repo_root: &Path) -> Result<Self> {
+    pub fn load(repo_root: &Path, explicit_path: Option<&Path>) -> Result<Self> {
+        if let Some(path) = explicit_path {
+            let resolved_path = if path.is_relative() {
+                repo_root.join(path)
+            } else {
+                path.to_path_buf()
+            };
+            return Self::load_explicit(&resolved_path);
+        }
+
         let mut found: Vec<(&dyn ConfigFormatHandler, PathBuf)> = Vec::new();
 
         for handler in CONFIG_FORMATS {
@@ -190,18 +199,41 @@ impl Config {
             return Ok(Self::auto_detect(repo_root));
         }
 
-        // Warn about ignored config files
-        for (handler, _) in &found[1..] {
-            eprintln!(
-                "Warning: {} found but ignored (using {} instead)",
-                handler.filename(),
-                found[0].0.filename()
+        if found.len() > 1 {
+            let names: Vec<&str> = found.iter().map(|(h, _)| h.filename()).collect();
+            anyhow::bail!(
+                "multiple config files found: {}\nUse --config <path> to specify which one to use.",
+                names.join(", ")
             );
         }
 
         let (handler, path) = &found[0];
         let content = std::fs::read_to_string(path)
             .with_context(|| format!("Failed to read {}", path.display()))?;
+        handler.parse(&content)
+    }
+
+    fn load_explicit(path: &Path) -> Result<Self> {
+        let content = std::fs::read_to_string(path).map_err(|e| {
+            if e.kind() == std::io::ErrorKind::NotFound {
+                anyhow::Error::new(e).context(format!("Config file not found: {}", path.display()))
+            } else {
+                anyhow::Error::new(e)
+                    .context(format!("Failed to read config file: {}", path.display()))
+            }
+        })?;
+
+        let filename = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+        let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+
+        let handler: &dyn ConfigFormatHandler = match ext {
+            "json5" => &Json5Format,
+            "toml" => &TomlFormat,
+            "json" => &JsonFormat,
+            _ if filename == ".ferrflow" => &DotfileFormat,
+            _ => &JsonFormat,
+        };
+
         handler.parse(&content)
     }
 

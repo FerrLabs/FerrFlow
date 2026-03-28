@@ -70,6 +70,12 @@ ferrflow init
 
 # Scaffold a config file in a specific format
 ferrflow init --format json5
+
+# Use a specific config file
+ferrflow check --config path/to/ferrflow.toml
+
+# Or set via environment variable
+FERRFLOW_CONFIG=path/to/ferrflow.toml ferrflow check
 ```
 
 ## Configuration
@@ -81,7 +87,7 @@ FerrFlow looks for a config file at the root of your repository, in this order:
 3. `ferrflow.toml`
 4. `.ferrflow` (dotfile, JSON format)
 
-If multiple config files exist, the highest priority one is used and a warning is printed for the others. If no config file is found, FerrFlow auto-detects common version files in the current directory.
+If multiple config files exist, FerrFlow exits with an error listing the conflicting files. Use `--config <path>` (or `FERRFLOW_CONFIG` env var) to specify which one to use. If no config file is found, FerrFlow auto-detects common version files in the current directory.
 
 Run `ferrflow init` to scaffold a config file interactively. Use `--format` to skip the format prompt:
 

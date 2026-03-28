@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 
@@ -16,6 +18,10 @@ pub struct Cli {
     /// Verbose output
     #[arg(short, long, global = true)]
     pub verbose: bool,
+
+    /// Path to config file (overrides auto-detection, env: FERRFLOW_CONFIG)
+    #[arg(long, global = true, env = "FERRFLOW_CONFIG")]
+    pub config: Option<PathBuf>,
 
     #[command(subcommand)]
     pub command: Commands,
@@ -46,11 +52,15 @@ pub enum Commands {
 impl Cli {
     pub fn run(self) -> Result<()> {
         match self.command {
-            Commands::Check => crate::monorepo::check(self.verbose),
-            Commands::Release => crate::monorepo::release(self.dry_run, self.verbose),
-            Commands::Changelog => crate::changelog::generate_only(self.dry_run),
+            Commands::Check => crate::monorepo::check(self.config.as_deref(), self.verbose),
+            Commands::Release => {
+                crate::monorepo::release(self.config.as_deref(), self.dry_run, self.verbose)
+            }
+            Commands::Changelog => {
+                crate::changelog::generate_only(self.config.as_deref(), self.dry_run)
+            }
             Commands::Init { format } => crate::config::init(format),
-            Commands::Status { output } => crate::status::run(&output),
+            Commands::Status { output } => crate::status::run(self.config.as_deref(), &output),
         }
     }
 }

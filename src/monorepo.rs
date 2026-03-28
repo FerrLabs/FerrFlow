@@ -13,10 +13,10 @@ use anyhow::Result;
 use colored::Colorize;
 use std::path::Path;
 
-pub fn check(verbose: bool) -> Result<()> {
+pub fn check(config_path: Option<&Path>, verbose: bool) -> Result<()> {
     let repo = open_repo(&std::env::current_dir()?)?;
     let root = get_repo_root(&repo)?;
-    let config = Config::load(&root)?;
+    let config = Config::load(&root, config_path)?;
 
     println!("{}", "FerrFlow — Check (dry run)".bold().blue());
     println!();
@@ -30,10 +30,10 @@ pub fn check(verbose: bool) -> Result<()> {
     result
 }
 
-pub fn release(dry_run: bool, verbose: bool) -> Result<()> {
+pub fn release(config_path: Option<&Path>, dry_run: bool, verbose: bool) -> Result<()> {
     let repo = open_repo(&std::env::current_dir()?)?;
     let root = get_repo_root(&repo)?;
-    let config = Config::load(&root)?;
+    let config = Config::load(&root, config_path)?;
 
     if dry_run {
         println!("{}", "FerrFlow — Release (dry run)".bold().blue());

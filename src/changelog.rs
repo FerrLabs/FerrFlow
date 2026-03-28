@@ -8,10 +8,10 @@ use chrono::Local;
 use colored::Colorize;
 use std::path::Path;
 
-pub fn generate_only(dry_run: bool) -> Result<()> {
+pub fn generate_only(config_path: Option<&Path>, dry_run: bool) -> Result<()> {
     let repo = open_repo(&std::env::current_dir()?)?;
     let root = get_repo_root(&repo)?;
-    let config = Config::load(&root)?;
+    let config = Config::load(&root, config_path)?;
 
     if config.packages.is_empty() {
         println!(

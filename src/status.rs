@@ -20,10 +20,10 @@ struct PackageStatus {
     has_changes: bool,
 }
 
-pub fn run(output: &OutputFormat) -> Result<()> {
+pub fn run(config_path: Option<&std::path::Path>, output: &OutputFormat) -> Result<()> {
     let repo = open_repo(&std::env::current_dir()?)?;
     let root = get_repo_root(&repo)?;
-    let config = Config::load(&root)?;
+    let config = Config::load(&root, config_path)?;
 
     if config.packages.is_empty() {
         println!(
