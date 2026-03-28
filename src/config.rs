@@ -178,7 +178,12 @@ pub fn format_handler(fmt: ConfigFileFormat) -> &'static dyn ConfigFormatHandler
 impl Config {
     pub fn load(repo_root: &Path, explicit_path: Option<&Path>) -> Result<Self> {
         if let Some(path) = explicit_path {
-            return Self::load_explicit(path);
+            let resolved_path = if path.is_relative() {
+                repo_root.join(path)
+            } else {
+                path.to_path_buf()
+            };
+            return Self::load_explicit(&resolved_path);
         }
 
         let mut found: Vec<(&dyn ConfigFormatHandler, PathBuf)> = Vec::new();
