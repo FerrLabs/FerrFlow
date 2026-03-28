@@ -1,1 +1,9 @@
 /target
+
+# Benchmark artifacts
+benchmarks/results/raw/
+benchmarks/fixtures/single/
+benchmarks/fixtures/mono-small/
+benchmarks/fixtures/mono-medium/
+benchmarks/fixtures/mono-large/
+benchmarks/fixtures/mono-stress/
