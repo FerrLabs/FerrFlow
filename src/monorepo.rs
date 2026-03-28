@@ -75,7 +75,8 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
 
     let mut any_bumped = false;
     let mut files_to_commit: Vec<String> = Vec::new();
-    let mut tags_to_create: Vec<(String, String, String)> = Vec::new();
+    // (tag_name, tag_msg, body, pkg_name, version)
+    let mut tags_to_create: Vec<(String, String, String, String, String)> = Vec::new();
 
     for pkg in &config.packages {
         let touched = is_package_touched(pkg, &changed_files, config.is_monorepo());
@@ -90,8 +91,8 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
             continue;
         }
 
-        let tag_prefix = format!("{}@v", pkg.name);
-        let commits = get_commits_since_last_tag(&repo, &tag_prefix)?;
+        let tag_search_prefix = pkg.tag_prefix(&config.workspace, config.is_monorepo());
+        let commits = get_commits_since_last_tag(&repo, &tag_search_prefix)?;
 
         if commits.is_empty() {
             if verbose {
@@ -168,7 +169,7 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
         }
 
         if !dry_run {
-            let tag = format!("{}@v{}", pkg.name, new_version);
+            let tag = pkg.tag_for_version(&config.workspace, config.is_monorepo(), &new_version);
             if repo.refname_to_id(&format!("refs/tags/{tag}")).is_ok() {
                 println!(
                     "  {} {} — tag {} already exists, skipping",
@@ -201,7 +202,13 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
             }
 
             let body = build_section(&new_version, &commits);
-            tags_to_create.push((tag.clone(), format!("Release {tag}"), body));
+            tags_to_create.push((
+                tag.clone(),
+                format!("Release {tag}"),
+                body,
+                pkg.name.clone(),
+                new_version.clone(),
+            ));
         }
 
         any_bumped = true;
@@ -212,12 +219,15 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
         create_commit(&repo, &file_refs, "chore: release [skip ci]")?;
         println!("  ✓ Committed release changes");
 
-        for (tag_name, tag_msg, _) in &tags_to_create {
+        for (tag_name, tag_msg, _, _, _) in &tags_to_create {
             create_tag(&repo, tag_name, tag_msg)?;
             println!("  ✓ Created tag {}", tag_name.cyan());
         }
 
-        let tag_refs: Vec<&str> = tags_to_create.iter().map(|(t, _, _)| t.as_str()).collect();
+        let tag_refs: Vec<&str> = tags_to_create
+            .iter()
+            .map(|(t, _, _, _, _)| t.as_str())
+            .collect();
         push(
             &repo,
             &config.workspace.remote,
@@ -230,18 +240,15 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
         );
 
         if config.workspace.telemetry {
-            for (tag_name, _, _) in &tags_to_create {
-                // Parse "name@vX.Y.Z" into package name and version
-                if let Some((name, version)) = tag_name.split_once("@v") {
-                    telemetry::send_event("release", Some(name), Some(version), None);
-                }
+            for (_, _, _, pkg_name, version) in &tags_to_create {
+                telemetry::send_event("release", Some(pkg_name), Some(version), None);
             }
         }
 
         if let Ok(token) = std::env::var("GITHUB_TOKEN")
             && let Some(slug) = get_repo_slug(&repo, &config.workspace.remote)
         {
-            for (tag_name, _, body) in &tags_to_create {
+            for (tag_name, _, body, _, _) in &tags_to_create {
                 match create_github_release(&token, &slug, tag_name, body) {
                     Ok(()) => println!("  ✓ GitHub Release {}", tag_name.cyan()),
                     Err(err) => eprintln!(
@@ -261,7 +268,7 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
                 .open(&summary_path)
             {
                 let _ = writeln!(file, "## Released\n");
-                for (tag_name, _, body) in &tags_to_create {
+                for (tag_name, _, body, _, _) in &tags_to_create {
                     let _ = writeln!(file, "### {tag_name}\n");
                     let _ = writeln!(file, "{body}");
                 }

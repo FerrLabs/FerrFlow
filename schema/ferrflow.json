@@ -33,6 +33,11 @@
           "description": "Default versioning strategy for all packages.",
           "enum": ["semver", "calver", "calver-short", "calver-seq", "sequential", "zerover"],
           "default": "semver"
+        },
+        "tag_template": {
+          "type": "string",
+          "description": "Tag template. Use {name} for package name and {version} for version. Default: 'v{version}' for single repos, '{name}@v{version}' for monorepos.",
+          "examples": ["v{version}", "{name}@v{version}", "{name}/v{version}", "release-{version}"]
         }
       },
       "additionalProperties": false
@@ -87,6 +92,11 @@
             "type": "string",
             "description": "Versioning strategy for this package. Overrides workspace default.",
             "enum": ["semver", "calver", "calver-short", "calver-seq", "sequential", "zerover"]
+          },
+          "tag_template": {
+            "type": "string",
+            "description": "Tag template for this package. Use {name} for package name and {version} for version. Overrides workspace default.",
+            "examples": ["v{version}", "{name}@v{version}", "{name}/v{version}", "release-{version}"]
           }
         },
         "additionalProperties": false
