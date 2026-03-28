@@ -41,10 +41,6 @@ The MCP server is configured via environment variables:
 |----------|-------------|---------|
 | `PORT` | Server listen port | `3001` |
 | `API_URL` | FerrFlow API base URL | `http://localhost:3000` |
-| `DATABASE_URL` | PostgreSQL/TimescaleDB connection string | — |
-| `VAULT_ADDR` | HashiCorp Vault address | — |
-| `VAULT_TOKEN` | Vault authentication token | — |
-| `REDIS_URL` | Redis connection URL | — |
 
 ## Connecting to your AI assistant
 
@@ -91,15 +87,10 @@ Add to your MCP settings:
 
 ## Development
 
-To run the full development stack with TimescaleDB, Vault, and Redis:
-
 ```bash
-chmod +x scripts/init-dev-env.sh
-./scripts/init-dev-env.sh
+pnpm install
 pnpm dev
 ```
-
-This starts the supporting services via Docker Compose and runs the server in watch mode.
 
 ## Kubernetes deployment
 
@@ -109,10 +100,6 @@ The MCP server is designed to run on Kubernetes. The Docker image is available a
 ghcr.io/ferrflow-org/mcp:latest
 ghcr.io/ferrflow-org/mcp:0.2
 ```
-
-<Aside type="tip">
-  Use HashiCorp Vault agent injection to provide secrets to the MCP pod instead of passing them as plain environment variables.
-</Aside>
 
 ## Source
 
