@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag to build (e.g. ferrflow@v0.4.0)'
+        description: 'Tag to build (e.g. v0.6.0)'
         required: true
 
 jobs:
@@ -147,7 +147,7 @@ jobs:
       - uses: actions/checkout@v6
       - name: Move major version tag
         run: |
-          MAJOR="v$(echo "${GITHUB_REF_NAME#ferrflow@v}" | cut -d. -f1)"
+          MAJOR="v$(echo "${GITHUB_REF_NAME#v}" | cut -d. -f1)"
           git tag -f "$MAJOR"
           git push origin "refs/tags/$MAJOR" --force
 
@@ -173,7 +173,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Extract version
         id: version
-        run: echo "value=${GITHUB_REF_NAME#ferrflow@v}" >> $GITHUB_OUTPUT
+        run: echo "value=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
       - uses: docker/build-push-action@v7
         with:
           context: .
