@@ -7,6 +7,7 @@ mod git;
 mod monorepo;
 mod release;
 mod status;
+mod telemetry;
 mod versioning;
 
 use anyhow::Result;
