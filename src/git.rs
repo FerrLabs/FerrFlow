@@ -172,7 +172,7 @@ fn signature(repo: &Repository) -> Result<git2::Signature<'static>> {
     if let Ok(sig) = repo.signature() {
         return Ok(sig);
     }
-    Ok(git2::Signature::now("FerrFlow", "github@ferrflow.com")?)
+    Ok(git2::Signature::now("FerrFlow", "contact@ferrflow.com")?)
 }
 
 pub fn create_commit(repo: &Repository, files: &[&str], message: &str) -> Result<()> {
