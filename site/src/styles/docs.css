@@ -14,28 +14,82 @@
   --sl-color-accent:      #E8733A;
   --sl-color-accent-high: #9E3F1A;
 
-  --sl-color-white:  #1A0D07;
-  --sl-color-gray-1: #2D1B0E;
-  --sl-color-gray-2: #6B270E;
-  --sl-color-gray-3: #9E3F1A;
-  --sl-color-gray-4: #C85A2C;
-  --sl-color-gray-5: #FFE8D2;
-  --sl-color-gray-6: #FFF0E6;
-  --sl-color-black:  #FFF8F2;
+  --sl-color-white:  #2D1B0E;  /* primary-950 */
+  --sl-color-gray-1: #2D1B0E;  /* primary-950 */
+  --sl-color-gray-2: #6B270E;  /* primary-900 */
+  --sl-color-gray-3: #9E3F1A;  /* primary-800 */
+  --sl-color-gray-4: #C85A2C;  /* primary-700 */
+  --sl-color-gray-5: #FFE8D2;  /* primary-100 */
+  --sl-color-gray-6: #FFF8F2;  /* primary-50 */
+  --sl-color-black:  #FFF8F2;  /* primary-50 */
 
-  --sl-color-bg:             #FFF8F2;
-  --sl-color-bg-nav:         #FFF8F2;
-  --sl-color-bg-sidebar:     #FFF0E6;
-  --sl-color-bg-inline-code: #FFE8D2;
-  --sl-color-bg-accent:      #FFE8D2;
+  --sl-color-bg:             #FFF8F2;  /* primary-50 */
+  --sl-color-bg-nav:         #FFF8F2;  /* primary-50 */
+  --sl-color-bg-sidebar:     #FFF8F2;  /* primary-50 */
+  --sl-color-bg-inline-code: #FFE8D2;  /* primary-100 */
+  --sl-color-bg-accent:      #FFE8D2;  /* primary-100 */
 
-  --sl-color-hairline:       #FFE8D2;
-  --sl-color-hairline-light: #FFE8D2;
-  --sl-color-hairline-shade: #FFCBA4;
+  --sl-color-hairline:       #FFE8D2;  /* primary-100 */
+  --sl-color-hairline-light: #FFE8D2;  /* primary-100 */
+  --sl-color-hairline-shade: #FFCBA4;  /* primary-200 */
 
-  --sl-color-text:        #2D1B0E;
-  --sl-color-text-accent: #C85A2C;
-  --sl-color-text-invert: #FFF8F2;
+  --sl-color-text:        #2D1B0E;  /* primary-950 */
+  --sl-color-text-accent: #E8733A;  /* primary-600 */
+  --sl-color-text-invert: #FFF8F2;  /* primary-50 */
+}
+
+/* ── Titres en orange (utilise l'accent color) ──────────────────── */
+:root[data-theme='light'] h1,
+:root[data-theme='light'] h2,
+:root[data-theme='light'] h3,
+:root[data-theme='light'] h4,
+:root[data-theme='light'] h5,
+:root[data-theme='light'] h6,
+:root[data-theme='light'] .sl-markdown-content h1,
+:root[data-theme='light'] .sl-markdown-content h2,
+:root[data-theme='light'] .sl-markdown-content h3,
+:root[data-theme='light'] .sl-markdown-content h4,
+:root[data-theme='light'] .sl-markdown-content h5,
+:root[data-theme='light'] .sl-markdown-content h6 {
+  color: var(--sl-color-text-accent) !important;
+}
+
+/* Titre de la page principale */
+:root[data-theme='light'] .page-title,
+:root[data-theme='light'] .content-panel h1 {
+  color: var(--sl-color-text-accent) !important;
+}
+
+/* ── Blocs de code style terminal ──────────────────────────────── */
+:root[data-theme='light'] .expressive-code {
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 20px 25px -5px rgba(232, 115, 58, 0.1), 0 10px 10px -5px rgba(232, 115, 58, 0.04);
+  border: 1px solid #FFE8D2; /* primary-100 */
+}
+
+:root[data-theme='light'] .expressive-code .frame {
+  background-color: #2D1B0E !important; /* primary-950 */
+  border-radius: 1rem;
+}
+
+:root[data-theme='light'] .expressive-code pre {
+  background-color: #2D1B0E !important; /* primary-950 */
+  padding: 1.25rem;
+}
+
+:root[data-theme='light'] .expressive-code code {
+  background-color: transparent !important;
+  font-family: 'DM Mono', ui-monospace, monospace;
+  font-size: 0.875rem;
+  line-height: 1.75;
+}
+
+/* Header du bloc de code (comme la titlebar du terminal) */
+:root[data-theme='light'] .expressive-code .header {
+  background-color: #2D1B0E !important; /* primary-950 */
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #6B270E; /* primary-900 */
 }
 
 /* Hide the dark/light toggle — light only */

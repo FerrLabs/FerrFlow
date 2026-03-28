@@ -10,6 +10,16 @@ export default defineConfig({
     starlight({
       title: 'FerrFlow',
       description: 'Universal semantic versioning for monorepos and classic repos',
+      defaultLocale: 'root',
+      locales: {
+        root: {
+          label: 'English',
+          lang: 'en',
+        },
+      },
+      components: {
+        ThemeSelect: './src/components/ThemeSelect.astro',
+      },
       social: [
         { icon: 'github', label: 'GitHub', href: 'https://github.com/FerrFlow-Org/FerrFlow' },
       ],
@@ -23,6 +33,7 @@ export default defineConfig({
             shadowColor: 'rgba(232, 115, 58, 0.15)',
           },
         },
+        themes: ['github-dark-dimmed'],
       },
       plugins: [
         starlightVersions({

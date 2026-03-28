@@ -1,7 +1,6 @@
 {
   "dependencies": {
     "@astrojs/starlight": "^0.38.2",
-    "@ferrflow/shared": "workspace:*",
     "astro": "^6.0.0",
     "starlight-versions": "^0.8.1"
   },

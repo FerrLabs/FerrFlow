@@ -1,0 +1,16 @@
+---
+// Force le thème light par défaut
+---
+
+<script is:inline>
+  // Forcer le thème light
+  localStorage.setItem('starlight-theme', 'light');
+  document.documentElement.dataset.theme = 'light';
+</script>
+
+<style>
+  /* Cacher le sélecteur de thème */
+  starlight-theme-select {
+    display: none;
+  }
+</style>
