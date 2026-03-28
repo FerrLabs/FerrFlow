@@ -79,15 +79,17 @@ FerrFlow looks for a config file at the root of your repository, in this order:
 1. `ferrflow.json`
 2. `ferrflow.json5`
 3. `ferrflow.toml`
+4. `.ferrflow` (dotfile, JSON format)
 
 If multiple config files exist, the highest priority one is used and a warning is printed for the others. If no config file is found, FerrFlow auto-detects common version files in the current directory.
 
 Run `ferrflow init` to scaffold a config file interactively. Use `--format` to skip the format prompt:
 
 ```bash
-ferrflow init               # asks which format (default: json)
+ferrflow init                  # asks which format (default: json)
 ferrflow init --format json5
 ferrflow init --format toml
+ferrflow init --format dotfile # generates .ferrflow
 ```
 
 ### JSON (default)

@@ -85,6 +85,7 @@ pub enum ConfigFileFormat {
     Json,
     Json5,
     Toml,
+    Dotfile,
 }
 
 // ---------------------------------------------------------------------------
@@ -100,6 +101,7 @@ pub trait ConfigFormatHandler {
 struct JsonFormat;
 struct Json5Format;
 struct TomlFormat;
+struct DotfileFormat;
 
 impl ConfigFormatHandler for JsonFormat {
     fn filename(&self) -> &str {
@@ -142,14 +144,30 @@ impl ConfigFormatHandler for TomlFormat {
     }
 }
 
-/// Ordered by priority: json > json5 > toml
-const CONFIG_FORMATS: &[&dyn ConfigFormatHandler] = &[&JsonFormat, &Json5Format, &TomlFormat];
+impl ConfigFormatHandler for DotfileFormat {
+    fn filename(&self) -> &str {
+        ".ferrflow"
+    }
+    fn parse(&self, content: &str) -> Result<Config> {
+        serde_json::from_str(content).with_context(|| "Failed to parse .ferrflow")
+    }
+    fn serialize(&self, config: &Config) -> Result<String> {
+        let mut out = serde_json::to_string_pretty(config)?;
+        out.push('\n');
+        Ok(out)
+    }
+}
+
+/// Ordered by priority: json > json5 > toml > .ferrflow
+const CONFIG_FORMATS: &[&dyn ConfigFormatHandler] =
+    &[&JsonFormat, &Json5Format, &TomlFormat, &DotfileFormat];
 
 pub fn format_handler(fmt: ConfigFileFormat) -> &'static dyn ConfigFormatHandler {
     match fmt {
         ConfigFileFormat::Json => &JsonFormat,
         ConfigFileFormat::Json5 => &Json5Format,
         ConfigFileFormat::Toml => &TomlFormat,
+        ConfigFileFormat::Dotfile => &DotfileFormat,
     }
 }
 
@@ -312,10 +330,10 @@ fn prompt_format(indent: bool) -> String {
     }
 }
 
-const ALLOWED_CONFIG_FORMATS: &[&str] = &["json", "json5", "toml"];
+const ALLOWED_CONFIG_FORMATS: &[&str] = &["json", "json5", "toml", "dotfile"];
 
 fn prompt_config_format() -> ConfigFileFormat {
-    let question = "Config file format [json/json5/toml]";
+    let question = "Config file format [json/json5/toml/dotfile]";
     loop {
         let input = prompt(question, "json");
         let normalized = input.trim().to_lowercase();
@@ -323,11 +341,12 @@ fn prompt_config_format() -> ConfigFileFormat {
             return match normalized.as_str() {
                 "json5" => ConfigFileFormat::Json5,
                 "toml" => ConfigFileFormat::Toml,
+                "dotfile" | ".ferrflow" => ConfigFileFormat::Dotfile,
                 _ => ConfigFileFormat::Json,
             };
         }
         eprintln!(
-            "Invalid format '{}'. Allowed values: json, json5, toml.",
+            "Invalid format '{}'. Allowed values: json, json5, toml, dotfile.",
             input
         );
     }
