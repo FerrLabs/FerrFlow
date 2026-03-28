@@ -128,7 +128,7 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
 
         let Some(vf) = pkg.versioned_files.first() else {
             println!(
-                "{} {} — no versioned_files configured",
+                "{} {} — no versioned files configured",
                 "!".yellow(),
                 pkg.name.yellow()
             );
