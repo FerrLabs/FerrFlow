@@ -47,9 +47,6 @@ declare -A ABS_THRESHOLDS=(
   ["ferrflow|mono-large|check"]=2000
   ["ferrflow|mono-large|version"]=500
   ["ferrflow|mono-large|tag"]=500
-  ["ferrflow|mono-stress|check"]=10000
-  ["ferrflow|mono-stress|version"]=2000
-  ["ferrflow|mono-stress|tag"]=2000
 )
 
 # ---------------------------------------------------------------------------

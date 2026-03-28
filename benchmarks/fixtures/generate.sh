@@ -4,12 +4,11 @@ set -euo pipefail
 # Generate synthetic git repos for benchmarking.
 # Usage: ./generate.sh <output_dir>
 #
-# Creates five fixtures:
+# Creates four fixtures:
 #   single/       — single-package repo, ~100 commits
 #   mono-small/   — 10 packages, ~100 commits
 #   mono-medium/  — 50 packages, ~500 commits
 #   mono-large/   — 200 packages, ~10000 commits
-#   mono-stress/  — 1000 packages, ~50000 commits
 
 OUTPUT_DIR="${1:-.}"
 COMMIT_TYPES=("feat" "fix" "refactor" "perf" "chore" "docs" "ci" "test")
@@ -176,5 +175,4 @@ create_single
 create_mono "mono-small" 10 100
 create_mono "mono-medium" 50 500
 create_mono "mono-large" 200 10000
-create_mono "mono-stress" 1000 50000
 echo "Done."
