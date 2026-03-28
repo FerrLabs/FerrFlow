@@ -6,12 +6,10 @@ WORKDIR /app
 RUN npm install -g pnpm@9
 
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
-COPY packages/shared/package.json ./packages/shared/
 COPY packages/site/package.json ./packages/site/
 
 RUN pnpm install --frozen-lockfile
 
-COPY packages/shared ./packages/shared
 COPY packages/site ./packages/site
 
 RUN pnpm --filter @ferrflow/site build
