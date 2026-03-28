@@ -27,7 +27,7 @@ pub struct WorkspaceConfig {
     pub telemetry: bool,
     #[serde(default)]
     pub versioning: VersioningStrategy,
-    pub tag_prefix: Option<String>,
+    pub tag_template: Option<String>,
 }
 
 fn default_telemetry() -> bool {
@@ -61,7 +61,7 @@ pub struct PackageConfig {
     #[serde(default)]
     pub shared_paths: Vec<String>,
     pub versioning: Option<VersioningStrategy>,
-    pub tag_prefix: Option<String>,
+    pub tag_template: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Default)]
@@ -81,13 +81,36 @@ impl PackageConfig {
         self.versioning.unwrap_or(workspace.versioning)
     }
 
-    pub fn effective_tag_prefix(&self, workspace: &WorkspaceConfig, is_monorepo: bool) -> String {
-        let template = self
-            .tag_prefix
+    fn effective_template<'a>(
+        &'a self,
+        workspace: &'a WorkspaceConfig,
+        is_monorepo: bool,
+    ) -> &'a str {
+        self.tag_template
             .as_deref()
-            .or(workspace.tag_prefix.as_deref())
-            .unwrap_or(if is_monorepo { "{name}@v" } else { "v" });
-        template.replace("{name}", &self.name)
+            .or(workspace.tag_template.as_deref())
+            .unwrap_or(if is_monorepo {
+                "{name}@v{version}"
+            } else {
+                "v{version}"
+            })
+    }
+
+    pub fn tag_for_version(
+        &self,
+        workspace: &WorkspaceConfig,
+        is_monorepo: bool,
+        version: &str,
+    ) -> String {
+        self.effective_template(workspace, is_monorepo)
+            .replace("{name}", &self.name)
+            .replace("{version}", version)
+    }
+
+    pub fn tag_prefix(&self, workspace: &WorkspaceConfig, is_monorepo: bool) -> String {
+        let template = self.effective_template(workspace, is_monorepo);
+        let prefix = template.split("{version}").next().unwrap_or(template);
+        prefix.replace("{name}", &self.name)
     }
 }
 
@@ -332,7 +355,7 @@ impl Config {
                     changelog: Some("CHANGELOG.md".to_string()),
                     shared_paths: Vec::new(),
                     versioning: None,
-                    tag_prefix: None,
+                    tag_template: None,
                 }]
             },
         }
@@ -503,7 +526,7 @@ fn collect_package(path_default: &str, monorepo: bool) -> PackageConfig {
         changelog: Some(changelog),
         shared_paths: Vec::new(),
         versioning: None,
-        tag_prefix: None,
+        tag_template: None,
     }
 }
 

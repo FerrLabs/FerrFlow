@@ -253,24 +253,25 @@ versioning = "calver"  # override: date-based
 | `sequential` | `N` | `42` | Simple incrementing build number |
 | `zerover` | `0.MINOR.PATCH` | `0.15.2` | Permanently unstable, never hits 1.0 |
 
-## Tag Prefix
+## Tag Template
 
-By default, FerrFlow tags single-repo releases as `v1.2.3` and monorepo releases as `api@v1.2.3`. You can customize this with `tag_prefix` at the workspace or package level. Use `{name}` as a placeholder for the package name.
+By default, FerrFlow tags single-repo releases as `v1.2.3` and monorepo releases as `api@v1.2.3`. Customize with `tag_template` at the workspace or package level using `{name}` and `{version}` placeholders.
 
 ```toml
 [workspace]
-tag_prefix = "v"  # all packages: v1.2.3
+tag_template = "v{version}"  # all packages: v1.2.3
 
 [[package]]
 name = "api"
 path = "packages/api"
-tag_prefix = "{name}/v"  # override: api/v1.2.3
+tag_template = "{name}/v{version}"  # override: api/v1.2.3
 ```
 
-| Layout | Default prefix | Example tag |
-|--------|---------------|-------------|
-| Single repo | `v` | `v1.2.3` |
-| Monorepo | `{name}@v` | `api@v1.2.3` |
+| Layout | Default template | Example tag |
+|--------|-----------------|-------------|
+| Single repo | `v{version}` | `v1.2.3` |
+| Monorepo | `{name}@v{version}` | `api@v1.2.3` |
+| Custom | `release-{version}` | `release-1.2.3` |
 
 ## Conventional Commits
 

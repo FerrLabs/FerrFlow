@@ -91,8 +91,8 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
             continue;
         }
 
-        let tag_prefix = pkg.effective_tag_prefix(&config.workspace, config.is_monorepo());
-        let commits = get_commits_since_last_tag(&repo, &tag_prefix)?;
+        let tag_search_prefix = pkg.tag_prefix(&config.workspace, config.is_monorepo());
+        let commits = get_commits_since_last_tag(&repo, &tag_search_prefix)?;
 
         if commits.is_empty() {
             if verbose {
@@ -169,7 +169,7 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
         }
 
         if !dry_run {
-            let tag = format!("{}{}", tag_prefix, new_version);
+            let tag = pkg.tag_for_version(&config.workspace, config.is_monorepo(), &new_version);
             if repo.refname_to_id(&format!("refs/tags/{tag}")).is_ok() {
                 println!(
                     "  {} {} — tag {} already exists, skipping",
