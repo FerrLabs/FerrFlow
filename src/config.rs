@@ -3,6 +3,8 @@ use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
+use crate::telemetry;
+
 // ---------------------------------------------------------------------------
 // Config structs
 // ---------------------------------------------------------------------------
@@ -21,6 +23,12 @@ pub struct WorkspaceConfig {
     pub remote: String,
     #[serde(default = "default_branch")]
     pub branch: String,
+    #[serde(default = "default_telemetry")]
+    pub telemetry: bool,
+}
+
+fn default_telemetry() -> bool {
+    true
 }
 
 fn default_remote() -> String {
@@ -459,5 +467,10 @@ pub fn init(format: Option<ConfigFileFormat>) -> Result<()> {
     std::fs::write(filename, &content)?;
     println!("Created {filename}");
     println!("Run: ferrflow check");
+
+    if config.workspace.telemetry {
+        telemetry::send_event("init", None, None, None);
+    }
+
     Ok(())
 }
