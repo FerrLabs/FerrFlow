@@ -2,6 +2,7 @@ import { defineConfig } from 'astro/config';
 import tailwindcss from '@tailwindcss/vite';
 import starlight from '@astrojs/starlight';
 import starlightVersions from 'starlight-versions';
+import ferrflowTheme from './src/styles/ferrflow-theme.json' with { type: 'json' };
 
 export default defineConfig({
   site: 'https://ferrflow.com',
@@ -34,7 +35,7 @@ export default defineConfig({
             shadowColor: 'rgba(232, 115, 58, 0.15)',
           },
         },
-        themes: ['github-dark-dimmed'],
+        themes: [ferrflowTheme],
       },
       plugins: [
         starlightVersions({
