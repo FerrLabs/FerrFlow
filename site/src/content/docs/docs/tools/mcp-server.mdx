@@ -1,0 +1,119 @@
+---
+title: MCP Server
+description: Connect AI assistants to FerrFlow via the Model Context Protocol.
+---
+
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+The FerrFlow MCP server lets AI assistants (Claude, Cursor, Windsurf, etc.) interact with your FerrFlow setup through the [Model Context Protocol](https://modelcontextprotocol.io).
+
+## Installation
+
+<Tabs>
+  <TabItem label="Docker">
+    ```bash
+    docker run -d \
+      --name ferrflow-mcp \
+      -p 3001:3001 \
+      ghcr.io/ferrflow-org/mcp:latest
+    ```
+  </TabItem>
+  <TabItem label="From source">
+    ```bash
+    git clone https://github.com/FerrFlow-Org/MCP.git
+    cd MCP
+    pnpm install
+    pnpm build
+    pnpm start
+    ```
+
+    Requires Node.js 22+ and pnpm 9+.
+  </TabItem>
+</Tabs>
+
+The server starts on port **3001** by default.
+
+## Configuration
+
+The MCP server is configured via environment variables:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PORT` | Server listen port | `3001` |
+| `API_URL` | FerrFlow API base URL | `http://localhost:3000` |
+| `DATABASE_URL` | PostgreSQL/TimescaleDB connection string | — |
+| `VAULT_ADDR` | HashiCorp Vault address | — |
+| `VAULT_TOKEN` | Vault authentication token | — |
+| `REDIS_URL` | Redis connection URL | — |
+
+## Connecting to your AI assistant
+
+### Claude Desktop
+
+Add the server to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "ferrflow": {
+      "url": "http://localhost:3001"
+    }
+  }
+}
+```
+
+### Claude Code
+
+```bash
+claude mcp add ferrflow http://localhost:3001
+```
+
+### Cursor / Windsurf
+
+Add to your MCP settings:
+
+```json
+{
+  "mcpServers": {
+    "ferrflow": {
+      "url": "http://localhost:3001"
+    }
+  }
+}
+```
+
+## Endpoints
+
+| Path | Description |
+|------|-------------|
+| `/` | MCP StreamableHTTP transport |
+| `/health` | Health check (returns `ok`) |
+
+## Development
+
+To run the full development stack with TimescaleDB, Vault, and Redis:
+
+```bash
+chmod +x scripts/init-dev-env.sh
+./scripts/init-dev-env.sh
+pnpm dev
+```
+
+This starts the supporting services via Docker Compose and runs the server in watch mode.
+
+## Kubernetes deployment
+
+The MCP server is designed to run on Kubernetes. The Docker image is available at:
+
+```
+ghcr.io/ferrflow-org/mcp:latest
+ghcr.io/ferrflow-org/mcp:0.2
+```
+
+<Aside type="tip">
+  Use HashiCorp Vault agent injection to provide secrets to the MCP pod instead of passing them as plain environment variables.
+</Aside>
+
+## Source
+
+The MCP server source code is available at [github.com/FerrFlow-Org/MCP](https://github.com/FerrFlow-Org/MCP).

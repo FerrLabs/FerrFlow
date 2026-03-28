@@ -67,6 +67,12 @@ export default defineConfig({
           ],
         },
         {
+          label: 'Tools',
+          items: [
+            { label: 'MCP Server', slug: 'docs/tools/mcp-server' },
+          ],
+        },
+        {
           label: 'Reference',
           items: [
             { label: 'CLI commands', slug: 'docs/reference/cli' },
