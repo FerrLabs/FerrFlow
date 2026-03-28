@@ -27,6 +27,7 @@ pub struct WorkspaceConfig {
     pub telemetry: bool,
     #[serde(default)]
     pub versioning: VersioningStrategy,
+    #[serde(alias = "tagTemplate")]
     pub tag_template: Option<String>,
 }
 
@@ -55,12 +56,13 @@ fn default_branch() -> String {
 pub struct PackageConfig {
     pub name: String,
     pub path: String,
-    #[serde(default)]
+    #[serde(default, alias = "versionedFiles")]
     pub versioned_files: Vec<VersionedFile>,
     pub changelog: Option<String>,
-    #[serde(default)]
+    #[serde(default, alias = "sharedPaths")]
     pub shared_paths: Vec<String>,
     pub versioning: Option<VersioningStrategy>,
+    #[serde(alias = "tagTemplate")]
     pub tag_template: Option<String>,
 }
 
@@ -158,6 +160,47 @@ struct Json5Format;
 struct TomlFormat;
 struct DotfileFormat;
 
+fn snake_to_camel(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    let mut capitalize_next = false;
+    for c in s.chars() {
+        if c == '_' {
+            capitalize_next = true;
+        } else if capitalize_next {
+            result.extend(c.to_uppercase());
+            capitalize_next = false;
+        } else {
+            result.push(c);
+        }
+    }
+    result
+}
+
+const CAMEL_CASE_KEYS: &[&str] = &["tag_template", "versioned_files", "shared_paths"];
+
+fn to_camel_case_keys(value: serde_json::Value) -> serde_json::Value {
+    match value {
+        serde_json::Value::Object(map) => {
+            let new_map = map
+                .into_iter()
+                .map(|(k, v)| {
+                    let new_key = if CAMEL_CASE_KEYS.contains(&k.as_str()) {
+                        snake_to_camel(&k)
+                    } else {
+                        k
+                    };
+                    (new_key, to_camel_case_keys(v))
+                })
+                .collect();
+            serde_json::Value::Object(new_map)
+        }
+        serde_json::Value::Array(arr) => {
+            serde_json::Value::Array(arr.into_iter().map(to_camel_case_keys).collect())
+        }
+        other => other,
+    }
+}
+
 impl ConfigFormatHandler for JsonFormat {
     fn filename(&self) -> &str {
         "ferrflow.json"
@@ -166,7 +209,9 @@ impl ConfigFormatHandler for JsonFormat {
         serde_json::from_str(content).with_context(|| "Failed to parse ferrflow.json")
     }
     fn serialize(&self, config: &Config) -> Result<String> {
-        let mut out = serde_json::to_string_pretty(config)?;
+        let value = serde_json::to_value(config)?;
+        let camel = to_camel_case_keys(value);
+        let mut out = serde_json::to_string_pretty(&camel)?;
         out.push('\n');
         Ok(out)
     }
@@ -181,7 +226,9 @@ impl ConfigFormatHandler for Json5Format {
     }
     fn serialize(&self, config: &Config) -> Result<String> {
         // json5 crate has no serializer; valid JSON is valid JSON5
-        let mut out = serde_json::to_string_pretty(config)?;
+        let value = serde_json::to_value(config)?;
+        let camel = to_camel_case_keys(value);
+        let mut out = serde_json::to_string_pretty(&camel)?;
         out.push('\n');
         Ok(out)
     }
@@ -613,6 +660,28 @@ mod tests {
     }
 
     #[test]
+    fn parse_json_camel_case() {
+        let json = r#"{
+            "workspace": { "remote": "origin", "tagTemplate": "v{version}" },
+            "package": [{
+                "name": "app",
+                "path": ".",
+                "versionedFiles": [{ "path": "package.json", "format": "json" }],
+                "sharedPaths": ["shared/"],
+                "tagTemplate": "{name}@v{version}"
+            }]
+        }"#;
+        let config: Config = serde_json::from_str(json).unwrap();
+        assert_eq!(config.workspace.tag_template.as_deref(), Some("v{version}"));
+        assert_eq!(config.packages[0].versioned_files.len(), 1);
+        assert_eq!(config.packages[0].shared_paths, vec!["shared/"]);
+        assert_eq!(
+            config.packages[0].tag_template.as_deref(),
+            Some("{name}@v{version}")
+        );
+    }
+
+    #[test]
     fn parse_json5_config() {
         let json5 = r#"{
             workspace: { remote: "origin" },
@@ -925,6 +994,70 @@ format = "toml"
         let serialized = handler.serialize(&config).unwrap();
         let parsed = handler.parse(&serialized).unwrap();
         assert_eq!(parsed.packages[0].name, "test");
+    }
+
+    #[test]
+    fn json_serializes_camel_case() {
+        let handler = JsonFormat;
+        let config = Config {
+            workspace: WorkspaceConfig {
+                tag_template: Some("v{version}".into()),
+                ..WorkspaceConfig::default()
+            },
+            packages: vec![PackageConfig {
+                name: "app".into(),
+                path: ".".into(),
+                versioned_files: vec![VersionedFile {
+                    path: "Cargo.toml".into(),
+                    format: FileFormat::Toml,
+                }],
+                changelog: None,
+                shared_paths: vec!["shared/".into()],
+                versioning: None,
+                tag_template: Some("{name}@v{version}".into()),
+            }],
+        };
+        let serialized = handler.serialize(&config).unwrap();
+        assert!(serialized.contains("tagTemplate"));
+        assert!(serialized.contains("versionedFiles"));
+        assert!(serialized.contains("sharedPaths"));
+        assert!(!serialized.contains("tag_template"));
+        assert!(!serialized.contains("versioned_files"));
+        assert!(!serialized.contains("shared_paths"));
+
+        let parsed = handler.parse(&serialized).unwrap();
+        assert_eq!(parsed.workspace.tag_template.as_deref(), Some("v{version}"));
+        assert_eq!(parsed.packages[0].shared_paths, vec!["shared/"]);
+    }
+
+    #[test]
+    fn toml_keeps_snake_case() {
+        let handler = TomlFormat;
+        let config = Config {
+            workspace: WorkspaceConfig {
+                tag_template: Some("v{version}".into()),
+                ..WorkspaceConfig::default()
+            },
+            packages: vec![PackageConfig {
+                name: "app".into(),
+                path: ".".into(),
+                versioned_files: vec![VersionedFile {
+                    path: "Cargo.toml".into(),
+                    format: FileFormat::Toml,
+                }],
+                changelog: None,
+                shared_paths: vec!["shared/".into()],
+                versioning: None,
+                tag_template: Some("{name}@v{version}".into()),
+            }],
+        };
+        let serialized = handler.serialize(&config).unwrap();
+        assert!(serialized.contains("tag_template"));
+        assert!(serialized.contains("versioned_files"));
+        assert!(serialized.contains("shared_paths"));
+        assert!(!serialized.contains("tagTemplate"));
+        assert!(!serialized.contains("versionedFiles"));
+        assert!(!serialized.contains("sharedPaths"));
     }
 
     #[test]

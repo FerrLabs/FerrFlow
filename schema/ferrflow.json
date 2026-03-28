@@ -34,7 +34,7 @@
           "enum": ["semver", "calver", "calver-short", "calver-seq", "sequential", "zerover"],
           "default": "semver"
         },
-        "tag_template": {
+        "tagTemplate": {
           "type": "string",
           "description": "Tag template. Use {name} for package name and {version} for version. Default: 'v{version}' for single repos, '{name}@v{version}' for monorepos.",
           "examples": ["v{version}", "{name}@v{version}", "{name}/v{version}", "release-{version}"]
@@ -61,7 +61,7 @@
             "type": ["string", "null"],
             "description": "Path to the changelog file, relative to the repo root."
           },
-          "versioned_files": {
+          "versionedFiles": {
             "type": "array",
             "description": "Files that contain the package version to update on release.",
             "items": {
@@ -81,7 +81,7 @@
               "additionalProperties": false
             }
           },
-          "shared_paths": {
+          "sharedPaths": {
             "type": "array",
             "description": "Paths whose changes should trigger a version bump for this package (monorepo only).",
             "items": {
@@ -93,7 +93,7 @@
             "description": "Versioning strategy for this package. Overrides workspace default.",
             "enum": ["semver", "calver", "calver-short", "calver-seq", "sequential", "zerover"]
           },
-          "tag_template": {
+          "tagTemplate": {
             "type": "string",
             "description": "Tag template for this package. Use {name} for package name and {version} for version. Overrides workspace default.",
             "examples": ["v{version}", "{name}@v{version}", "{name}/v{version}", "release-{version}"]
