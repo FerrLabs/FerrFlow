@@ -92,10 +92,21 @@ ferrflow init --format toml
 ferrflow init --format dotfile # generates .ferrflow
 ```
 
+### JSON Schema
+
+Add `$schema` to get autocompletion and validation in VS Code, WebStorm, and any JSON-aware editor:
+
+```json
+{
+  "$schema": "https://ferrflow.com/schema/ferrflow.json"
+}
+```
+
 ### JSON (default)
 
 ```json
 {
+  "$schema": "https://ferrflow.com/schema/ferrflow.json",
   "workspace": {
     "remote": "origin",
     "branch": "main"

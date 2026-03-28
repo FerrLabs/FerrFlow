@@ -1,0 +1,86 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ferrflow.com/schema/ferrflow.json",
+  "title": "FerrFlow Configuration",
+  "description": "Configuration file for FerrFlow — universal semantic versioning for monorepos and classic repos.",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference for editor autocompletion."
+    },
+    "workspace": {
+      "type": "object",
+      "description": "Workspace-level settings.",
+      "properties": {
+        "remote": {
+          "type": "string",
+          "description": "Git remote name.",
+          "default": "origin"
+        },
+        "branch": {
+          "type": "string",
+          "description": "Main branch name.",
+          "default": "main"
+        },
+        "telemetry": {
+          "type": "boolean",
+          "description": "Send anonymous usage statistics to improve FerrFlow.",
+          "default": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "package": {
+      "type": "array",
+      "description": "List of packages to version. Use one entry for single repos, multiple for monorepos.",
+      "items": {
+        "type": "object",
+        "required": ["name", "path"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Package name, used in tags and changelog headers."
+          },
+          "path": {
+            "type": "string",
+            "description": "Path to the package root, relative to the repo root. Use \".\" for single repos."
+          },
+          "changelog": {
+            "type": "string",
+            "description": "Path to the changelog file, relative to the repo root."
+          },
+          "versioned_files": {
+            "type": "array",
+            "description": "Files that contain the package version to update on release.",
+            "items": {
+              "type": "object",
+              "required": ["path", "format"],
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "description": "Path to the version file, relative to the repo root."
+                },
+                "format": {
+                  "type": "string",
+                  "description": "File format used to locate and update the version field.",
+                  "enum": ["toml", "json", "xml", "gradle", "gomod"]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "shared_paths": {
+            "type": "array",
+            "description": "Paths whose changes should trigger a version bump for this package (monorepo only).",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
