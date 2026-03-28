@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.7.0] - 2026-03-28
+
+### Features
+
+- feat: add custom Header with logo and bicolor text in docs navbar
+
 ## [0.6.2] - 2026-03-28
 
 ### Bug Fixes
