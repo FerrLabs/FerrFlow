@@ -148,6 +148,51 @@ const features = [
     </div>
   </section>
 
+  <!-- ─── Metrics ──────────────────────────────────────────── -->
+  <section class="py-20 border-t border-primary-100 bg-white">
+    <div class="max-w-5xl mx-auto px-6">
+      <div class="text-center mb-12">
+        <h2 class="text-4xl sm:text-5xl font-black text-primary-950 tracking-tight">Trusted in production</h2>
+        <p class="mt-4 text-lg text-primary-700 font-normal">Real numbers from real teams shipping with FerrFlow.</p>
+      </div>
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-6" id="stats">
+        <div class="text-center p-6 rounded-2xl border border-primary-100 opacity-0 animate-fade-up" style="animation-delay: 0ms; box-shadow: 0 4px 24px rgba(232,115,58,0.07);">
+          <div class="text-4xl sm:text-5xl font-black text-primary-600 tracking-tight" data-stat="total_releases">0</div>
+          <div class="mt-2 text-sm text-primary-700 font-medium">Releases shipped</div>
+        </div>
+        <div class="text-center p-6 rounded-2xl border border-primary-100 opacity-0 animate-fade-up" style="animation-delay: 80ms; box-shadow: 0 4px 24px rgba(232,115,58,0.07);">
+          <div class="text-4xl sm:text-5xl font-black text-primary-600 tracking-tight" data-stat="total_packages">0</div>
+          <div class="mt-2 text-sm text-primary-700 font-medium">Packages tracked</div>
+        </div>
+        <div class="text-center p-6 rounded-2xl border border-primary-100 opacity-0 animate-fade-up" style="animation-delay: 160ms; box-shadow: 0 4px 24px rgba(232,115,58,0.07);">
+          <div class="text-4xl sm:text-5xl font-black text-primary-600 tracking-tight" data-stat="total_bumps">0</div>
+          <div class="mt-2 text-sm text-primary-700 font-medium">Version bumps</div>
+        </div>
+        <div class="text-center p-6 rounded-2xl border border-primary-100 opacity-0 animate-fade-up" style="animation-delay: 240ms; box-shadow: 0 4px 24px rgba(232,115,58,0.07);">
+          <div class="text-4xl sm:text-5xl font-black text-primary-600 tracking-tight" data-stat="total_users">0</div>
+          <div class="mt-2 text-sm text-primary-700 font-medium">Users</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    async function fetchStats() {
+      try {
+        const res = await fetch('https://api.ferrflow.com/stats');
+        if (!res.ok) return;
+        const data = await res.json();
+        for (const [key, value] of Object.entries(data)) {
+          const el = document.querySelector(`[data-stat="${key}"]`);
+          if (el) el.textContent = Number(value).toLocaleString();
+        }
+      } catch {
+        // Keep fake data as fallback
+      }
+    }
+    fetchStats();
+  </script>
+
   <!-- ─── Features ──────────────────────────────────────────── -->
   <section class="py-28 bg-white border-t border-primary-100">
     <div class="max-w-6xl mx-auto px-6">
