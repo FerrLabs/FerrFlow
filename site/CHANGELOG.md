@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.1] - 2026-03-29
+
+### Bug Fixes
+
+- fix(site): add version selector to custom header (#62)
+- fix(api): bind to 0.0.0.0 instead of 127.0.0.1 (#60)
+
 ## [0.10.0] - 2026-03-29
 
 ### Features
