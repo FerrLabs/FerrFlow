@@ -1,3 +1,7 @@
+[workspace]
+members = [".", "ferrflow-wasm"]
+resolver = "3"
+
 [package]
 name = "ferrflow"
 version = "1.0.0"
@@ -22,21 +26,27 @@ path = "benchmarks/fixtures/generate.rs"
 name = "ferrflow"
 path = "src/lib.rs"
 
+[features]
+default = ["cli"]
+cli = ["dep:git2", "dep:ureq", "dep:clap", "dep:colored"]
+
 [dependencies]
-clap = { version = "4", features = ["derive", "env"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 json5 = "1.0"
 toml_edit = { version = "0.25", features = ["serde"] }
 quick-xml = "0.39"
-git2 = { version = "0.20", features = ["vendored-libgit2", "vendored-openssl"] }
 semver = "1"
 regex = "1"
 anyhow = "1"
 thiserror = "2"
 chrono = { version = "0.4", features = ["serde"] }
-colored = "3"
-ureq = { version = "3", features = ["json"] }
+
+# CLI-only dependencies
+clap = { version = "4", features = ["derive", "env"], optional = true }
+colored = { version = "3", optional = true }
+git2 = { version = "0.20", features = ["vendored-libgit2", "vendored-openssl"], optional = true }
+ureq = { version = "3", features = ["json"], optional = true }
 
 [dev-dependencies]
 cargo-husky = { version = "1", default-features = false, features = ["user-hooks"] }

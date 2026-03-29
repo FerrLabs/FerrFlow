@@ -1,8 +1,8 @@
 use anyhow::{Context, Result};
-use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
+#[cfg(feature = "cli")]
 use crate::telemetry;
 
 // ---------------------------------------------------------------------------
@@ -166,7 +166,8 @@ pub enum FileFormat {
 // Config file format enum (for CLI --format flag)
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, Clone, Copy, ValueEnum)]
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "cli", derive(clap::ValueEnum))]
 pub enum ConfigFileFormat {
     Json,
     Json5,
@@ -460,9 +461,10 @@ impl Config {
 }
 
 // ---------------------------------------------------------------------------
-// Interactive helpers
+// Interactive helpers & init command (CLI only)
 // ---------------------------------------------------------------------------
 
+#[cfg(feature = "cli")]
 fn prompt(question: &str, default: &str) -> String {
     use std::io::Write;
     if default.is_empty() {
@@ -481,6 +483,7 @@ fn prompt(question: &str, default: &str) -> String {
     }
 }
 
+#[cfg(feature = "cli")]
 fn prompt_bool(question: &str, default: bool) -> bool {
     let hint = if default { "Y/n" } else { "y/N" };
     let answer = prompt(&format!("{question} [{hint}]"), "");
@@ -491,8 +494,10 @@ fn prompt_bool(question: &str, default: bool) -> bool {
     }
 }
 
+#[cfg(feature = "cli")]
 const ALLOWED_FORMATS: &[&str] = &["toml", "json", "xml", "gradle", "gomod", "txt"];
 
+#[cfg(feature = "cli")]
 fn prompt_format(indent: bool) -> String {
     let question = if indent {
         "  Version file format [toml/json/xml/gradle/gomod/txt]"
@@ -512,8 +517,10 @@ fn prompt_format(indent: bool) -> String {
     }
 }
 
+#[cfg(feature = "cli")]
 const ALLOWED_CONFIG_FORMATS: &[&str] = &["json", "json5", "toml", "dotfile"];
 
+#[cfg(feature = "cli")]
 fn prompt_config_format() -> ConfigFileFormat {
     let question = "Config file format [json/json5/toml/dotfile]";
     loop {
@@ -534,6 +541,7 @@ fn prompt_config_format() -> ConfigFileFormat {
     }
 }
 
+#[cfg(feature = "cli")]
 fn default_version_file(format: &str) -> &'static str {
     match format {
         "json" => "package.json",
@@ -545,6 +553,7 @@ fn default_version_file(format: &str) -> &'static str {
     }
 }
 
+#[cfg(feature = "cli")]
 fn parse_file_format(s: &str) -> FileFormat {
     match s {
         "json" => FileFormat::Json,
@@ -556,6 +565,7 @@ fn parse_file_format(s: &str) -> FileFormat {
     }
 }
 
+#[cfg(feature = "cli")]
 fn collect_package(path_default: &str, monorepo: bool) -> PackageConfig {
     let dir_name = std::env::current_dir()
         .ok()
@@ -625,10 +635,7 @@ fn collect_package(path_default: &str, monorepo: bool) -> PackageConfig {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Init command
-// ---------------------------------------------------------------------------
-
+#[cfg(feature = "cli")]
 pub fn init(format: Option<ConfigFileFormat>) -> Result<()> {
     // Check if any config file already exists
     for handler in CONFIG_FORMATS {

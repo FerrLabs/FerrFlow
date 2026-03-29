@@ -2,10 +2,7 @@ use anyhow::{Context, Result};
 use git2::{Cred, CredentialType, PushOptions, RemoteCallbacks, Repository, Sort};
 use std::path::{Path, PathBuf};
 
-pub struct GitLog {
-    pub hash: String,
-    pub message: String,
-}
+pub use crate::changelog::GitLog;
 
 pub fn open_repo(path: &Path) -> Result<Repository> {
     Repository::discover(path).with_context(|| format!("Not a git repository: {}", path.display()))

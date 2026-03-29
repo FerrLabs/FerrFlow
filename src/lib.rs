@@ -2,6 +2,9 @@ pub mod changelog;
 pub mod config;
 pub mod conventional_commits;
 pub mod formats;
-pub mod git;
-pub mod telemetry;
 pub mod versioning;
+
+#[cfg(feature = "cli")]
+pub mod git;
+#[cfg(feature = "cli")]
+pub mod telemetry;

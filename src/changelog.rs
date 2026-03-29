@@ -1,14 +1,22 @@
-use crate::config::Config;
-use crate::conventional_commits::{BumpType, determine_bump, parse_subject};
-use crate::formats::read_version;
-use crate::git::{GitLog, get_commits_since_last_tag, get_repo_root, open_repo};
-use crate::versioning::bump_version;
+#[cfg(feature = "cli")]
+use crate::conventional_commits::determine_bump;
+use crate::conventional_commits::{BumpType, parse_subject};
 use anyhow::Result;
 use chrono::Local;
-use colored::Colorize;
 use std::path::Path;
 
+pub struct GitLog {
+    pub hash: String,
+    pub message: String,
+}
+
+#[cfg(feature = "cli")]
 pub fn generate_only(config_path: Option<&Path>, dry_run: bool) -> Result<()> {
+    use crate::config::Config;
+    use crate::formats::read_version;
+    use crate::git::{get_commits_since_last_tag, get_repo_root, open_repo};
+    use crate::versioning::bump_version;
+    use colored::Colorize;
     let repo = open_repo(&std::env::current_dir()?)?;
     let root = get_repo_root(&repo)?;
     let config = Config::load(&root, config_path)?;
