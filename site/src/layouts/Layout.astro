@@ -22,7 +22,11 @@ const ogImage = 'https://ferrflow.com/og.png';
     <meta charset="UTF-8" />
     <meta name="description" content={description} />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#E8733A" />
+    <meta name="color-scheme" content="light dark" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/icon-dot-256.svg" />
+    <link rel="manifest" href="/manifest.json" />
     <meta name="generator" content={Astro.generator} />
     <title>{title}</title>
 
@@ -40,8 +44,26 @@ const ogImage = 'https://ferrflow.com/og.png';
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image"       content={ogImage} />
 
+    <script is:inline type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "FerrFlow",
+      "url": "https://ferrflow.com",
+      "description": description,
+      "publisher": {
+        "@type": "Organization",
+        "name": "FerrFlow",
+        "url": "https://ferrflow.com",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://ferrflow.com/icon-dot-256.svg"
+        }
+      }
+    })} />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="https://github.com" />
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;0,9..144,900;1,9..144,400;1,9..144,900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <style>
       html {

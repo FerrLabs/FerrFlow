@@ -1,6 +1,8 @@
 ---
 import Layout from '../layouts/Layout.astro';
 
+const grainStyle = `background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E"); background-repeat: repeat; background-size: 200px;`;
+
 const features = [
   {
     title: 'Monorepo Support',
@@ -63,7 +65,7 @@ const features = [
     <!-- Grain overlay -->
     <div
       class="pointer-events-none absolute inset-0 opacity-[0.035]"
-      style="background-image: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E\"); background-repeat: repeat; background-size: 200px;"
+      style={grainStyle}
     ></div>
 
     <!-- Radial gradient blob -->
@@ -265,7 +267,7 @@ const features = [
       <span class="font-bold text-primary-800 tracking-tight">
         Ferr<span class="text-primary-600">Flow</span>
       </span>
-      <span>&copy; 2025 FerrFlow. All rights reserved.</span>
+      <span>&copy; 2026 FerrFlow. All rights reserved.</span>
       <nav class="flex gap-6">
         <a href="/docs/introduction" class="hover:text-primary-800 transition-colors">Documentation</a>
         <a href="https://github.com/FerrFlow-Org/FerrFlow" class="hover:text-primary-800 transition-colors">GitHub</a>
