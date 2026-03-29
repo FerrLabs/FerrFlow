@@ -126,7 +126,7 @@ jobs:
         with:
           node-version: '24'
       - name: Generate fixtures
-        run: bash benchmarks/fixtures/generate.sh benchmarks/fixtures
+        run: cargo run --release --bin generate-fixtures -- benchmarks/fixtures
       - name: Run benchmarks
         run: bash benchmarks/run.sh
       - name: Download baseline
