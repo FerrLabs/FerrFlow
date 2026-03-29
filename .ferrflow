@@ -2,15 +2,15 @@
   "workspace": {
     "remote": "origin",
     "branch": "main",
-    "tag_template": "v{version}"
+    "tagTemplate": "v{version}"
   },
   "package": [
     {
       "name": "ferrflow",
       "path": ".",
       "changelog": "CHANGELOG.md",
-      "shared_paths": ["src/"],
-      "versioned_files": [
+      "sharedPaths": ["src/"],
+      "versionedFiles": [
         { "path": "Cargo.toml", "format": "toml" },
         { "path": "npm/package.json", "format": "json" }
       ]
