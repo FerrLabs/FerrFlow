@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.1.0] - 2026-03-29
+
+### Features
+
+- feat(formats): support plain text version files (#122)
+
 ## [1.0.0] - 2026-03-29
 
 ### Breaking Changes
