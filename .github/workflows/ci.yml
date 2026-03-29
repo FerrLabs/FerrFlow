@@ -59,7 +59,7 @@ jobs:
         run: cargo bench --bench ferrflow_benchmarks -- --output-format bencher 2>/dev/null | tee output.txt
       - name: Download baseline
         if: github.event_name == 'pull_request'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: criterion-baseline
           path: baseline/
@@ -86,7 +86,7 @@ jobs:
           save-data-file: true
       - name: Upload baseline
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: criterion-baseline
           path: baseline/benchmark-data.json
@@ -118,7 +118,7 @@ jobs:
       - name: Run benchmarks
         run: bash benchmarks/run.sh
       - name: Download baseline
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: hyperfine-baseline
           path: benchmarks/results/
@@ -126,7 +126,7 @@ jobs:
       - name: Check for regressions
         run: bash benchmarks/compare.sh benchmarks/results/baseline.json benchmarks/results/latest.json
       - name: Upload baseline
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: hyperfine-baseline
           path: benchmarks/results/latest.json
