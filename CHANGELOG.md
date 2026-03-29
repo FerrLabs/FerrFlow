@@ -4,6 +4,20 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.2.0] - 2026-03-29
+
+### Features
+
+- feat: add ferrflow-wasm crate for browser-side usage (#127)
+- feat(npm): add scoped platform packages for binary distribution (#123)
+- feat(formats): support plain text version files (#122)
+
+### Bug Fixes
+
+- fix(docker): resolve workspace build and bump version to 1.1.0 (#133)
+- fix(git): use FERRFLOW_TOKEN and URL credentials for push/fetch auth (#131)
+- fix(git): use GITHUB_TOKEN for push/fetch credentials in CI (#129)
+
 ## [1.0.0] - 2026-03-29
 
 ### Breaking Changes
