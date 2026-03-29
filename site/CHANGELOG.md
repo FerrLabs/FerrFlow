@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.9.1] - 2026-03-29
+
+### Bug Fixes
+
+- fix(ci): use release event to trigger Docker builds (#58)
+
 ## [0.9.0] - 2026-03-29
 
 ### Features
