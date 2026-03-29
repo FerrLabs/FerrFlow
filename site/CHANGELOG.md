@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.9.0] - 2026-03-29
+
+### Features
+
+- feat(api): add uptime to health endpoint (#49)
+
 ## [0.8.0] - 2026-03-29
 
 ### Features
