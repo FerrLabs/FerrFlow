@@ -3,8 +3,8 @@ use crate::config::{Config, PackageConfig, VersioningStrategy};
 use crate::conventional_commits::{BumpType, determine_bump};
 use crate::formats::{get_handler, read_version, write_version};
 use crate::git::{
-    create_commit, create_tag, fetch_tags, get_changed_files, get_commits_since_last_tag,
-    get_repo_root, get_repo_slug, open_repo, push,
+    create_commit, create_tag, fetch_tags, get_changed_files, get_changed_files_since_tag,
+    get_commits_since_last_tag, get_repo_root, get_repo_slug, open_repo, push,
 };
 use crate::release::create_github_release;
 use crate::telemetry;
@@ -79,7 +79,23 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
     let mut tags_to_create: Vec<(String, String, String, String, String)> = Vec::new();
 
     for pkg in &config.packages {
-        let touched = is_package_touched(pkg, &changed_files, config.is_monorepo());
+        let tag_search_prefix = pkg.tag_prefix(&config.workspace, config.is_monorepo());
+        let mut touched = is_package_touched(pkg, &changed_files, config.is_monorepo());
+
+        if !touched && config.workspace.recover_missed_releases && config.is_monorepo() {
+            let files_since_tag = get_changed_files_since_tag(&repo, &tag_search_prefix)?;
+            if is_package_touched(pkg, &files_since_tag, true) {
+                touched = true;
+                if verbose {
+                    println!(
+                        "{} {} — recovering missed release",
+                        "↻".cyan(),
+                        pkg.name.cyan()
+                    );
+                }
+            }
+        }
+
         if !touched {
             if verbose {
                 println!(
@@ -91,7 +107,6 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
             continue;
         }
 
-        let tag_search_prefix = pkg.tag_prefix(&config.workspace, config.is_monorepo());
         let commits = get_commits_since_last_tag(&repo, &tag_search_prefix)?;
 
         if commits.is_empty() {

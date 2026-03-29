@@ -29,6 +29,8 @@ pub struct WorkspaceConfig {
     pub versioning: VersioningStrategy,
     #[serde(alias = "tagTemplate")]
     pub tag_template: Option<String>,
+    #[serde(default, alias = "recoverMissedReleases")]
+    pub recover_missed_releases: bool,
 }
 
 fn default_telemetry() -> bool {
@@ -176,7 +178,12 @@ fn snake_to_camel(s: &str) -> String {
     result
 }
 
-const CAMEL_CASE_KEYS: &[&str] = &["tag_template", "versioned_files", "shared_paths"];
+const CAMEL_CASE_KEYS: &[&str] = &[
+    "tag_template",
+    "versioned_files",
+    "shared_paths",
+    "recover_missed_releases",
+];
 
 fn to_camel_case_keys(value: serde_json::Value) -> serde_json::Value {
     match value {
@@ -662,7 +669,7 @@ mod tests {
     #[test]
     fn parse_json_camel_case() {
         let json = r#"{
-            "workspace": { "remote": "origin", "tagTemplate": "v{version}" },
+            "workspace": { "remote": "origin", "tagTemplate": "v{version}", "recoverMissedReleases": true },
             "package": [{
                 "name": "app",
                 "path": ".",
@@ -673,6 +680,7 @@ mod tests {
         }"#;
         let config: Config = serde_json::from_str(json).unwrap();
         assert_eq!(config.workspace.tag_template.as_deref(), Some("v{version}"));
+        assert!(config.workspace.recover_missed_releases);
         assert_eq!(config.packages[0].versioned_files.len(), 1);
         assert_eq!(config.packages[0].shared_paths, vec!["shared/"]);
         assert_eq!(
@@ -1002,6 +1010,7 @@ format = "toml"
         let config = Config {
             workspace: WorkspaceConfig {
                 tag_template: Some("v{version}".into()),
+                recover_missed_releases: true,
                 ..WorkspaceConfig::default()
             },
             packages: vec![PackageConfig {
@@ -1021,13 +1030,16 @@ format = "toml"
         assert!(serialized.contains("tagTemplate"));
         assert!(serialized.contains("versionedFiles"));
         assert!(serialized.contains("sharedPaths"));
+        assert!(serialized.contains("recoverMissedReleases"));
         assert!(!serialized.contains("tag_template"));
         assert!(!serialized.contains("versioned_files"));
         assert!(!serialized.contains("shared_paths"));
+        assert!(!serialized.contains("recover_missed_releases"));
 
         let parsed = handler.parse(&serialized).unwrap();
         assert_eq!(parsed.workspace.tag_template.as_deref(), Some("v{version}"));
         assert_eq!(parsed.packages[0].shared_paths, vec!["shared/"]);
+        assert!(parsed.workspace.recover_missed_releases);
     }
 
     #[test]
@@ -1036,6 +1048,7 @@ format = "toml"
         let config = Config {
             workspace: WorkspaceConfig {
                 tag_template: Some("v{version}".into()),
+                recover_missed_releases: true,
                 ..WorkspaceConfig::default()
             },
             packages: vec![PackageConfig {
@@ -1055,9 +1068,11 @@ format = "toml"
         assert!(serialized.contains("tag_template"));
         assert!(serialized.contains("versioned_files"));
         assert!(serialized.contains("shared_paths"));
+        assert!(serialized.contains("recover_missed_releases"));
         assert!(!serialized.contains("tagTemplate"));
         assert!(!serialized.contains("versionedFiles"));
         assert!(!serialized.contains("sharedPaths"));
+        assert!(!serialized.contains("recoverMissedReleases"));
     }
 
     #[test]

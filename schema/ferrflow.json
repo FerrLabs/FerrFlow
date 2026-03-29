@@ -38,6 +38,11 @@
           "type": "string",
           "description": "Tag template. Use {name} for package name and {version} for version. Default: 'v{version}' for single repos, '{name}@v{version}' for monorepos.",
           "examples": ["v{version}", "{name}@v{version}", "{name}/v{version}", "release-{version}"]
+        },
+        "recoverMissedReleases": {
+          "type": "boolean",
+          "description": "Compare files against the last tag instead of just the last commit, recovering missed releases in monorepos.",
+          "default": false
         }
       },
       "additionalProperties": false
