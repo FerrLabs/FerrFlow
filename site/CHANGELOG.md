@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.8.0] - 2026-03-29
+
+### Features
+
+- feat: sync schema tag prefix (#36)
+- feat(site): publish JSON Schema at /schema/ferrflow.json (#27)
+- feat: add live metrics section on landing page
+- feat: add custom code block theme matching landing page terminal
+- feat: add POST /events endpoint and enhance public stats
+
+### Bug Fixes
+
+- fix(api): use explicit CORS headers instead of wildcard with credentials (#46)
+- fix(ci): trigger Docker builds on tag creation instead of paths-filter (#40)
+- fix: remove non-existent packages from .ferrflow config (#38)
+- fix(deps): update rust crate validator to 0.20 (#35)
+- fix(site): sync ferrflow schema with tag_prefix field (#32)
+- fix(api): commit Cargo.lock for reproducible builds (#31)
+- fix(deps): update rust crate rand to 0.10 (#18)
+- fix(deps): update rust crate governor to 0.10 (#17)
+- fix(deps): update rust crate config to 0.15 (#15)
+- fix: remove connector line in How it works section
+- fix: log API version on startup
+- fix: add pull-requests read permission for paths-filter
+- fix: allow dead_code on AnalyticsEvent fields used via FromRow
+- fix: center GitHub logo in docs header
+
 ## [0.7.0] - 2026-03-28
 
 ### Features
