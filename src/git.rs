@@ -174,6 +174,17 @@ pub fn get_changed_files_since_tag(repo: &Repository, tag_prefix: &str) -> Resul
     Ok(files)
 }
 
+/// Extract password from a URL like `https://user:password@host/path`.
+fn extract_url_password(url: &str) -> Option<(String, String)> {
+    let after_scheme = url.split("://").nth(1)?;
+    let userinfo = after_scheme.split('@').next()?;
+    let (user, password) = userinfo.split_once(':')?;
+    if password.is_empty() {
+        return None;
+    }
+    Some((user.to_string(), password.to_string()))
+}
+
 fn credentials_callback(
     url: &str,
     username_from_url: Option<&str>,
@@ -183,15 +194,24 @@ fn credentials_callback(
         return Cred::ssh_key_from_agent(username_from_url.unwrap_or("git"));
     }
     if allowed_types.contains(CredentialType::USER_PASS_PLAINTEXT) {
-        if let Ok(token) = std::env::var("GITHUB_TOKEN").or_else(|_| std::env::var("GH_TOKEN")) {
+        // 1. Try credentials embedded in the remote URL
+        if let Some((user, password)) = extract_url_password(url) {
+            return Cred::userpass_plaintext(&user, &password);
+        }
+        // 2. Try FERRFLOW_TOKEN env var
+        if let Ok(token) = std::env::var("FERRFLOW_TOKEN") {
             let user = username_from_url.unwrap_or("x-access-token");
             return Cred::userpass_plaintext(user, &token);
         }
+        // 3. Try git credential helper (local dev)
         if let Ok(cfg) = git2::Config::open_default()
             && let Ok(cred) = Cred::credential_helper(&cfg, url, username_from_url)
         {
             return Ok(cred);
         }
+        eprintln!(
+            "Warning: No git credentials found. Set FERRFLOW_TOKEN or embed credentials in the remote URL."
+        );
     }
     Cred::default()
 }
@@ -678,5 +698,58 @@ mod tests {
             .unwrap();
         let slug = get_repo_slug(&repo, "origin");
         assert_eq!(slug, None);
+    }
+
+    // -----------------------------------------------------------------------
+    // extract_url_password
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn extract_url_password_https_with_token() {
+        let result =
+            extract_url_password("https://x-access-token:ghp_abc123@github.com/owner/repo.git");
+        assert_eq!(
+            result,
+            Some(("x-access-token".to_string(), "ghp_abc123".to_string()))
+        );
+    }
+
+    #[test]
+    fn extract_url_password_gitlab_ci() {
+        let result =
+            extract_url_password("https://gitlab-ci-token:secret@gitlab.com/group/project.git");
+        assert_eq!(
+            result,
+            Some(("gitlab-ci-token".to_string(), "secret".to_string()))
+        );
+    }
+
+    #[test]
+    fn extract_url_password_no_credentials() {
+        assert_eq!(
+            extract_url_password("https://github.com/owner/repo.git"),
+            None
+        );
+    }
+
+    #[test]
+    fn extract_url_password_username_only() {
+        assert_eq!(
+            extract_url_password("https://user@github.com/owner/repo.git"),
+            None
+        );
+    }
+
+    #[test]
+    fn extract_url_password_empty_password() {
+        assert_eq!(
+            extract_url_password("https://user:@github.com/owner/repo.git"),
+            None
+        );
+    }
+
+    #[test]
+    fn extract_url_password_ssh_url() {
+        assert_eq!(extract_url_password("git@github.com:owner/repo.git"), None);
     }
 }
