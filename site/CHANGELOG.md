@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.11.0] - 2026-03-29
+
+### Features
+
+- feat(playground): interactive config builder and release simulator (#63)
+
 ## [0.10.1] - 2026-03-29
 
 ### Bug Fixes
