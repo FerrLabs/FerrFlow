@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.12.0] - 2026-03-29
+
+### Features
+
+- feat(site): add playground button and GitHub icon to landing navbar (#67)
+
+### Bug Fixes
+
+- fix(deps): update dependency shiki to v4 (#65)
+- fix(deps): update dependency @astrojs/react to v5 (#64)
+
 ## [0.11.0] - 2026-03-29
 
 ### Features
