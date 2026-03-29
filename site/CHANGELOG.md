@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.10.0] - 2026-03-29
+
+### Features
+
+- feat(site): add v1 docs versioning and update documentation (#54)
+
 ## [0.9.1] - 2026-03-29
 
 ### Bug Fixes
