@@ -1,0 +1,12 @@
+{
+  "name": "@ferrflow/win32-x64",
+  "version": "0.0.0",
+  "description": "FerrFlow Windows x64 binary",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FerrFlow-Org/FerrFlow.git"
+  },
+  "license": "MIT",
+  "os": ["win32"],
+  "cpu": ["x64"]
+}

@@ -8,36 +8,37 @@ import { createRequire } from "module";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 
+const PLATFORMS = {
+  "linux-x64": "@ferrflow/linux-x64",
+  "linux-arm64": "@ferrflow/linux-arm64",
+  "darwin-x64": "@ferrflow/darwin-x64",
+  "darwin-arm64": "@ferrflow/darwin-arm64",
+  "win32-x64": "@ferrflow/win32-x64",
+};
+
 function getBinaryPath() {
-  const platform = process.platform;
-  const arch = process.arch;
+  const key = `${process.platform}-${process.arch}`;
+  const pkg = PLATFORMS[key];
 
-  const platformMap = {
-    "linux-x64": "ferrflow-linux-x64",
-    "linux-arm64": "ferrflow-linux-arm64",
-    "darwin-x64": "ferrflow-darwin-x64",
-    "darwin-arm64": "ferrflow-darwin-arm64",
-    "win32-x64": "ferrflow-windows-x64",
-  };
-
-  const key = `${platform}-${arch}`;
-  const pkgName = platformMap[key];
-
-  if (pkgName) {
+  if (pkg) {
     try {
-      return require.resolve(`${pkgName}/bin/ferrflow`);
+      const ext = process.platform === "win32" ? ".exe" : "";
+      return require.resolve(`${pkg}/bin/ferrflow${ext}`);
     } catch {
       // optional dep not installed
     }
   }
 
   // Fallback: local dev build
-  const ext = platform === "win32" ? ".exe" : "";
+  const ext = process.platform === "win32" ? ".exe" : "";
   const devBuild = join(__dirname, "..", "..", "target", "release", `ferrflow${ext}`);
   if (existsSync(devBuild)) return devBuild;
 
-  // Hope it's in PATH
-  return platform === "win32" ? "ferrflow.exe" : "ferrflow";
+  console.error(
+    `Unsupported platform: ${process.platform}-${process.arch}\n` +
+    "Install ferrflow from https://github.com/FerrFlow-Org/FerrFlow/releases"
+  );
+  process.exit(1);
 }
 
 const binary = getBinaryPath();
