@@ -86,9 +86,9 @@ extract_stddev() {
 # Generate fixtures if missing
 # ---------------------------------------------------------------------------
 
-if [[ ! -d "$FIXTURES_DIR/single" ]]; then
+if [[ ! -d "$FIXTURES_DIR/single" || ! -d "$FIXTURES_DIR/mono-medium" ]]; then
   echo "Generating fixtures..." >&2
-  bash "$FIXTURES_DIR/generate.sh" "$FIXTURES_DIR"
+  cargo run --release --bin generate-fixtures -- "$FIXTURES_DIR"
 fi
 
 # ---------------------------------------------------------------------------
