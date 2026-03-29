@@ -105,4 +105,5 @@ jobs:
         with:
           dry_run: ${{ inputs.dry_run }}
         env:
+          FERRFLOW_TOKEN: ${{ secrets.FERRFLOW_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.FERRFLOW_TOKEN }}
