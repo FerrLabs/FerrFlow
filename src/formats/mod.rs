@@ -2,6 +2,7 @@ pub mod gomod;
 pub mod gradle;
 pub mod json;
 pub mod toml_format;
+pub mod txt;
 pub mod xml;
 
 use anyhow::Result;
@@ -25,6 +26,7 @@ pub fn get_handler(format: &FileFormat) -> Box<dyn VersionFile> {
         FileFormat::Gradle => Box::new(gradle::GradleVersionFile),
         FileFormat::Json => Box::new(json::JsonVersionFile),
         FileFormat::Toml => Box::new(toml_format::TomlVersionFile),
+        FileFormat::Txt => Box::new(txt::TxtVersionFile),
         FileFormat::Xml => Box::new(xml::XmlVersionFile),
     }
 }

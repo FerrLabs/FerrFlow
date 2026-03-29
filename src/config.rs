@@ -158,6 +158,7 @@ pub enum FileFormat {
     Gradle,
     Json,
     Toml,
+    Txt,
     Xml,
 }
 
@@ -413,6 +414,15 @@ impl Config {
                 format: FileFormat::Xml,
             });
         }
+        for name in &["VERSION", "VERSION.txt"] {
+            if root.join(name).exists() {
+                versioned_files.push(VersionedFile {
+                    path: name.to_string(),
+                    format: FileFormat::Txt,
+                });
+                break;
+            }
+        }
         if root.join("pyproject.toml").exists() {
             versioned_files.push(VersionedFile {
                 path: "pyproject.toml".to_string(),
@@ -481,13 +491,13 @@ fn prompt_bool(question: &str, default: bool) -> bool {
     }
 }
 
-const ALLOWED_FORMATS: &[&str] = &["toml", "json", "xml", "gradle", "gomod"];
+const ALLOWED_FORMATS: &[&str] = &["toml", "json", "xml", "gradle", "gomod", "txt"];
 
 fn prompt_format(indent: bool) -> String {
     let question = if indent {
-        "  Version file format [toml/json/xml/gradle/gomod]"
+        "  Version file format [toml/json/xml/gradle/gomod/txt]"
     } else {
-        "Version file format [toml/json/xml/gradle/gomod]"
+        "Version file format [toml/json/xml/gradle/gomod/txt]"
     };
     loop {
         let input = prompt(question, "toml");
@@ -496,7 +506,7 @@ fn prompt_format(indent: bool) -> String {
             return normalized;
         }
         eprintln!(
-            "Invalid format '{}'. Allowed values: toml, json, xml, gradle, gomod.",
+            "Invalid format '{}'. Allowed values: toml, json, xml, gradle, gomod, txt.",
             input
         );
     }
@@ -530,6 +540,7 @@ fn default_version_file(format: &str) -> &'static str {
         "xml" => "pom.xml",
         "gradle" => "build.gradle",
         "gomod" => "go.mod",
+        "txt" => "VERSION.txt",
         _ => "Cargo.toml",
     }
 }
@@ -540,6 +551,7 @@ fn parse_file_format(s: &str) -> FileFormat {
         "xml" => FileFormat::Xml,
         "gradle" => FileFormat::Gradle,
         "gomod" => FileFormat::GoMod,
+        "txt" => FileFormat::Txt,
         _ => FileFormat::Toml,
     }
 }
