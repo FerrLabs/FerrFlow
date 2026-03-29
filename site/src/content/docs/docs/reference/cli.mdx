@@ -19,10 +19,10 @@ ferrflow release [OPTIONS]
 **What it does:**
 1. Scans commits since the last tag for each package
 2. Determines the version bump from Conventional Commits
-3. Updates all `versioned_files` with the new version
+3. Updates all `versionedFiles` with the new version
 4. Appends the new section to `CHANGELOG.md`
-5. Creates a git commit with the version bump changes
-6. Creates and pushes the git tag (`{name}@v{version}`)
+5. Creates a git commit, opens a PR, or skips (depending on `releaseCommitMode`)
+6. Creates and pushes the git tag
 7. Creates a GitHub/GitLab release with the changelog as notes
 
 ---
@@ -53,7 +53,7 @@ ferrflow changelog [OPTIONS]
 
 ## `ferrflow init`
 
-Scaffold a `ferrflow.toml` config file for the current repository. Detects existing version files (`Cargo.toml`, `package.json`, etc.) and generates the appropriate config.
+Scaffold a config file for the current repository. Detects existing version files (`Cargo.toml`, `package.json`, etc.) and generates the appropriate config.
 
 ```bash
 ferrflow init
@@ -82,12 +82,34 @@ site   0.4.1   no release (only chore commits)
 
 ---
 
+## `ferrflow version`
+
+Print the current version of one or all packages. Useful in CI scripts.
+
+```bash
+ferrflow version [PACKAGE]
+```
+
+Returns the version from the latest git tag matching the package's tag template.
+
+---
+
+## `ferrflow tag`
+
+Print the latest tag for one or all packages.
+
+```bash
+ferrflow tag [PACKAGE]
+```
+
+---
+
 ## Global flags
 
 These flags work with all commands:
 
 | Flag | Description |
 |---|---|
-| `--config <PATH>` | Path to a custom config file (default: `ferrflow.toml`) |
+| `--config <PATH>` | Path to a custom config file (default: auto-detected) |
 | `--version` | Print the FerrFlow version and exit |
 | `--help`, `-h` | Print help |

@@ -7,7 +7,7 @@ import { Aside } from '@astrojs/starlight/components';
 
 ## Using the official action
 
-The easiest way to use FerrFlow in GitHub Actions is the `FerrFlow-Org/ferrflow@v0` action. It installs the binary and runs `ferrflow release` automatically.
+The easiest way to use FerrFlow in GitHub Actions is the `FerrFlow-Org/ferrflow@v1` action. It installs the binary and runs `ferrflow release` automatically.
 
 ```yaml
 name: Release
@@ -27,7 +27,7 @@ jobs:
           fetch-depth: 0          # full history needed for commit scanning
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: FerrFlow-Org/ferrflow@v0
+      - uses: FerrFlow-Org/ferrflow@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
@@ -50,7 +50,7 @@ If your repository has branch protection rules, create a dedicated token with th
 The action exposes the new version as an output you can use in downstream steps:
 
 ```yaml
-- uses: FerrFlow-Org/ferrflow@v0
+- uses: FerrFlow-Org/ferrflow@v1
   id: ferrflow
   env:
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -71,7 +71,7 @@ FerrFlow commits version bumps with `[skip ci]` in the message by default to pre
 In a monorepo, FerrFlow releases each changed package in a single run:
 
 ```yaml
-- uses: FerrFlow-Org/ferrflow@v0
+- uses: FerrFlow-Org/ferrflow@v1
   env:
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 # Creates api@v1.3.0 and site@v0.5.1 in one step if both changed

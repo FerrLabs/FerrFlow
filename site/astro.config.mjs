@@ -39,6 +39,7 @@ export default defineConfig({
       },
       plugins: [
         starlightVersions({
+          current: { label: 'v1' },
           versions: [{ slug: 'v0', label: 'v0' }],
         }),
       ],
@@ -54,7 +55,7 @@ export default defineConfig({
         {
           label: 'Configuration',
           items: [
-            { label: 'ferrflow.toml', slug: 'docs/configuration/config-file' },
+            { label: 'Config reference', slug: 'docs/configuration/config-file' },
             { label: 'Monorepo', slug: 'docs/configuration/monorepo' },
             { label: 'Supported formats', slug: 'docs/configuration/formats' },
           ],

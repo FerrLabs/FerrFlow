@@ -9,7 +9,7 @@ import { Steps } from '@astrojs/starlight/components';
 
 1. **Scaffold the config**
 
-   Run `ferrflow init` at the root of your repository. It detects your version files and writes a `ferrflow.toml`:
+   Run `ferrflow init` at the root of your repository. It detects your version files and writes a `.ferrflow` config:
 
    ```bash
    ferrflow init
@@ -17,19 +17,23 @@ import { Steps } from '@astrojs/starlight/components';
 
    For a Rust project this produces:
 
-   ```toml
-   [workspace]
-   remote = "origin"
-   branch = "main"
-
-   [[package]]
-   name = "my-app"
-   path = "."
-   changelog = "CHANGELOG.md"
-
-   [[package.versioned_files]]
-   path = "Cargo.toml"
-   format = "toml"
+   ```json
+   {
+     "$schema": "https://ferrflow.com/schema/ferrflow.json",
+     "workspace": {
+       "tagTemplate": "v{version}"
+     },
+     "package": [
+       {
+         "name": "my-app",
+         "path": ".",
+         "changelog": "CHANGELOG.md",
+         "versionedFiles": [
+           { "path": "Cargo.toml", "format": "toml" }
+         ]
+       }
+     ]
+   }
    ```
 
 2. **Preview what would happen**
@@ -48,7 +52,7 @@ import { Steps } from '@astrojs/starlight/components';
    → fix: correct pagination offset
 
    Bump  my-app  0.1.0 → 0.2.0
-   Tag   my-app@v0.2.0
+   Tag   v0.2.0
    ```
 
 3. **Run the release**
@@ -61,7 +65,7 @@ import { Steps } from '@astrojs/starlight/components';
    - Update `Cargo.toml` to `0.2.0`
    - Append to `CHANGELOG.md`
    - Commit the changes
-   - Create and push `my-app@v0.2.0`
+   - Create and push `v0.2.0`
    - Create a GitHub release (if `GITHUB_TOKEN` is set)
 
 </Steps>
