@@ -71,6 +71,7 @@ export default defineConfig({
           label: 'Tools',
           items: [
             { label: 'MCP Server', slug: 'docs/tools/mcp-server' },
+            { label: 'Playground', link: 'https://play.ferrflow.com', attrs: { target: '_blank' } },
           ],
         },
         {

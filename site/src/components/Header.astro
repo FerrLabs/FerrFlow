@@ -16,6 +16,7 @@ import VersionSelect from 'starlight-versions/components/VersionSelect.astro';
     </a>
   </div>
   <div class="sl-flex sl-hidden md:sl-flex right-group">
+    <a href="https://play.ferrflow.com" class="playground-link">Playground</a>
     <div class="sl-flex social-icons">
       <VersionSelect />
       <Search {...Astro.props} />
@@ -78,6 +79,22 @@ import VersionSelect from 'starlight-versions/components/VersionSelect.astro';
     display: flex;
     align-items: center;
     justify-content: center;
+  }
+
+  .playground-link {
+    font-size: var(--sl-text-sm);
+    font-weight: 600;
+    color: var(--sl-color-text-accent);
+    text-decoration: none;
+    padding: 0.25rem 0.75rem;
+    border: 1px solid var(--sl-color-text-accent);
+    border-radius: 9999px;
+    transition: background-color 0.2s, color 0.2s;
+  }
+
+  .playground-link:hover {
+    background-color: var(--sl-color-text-accent);
+    color: var(--sl-color-white);
   }
 
   .right-group :global(a) {
