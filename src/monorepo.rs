@@ -1,12 +1,14 @@
 use crate::changelog::{build_section, update_changelog};
+use crate::config::ReleaseCommitMode;
 use crate::config::{Config, PackageConfig, VersioningStrategy};
 use crate::conventional_commits::{BumpType, determine_bump};
 use crate::formats::{get_handler, read_version, write_version};
 use crate::git::{
-    create_commit, create_tag, fetch_tags, get_changed_files, get_changed_files_since_tag,
-    get_commits_since_last_tag, get_repo_root, get_repo_slug, open_repo, push,
+    create_branch_and_commit, create_commit, create_tag, fetch_tags, get_changed_files,
+    get_changed_files_since_tag, get_commits_since_last_tag, get_repo_root, get_repo_slug,
+    open_repo, push, push_branch,
 };
-use crate::release::create_github_release;
+use crate::release::{create_github_pr, create_github_release, enable_auto_merge};
 use crate::telemetry;
 use crate::versioning::compute_next_version;
 use anyhow::Result;
@@ -231,28 +233,117 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
 
     if !dry_run && any_bumped {
         let file_refs: Vec<&str> = files_to_commit.iter().map(String::as_str).collect();
-        create_commit(&repo, &file_refs, "chore: release [skip ci]")?;
-        println!("  ✓ Committed release changes");
+        let mode = config.workspace.release_commit_mode;
 
+        // Build the release commit message.
+        let release_parts: Vec<String> = tags_to_create
+            .iter()
+            .map(|(_, _, _, name, ver)| format!("{name} v{ver}"))
+            .collect();
+        let skip_ci = if config.workspace.effective_skip_ci() {
+            " [skip ci]"
+        } else {
+            ""
+        };
+        let commit_msg = format!("chore(release): {}{skip_ci}", release_parts.join(", "));
+
+        match mode {
+            ReleaseCommitMode::Commit => {
+                create_commit(&repo, &file_refs, &commit_msg)?;
+                println!("  ✓ Committed release changes");
+            }
+            ReleaseCommitMode::Pr => {
+                let branch_name = format!(
+                    "release/{}",
+                    release_parts
+                        .first()
+                        .map(|s| s.replace(' ', "-"))
+                        .unwrap_or_else(|| "bump".to_string())
+                );
+                create_branch_and_commit(&repo, &branch_name, &file_refs, &commit_msg)?;
+                push_branch(&repo, &config.workspace.remote, &branch_name)?;
+                println!("  ✓ Pushed branch {}", branch_name.cyan());
+
+                if let Ok(token) = std::env::var("GITHUB_TOKEN")
+                    && let Some(slug) = get_repo_slug(&repo, &config.workspace.remote)
+                {
+                    let pr_title = format!("chore(release): {}", release_parts.join(", "));
+                    let pr_body = format!(
+                        "Automated release commit.\n\n{}",
+                        tags_to_create
+                            .iter()
+                            .map(|(tag, _, _, _, _)| format!("- `{tag}`"))
+                            .collect::<Vec<_>>()
+                            .join("\n")
+                    );
+                    match create_github_pr(
+                        &token,
+                        &slug,
+                        &branch_name,
+                        &config.workspace.branch,
+                        &pr_title,
+                        &pr_body,
+                    ) {
+                        Ok(pr_number) => {
+                            println!("  ✓ Created PR #{}", pr_number.to_string().cyan());
+                            if config.workspace.auto_merge_releases {
+                                match enable_auto_merge(&token, &slug, pr_number) {
+                                    Ok(()) => println!("  ✓ Auto-merge enabled"),
+                                    Err(err) => eprintln!(
+                                        "{}",
+                                        format!("  Warning: failed to enable auto-merge: {err}")
+                                            .yellow()
+                                    ),
+                                }
+                            }
+                        }
+                        Err(err) => eprintln!(
+                            "{}",
+                            format!("  Warning: failed to create PR: {err}").yellow()
+                        ),
+                    }
+                }
+            }
+            ReleaseCommitMode::None => {}
+        }
+
+        // Tags are always created on the current HEAD (before the release commit for PR mode).
         for (tag_name, tag_msg, _, _, _) in &tags_to_create {
             create_tag(&repo, tag_name, tag_msg)?;
             println!("  ✓ Created tag {}", tag_name.cyan());
         }
 
+        // Push tags (and branch for commit mode).
         let tag_refs: Vec<&str> = tags_to_create
             .iter()
             .map(|(t, _, _, _, _)| t.as_str())
             .collect();
-        push(
-            &repo,
-            &config.workspace.remote,
-            &config.workspace.branch,
-            &tag_refs,
-        )?;
-        println!(
-            "  ✓ Pushed to {}/{}",
-            config.workspace.remote, config.workspace.branch
-        );
+        match mode {
+            ReleaseCommitMode::Commit => {
+                push(
+                    &repo,
+                    &config.workspace.remote,
+                    &config.workspace.branch,
+                    &tag_refs,
+                )?;
+                println!(
+                    "  ✓ Pushed to {}/{}",
+                    config.workspace.remote, config.workspace.branch
+                );
+            }
+            ReleaseCommitMode::Pr | ReleaseCommitMode::None => {
+                // Only push tags, branch was already pushed (or nothing to push).
+                if !tag_refs.is_empty() {
+                    push(
+                        &repo,
+                        &config.workspace.remote,
+                        &config.workspace.branch,
+                        &tag_refs,
+                    )?;
+                    println!("  ✓ Pushed tags");
+                }
+            }
+        }
 
         if config.workspace.telemetry {
             for (_, _, _, pkg_name, version) in &tags_to_create {

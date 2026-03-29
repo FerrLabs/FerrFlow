@@ -17,6 +17,15 @@ pub struct Config {
     pub packages: Vec<PackageConfig>,
 }
 
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Default)]
+#[serde(rename_all = "kebab-case")]
+pub enum ReleaseCommitMode {
+    #[default]
+    Commit,
+    Pr,
+    None,
+}
+
 #[derive(Debug, Deserialize, Serialize, Default)]
 pub struct WorkspaceConfig {
     #[serde(default = "default_remote")]
@@ -31,6 +40,23 @@ pub struct WorkspaceConfig {
     pub tag_template: Option<String>,
     #[serde(default, alias = "recoverMissedReleases")]
     pub recover_missed_releases: bool,
+    #[serde(default, alias = "releaseCommitMode")]
+    pub release_commit_mode: ReleaseCommitMode,
+    #[serde(default = "default_auto_merge", alias = "autoMergeReleases")]
+    pub auto_merge_releases: bool,
+    #[serde(default, alias = "skipCi")]
+    pub skip_ci: Option<bool>,
+}
+
+impl WorkspaceConfig {
+    pub fn effective_skip_ci(&self) -> bool {
+        self.skip_ci
+            .unwrap_or(self.release_commit_mode == ReleaseCommitMode::Commit)
+    }
+}
+
+fn default_auto_merge() -> bool {
+    true
 }
 
 fn default_telemetry() -> bool {
@@ -183,6 +209,9 @@ const CAMEL_CASE_KEYS: &[&str] = &[
     "versioned_files",
     "shared_paths",
     "recover_missed_releases",
+    "release_commit_mode",
+    "auto_merge_releases",
+    "skip_ci",
 ];
 
 fn to_camel_case_keys(value: serde_json::Value) -> serde_json::Value {
@@ -669,7 +698,7 @@ mod tests {
     #[test]
     fn parse_json_camel_case() {
         let json = r#"{
-            "workspace": { "remote": "origin", "tagTemplate": "v{version}", "recoverMissedReleases": true },
+            "workspace": { "remote": "origin", "tagTemplate": "v{version}", "recoverMissedReleases": true, "releaseCommitMode": "pr", "autoMergeReleases": false },
             "package": [{
                 "name": "app",
                 "path": ".",
@@ -681,6 +710,8 @@ mod tests {
         let config: Config = serde_json::from_str(json).unwrap();
         assert_eq!(config.workspace.tag_template.as_deref(), Some("v{version}"));
         assert!(config.workspace.recover_missed_releases);
+        assert_eq!(config.workspace.release_commit_mode, ReleaseCommitMode::Pr);
+        assert!(!config.workspace.auto_merge_releases);
         assert_eq!(config.packages[0].versioned_files.len(), 1);
         assert_eq!(config.packages[0].shared_paths, vec!["shared/"]);
         assert_eq!(
@@ -1031,10 +1062,14 @@ format = "toml"
         assert!(serialized.contains("versionedFiles"));
         assert!(serialized.contains("sharedPaths"));
         assert!(serialized.contains("recoverMissedReleases"));
+        assert!(serialized.contains("releaseCommitMode"));
+        assert!(serialized.contains("autoMergeReleases"));
         assert!(!serialized.contains("tag_template"));
         assert!(!serialized.contains("versioned_files"));
         assert!(!serialized.contains("shared_paths"));
         assert!(!serialized.contains("recover_missed_releases"));
+        assert!(!serialized.contains("release_commit_mode"));
+        assert!(!serialized.contains("auto_merge_releases"));
 
         let parsed = handler.parse(&serialized).unwrap();
         assert_eq!(parsed.workspace.tag_template.as_deref(), Some("v{version}"));
@@ -1069,10 +1104,14 @@ format = "toml"
         assert!(serialized.contains("versioned_files"));
         assert!(serialized.contains("shared_paths"));
         assert!(serialized.contains("recover_missed_releases"));
+        assert!(serialized.contains("release_commit_mode"));
+        assert!(serialized.contains("auto_merge_releases"));
         assert!(!serialized.contains("tagTemplate"));
         assert!(!serialized.contains("versionedFiles"));
         assert!(!serialized.contains("sharedPaths"));
         assert!(!serialized.contains("recoverMissedReleases"));
+        assert!(!serialized.contains("releaseCommitMode"));
+        assert!(!serialized.contains("autoMergeReleases"));
     }
 
     #[test]

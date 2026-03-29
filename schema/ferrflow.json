@@ -43,6 +43,21 @@
           "type": "boolean",
           "description": "Compare files against the last tag instead of just the last commit, recovering missed releases in monorepos.",
           "default": false
+        },
+        "releaseCommitMode": {
+          "type": "string",
+          "description": "How to commit version bumps and changelog updates. 'commit' pushes directly to the branch, 'pr' creates a pull request, 'none' skips committing entirely.",
+          "enum": ["commit", "pr", "none"],
+          "default": "commit"
+        },
+        "autoMergeReleases": {
+          "type": "boolean",
+          "description": "Automatically merge release PRs when releaseCommitMode is 'pr'.",
+          "default": true
+        },
+        "skipCi": {
+          "type": "boolean",
+          "description": "Append [skip ci] to the release commit message. Defaults to true in 'commit' mode, false in 'pr' mode."
         }
       },
       "additionalProperties": false

@@ -237,6 +237,56 @@ pub fn get_repo_slug(repo: &Repository, remote_name: &str) -> Option<String> {
     Some(after.trim_end_matches(".git").to_string())
 }
 
+pub fn create_branch_and_commit(
+    repo: &Repository,
+    branch_name: &str,
+    files: &[&str],
+    message: &str,
+) -> Result<()> {
+    let head = repo.head()?.peel_to_commit()?;
+    repo.branch(branch_name, &head, false)?;
+
+    let refname = format!("refs/heads/{branch_name}");
+    let mut index = repo.index()?;
+    for file in files {
+        index.add_path(Path::new(file))?;
+    }
+    index.write()?;
+
+    let tree_id = index.write_tree()?;
+    let tree = repo.find_tree(tree_id)?;
+    let sig = signature(repo)?;
+
+    repo.commit(Some(&refname), &sig, &sig, message, &tree, &[&head])?;
+    Ok(())
+}
+
+pub fn push_branch(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
+    let mut remote = repo
+        .find_remote(remote_name)
+        .with_context(|| format!("Remote '{}' not found", remote_name))?;
+
+    let mut callbacks = RemoteCallbacks::new();
+    callbacks.credentials(|url, username_from_url, allowed_types| {
+        if allowed_types.contains(CredentialType::SSH_KEY) {
+            Cred::ssh_key_from_agent(username_from_url.unwrap_or("git"))
+        } else if allowed_types.contains(CredentialType::USER_PASS_PLAINTEXT) {
+            git2::Config::open_default()
+                .and_then(|cfg| Cred::credential_helper(&cfg, url, username_from_url))
+        } else {
+            Cred::default()
+        }
+    });
+
+    let mut push_options = PushOptions::new();
+    push_options.remote_callbacks(callbacks);
+
+    let refspec = format!("refs/heads/{branch}:refs/heads/{branch}");
+    remote.push(&[&refspec], Some(&mut push_options))?;
+
+    Ok(())
+}
+
 pub fn push(repo: &Repository, remote_name: &str, branch: &str, tags: &[&str]) -> Result<()> {
     let mut remote = repo
         .find_remote(remote_name)
