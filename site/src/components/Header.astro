@@ -3,6 +3,7 @@ import type { Props } from '@astrojs/starlight/props';
 import Search from '@astrojs/starlight/components/Search.astro';
 import SocialIcons from '@astrojs/starlight/components/SocialIcons.astro';
 import ThemeSelect from './ThemeSelect.astro';
+import VersionSelect from 'starlight-versions/components/VersionSelect.astro';
 ---
 
 <div class="header sl-flex">
@@ -16,6 +17,7 @@ import ThemeSelect from './ThemeSelect.astro';
   </div>
   <div class="sl-flex sl-hidden md:sl-flex right-group">
     <div class="sl-flex social-icons">
+      <VersionSelect />
       <Search {...Astro.props} />
       <SocialIcons {...Astro.props} />
       <ThemeSelect {...Astro.props} />
