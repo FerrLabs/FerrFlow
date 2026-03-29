@@ -146,6 +146,37 @@ pub fn get_changed_files(repo: &Repository) -> Result<Vec<String>> {
     Ok(files)
 }
 
+pub fn get_changed_files_since_tag(repo: &Repository, tag_prefix: &str) -> Result<Vec<String>> {
+    let head = match repo.head() {
+        Ok(h) => h.peel_to_commit()?,
+        Err(_) => return Ok(vec![]),
+    };
+    let head_tree = head.tree()?;
+
+    let old_tree = if let Some(tag_oid) = find_last_tag_commit(repo, tag_prefix)? {
+        let tag_commit = repo.find_commit(tag_oid)?;
+        Some(tag_commit.tree()?)
+    } else {
+        None
+    };
+
+    let diff = repo.diff_tree_to_tree(old_tree.as_ref(), Some(&head_tree), None)?;
+    let mut files = Vec::new();
+    diff.foreach(
+        &mut |delta, _| {
+            if let Some(path) = delta.new_file().path() {
+                files.push(path.to_string_lossy().to_string());
+            }
+            true
+        },
+        None,
+        None,
+        None,
+    )?;
+
+    Ok(files)
+}
+
 pub fn fetch_tags(repo: &Repository, remote_name: &str) -> Result<()> {
     let mut remote = repo
         .find_remote(remote_name)
