@@ -1,0 +1,12 @@
+{
+  "name": "@ferrflow/darwin-x64",
+  "version": "0.0.0",
+  "description": "FerrFlow macOS x64 binary",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FerrFlow-Org/FerrFlow.git"
+  },
+  "license": "MIT",
+  "os": ["darwin"],
+  "cpu": ["x64"]
+}
