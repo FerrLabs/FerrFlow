@@ -115,29 +115,47 @@ jobs:
   publish-crate:
     name: Publish crates.io
     needs: release
-    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "name=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ steps.tag.outputs.name }}
       - uses: dtolnay/rust-toolchain@nightly
       - run: cargo publish --allow-dirty --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
   publish-npm:
     name: Publish npm
     needs: release
-    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "name=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.tag.outputs.name }}
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
       - name: Extract version
         id: version
-        run: echo "value=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+        run: echo "value=${TAG#v}" >> $GITHUB_OUTPUT
+        env:
+          TAG: ${{ steps.tag.outputs.name }}
       - name: Publish platform packages and wrapper
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -147,12 +165,19 @@ jobs:
   publish-wasm:
     name: Publish @ferrflow/wasm
     needs: release
-    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "name=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ steps.tag.outputs.name }}
       - uses: dtolnay/rust-toolchain@nightly
         with:
           targets: wasm32-unknown-unknown
@@ -164,7 +189,9 @@ jobs:
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
       - name: Extract version
         id: version
-        run: echo "value=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+        run: echo "value=${TAG#v}" >> $GITHUB_OUTPUT
+        env:
+          TAG: ${{ steps.tag.outputs.name }}
       - name: Build and publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -175,22 +202,33 @@ jobs:
     needs: release
     runs-on: ubuntu-latest
     concurrency:
-      group: update-major-tag-${{ github.ref_name }}
+      group: update-major-tag
       cancel-in-progress: false
     permissions:
       contents: write
     steps:
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "name=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.tag.outputs.name }}
       - name: Move major version tag
         run: |
-          MAJOR="v$(echo "${GITHUB_REF_NAME#v}" | cut -d. -f1)"
+          MAJOR="v$(echo "${TAG#v}" | cut -d. -f1)"
           git tag -f "$MAJOR"
           git push origin "refs/tags/$MAJOR" --force
+        env:
+          TAG: ${{ steps.tag.outputs.name }}
 
   publish-docker:
     name: Publish Docker
     needs: release
-    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -198,7 +236,17 @@ jobs:
       id-token: write
       attestations: write
     steps:
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "name=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.tag.outputs.name }}
       - uses: docker/setup-buildx-action@v4
       - uses: docker/login-action@v4
         with:
@@ -211,7 +259,9 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Extract version
         id: version
-        run: echo "value=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+        run: echo "value=${TAG#v}" >> $GITHUB_OUTPUT
+        env:
+          TAG: ${{ steps.tag.outputs.name }}
       - uses: docker/build-push-action@v7
         id: docker-push
         with:
