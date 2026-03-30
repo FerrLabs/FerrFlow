@@ -8,11 +8,13 @@ use crate::git::{
     get_changed_files_since_tag, get_commits_since_last_tag, get_repo_root, get_repo_slug,
     open_repo, push, push_branch,
 };
+use crate::hooks::{HookContext, HookPoint, resolve_hook, resolve_on_failure, run_hook};
 use crate::release::{create_github_pr, create_github_release, enable_auto_merge};
 use crate::telemetry;
 use crate::versioning::compute_next_version;
 use anyhow::Result;
 use colored::Colorize;
+use std::collections::HashSet;
 use std::path::Path;
 
 pub fn check(config_path: Option<&Path>, verbose: bool) -> Result<()> {
@@ -79,8 +81,9 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
     let mut files_to_commit: Vec<String> = Vec::new();
     // (tag_name, tag_msg, body, pkg_name, version)
     let mut tags_to_create: Vec<(String, String, String, String, String)> = Vec::new();
+    let mut hook_contexts: Vec<(HookContext, usize)> = Vec::new(); // (ctx, pkg_index)
 
-    for pkg in &config.packages {
+    for (pkg_idx, pkg) in config.packages.iter().enumerate() {
         let tag_search_prefix = pkg.tag_prefix(&config.workspace, config.is_monorepo());
         let mut touched = is_package_touched(pkg, &changed_files, config.is_monorepo());
 
@@ -185,8 +188,33 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
             }
         }
 
-        if !dry_run {
-            let tag = pkg.tag_for_version(&config.workspace, config.is_monorepo(), &new_version);
+        let tag = pkg.tag_for_version(&config.workspace, config.is_monorepo(), &new_version);
+
+        let hook_ctx = HookContext {
+            package: pkg.name.clone(),
+            old_version: current_version.clone(),
+            new_version: new_version.clone(),
+            bump_type: bump.to_string(),
+            tag: tag.clone(),
+            dry_run,
+            package_path: root
+                .join(pkg.path.trim_start_matches("./"))
+                .to_string_lossy()
+                .into_owned(),
+        };
+
+        let ws_hooks = config.workspace.hooks.as_ref();
+        let pkg_hooks = pkg.hooks.as_ref();
+        let on_failure = resolve_on_failure(pkg_hooks, ws_hooks);
+
+        if dry_run {
+            // Print hooks that would run (dry-run mode).
+            for point in [HookPoint::PreBump, HookPoint::PostBump] {
+                if let Some(cmd) = resolve_hook(pkg_hooks, ws_hooks, point) {
+                    run_hook(point, &cmd, &hook_ctx, on_failure, true, verbose, root)?;
+                }
+            }
+        } else {
             if repo.refname_to_id(&format!("refs/tags/{tag}")).is_ok() {
                 println!(
                     "  {} {} — tag {} already exists, skipping",
@@ -195,6 +223,19 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
                     tag.cyan()
                 );
                 continue;
+            }
+
+            // --- pre_bump hook ---
+            if let Some(cmd) = resolve_hook(pkg_hooks, ws_hooks, HookPoint::PreBump) {
+                run_hook(
+                    HookPoint::PreBump,
+                    &cmd,
+                    &hook_ctx,
+                    on_failure,
+                    false,
+                    verbose,
+                    root,
+                )?;
             }
 
             for vf in &pkg.versioned_files {
@@ -218,6 +259,21 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
                 files_to_commit.push(changelog_rel.clone());
             }
 
+            // --- post_bump hook ---
+            if let Some(cmd) = resolve_hook(pkg_hooks, ws_hooks, HookPoint::PostBump) {
+                let before = collect_dirty_files(&repo);
+                run_hook(
+                    HookPoint::PostBump,
+                    &cmd,
+                    &hook_ctx,
+                    on_failure,
+                    false,
+                    verbose,
+                    root,
+                )?;
+                auto_stage_new_files(&repo, &before, &mut files_to_commit);
+            }
+
             let body = build_section(&new_version, &commits);
             tags_to_create.push((
                 tag.clone(),
@@ -228,10 +284,34 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
             ));
         }
 
+        hook_contexts.push((hook_ctx, pkg_idx));
         any_bumped = true;
     }
 
-    if !dry_run && any_bumped {
+    if any_bumped && !tags_to_create.is_empty() {
+        // --- pre_commit hooks (per released package) ---
+        for (ctx, pkg_idx) in &hook_contexts {
+            let pkg = &config.packages[*pkg_idx];
+            let ws_hooks = config.workspace.hooks.as_ref();
+            let pkg_hooks = pkg.hooks.as_ref();
+            let on_failure = resolve_on_failure(pkg_hooks, ws_hooks);
+            if let Some(cmd) = resolve_hook(pkg_hooks, ws_hooks, HookPoint::PreCommit) {
+                let before = collect_dirty_files(&repo);
+                run_hook(
+                    HookPoint::PreCommit,
+                    &cmd,
+                    ctx,
+                    on_failure,
+                    dry_run,
+                    verbose,
+                    root,
+                )?;
+                if !dry_run {
+                    auto_stage_new_files(&repo, &before, &mut files_to_commit);
+                }
+            }
+        }
+
         let file_refs: Vec<&str> = files_to_commit.iter().map(String::as_str).collect();
         let mode = config.workspace.release_commit_mode;
 
@@ -247,136 +327,198 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
         };
         let commit_msg = format!("chore(release): {}{skip_ci}", release_parts.join(", "));
 
-        match mode {
-            ReleaseCommitMode::Commit => {
-                create_commit(&repo, &file_refs, &commit_msg)?;
-                println!("  ✓ Committed release changes");
-            }
-            ReleaseCommitMode::Pr => {
-                let branch_name = format!(
-                    "release/{}",
-                    release_parts
-                        .first()
-                        .map(|s| s.replace(' ', "-"))
-                        .unwrap_or_else(|| "bump".to_string())
-                );
-                create_branch_and_commit(&repo, &branch_name, &file_refs, &commit_msg)?;
-                push_branch(&repo, &config.workspace.remote, &branch_name)?;
-                println!("  ✓ Pushed branch {}", branch_name.cyan());
-
-                if let Ok(token) = std::env::var("GITHUB_TOKEN")
-                    && let Some(slug) = get_repo_slug(&repo, &config.workspace.remote)
-                {
-                    let pr_title = format!("chore(release): {}", release_parts.join(", "));
-                    let pr_body = format!(
-                        "Automated release commit.\n\n{}",
-                        tags_to_create
-                            .iter()
-                            .map(|(tag, _, _, _, _)| format!("- `{tag}`"))
-                            .collect::<Vec<_>>()
-                            .join("\n")
+        if !dry_run {
+            match mode {
+                ReleaseCommitMode::Commit => {
+                    create_commit(&repo, &file_refs, &commit_msg)?;
+                    println!("  ✓ Committed release changes");
+                }
+                ReleaseCommitMode::Pr => {
+                    let branch_name = format!(
+                        "release/{}",
+                        release_parts
+                            .first()
+                            .map(|s| s.replace(' ', "-"))
+                            .unwrap_or_else(|| "bump".to_string())
                     );
-                    match create_github_pr(
-                        &token,
-                        &slug,
-                        &branch_name,
-                        &config.workspace.branch,
-                        &pr_title,
-                        &pr_body,
-                    ) {
-                        Ok(pr_number) => {
-                            println!("  ✓ Created PR #{}", pr_number.to_string().cyan());
-                            if config.workspace.auto_merge_releases {
-                                match enable_auto_merge(&token, &slug, pr_number) {
-                                    Ok(()) => println!("  ✓ Auto-merge enabled"),
-                                    Err(err) => eprintln!(
-                                        "{}",
-                                        format!("  Warning: failed to enable auto-merge: {err}")
+                    create_branch_and_commit(&repo, &branch_name, &file_refs, &commit_msg)?;
+                    push_branch(&repo, &config.workspace.remote, &branch_name)?;
+                    println!("  ✓ Pushed branch {}", branch_name.cyan());
+
+                    if let Ok(token) = std::env::var("GITHUB_TOKEN")
+                        && let Some(slug) = get_repo_slug(&repo, &config.workspace.remote)
+                    {
+                        let pr_title = format!("chore(release): {}", release_parts.join(", "));
+                        let pr_body = format!(
+                            "Automated release commit.\n\n{}",
+                            tags_to_create
+                                .iter()
+                                .map(|(tag, _, _, _, _)| format!("- `{tag}`"))
+                                .collect::<Vec<_>>()
+                                .join("\n")
+                        );
+                        match create_github_pr(
+                            &token,
+                            &slug,
+                            &branch_name,
+                            &config.workspace.branch,
+                            &pr_title,
+                            &pr_body,
+                        ) {
+                            Ok(pr_number) => {
+                                println!("  ✓ Created PR #{}", pr_number.to_string().cyan());
+                                if config.workspace.auto_merge_releases {
+                                    match enable_auto_merge(&token, &slug, pr_number) {
+                                        Ok(()) => println!("  ✓ Auto-merge enabled"),
+                                        Err(err) => eprintln!(
+                                            "{}",
+                                            format!(
+                                                "  Warning: failed to enable auto-merge: {err}"
+                                            )
                                             .yellow()
-                                    ),
+                                        ),
+                                    }
                                 }
                             }
+                            Err(err) => eprintln!(
+                                "{}",
+                                format!("  Warning: failed to create PR: {err}").yellow()
+                            ),
                         }
-                        Err(err) => eprintln!(
-                            "{}",
-                            format!("  Warning: failed to create PR: {err}").yellow()
-                        ),
                     }
                 }
+                ReleaseCommitMode::None => {}
             }
-            ReleaseCommitMode::None => {}
+
+            // Tags are always created on the current HEAD.
+            for (tag_name, tag_msg, _, _, _) in &tags_to_create {
+                create_tag(&repo, tag_name, tag_msg)?;
+                println!("  ✓ Created tag {}", tag_name.cyan());
+            }
         }
 
-        // Tags are always created on the current HEAD (before the release commit for PR mode).
-        for (tag_name, tag_msg, _, _, _) in &tags_to_create {
-            create_tag(&repo, tag_name, tag_msg)?;
-            println!("  ✓ Created tag {}", tag_name.cyan());
-        }
-
-        // Push tags (and branch for commit mode).
-        let tag_refs: Vec<&str> = tags_to_create
-            .iter()
-            .map(|(t, _, _, _, _)| t.as_str())
-            .collect();
-        match mode {
-            ReleaseCommitMode::Commit => {
-                push(
-                    &repo,
-                    &config.workspace.remote,
-                    &config.workspace.branch,
-                    &tag_refs,
+        // --- pre_publish hooks (per released package) ---
+        for (ctx, pkg_idx) in &hook_contexts {
+            let pkg = &config.packages[*pkg_idx];
+            let ws_hooks = config.workspace.hooks.as_ref();
+            let pkg_hooks = pkg.hooks.as_ref();
+            let on_failure = resolve_on_failure(pkg_hooks, ws_hooks);
+            if let Some(cmd) = resolve_hook(pkg_hooks, ws_hooks, HookPoint::PrePublish) {
+                run_hook(
+                    HookPoint::PrePublish,
+                    &cmd,
+                    ctx,
+                    on_failure,
+                    dry_run,
+                    verbose,
+                    root,
                 )?;
-                println!(
-                    "  ✓ Pushed to {}/{}",
-                    config.workspace.remote, config.workspace.branch
-                );
             }
-            ReleaseCommitMode::Pr | ReleaseCommitMode::None => {
-                // Only push tags, branch was already pushed (or nothing to push).
-                if !tag_refs.is_empty() {
+        }
+
+        if !dry_run {
+            // Push tags (and branch for commit mode).
+            let tag_refs: Vec<&str> = tags_to_create
+                .iter()
+                .map(|(t, _, _, _, _)| t.as_str())
+                .collect();
+            match mode {
+                ReleaseCommitMode::Commit => {
                     push(
                         &repo,
                         &config.workspace.remote,
                         &config.workspace.branch,
                         &tag_refs,
                     )?;
-                    println!("  ✓ Pushed tags");
+                    println!(
+                        "  ✓ Pushed to {}/{}",
+                        config.workspace.remote, config.workspace.branch
+                    );
+                }
+                ReleaseCommitMode::Pr | ReleaseCommitMode::None => {
+                    if !tag_refs.is_empty() {
+                        push(
+                            &repo,
+                            &config.workspace.remote,
+                            &config.workspace.branch,
+                            &tag_refs,
+                        )?;
+                        println!("  ✓ Pushed tags");
+                    }
                 }
             }
-        }
 
-        if config.workspace.telemetry {
-            for (_, _, _, pkg_name, version) in &tags_to_create {
-                telemetry::send_event("release", Some(pkg_name), Some(version), None);
-            }
-        }
-
-        if let Ok(token) = std::env::var("GITHUB_TOKEN")
-            && let Some(slug) = get_repo_slug(&repo, &config.workspace.remote)
-        {
-            for (tag_name, _, body, _, _) in &tags_to_create {
-                match create_github_release(&token, &slug, tag_name, body) {
-                    Ok(()) => println!("  ✓ GitHub Release {}", tag_name.cyan()),
-                    Err(err) => eprintln!(
-                        "{}",
-                        format!("  Warning: failed to create GitHub Release for {tag_name}: {err}")
-                            .yellow()
-                    ),
+            if config.workspace.telemetry {
+                for (_, _, _, pkg_name, version) in &tags_to_create {
+                    telemetry::send_event("release", Some(pkg_name), Some(version), None);
                 }
             }
-        }
 
-        if let Ok(summary_path) = std::env::var("GITHUB_STEP_SUMMARY") {
-            use std::io::Write;
-            if let Ok(mut file) = std::fs::OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(&summary_path)
+            if let Ok(token) = std::env::var("GITHUB_TOKEN")
+                && let Some(slug) = get_repo_slug(&repo, &config.workspace.remote)
             {
-                let _ = writeln!(file, "## Released\n");
                 for (tag_name, _, body, _, _) in &tags_to_create {
-                    let _ = writeln!(file, "### {tag_name}\n");
-                    let _ = writeln!(file, "{body}");
+                    match create_github_release(&token, &slug, tag_name, body) {
+                        Ok(()) => println!("  ✓ GitHub Release {}", tag_name.cyan()),
+                        Err(err) => eprintln!(
+                            "{}",
+                            format!(
+                                "  Warning: failed to create GitHub Release for {tag_name}: {err}"
+                            )
+                            .yellow()
+                        ),
+                    }
+                }
+            }
+
+            if let Ok(summary_path) = std::env::var("GITHUB_STEP_SUMMARY") {
+                use std::io::Write;
+                if let Ok(mut file) = std::fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(&summary_path)
+                {
+                    let _ = writeln!(file, "## Released\n");
+                    for (tag_name, _, body, _, _) in &tags_to_create {
+                        let _ = writeln!(file, "### {tag_name}\n");
+                        let _ = writeln!(file, "{body}");
+                    }
+                }
+            }
+        }
+
+        // --- post_publish hooks (per released package) ---
+        for (ctx, pkg_idx) in &hook_contexts {
+            let pkg = &config.packages[*pkg_idx];
+            let ws_hooks = config.workspace.hooks.as_ref();
+            let pkg_hooks = pkg.hooks.as_ref();
+            let on_failure = resolve_on_failure(pkg_hooks, ws_hooks);
+            if let Some(cmd) = resolve_hook(pkg_hooks, ws_hooks, HookPoint::PostPublish) {
+                run_hook(
+                    HookPoint::PostPublish,
+                    &cmd,
+                    ctx,
+                    on_failure,
+                    dry_run,
+                    verbose,
+                    root,
+                )?;
+            }
+        }
+    } else if dry_run && any_bumped {
+        // Dry-run: print pre_commit/pre_publish/post_publish hooks.
+        for (ctx, pkg_idx) in &hook_contexts {
+            let pkg = &config.packages[*pkg_idx];
+            let ws_hooks = config.workspace.hooks.as_ref();
+            let pkg_hooks = pkg.hooks.as_ref();
+            let on_failure = resolve_on_failure(pkg_hooks, ws_hooks);
+            for point in [
+                HookPoint::PreCommit,
+                HookPoint::PrePublish,
+                HookPoint::PostPublish,
+            ] {
+                if let Some(cmd) = resolve_hook(pkg_hooks, ws_hooks, point) {
+                    run_hook(point, &cmd, ctx, on_failure, true, verbose, root)?;
                 }
             }
         }
@@ -387,6 +529,41 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
     }
 
     Ok(())
+}
+
+/// Collect the set of dirty (modified/new) file paths in the working tree.
+fn collect_dirty_files(repo: &git2::Repository) -> HashSet<String> {
+    let mut files = HashSet::new();
+    if let Ok(statuses) = repo.statuses(None) {
+        for entry in statuses.iter() {
+            let status = entry.status();
+            if status.intersects(
+                git2::Status::WT_MODIFIED
+                    | git2::Status::WT_NEW
+                    | git2::Status::WT_TYPECHANGE
+                    | git2::Status::INDEX_NEW
+                    | git2::Status::INDEX_MODIFIED,
+            ) && let Some(path) = entry.path()
+            {
+                files.insert(path.to_string());
+            }
+        }
+    }
+    files
+}
+
+/// Auto-stage files that became dirty after a hook ran.
+fn auto_stage_new_files(
+    repo: &git2::Repository,
+    before: &HashSet<String>,
+    files_to_commit: &mut Vec<String>,
+) {
+    let after = collect_dirty_files(repo);
+    for path in after.difference(before) {
+        if !files_to_commit.contains(path) {
+            files_to_commit.push(path.clone());
+        }
+    }
 }
 
 fn is_package_touched(pkg: &PackageConfig, changed_files: &[String], is_monorepo: bool) -> bool {
@@ -435,6 +612,7 @@ mod tests {
             shared_paths: shared.iter().map(|s| s.to_string()).collect(),
             versioning: None,
             tag_template: None,
+            hooks: None,
         }
     }
 

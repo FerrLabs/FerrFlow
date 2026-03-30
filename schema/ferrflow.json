@@ -58,6 +58,9 @@
         "skipCi": {
           "type": "boolean",
           "description": "Append [skip ci] to the release commit message. Defaults to true in 'commit' mode, false in 'pr' mode."
+        },
+        "hooks": {
+          "$ref": "#/$defs/hooks"
         }
       },
       "additionalProperties": false
@@ -117,10 +120,48 @@
             "type": "string",
             "description": "Tag template for this package. Use {name} for package name and {version} for version. Overrides workspace default.",
             "examples": ["v{version}", "{name}@v{version}", "{name}/v{version}", "release-{version}"]
+          },
+          "hooks": {
+            "$ref": "#/$defs/hooks"
           }
         },
         "additionalProperties": false
       }
+    }
+  },
+  "$defs": {
+    "hooks": {
+      "type": "object",
+      "description": "Shell commands executed at lifecycle points during release.",
+      "properties": {
+        "preBump": {
+          "type": "string",
+          "description": "Run after bump calculation, before writing version files."
+        },
+        "postBump": {
+          "type": "string",
+          "description": "Run after writing version files, before changelog generation."
+        },
+        "preCommit": {
+          "type": "string",
+          "description": "Run after changelog generation, before git commit."
+        },
+        "prePublish": {
+          "type": "string",
+          "description": "Run after commit and tag, before push."
+        },
+        "postPublish": {
+          "type": "string",
+          "description": "Run after push and release creation."
+        },
+        "onFailure": {
+          "type": "string",
+          "description": "Behavior when a hook exits non-zero.",
+          "enum": ["abort", "continue"],
+          "default": "abort"
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false

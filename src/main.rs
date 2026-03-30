@@ -4,6 +4,7 @@ mod config;
 mod conventional_commits;
 mod formats;
 mod git;
+mod hooks;
 mod monorepo;
 mod query;
 mod release;

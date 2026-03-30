@@ -6,6 +6,34 @@ use std::path::{Path, PathBuf};
 use crate::telemetry;
 
 // ---------------------------------------------------------------------------
+// Hooks config
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Deserialize, Serialize, Clone, Default)]
+pub struct HooksConfig {
+    #[serde(alias = "preBump")]
+    pub pre_bump: Option<String>,
+    #[serde(alias = "postBump")]
+    pub post_bump: Option<String>,
+    #[serde(alias = "preCommit")]
+    pub pre_commit: Option<String>,
+    #[serde(alias = "prePublish")]
+    pub pre_publish: Option<String>,
+    #[serde(alias = "postPublish")]
+    pub post_publish: Option<String>,
+    #[serde(default, alias = "onFailure")]
+    pub on_failure: Option<OnFailure>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum OnFailure {
+    #[default]
+    Abort,
+    Continue,
+}
+
+// ---------------------------------------------------------------------------
 // Config structs
 // ---------------------------------------------------------------------------
 
@@ -46,6 +74,8 @@ pub struct WorkspaceConfig {
     pub auto_merge_releases: bool,
     #[serde(default, alias = "skipCi")]
     pub skip_ci: Option<bool>,
+    #[serde(default)]
+    pub hooks: Option<HooksConfig>,
 }
 
 impl WorkspaceConfig {
@@ -92,6 +122,8 @@ pub struct PackageConfig {
     pub versioning: Option<VersioningStrategy>,
     #[serde(alias = "tagTemplate")]
     pub tag_template: Option<String>,
+    #[serde(default)]
+    pub hooks: Option<HooksConfig>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Default)]
@@ -214,6 +246,12 @@ const CAMEL_CASE_KEYS: &[&str] = &[
     "release_commit_mode",
     "auto_merge_releases",
     "skip_ci",
+    "pre_bump",
+    "post_bump",
+    "pre_commit",
+    "pre_publish",
+    "post_publish",
+    "on_failure",
 ];
 
 fn to_camel_case_keys(value: serde_json::Value) -> serde_json::Value {
@@ -450,6 +488,7 @@ impl Config {
                     shared_paths: Vec::new(),
                     versioning: None,
                     tag_template: None,
+                    hooks: None,
                 }]
             },
         }
@@ -632,6 +671,7 @@ fn collect_package(path_default: &str, monorepo: bool) -> PackageConfig {
         shared_paths: Vec::new(),
         versioning: None,
         tag_template: None,
+        hooks: None,
     }
 }
 
@@ -829,6 +869,7 @@ format = "toml"
             shared_paths: vec![],
             versioning: None,
             tag_template: None,
+            hooks: None,
         };
         assert_eq!(pkg.effective_versioning(&ws), VersioningStrategy::Calver);
     }
@@ -847,6 +888,7 @@ format = "toml"
             shared_paths: vec![],
             versioning: Some(VersioningStrategy::Zerover),
             tag_template: None,
+            hooks: None,
         };
         assert_eq!(pkg.effective_versioning(&ws), VersioningStrategy::Zerover);
     }
@@ -864,6 +906,7 @@ format = "toml"
             shared_paths: vec![],
             versioning: None,
             tag_template: tag_template.map(String::from),
+            hooks: None,
         }
     }
 
@@ -1074,6 +1117,7 @@ format = "toml"
                 shared_paths: vec!["shared/".into()],
                 versioning: None,
                 tag_template: Some("{name}@v{version}".into()),
+                hooks: None,
             }],
         };
         let serialized = handler.serialize(&config).unwrap();
@@ -1116,6 +1160,7 @@ format = "toml"
                 shared_paths: vec!["shared/".into()],
                 versioning: None,
                 tag_template: Some("{name}@v{version}".into()),
+                hooks: None,
             }],
         };
         let serialized = handler.serialize(&config).unwrap();
@@ -1646,6 +1691,7 @@ format = "toml"
             shared_paths: vec![],
             versioning: None,
             tag_template: Some("release-latest".to_string()),
+            hooks: None,
         };
         // When template has no {version}, prefix is the entire template
         assert_eq!(pkg.tag_prefix(&ws, false), "release-latest");
@@ -1662,6 +1708,7 @@ format = "toml"
             shared_paths: vec![],
             versioning: None,
             tag_template: Some("{name}/v{version}".to_string()),
+            hooks: None,
         };
         assert_eq!(pkg.tag_for_version(&ws, true, "1.2.3"), "api/v1.2.3");
     }
