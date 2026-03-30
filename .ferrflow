@@ -1,7 +1,10 @@
 {
   "$schema": "https://ferrflow.com/schema/ferrflow.json",
   "workspace": {
-    "tagTemplate": "v{version}"
+    "tagTemplate": "v{version}",
+    "hooks": {
+      "postBump": "node scripts/sync-optional-deps.js"
+    }
   },
   "package": [
     {
@@ -11,7 +14,12 @@
       "sharedPaths": ["src/"],
       "versionedFiles": [
         { "path": "Cargo.toml", "format": "toml" },
-        { "path": "npm/package.json", "format": "json" }
+        { "path": "npm/package.json", "format": "json" },
+        { "path": "npm/platforms/linux-x64/package.json", "format": "json" },
+        { "path": "npm/platforms/linux-arm64/package.json", "format": "json" },
+        { "path": "npm/platforms/darwin-x64/package.json", "format": "json" },
+        { "path": "npm/platforms/darwin-arm64/package.json", "format": "json" },
+        { "path": "npm/platforms/win32-x64/package.json", "format": "json" }
       ]
     }
   ]
