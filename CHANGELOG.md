@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.0.0] - 2026-03-30
+
+### Breaking Changes
+
+- chore!: switch license from MIT to MPL-2.0 and remove stale docs (#140)
+
 ## [1.2.0] - 2026-03-29
 
 ### Features
