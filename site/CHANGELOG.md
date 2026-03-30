@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.0.0] - 2026-03-30
+
+### Breaking Changes
+
+- chore!: switch license from MIT to MPL-2.0 (#69)
+
+### Bug Fixes
+
+- fix(site): correct docs accuracy issues and add hooks documentation (#73)
+
 ## [0.12.0] - 2026-03-29
 
 ### Features
