@@ -20,12 +20,19 @@ import { Tabs, TabItem } from '@astrojs/starlight/components';
     npm install -D ferrflow
     ```
   </TabItem>
+  <TabItem label="WASM (browser)">
+    ```bash
+    npm install @ferrflow/wasm
+    ```
+
+    Use FerrFlow directly in the browser — parse commits, compute version bumps, and generate changelogs client-side without a backend.
+  </TabItem>
   <TabItem label="Binary">
     Download a pre-built binary from [Releases](https://github.com/FerrFlow-Org/FerrFlow/releases/latest):
 
     ```bash
     # Linux x86_64
-    curl -L https://github.com/FerrFlow-Org/FerrFlow/releases/latest/download/ferrflow-x86_64-unknown-linux-gnu.tar.gz | tar xz
+    curl -L https://github.com/FerrFlow-Org/FerrFlow/releases/latest/download/ferrflow-linux-x64.tar.gz | tar xz
     sudo mv ferrflow /usr/local/bin/
     ```
   </TabItem>
@@ -41,7 +48,7 @@ import { Tabs, TabItem } from '@astrojs/starlight/components';
 The recommended way to use FerrFlow in CI is the GitHub Action — no installation step needed:
 
 ```yaml
-- uses: FerrFlow-Org/ferrflow@v1
+- uses: FerrFlow-Org/ferrflow@v2
   env:
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
