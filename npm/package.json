@@ -14,7 +14,7 @@
   "license": "MPL-2.0",
   "name": "ferrflow",
   "optionalDependencies": {
-    "@ferrflow/darwin-arm64": "1.0.0",
+    "@ferrflow/darwin-arm64": "1.2.0",
     "@ferrflow/darwin-x64": "1.0.0",
     "@ferrflow/linux-arm64": "1.0.0",
     "@ferrflow/linux-x64": "1.0.0",
