@@ -101,7 +101,7 @@ jobs:
           token: ${{ secrets.FERRFLOW_TOKEN }}
       - name: Configure git
         run: git remote set-url origin https://x-access-token:${{ secrets.FERRFLOW_TOKEN }}@github.com/${{ github.repository }}
-      - uses: FerrFlow-Org/ferrflow@v1
+      - uses: FerrFlow-Org/ferrflow@v2
         with:
           dry_run: ${{ inputs.dry_run }}
         env:

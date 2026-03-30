@@ -103,7 +103,7 @@ jobs:
           path: artifacts/
           merge-multiple: true
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: artifacts/*
       - uses: softprops/action-gh-release@v2
@@ -274,7 +274,7 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/ferrflow:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/ferrflow:${{ steps.version.outputs.value }}
       - name: Attest Docker image
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-name: ghcr.io/ferrflow-org/ferrflow
           subject-digest: ${{ steps.docker-push.outputs.digest }}
