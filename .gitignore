@@ -1,4 +1,5 @@
 /target
+ferrflow-wasm/pkg/
 
 # Benchmark artifacts
 benchmarks/results/raw/
