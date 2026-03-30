@@ -321,4 +321,4 @@ release:
 
 ## License
 
-MIT
+MPL-2.0
