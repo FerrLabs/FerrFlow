@@ -56,8 +56,12 @@ ferrflow changelog [OPTIONS]
 Scaffold a config file for the current repository. Detects existing version files (`Cargo.toml`, `package.json`, etc.) and generates the appropriate config.
 
 ```bash
-ferrflow init
+ferrflow init [OPTIONS]
 ```
+
+| Flag | Description |
+|---|---|
+| `--format <FORMAT>` | Config file format: `json`, `json5`, or `toml` |
 
 ---
 
@@ -71,7 +75,7 @@ ferrflow status [OPTIONS]
 
 | Flag | Description |
 |---|---|
-| `--json` | Output in JSON format for scripting |
+| `--output <FORMAT>` | Output format: `text` (default) or `json` |
 
 Example output:
 
@@ -87,8 +91,12 @@ site   0.4.1   no release (only chore commits)
 Print the current version of one or all packages. Useful in CI scripts.
 
 ```bash
-ferrflow version [PACKAGE]
+ferrflow version [PACKAGE] [OPTIONS]
 ```
+
+| Flag | Description |
+|---|---|
+| `--json` | Output as JSON |
 
 Returns the version from the latest git tag matching the package's tag template.
 
@@ -99,8 +107,12 @@ Returns the version from the latest git tag matching the package's tag template.
 Print the latest tag for one or all packages.
 
 ```bash
-ferrflow tag [PACKAGE]
+ferrflow tag [PACKAGE] [OPTIONS]
 ```
+
+| Flag | Description |
+|---|---|
+| `--json` | Output as JSON |
 
 ---
 
@@ -110,6 +122,6 @@ These flags work with all commands:
 
 | Flag | Description |
 |---|---|
-| `--config <PATH>` | Path to a custom config file (default: auto-detected) |
+| `--config <PATH>` | Path to a custom config file (default: auto-detected). Also accepts `FERRFLOW_CONFIG` env variable. |
 | `--version` | Print the FerrFlow version and exit |
 | `--help`, `-h` | Print help |

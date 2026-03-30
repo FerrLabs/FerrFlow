@@ -5,12 +5,12 @@ description: Complete reference for the FerrFlow configuration file.
 
 import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
 
-FerrFlow supports three config file formats, searched in this order:
+FerrFlow supports four config file formats, searched in this order:
 
-1. `.ferrflow` (JSON)
-2. `ferrflow.json`
-3. `ferrflow.json5`
-4. `ferrflow.toml`
+1. `ferrflow.json`
+2. `ferrflow.json5`
+3. `ferrflow.toml`
+4. `.ferrflow` (JSON)
 
 If no config file is found, FerrFlow auto-detects common version files in the current directory.
 
@@ -186,6 +186,140 @@ Files where the version number should be updated.
 | `xml` | `pom.xml` | First `<version>` element |
 | `gradle` | `build.gradle`, `build.gradle.kts` | `version = "..."` |
 | `gomod` | `go.mod` | No file update — version comes from git tags only |
+| `txt` | `VERSION`, `VERSION.txt` | Entire file content replaced |
+
+## `hooks`
+
+Run shell commands at key points in the release lifecycle. Hooks can be defined at workspace level (defaults for all packages) or per package (overrides workspace hooks for that package).
+
+### Lifecycle
+
+```
+calculate bump
+  ↓
+pre_bump        ← validate state, check prerequisites
+  ↓
+write version files
+  ↓
+post_bump       ← modify additional files based on new version
+  ↓
+generate changelog
+  ↓
+pre_commit      ← review staged changes, run linters
+  ↓
+git commit + tag
+  ↓
+pre_publish     ← run tests against tagged commit, build artifacts
+  ↓
+git push + create release
+  ↓
+post_publish    ← push Docker images, notify Slack, publish packages
+```
+
+### Configuration
+
+<Tabs>
+  <TabItem label="JSON">
+    ```json
+    {
+      "workspace": {
+        "hooks": {
+          "preBump": "cargo test",
+          "postBump": "node scripts/sync-deps.js",
+          "preCommit": "cargo fmt --check",
+          "prePublish": "cargo build --release",
+          "postPublish": "make docker-push && ./scripts/notify.sh",
+          "onFailure": "abort"
+        }
+      }
+    }
+    ```
+  </TabItem>
+  <TabItem label="TOML">
+    ```toml
+    [hooks]
+    pre_bump     = "cargo test"
+    post_bump    = "node scripts/sync-deps.js"
+    pre_commit   = "cargo fmt --check"
+    pre_publish  = "cargo build --release"
+    post_publish = "make docker-push && ./scripts/notify.sh"
+    on_failure   = "abort"
+    ```
+  </TabItem>
+</Tabs>
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `preBump` | string | — | Run after bump calculation, before writing version files |
+| `postBump` | string | — | Run after version files are written |
+| `preCommit` | string | — | Run after changelog, before git commit |
+| `prePublish` | string | — | Run after commit+tag, before push |
+| `postPublish` | string | — | Run after push and release creation |
+| `onFailure` | string | `"abort"` | `"abort"` cancels the release on failure, `"continue"` prints a warning |
+
+### Environment variables
+
+Every hook receives these variables:
+
+| Variable | Description | Example |
+|---|---|---|
+| `FERRFLOW_PACKAGE` | Package name | `api` |
+| `FERRFLOW_OLD_VERSION` | Version before bump (empty on first release) | `1.2.3` |
+| `FERRFLOW_NEW_VERSION` | Version after bump | `1.3.0` |
+| `FERRFLOW_BUMP_TYPE` | `major`, `minor`, `patch`, or `none` | `minor` |
+| `FERRFLOW_TAG` | Full git tag name | `api@v1.3.0` |
+| `FERRFLOW_DRY_RUN` | `true` if `--dry-run` is set | `false` |
+| `FERRFLOW_PACKAGE_PATH` | Absolute path to package root | `/home/user/repo/packages/api` |
+
+### Per-package hooks
+
+Package-level hooks **replace** workspace-level hooks for that package (they are not merged).
+
+<Tabs>
+  <TabItem label="JSON">
+    ```json
+    {
+      "workspace": {
+        "hooks": {
+          "preBump": "echo releasing $FERRFLOW_PACKAGE",
+          "postPublish": "make notify"
+        }
+      },
+      "package": [
+        {
+          "name": "api",
+          "path": "packages/api",
+          "hooks": {
+            "preBump": "cargo test"
+          }
+        }
+      ]
+    }
+    ```
+  </TabItem>
+  <TabItem label="TOML">
+    ```toml
+    [hooks]
+    pre_bump     = "echo releasing $FERRFLOW_PACKAGE"
+    post_publish = "make notify"
+
+    [[package]]
+    name = "api"
+    path = "packages/api"
+
+    [package.hooks]
+    pre_bump = "cargo test"
+    ```
+  </TabItem>
+</Tabs>
+
+In this example, the `api` package runs `cargo test` for `preBump` (overriding the workspace echo) but inherits the workspace `postPublish` hook.
+
+### Behavior
+
+- **`--dry-run`**: hooks are printed but not executed.
+- **`--verbose`**: hook stdout/stderr is streamed live. Otherwise output is only shown on failure.
+- Files modified by `postBump` or `preCommit` hooks are automatically included in the release commit.
 
 ## Complete examples
 

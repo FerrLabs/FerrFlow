@@ -38,6 +38,29 @@
           "type": "string",
           "description": "Tag template. Use {name} for package name and {version} for version. Default: 'v{version}' for single repos, '{name}@v{version}' for monorepos.",
           "examples": ["v{version}", "{name}@v{version}", "{name}/v{version}", "release-{version}"]
+        },
+        "recoverMissedReleases": {
+          "type": "boolean",
+          "description": "Compare files against the last tag instead of just the last commit, recovering missed releases in monorepos.",
+          "default": false
+        },
+        "releaseCommitMode": {
+          "type": "string",
+          "description": "How to commit version bumps and changelog updates. 'commit' pushes directly to the branch, 'pr' creates a pull request, 'none' skips committing entirely.",
+          "enum": ["commit", "pr", "none"],
+          "default": "commit"
+        },
+        "autoMergeReleases": {
+          "type": "boolean",
+          "description": "Automatically merge release PRs when releaseCommitMode is 'pr'.",
+          "default": true
+        },
+        "skipCi": {
+          "type": "boolean",
+          "description": "Append [skip ci] to the release commit message. Defaults to true in 'commit' mode, false in 'pr' mode."
+        },
+        "hooks": {
+          "$ref": "#/$defs/hooks"
         }
       },
       "additionalProperties": false
@@ -59,7 +82,7 @@
           },
           "changelog": {
             "type": ["string", "null"],
-            "description": "Path to the changelog file, relative to the repo root. May be set to null or omitted to use the default changelog behavior for this package (for example, a workspace-level setting or no dedicated changelog)."
+            "description": "Path to the changelog file, relative to the repo root."
           },
           "versionedFiles": {
             "type": "array",
@@ -75,7 +98,7 @@
                 "format": {
                   "type": "string",
                   "description": "File format used to locate and update the version field.",
-                  "enum": ["toml", "json", "xml", "gradle", "gomod"]
+                  "enum": ["toml", "json", "xml", "gradle", "gomod", "txt"]
                 }
               },
               "additionalProperties": false
@@ -97,10 +120,48 @@
             "type": "string",
             "description": "Tag template for this package. Use {name} for package name and {version} for version. Overrides workspace default.",
             "examples": ["v{version}", "{name}@v{version}", "{name}/v{version}", "release-{version}"]
+          },
+          "hooks": {
+            "$ref": "#/$defs/hooks"
           }
         },
         "additionalProperties": false
       }
+    }
+  },
+  "$defs": {
+    "hooks": {
+      "type": "object",
+      "description": "Shell commands executed at lifecycle points during release.",
+      "properties": {
+        "preBump": {
+          "type": "string",
+          "description": "Run after bump calculation, before writing version files."
+        },
+        "postBump": {
+          "type": "string",
+          "description": "Run after writing version files, before changelog generation."
+        },
+        "preCommit": {
+          "type": "string",
+          "description": "Run after changelog generation, before git commit."
+        },
+        "prePublish": {
+          "type": "string",
+          "description": "Run after commit and tag, before push."
+        },
+        "postPublish": {
+          "type": "string",
+          "description": "Run after push and release creation."
+        },
+        "onFailure": {
+          "type": "string",
+          "description": "Behavior when a hook exits non-zero.",
+          "enum": ["abort", "continue"],
+          "default": "abort"
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false
