@@ -11,7 +11,7 @@
     "changelog",
     "release"
   ],
-  "license": "MIT",
+  "license": "MPL-2.0",
   "name": "ferrflow",
   "optionalDependencies": {
     "@ferrflow/darwin-arm64": "1.0.0",
