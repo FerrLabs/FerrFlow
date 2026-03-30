@@ -16,7 +16,7 @@
   "optionalDependencies": {
     "@ferrflow/darwin-arm64": "2.0.0",
     "@ferrflow/darwin-x64": "1.2.0",
-    "@ferrflow/linux-arm64": "2.0.0",
+    "@ferrflow/linux-arm64": "2.1.0",
     "@ferrflow/linux-x64": "2.0.0",
     "@ferrflow/win32-x64": "1.2.0"
   },
