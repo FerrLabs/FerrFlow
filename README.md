@@ -4,6 +4,7 @@
 [![Release](https://github.com/FerrFlow-Org/FerrFlow/actions/workflows/release.yml/badge.svg)](https://github.com/FerrFlow-Org/FerrFlow/actions/workflows/release.yml)
 [![Latest release](https://img.shields.io/github/v/release/FerrFlow-Org/FerrFlow)](https://github.com/FerrFlow-Org/FerrFlow/releases/latest)
 [![Coverage](https://codecov.io/gh/FerrFlow-Org/FerrFlow/graph/badge.svg)](https://codecov.io/gh/FerrFlow-Org/FerrFlow)
+[![CodeQL](https://github.com/FerrFlow-Org/FerrFlow/actions/workflows/codeql.yml/badge.svg)](https://github.com/FerrFlow-Org/FerrFlow/actions/workflows/codeql.yml)
 [![License](https://img.shields.io/github/license/FerrFlow-Org/FerrFlow)](LICENSE)
 
 Universal semantic versioning for monorepos and classic repos.
