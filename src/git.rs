@@ -247,6 +247,43 @@ pub fn create_tag(repo: &Repository, tag_name: &str, message: &str) -> Result<()
     Ok(())
 }
 
+/// Create a tag, or move it if it already exists. Returns true if the tag was moved.
+pub fn create_or_move_tag(repo: &Repository, tag_name: &str, message: &str) -> Result<bool> {
+    let existed = tag_exists(repo, tag_name);
+    if existed {
+        repo.tag_delete(tag_name)?;
+    }
+    let head = repo.head()?.peel_to_commit()?;
+    let sig = signature(repo)?;
+    repo.tag(tag_name, head.as_object(), &sig, message, false)?;
+    Ok(existed)
+}
+
+pub fn force_push_tags(repo: &Repository, remote_name: &str, tags: &[&str]) -> Result<()> {
+    if tags.is_empty() {
+        return Ok(());
+    }
+    let mut remote = repo
+        .find_remote(remote_name)
+        .with_context(|| format!("Remote '{}' not found", remote_name))?;
+    let mut push_options = make_push_options();
+    let refspecs: Vec<String> = tags
+        .iter()
+        .map(|tag| format!("+refs/tags/{tag}:refs/tags/{tag}"))
+        .collect();
+    let refspec_refs: Vec<&str> = refspecs.iter().map(String::as_str).collect();
+    remote.push(&refspec_refs, Some(&mut push_options))?;
+    Ok(())
+}
+
+/// If a tag exists, return its message.
+pub fn get_tag_message(repo: &Repository, tag_name: &str) -> Option<String> {
+    let oid = repo.refname_to_id(&format!("refs/tags/{tag_name}")).ok()?;
+    let obj = repo.find_object(oid, None).ok()?;
+    let tag = obj.as_tag()?;
+    tag.message().map(String::from)
+}
+
 fn signature(repo: &Repository) -> Result<git2::Signature<'static>> {
     if let Ok(sig) = repo.signature() {
         return Ok(sig);
@@ -751,5 +788,33 @@ mod tests {
     #[test]
     fn extract_url_password_ssh_url() {
         assert_eq!(extract_url_password("git@github.com:owner/repo.git"), None);
+    }
+
+    fn temp_repo_with_commit() -> (Repository, tempfile::TempDir) {
+        let (dir, repo) = init_repo();
+        create_commit_in_repo(&repo, dir.path(), "init.txt", "initial commit");
+        (repo, dir)
+    }
+
+    #[test]
+    fn create_or_move_tag_new() {
+        let (repo, _dir) = temp_repo_with_commit();
+        let moved = super::create_or_move_tag(&repo, "v1", "Floating tag").unwrap();
+        assert!(!moved);
+        assert!(super::tag_exists(&repo, "v1"));
+    }
+
+    #[test]
+    fn create_or_move_tag_moves_existing() {
+        let (repo, _dir) = temp_repo_with_commit();
+        super::create_tag(&repo, "v1", "First").unwrap();
+
+        let path = _dir.path().join("second.txt");
+        std::fs::write(&path, "second").unwrap();
+        super::create_commit(&repo, &["second.txt"], "second commit").unwrap();
+
+        let moved = super::create_or_move_tag(&repo, "v1", "Floating tag").unwrap();
+        assert!(moved);
+        assert!(super::tag_exists(&repo, "v1"));
     }
 }

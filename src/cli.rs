@@ -36,7 +36,11 @@ pub enum Commands {
         json: bool,
     },
     /// Bump versions, update changelogs, create tags and push
-    Release,
+    Release {
+        /// Allow floating tags to move backward to a lower version
+        #[arg(long)]
+        force: bool,
+    },
     /// Generate/update CHANGELOG.md only
     Changelog,
     /// Scaffold a ferrflow configuration file
@@ -75,8 +79,8 @@ impl Cli {
             Commands::Check { json } => {
                 crate::monorepo::check(self.config.as_deref(), self.verbose, json)
             }
-            Commands::Release => {
-                crate::monorepo::release(self.config.as_deref(), self.dry_run, self.verbose)
+            Commands::Release { force } => {
+                crate::monorepo::release(self.config.as_deref(), self.dry_run, self.verbose, force)
             }
             Commands::Changelog => {
                 crate::changelog::generate_only(self.config.as_deref(), self.dry_run)

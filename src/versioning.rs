@@ -1,4 +1,4 @@
-use crate::config::VersioningStrategy;
+use crate::config::{FloatingTagLevel, VersioningStrategy};
 use crate::conventional_commits::BumpType;
 use anyhow::Result;
 use chrono::Local;
@@ -113,6 +113,22 @@ fn bump_zerover(current: &str, bump: BumpType) -> Result<String> {
 // Keep backward-compatible alias used by tests and other modules
 pub fn bump_version(current: &str, bump: BumpType) -> Result<String> {
     bump_semver(current, bump)
+}
+
+pub fn truncate_version(version: &str, level: FloatingTagLevel) -> Option<String> {
+    let v = version.trim_start_matches('v');
+    let parts: Vec<&str> = v.split('.').collect();
+
+    match level {
+        FloatingTagLevel::Major => Some(parts[0].to_string()),
+        FloatingTagLevel::Minor => {
+            if parts.len() < 2 {
+                None
+            } else {
+                Some(format!("{}.{}", parts[0], parts[1]))
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -314,5 +330,61 @@ mod tests {
         assert_eq!(parts.len(), 3);
         // Different year/month, so seq resets to 1
         assert_eq!(parts[2], "1");
+    }
+
+    #[test]
+    fn truncate_semver_major() {
+        assert_eq!(
+            super::truncate_version("1.2.3", super::FloatingTagLevel::Major),
+            Some("1".to_string())
+        );
+    }
+
+    #[test]
+    fn truncate_semver_minor() {
+        assert_eq!(
+            super::truncate_version("1.2.3", super::FloatingTagLevel::Minor),
+            Some("1.2".to_string())
+        );
+    }
+
+    #[test]
+    fn truncate_calver_major() {
+        assert_eq!(
+            super::truncate_version("2026.03.31", super::FloatingTagLevel::Major),
+            Some("2026".to_string())
+        );
+    }
+
+    #[test]
+    fn truncate_calver_minor() {
+        assert_eq!(
+            super::truncate_version("2026.03.31", super::FloatingTagLevel::Minor),
+            Some("2026.03".to_string())
+        );
+    }
+
+    #[test]
+    fn truncate_sequential_major() {
+        assert_eq!(
+            super::truncate_version("42", super::FloatingTagLevel::Major),
+            Some("42".to_string())
+        );
+    }
+
+    #[test]
+    fn truncate_sequential_minor_returns_none() {
+        assert_eq!(
+            super::truncate_version("42", super::FloatingTagLevel::Minor),
+            None
+        );
+    }
+
+    #[test]
+    fn truncate_with_v_prefix() {
+        assert_eq!(
+            super::truncate_version("v1.2.3", super::FloatingTagLevel::Major),
+            Some("1".to_string())
+        );
     }
 }
