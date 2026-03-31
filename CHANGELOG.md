@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.5.1] - 2026-03-31
+
+### Bug Fixes
+
+- fix(docker): recreate wasm stub before final build (#186)
+
 ## [2.5.0] - 2026-03-31
 
 ### Features
