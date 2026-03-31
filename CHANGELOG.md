@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.5.2] - 2026-03-31
+
+### Bug Fixes
+
+- fix(docker): recreate bench stub before final build (#187)
+
 ## [2.5.1] - 2026-03-31
 
 ### Bug Fixes
