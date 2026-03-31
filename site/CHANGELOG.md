@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.1.0] - 2026-03-31
+
+### Features
+
+- feat(site): add i18n support with French translation (#85)
+
+### Bug Fixes
+
+- fix(playground): refresh build for correct wasm
+- fix(ci): remove build provenance attestation from Docker workflow (#82)
+
 ## [1.0.1] - 2026-03-31
 
 ### Bug Fixes
