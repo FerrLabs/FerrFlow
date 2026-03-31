@@ -9,7 +9,7 @@ Used by Rust (`Cargo.toml`) and Python (`pyproject.toml`).
 
 FerrFlow updates the `version` field under `[package]`, `[project]`, or `[tool.poetry]`.
 
-```toml
+```toml title="Cargo.toml"
 [package]
 name = "my-crate"
 version = "1.2.3"   # ← updated
@@ -21,7 +21,7 @@ Used by Node.js (`package.json`).
 
 FerrFlow updates the top-level `version` field.
 
-```json
+```json title="package.json"
 {
   "name": "my-package",
   "version": "1.2.3"
@@ -34,7 +34,7 @@ Used by Java/Maven (`pom.xml`).
 
 FerrFlow updates the first `<version>` element it encounters.
 
-```xml
+```xml title="pom.xml"
 <project>
   <groupId>com.example</groupId>
   <artifactId>my-app</artifactId>
@@ -48,7 +48,7 @@ Used by Java/Kotlin Gradle projects (`build.gradle`, `build.gradle.kts`).
 
 FerrFlow updates the `version = "..."` assignment.
 
-```groovy
+```groovy title="build.gradle"
 version = "1.2.3"   // updated
 ```
 
@@ -74,7 +74,7 @@ Used by Kubernetes Helm charts (`Chart.yaml`).
 
 FerrFlow updates the `version` field and, when present, keeps `appVersion` in sync.
 
-```yaml
+```yaml title="Chart.yaml"
 apiVersion: v2
 name: my-app
 version: 1.2.3        # ← updated
@@ -85,7 +85,7 @@ appVersion: "1.2.3"   # ← updated when present
 
 A package can have as many `[[package.versioned_files]]` entries as needed:
 
-```toml
+```toml title="ferrflow.toml"
 [[package.versioned_files]]
 path   = "Cargo.toml"
 format = "toml"

@@ -73,7 +73,7 @@
         "constant.character",
         "support.constant"
       ],
-      "settings": { "foreground": "#22C55E" }
+      "settings": { "foreground": "#FFCBA4" }
     },
     {
       "name": "Operators and Punctuation",
@@ -118,7 +118,7 @@
     {
       "name": "Escape Characters",
       "scope": ["constant.character.escape"],
-      "settings": { "foreground": "#22C55E" }
+      "settings": { "foreground": "#FFCBA4" }
     },
     {
       "name": "Property Access",

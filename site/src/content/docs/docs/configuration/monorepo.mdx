@@ -11,7 +11,7 @@ FerrFlow treats a repository as a monorepo when the config defines more than one
 
 FerrFlow uses path prefixes to determine which commits belong to which package. Only commits that touch files under `path` (or `sharedPaths`) trigger a release for that package.
 
-```json
+```json title="ferrflow.json"
 {
   "package": [
     {
@@ -30,7 +30,7 @@ FerrFlow uses path prefixes to determine which commits belong to which package. 
 
 If you have code shared between packages (e.g., a `packages/shared/` library), declare it as a `sharedPaths` entry. A change to any shared path triggers a release for every package that lists it:
 
-```json
+```json title="ferrflow.json"
 {
   "package": [
     {
@@ -58,7 +58,7 @@ site@v0.4.1
 
 Configure this with the `tagTemplate` field:
 
-```json
+```json title="ferrflow.json"
 {
   "workspace": {
     "tagTemplate": "{name}@v{version}"
@@ -82,7 +82,7 @@ Packages release independently. In a single `ferrflow release` run:
 
 Each package can override the workspace-level `versioning` strategy and `tagTemplate`:
 
-```json
+```json title="ferrflow.json"
 {
   "workspace": {
     "versioning": "semver",

@@ -85,15 +85,6 @@
   border-bottom: 1px solid #6B270E;
 }
 
-/* Terminal dots — red / yellow / green like landing page */
-.expressive-code .header::before {
-  background: none !important;
-  mask: none !important;
-  -webkit-mask: none !important;
-  opacity: 1 !important;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 16' preserveAspectRatio='xMidYMid meet'%3E%3Ccircle cx='8' cy='8' r='8' fill='%23f87171' fill-opacity='0.7'/%3E%3Ccircle cx='30' cy='8' r='8' fill='%23facc15' fill-opacity='0.7'/%3E%3Ccircle cx='52' cy='8' r='8' fill='%234ade80' fill-opacity='0.7'/%3E%3C/svg%3E") !important;
-  background-repeat: no-repeat !important;
-}
 
 /* Hide the dark/light toggle — light only */
 starlight-theme-select {

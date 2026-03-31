@@ -90,7 +90,7 @@ The `tagTemplate` field controls how git tags are named. Available placeholders:
 | `{version}` | The version number (e.g. `1.2.3`) |
 | `{name}` | The package name |
 
-```json
+```json title="ferrflow.json"
 {
   "workspace": {
     "tagTemplate": "v{version}"
@@ -100,7 +100,7 @@ The `tagTemplate` field controls how git tags are named. Available placeholders:
 
 For monorepos, use `{name}` to namespace tags per package:
 
-```json
+```json title="ferrflow.json"
 {
   "workspace": {
     "tagTemplate": "{name}@v{version}"
@@ -134,7 +134,7 @@ Controls how FerrFlow handles the commit that updates version files and changelo
 | `"pr"` | Creates a `release/` branch and opens a pull request |
 | `"none"` | Only creates tags and releases, does not commit file changes |
 
-```json
+```json title="ferrflow.json"
 {
   "workspace": {
     "releaseCommitMode": "pr",
@@ -156,7 +156,7 @@ FerrFlow supports multiple versioning strategies, configurable at workspace or p
 | `sequential` | `N` | `1` → `2` → `3` |
 | `zerover` | `0.MINOR.PATCH` | `0.1.0` → `0.2.0` (never reaches 1.0) |
 
-```json
+```json title="ferrflow.json"
 {
   "workspace": {
     "versioning": "calver"
@@ -182,7 +182,7 @@ Defines a package to version. You can have one or many.
 
 Files where the version number should be updated.
 
-```json
+```json title="ferrflow.json"
 {
   "package": [
     {
@@ -344,7 +344,7 @@ In this example, the `api` package runs `cargo test` for `preBump` (overriding t
 
 ### Single repo (JSON)
 
-```json
+```json title="ferrflow.json"
 {
   "$schema": "https://ferrflow.com/schema/ferrflow.json",
   "workspace": {
@@ -366,7 +366,7 @@ In this example, the `api` package runs `cargo test` for `preBump` (overriding t
 
 ### Monorepo (TOML)
 
-```toml
+```toml title="ferrflow.toml"
 [workspace]
 tag_template = "{name}@v{version}"
 

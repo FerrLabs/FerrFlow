@@ -9,7 +9,7 @@ import { Aside } from '@astrojs/starlight/components';
 
 The official FerrFlow Docker image ships the binary and can be used directly as a GitLab CI job image.
 
-```yaml
+```yaml title=".gitlab-ci.yml"
 release:
   image: ghcr.io/ferrflow-org/ferrflow:latest
   stage: release
@@ -28,7 +28,7 @@ Make sure your CI runner clones with full history. Add `GIT_DEPTH: 0` to the job
 
 ## Full history
 
-```yaml
+```yaml title=".gitlab-ci.yml"
 release:
   image: ghcr.io/ferrflow-org/ferrflow:latest
   variables:
@@ -44,7 +44,7 @@ release:
 
 If `CI_JOB_TOKEN` doesn't have permission to push tags, create a project deploy token with `write_repository` access and store it as a CI variable:
 
-```yaml
+```yaml title=".gitlab-ci.yml"
 release:
   image: ghcr.io/ferrflow-org/ferrflow:latest
   variables:
