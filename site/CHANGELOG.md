@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.4.1] - 2026-03-31
+
+### Bug Fixes
+
+- fix(site): add telemetry page to v1 sidebar (#123)
+
 ## [1.4.0] - 2026-03-31
 
 ### Features
