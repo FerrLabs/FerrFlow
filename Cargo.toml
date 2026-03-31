@@ -28,7 +28,7 @@ path = "src/lib.rs"
 
 [features]
 default = ["cli"]
-cli = ["dep:git2", "dep:ureq", "dep:clap", "dep:colored"]
+cli = ["dep:git2", "dep:ureq", "dep:clap", "dep:colored", "dep:hmac"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
@@ -47,6 +47,7 @@ git2 = { version = "0.20", features = ["vendored-libgit2", "vendored-openssl"], 
 ureq = { version = "3", features = ["json"], optional = true }
 sha2 = "0.11.0"
 hex = "0.4.3"
+hmac = { version = "0.13", optional = true }
 
 [dev-dependencies]
 cargo-husky = { version = "1", default-features = false, features = ["user-hooks"] }

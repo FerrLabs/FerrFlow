@@ -1,7 +1,15 @@
+use hmac::{Hmac, KeyInit, Mac};
 use serde::Serialize;
 use sha2::Digest;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+type HmacSha256 = Hmac<sha2::Sha256>;
 
 const DEFAULT_API_URL: &str = "https://api.ferrflow.com";
+
+fn hmac_secret() -> &'static str {
+    option_env!("FERRFLOW_HMAC_SECRET").unwrap_or(env!("FERRFLOW_HMAC_SECRET"))
+}
 
 #[derive(Debug, Clone, Copy, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -83,11 +91,30 @@ pub fn send_event(
     let url = format!("{}/events", api_url());
 
     std::thread::spawn(move || {
+        let body = match serde_json::to_string(&payload) {
+            Ok(b) => b,
+            Err(_) => return,
+        };
+
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+            .to_string();
+
+        let message = format!("{timestamp}.{body}");
+        let mut mac = HmacSha256::new_from_slice(hmac_secret().as_bytes())
+            .expect("HMAC accepts any key length");
+        mac.update(message.as_bytes());
+        let signature = hex::encode(mac.finalize().into_bytes());
+
         let agent = ureq::Agent::new_with_defaults();
         let _ = agent
             .post(&url)
             .header("Content-Type", "application/json")
-            .send_json(&payload);
+            .header("X-Timestamp", &timestamp)
+            .header("X-Signature", &signature)
+            .send(body.as_bytes());
     });
 }
 

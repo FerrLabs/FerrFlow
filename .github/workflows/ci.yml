@@ -26,8 +26,12 @@ jobs:
         run: cargo fmt --check
       - name: Clippy
         run: cargo clippy -- -D warnings
+        env:
+          FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
       - name: Tests
         run: cargo test
+        env:
+          FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
 
   coverage:
     name: Coverage
@@ -40,6 +44,8 @@ jobs:
         run: cargo install cargo-tarpaulin
       - name: Generate coverage
         run: cargo tarpaulin --out xml --skip-clean
+        env:
+          FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
       - uses: codecov/codecov-action@v6
         with:
           files: cobertura.xml
