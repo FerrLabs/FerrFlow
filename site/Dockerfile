@@ -18,6 +18,7 @@ RUN pnpm --filter @ferrflow/site build
 FROM docker.io/library/nginx:alpine
 
 COPY --from=builder /app/packages/site/dist /usr/share/nginx/html
+COPY packages/site/nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
