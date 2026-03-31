@@ -58,7 +58,7 @@ jobs:
       - uses: FerrFlow-Org/Benchmarks@v2
         with:
           type: micro
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          ferrflow-token: ${{ secrets.GITHUB_TOKEN }}
 
   benchmark:
     name: Benchmark
@@ -75,7 +75,7 @@ jobs:
       - uses: FerrFlow-Org/Benchmarks@v2
         with:
           type: full
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          ferrflow-token: ${{ secrets.GITHUB_TOKEN }}
 
   release:
     name: Release
