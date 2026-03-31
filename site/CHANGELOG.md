@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.6.0] - 2026-03-31
+
+### Features
+
+- feat(site): use tabs for supported formats page and nudge copy button (#130)
+
 ## [1.5.0] - 2026-03-31
 
 ### Features
