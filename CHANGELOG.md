@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.3.0] - 2026-03-31
+
+### Features
+
+- feat(telemetry): send repo_hash and commits_count in events (#178)
+
 ## [2.2.2] - 2026-03-31
 
 ### Bug Fixes
