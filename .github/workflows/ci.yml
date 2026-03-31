@@ -117,3 +117,31 @@ jobs:
         env:
           FERRFLOW_TOKEN: ${{ secrets.FERRFLOW_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.FERRFLOW_TOKEN }}
+      - name: Download benchmark summary
+        if: needs.benchmark.result == 'success'
+        uses: actions/download-artifact@v8
+        with:
+          name: benchmark-release-summary
+          path: benchmark-summary/
+        continue-on-error: true
+      - name: Append benchmark results to release
+        if: needs.benchmark.result == 'success'
+        shell: bash
+        run: |
+          if [[ ! -f benchmark-summary/release-summary.md ]]; then
+            echo "No benchmark summary found, skipping"
+            exit 0
+          fi
+          TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [[ -z "$TAG" ]]; then
+            echo "No tag found, skipping"
+            exit 0
+          fi
+          CURRENT_BODY=$(gh release view "$TAG" --json body --jq '.body' 2>/dev/null || echo "")
+          BENCH=$(cat benchmark-summary/release-summary.md)
+          NEW_BODY="${CURRENT_BODY}
+
+${BENCH}"
+          gh release edit "$TAG" --notes "$NEW_BODY"
+        env:
+          GH_TOKEN: ${{ secrets.FERRFLOW_TOKEN }}
