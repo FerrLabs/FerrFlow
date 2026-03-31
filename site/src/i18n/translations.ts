@@ -42,9 +42,8 @@ const ui = {
     'metrics.title': 'Trusted in production',
     'metrics.subtitle': 'Real numbers from real teams shipping with FerrFlow.',
     'metrics.releases': 'Releases shipped',
-    'metrics.packages': 'Packages tracked',
-    'metrics.bumps': 'Version bumps',
-    'metrics.users': 'Users',
+    'metrics.repos': 'Repos tracked',
+    'metrics.commits': 'Commits analyzed',
 
     // Features
     'features.title': 'Why FerrFlow?',
@@ -105,9 +104,8 @@ const ui = {
     'metrics.title': 'Utilis\u00e9 en production',
     'metrics.subtitle': "Des chiffres concrets d'\u00e9quipes qui publient avec FerrFlow.",
     'metrics.releases': 'Releases publi\u00e9es',
-    'metrics.packages': 'Packages suivis',
-    'metrics.bumps': 'Incr\u00e9ments de version',
-    'metrics.users': 'Utilisateurs',
+    'metrics.repos': 'Repos suivis',
+    'metrics.commits': 'Commits analys\u00e9s',
 
     // Features
     'features.title': 'Pourquoi FerrFlow ?',

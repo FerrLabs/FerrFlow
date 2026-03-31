@@ -158,22 +158,18 @@ const currentPath = lang === 'en' ? '/' : '/fr/';
       <h2 class="text-4xl sm:text-5xl font-black text-primary-950 tracking-tight">{t(lang, 'metrics.title')}</h2>
       <p class="mt-4 text-lg text-primary-700 font-normal">{t(lang, 'metrics.subtitle')}</p>
     </div>
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-6" id="stats">
+    <div class="grid grid-cols-3 gap-6" id="stats">
       <div class="text-center p-6 rounded-2xl border border-primary-100 opacity-0 animate-fade-up" style="animation-delay: 0ms; box-shadow: 0 4px 24px rgba(232,115,58,0.07);">
         <div class="text-4xl sm:text-5xl font-black text-primary-600 tracking-tight" data-stat="total_releases">0</div>
         <div class="mt-2 text-sm text-primary-700 font-medium">{t(lang, 'metrics.releases')}</div>
       </div>
       <div class="text-center p-6 rounded-2xl border border-primary-100 opacity-0 animate-fade-up" style="animation-delay: 80ms; box-shadow: 0 4px 24px rgba(232,115,58,0.07);">
-        <div class="text-4xl sm:text-5xl font-black text-primary-600 tracking-tight" data-stat="total_packages">0</div>
-        <div class="mt-2 text-sm text-primary-700 font-medium">{t(lang, 'metrics.packages')}</div>
+        <div class="text-4xl sm:text-5xl font-black text-primary-600 tracking-tight" data-stat="total_repos">0</div>
+        <div class="mt-2 text-sm text-primary-700 font-medium">{t(lang, 'metrics.repos')}</div>
       </div>
       <div class="text-center p-6 rounded-2xl border border-primary-100 opacity-0 animate-fade-up" style="animation-delay: 160ms; box-shadow: 0 4px 24px rgba(232,115,58,0.07);">
-        <div class="text-4xl sm:text-5xl font-black text-primary-600 tracking-tight" data-stat="total_bumps">0</div>
-        <div class="mt-2 text-sm text-primary-700 font-medium">{t(lang, 'metrics.bumps')}</div>
-      </div>
-      <div class="text-center p-6 rounded-2xl border border-primary-100 opacity-0 animate-fade-up" style="animation-delay: 240ms; box-shadow: 0 4px 24px rgba(232,115,58,0.07);">
-        <div class="text-4xl sm:text-5xl font-black text-primary-600 tracking-tight" data-stat="total_users">0</div>
-        <div class="mt-2 text-sm text-primary-700 font-medium">{t(lang, 'metrics.users')}</div>
+        <div class="text-4xl sm:text-5xl font-black text-primary-600 tracking-tight" data-stat="total_commits_analyzed">0</div>
+        <div class="mt-2 text-sm text-primary-700 font-medium">{t(lang, 'metrics.commits')}</div>
       </div>
     </div>
   </div>
