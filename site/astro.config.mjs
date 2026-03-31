@@ -17,6 +17,10 @@ export default defineConfig({
           label: 'English',
           lang: 'en',
         },
+        fr: {
+          label: 'Fran\u00e7ais',
+          lang: 'fr',
+        },
       },
       components: {
         ThemeSelect: './src/components/ThemeSelect.astro',
@@ -84,6 +88,10 @@ export default defineConfig({
       ],
     }),
   ],
+  redirects: {
+    '/en': '/',
+    '/en/[...slug]': '/[...slug]',
+  },
   vite: {
     plugins: [tailwindcss()],
   },

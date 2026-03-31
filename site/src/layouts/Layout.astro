@@ -1,23 +1,28 @@
 ---
 import '../styles/global.css';
+import type { Lang } from '../i18n/translations';
 
 interface Props {
   title: string;
   description?: string;
   canonical?: string;
+  lang?: Lang;
+  alternates?: { lang: string; href: string }[];
 }
 
 const {
   title,
   description = 'Universal semantic versioning for monorepos and classic repos',
   canonical = Astro.url.href,
+  lang = 'en',
+  alternates = [],
 } = Astro.props;
 
 const ogImage = 'https://ferrflow.com/og.png';
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang={lang}>
   <head>
     <meta charset="UTF-8" />
     <meta name="description" content={description} />
@@ -31,6 +36,12 @@ const ogImage = 'https://ferrflow.com/og.png';
     <title>{title}</title>
 
     <link rel="canonical" href={canonical} />
+    {alternates.map(alt => (
+      <link rel="alternate" hreflang={alt.lang} href={alt.href} />
+    ))}
+    {alternates.length > 0 && (
+      <link rel="alternate" hreflang="x-default" href={alternates.find(a => a.lang === 'en')?.href ?? canonical} />
+    )}
 
     <meta property="og:type"        content="website" />
     <meta property="og:url"         content={canonical} />
@@ -38,6 +49,10 @@ const ogImage = 'https://ferrflow.com/og.png';
     <meta property="og:description" content={description} />
     <meta property="og:image"       content={ogImage} />
     <meta property="og:site_name"   content="FerrFlow" />
+    <meta property="og:locale"      content={lang === 'fr' ? 'fr_FR' : 'en_US'} />
+    {alternates.filter(a => a.lang !== lang).map(alt => (
+      <meta property="og:locale:alternate" content={alt.lang === 'fr' ? 'fr_FR' : 'en_US'} />
+    ))}
 
     <meta name="twitter:card"        content="summary_large_image" />
     <meta name="twitter:title"       content={title} />
@@ -50,6 +65,7 @@ const ogImage = 'https://ferrflow.com/og.png';
       "name": "FerrFlow",
       "url": "https://ferrflow.com",
       "description": description,
+      "inLanguage": lang,
       "publisher": {
         "@type": "Organization",
         "name": "FerrFlow",
