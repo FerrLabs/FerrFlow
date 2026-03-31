@@ -1,4 +1,5 @@
 use serde::Serialize;
+use sha2::Digest;
 
 const DEFAULT_API_URL: &str = "https://api.ferrflow.com";
 
@@ -22,6 +23,10 @@ struct EventPayload {
     package_version: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     metadata: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    repo_hash: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    commits_count: Option<i32>,
 }
 
 fn is_enabled() -> bool {
@@ -39,11 +44,28 @@ fn api_url() -> String {
     std::env::var("FERRFLOW_API_URL").unwrap_or_else(|_| DEFAULT_API_URL.to_string())
 }
 
+fn get_repo_hash() -> Option<String> {
+    let output = std::process::Command::new("git")
+        .args(["remote", "get-url", "origin"])
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let url = String::from_utf8(output.stdout).ok()?.trim().to_string();
+    if url.is_empty() {
+        return None;
+    }
+    let hash = sha2::Sha256::digest(url.as_bytes());
+    Some(hex::encode(hash))
+}
+
 pub fn send_event(
     event_type: EventType,
     package_name: Option<&str>,
     package_version: Option<&str>,
     metadata: Option<serde_json::Value>,
+    commits_count: Option<i32>,
 ) {
     if !is_enabled() {
         return;
@@ -54,6 +76,8 @@ pub fn send_event(
         package_name: package_name.map(String::from),
         package_version: package_version.map(String::from),
         metadata,
+        repo_hash: get_repo_hash(),
+        commits_count,
     };
 
     let url = format!("{}/events", api_url());
@@ -99,11 +123,15 @@ mod tests {
             package_name: None,
             package_version: None,
             metadata: None,
+            repo_hash: None,
+            commits_count: None,
         };
         let json = serde_json::to_value(&payload).unwrap();
         assert!(!json.as_object().unwrap().contains_key("package_name"));
         assert!(!json.as_object().unwrap().contains_key("package_version"));
         assert!(!json.as_object().unwrap().contains_key("metadata"));
+        assert!(!json.as_object().unwrap().contains_key("repo_hash"));
+        assert!(!json.as_object().unwrap().contains_key("commits_count"));
     }
 
     #[test]
@@ -113,11 +141,15 @@ mod tests {
             package_name: Some("my-pkg".into()),
             package_version: Some("1.0.0".into()),
             metadata: None,
+            repo_hash: Some("abc123".into()),
+            commits_count: Some(42),
         };
         let json = serde_json::to_value(&payload).unwrap();
         assert_eq!(json["event_type"], "release");
         assert_eq!(json["package_name"], "my-pkg");
         assert_eq!(json["package_version"], "1.0.0");
+        assert_eq!(json["repo_hash"], "abc123");
+        assert_eq!(json["commits_count"], 42);
     }
 
     #[test]

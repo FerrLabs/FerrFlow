@@ -28,7 +28,7 @@ pub fn check(config_path: Option<&Path>, verbose: bool) -> Result<()> {
     let result = run_release_logic(&root, &config, true, verbose);
 
     if config.workspace.telemetry {
-        telemetry::send_event(telemetry::EventType::Check, None, None, None);
+        telemetry::send_event(telemetry::EventType::Check, None, None, None, None);
     }
 
     result
@@ -79,8 +79,8 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
 
     let mut any_bumped = false;
     let mut files_to_commit: Vec<String> = Vec::new();
-    // (tag_name, tag_msg, body, pkg_name, version)
-    let mut tags_to_create: Vec<(String, String, String, String, String)> = Vec::new();
+    // (tag_name, tag_msg, body, pkg_name, version, commits_count)
+    let mut tags_to_create: Vec<(String, String, String, String, String, i32)> = Vec::new();
     let mut hook_contexts: Vec<(HookContext, usize)> = Vec::new(); // (ctx, pkg_index)
 
     for (pkg_idx, pkg) in config.packages.iter().enumerate() {
@@ -280,6 +280,7 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
                     Some(&pkg.name),
                     Some(&new_version),
                     None,
+                    Some(commits.len() as i32),
                 );
             }
 
@@ -290,6 +291,7 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
                 body,
                 pkg.name.clone(),
                 new_version.clone(),
+                commits.len() as i32,
             ));
         }
 
@@ -327,7 +329,7 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
         // Build the release commit message.
         let release_parts: Vec<String> = tags_to_create
             .iter()
-            .map(|(_, _, _, name, ver)| format!("{name} v{ver}"))
+            .map(|(_, _, _, name, ver, _)| format!("{name} v{ver}"))
             .collect();
         let skip_ci = if config.workspace.effective_skip_ci() {
             " [skip ci]"
@@ -362,7 +364,7 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
                             "Automated release commit.\n\n{}",
                             tags_to_create
                                 .iter()
-                                .map(|(tag, _, _, _, _)| format!("- `{tag}`"))
+                                .map(|(tag, _, _, _, _, _)| format!("- `{tag}`"))
                                 .collect::<Vec<_>>()
                                 .join("\n")
                         );
@@ -400,7 +402,7 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
             }
 
             // Tags are always created on the current HEAD.
-            for (tag_name, tag_msg, _, _, _) in &tags_to_create {
+            for (tag_name, tag_msg, _, _, _, _) in &tags_to_create {
                 create_tag(&repo, tag_name, tag_msg)?;
                 println!("  ✓ Created tag {}", tag_name.cyan());
             }
@@ -429,7 +431,7 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
             // Push tags (and branch for commit mode).
             let tag_refs: Vec<&str> = tags_to_create
                 .iter()
-                .map(|(t, _, _, _, _)| t.as_str())
+                .map(|(t, _, _, _, _, _)| t.as_str())
                 .collect();
             match mode {
                 ReleaseCommitMode::Commit => {
@@ -458,12 +460,13 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
             }
 
             if config.workspace.telemetry {
-                for (_, _, _, pkg_name, version) in &tags_to_create {
+                for (_, _, _, pkg_name, version, commit_count) in &tags_to_create {
                     telemetry::send_event(
                         telemetry::EventType::Release,
                         Some(pkg_name),
                         Some(version),
                         None,
+                        Some(*commit_count),
                     );
                 }
             }
@@ -471,7 +474,7 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
             if let Ok(token) = std::env::var("GITHUB_TOKEN")
                 && let Some(slug) = get_repo_slug(&repo, &config.workspace.remote)
             {
-                for (tag_name, _, body, _, _) in &tags_to_create {
+                for (tag_name, _, body, _, _, _) in &tags_to_create {
                     match create_github_release(&token, &slug, tag_name, body) {
                         Ok(()) => println!("  ✓ GitHub Release {}", tag_name.cyan()),
                         Err(err) => eprintln!(
@@ -493,7 +496,7 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
                     .open(&summary_path)
                 {
                     let _ = writeln!(file, "## Released\n");
-                    for (tag_name, _, body, _, _) in &tags_to_create {
+                    for (tag_name, _, body, _, _, _) in &tags_to_create {
                         let _ = writeln!(file, "### {tag_name}\n");
                         let _ = writeln!(file, "{body}");
                     }
