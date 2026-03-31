@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.1] - 2026-03-31
+
+### Bug Fixes
+
+- fix(playground): Update @ferrflow/wasm to v2.5.3 (#116)
+
 ## [1.3.0] - 2026-03-31
 
 ### Features
