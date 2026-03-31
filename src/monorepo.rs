@@ -51,7 +51,7 @@ pub fn check(config_path: Option<&Path>, verbose: bool, json: bool) -> Result<()
     let result = run_release_logic(&root, &config, true, verbose, json);
 
     if config.workspace.anonymous_telemetry {
-        telemetry::send_event(telemetry::EventType::Check, None, None, None, None);
+        telemetry::send_event(telemetry::EventType::Check, None, None);
     }
 
     result
@@ -339,8 +339,6 @@ fn run_release_logic(
             if config.workspace.anonymous_telemetry {
                 telemetry::send_event(
                     telemetry::EventType::VersionBump,
-                    Some(&pkg.name),
-                    Some(&new_version),
                     None,
                     Some(commits.len() as i32),
                 );
@@ -532,14 +530,8 @@ fn run_release_logic(
             }
 
             if config.workspace.anonymous_telemetry {
-                for (_, _, _, pkg_name, version, commit_count) in &tags_to_create {
-                    telemetry::send_event(
-                        telemetry::EventType::Release,
-                        Some(pkg_name),
-                        Some(version),
-                        None,
-                        Some(*commit_count),
-                    );
+                for (_, _, _, _, _, commit_count) in &tags_to_create {
+                    telemetry::send_event(telemetry::EventType::Release, None, Some(*commit_count));
                 }
             }
 
