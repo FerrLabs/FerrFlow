@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.5.0] - 2026-03-31
+
+### Features
+
+- feat(cli): add --json flag to check command (#183)
+
 ## [2.4.0] - 2026-03-31
 
 ### Features
