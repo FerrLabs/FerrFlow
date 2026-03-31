@@ -19,7 +19,8 @@ RUN mkdir src && echo 'fn main() {}' > src/main.rs && echo '' > src/lib.rs \
 # Build for real
 COPY src ./src
 COPY benchmarks ./benchmarks
-RUN cargo build --release --package ferrflow
+RUN mkdir -p ferrflow-wasm/src && echo '' > ferrflow-wasm/src/lib.rs \
+    && cargo build --release --package ferrflow
 
 # Runtime stage
 FROM alpine:3.23
