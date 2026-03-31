@@ -139,9 +139,7 @@ jobs:
           fi
           CURRENT_BODY=$(gh release view "$TAG" --json body --jq '.body' 2>/dev/null || echo "")
           BENCH=$(cat benchmark-summary/release-summary.md)
-          NEW_BODY="${CURRENT_BODY}
-
-${BENCH}"
+          printf -v NEW_BODY '%s\n\n%s' "$CURRENT_BODY" "$BENCH"
           gh release edit "$TAG" --notes "$NEW_BODY"
         env:
           GH_TOKEN: ${{ secrets.FERRFLOW_TOKEN }}
