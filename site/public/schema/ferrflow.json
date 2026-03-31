@@ -98,7 +98,7 @@
                 "format": {
                   "type": "string",
                   "description": "File format used to locate and update the version field.",
-                  "enum": ["toml", "json", "xml", "gradle", "gomod", "txt"]
+                  "enum": ["toml", "json", "xml", "gradle", "gomod", "helm", "txt"]
                 }
               },
               "additionalProperties": false
