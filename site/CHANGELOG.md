@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.1] - 2026-03-31
+
+### Bug Fixes
+
+- fix(site): update documentation for v2 and correct github icon color (#81)
+
 ## [1.0.0] - 2026-03-30
 
 ### Breaking Changes
