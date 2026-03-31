@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.6.1] - 2026-03-31
+
+### Bug Fixes
+
+- fix(site): correct telemetry documentation inaccuracies (#131)
+
 ## [1.6.0] - 2026-03-31
 
 ### Features
