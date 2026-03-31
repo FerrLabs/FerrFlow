@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.0] - 2026-03-31
+
+### Features
+
+- feat(playground): add telemetry preview panel (#109)
+
 ## [1.2.1] - 2026-03-31
 
 ### Bug Fixes
