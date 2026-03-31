@@ -4,14 +4,14 @@ use crate::config::{Config, PackageConfig, VersioningStrategy};
 use crate::conventional_commits::{BumpType, determine_bump};
 use crate::formats::{get_handler, read_version, write_version};
 use crate::git::{
-    create_branch_and_commit, create_commit, create_tag, fetch_tags, get_changed_files,
-    get_changed_files_since_tag, get_commits_since_last_tag, get_repo_root, get_repo_slug,
-    open_repo, push, push_branch,
+    create_branch_and_commit, create_commit, create_or_move_tag, create_tag, fetch_tags,
+    force_push_tags, get_changed_files, get_changed_files_since_tag, get_commits_since_last_tag,
+    get_repo_root, get_repo_slug, get_tag_message, open_repo, push, push_branch, tag_exists,
 };
 use crate::hooks::{HookContext, HookPoint, resolve_hook, resolve_on_failure, run_hook};
 use crate::release::{create_github_pr, create_github_release, enable_auto_merge};
 use crate::telemetry;
-use crate::versioning::compute_next_version;
+use crate::versioning::{compute_next_version, truncate_version};
 use anyhow::Result;
 use colored::Colorize;
 use std::collections::HashSet;
@@ -48,7 +48,7 @@ pub fn check(config_path: Option<&Path>, verbose: bool, json: bool) -> Result<()
         println!();
     }
 
-    let result = run_release_logic(&root, &config, true, verbose, json);
+    let result = run_release_logic(&root, &config, true, verbose, json, false);
 
     if config.workspace.anonymous_telemetry {
         telemetry::send_event(telemetry::EventType::Check, None, None);
@@ -57,7 +57,12 @@ pub fn check(config_path: Option<&Path>, verbose: bool, json: bool) -> Result<()
     result
 }
 
-pub fn release(config_path: Option<&Path>, dry_run: bool, verbose: bool) -> Result<()> {
+pub fn release(
+    config_path: Option<&Path>,
+    dry_run: bool,
+    verbose: bool,
+    force: bool,
+) -> Result<()> {
     let repo = open_repo(&std::env::current_dir()?)?;
     let root = get_repo_root(&repo)?;
     let config = Config::load(&root, config_path)?;
@@ -69,7 +74,7 @@ pub fn release(config_path: Option<&Path>, dry_run: bool, verbose: bool) -> Resu
     }
     println!();
 
-    run_release_logic(&root, &config, dry_run, verbose, false)
+    run_release_logic(&root, &config, dry_run, verbose, false, force)
 }
 
 fn run_release_logic(
@@ -78,6 +83,7 @@ fn run_release_logic(
     dry_run: bool,
     verbose: bool,
     json: bool,
+    force: bool,
 ) -> Result<()> {
     if config.packages.is_empty() {
         if json {
@@ -249,6 +255,25 @@ fn run_release_logic(
                     }
                 }
             }
+
+            // Show floating tags that would be created/moved.
+            let levels = pkg.effective_floating_tags(&config.workspace);
+            for level in levels {
+                if let Some(truncated) = truncate_version(&new_version, *level) {
+                    let float_tag =
+                        pkg.tag_for_version(&config.workspace, config.is_monorepo(), &truncated);
+                    let verb = if tag_exists(&repo, &float_tag) {
+                        "move"
+                    } else {
+                        "create"
+                    };
+                    println!(
+                        "    {} floating tag {}",
+                        format!("→ {verb}").dimmed(),
+                        float_tag.cyan()
+                    );
+                }
+            }
         }
 
         let hook_ctx = HookContext {
@@ -407,6 +432,7 @@ fn run_release_logic(
             ""
         };
         let commit_msg = format!("chore(release): {}{skip_ci}", release_parts.join(", "));
+        let mut floating_tag_names: Vec<String> = Vec::new();
 
         if !dry_run {
             match mode {
@@ -476,6 +502,60 @@ fn run_release_logic(
                 create_tag(&repo, tag_name, tag_msg)?;
                 println!("  ✓ Created tag {}", tag_name.cyan());
             }
+
+            // Floating tags (e.g. v1, v1.2) point to the latest release.
+            for (_, _, _, pkg_name, new_version, _) in &tags_to_create {
+                let pkg = config
+                    .packages
+                    .iter()
+                    .find(|p| &p.name == pkg_name)
+                    .unwrap();
+                let levels = pkg.effective_floating_tags(&config.workspace);
+                for level in levels {
+                    if let Some(truncated) = truncate_version(new_version, *level) {
+                        let float_tag = pkg.tag_for_version(
+                            &config.workspace,
+                            config.is_monorepo(),
+                            &truncated,
+                        );
+                        // Backward detection: if the floating tag already exists,
+                        // check whether the new version is actually newer.
+                        if tag_exists(&repo, &float_tag)
+                            && let Some(old_msg) = get_tag_message(&repo, &float_tag)
+                            && let Some(old_ver) = old_msg.strip_prefix("Release ")
+                            && semver::Version::parse(old_ver.trim_start_matches('v'))
+                                .ok()
+                                .zip(
+                                    semver::Version::parse(new_version.trim_start_matches('v'))
+                                        .ok(),
+                                )
+                                .is_some_and(|(old, new)| new < old)
+                        {
+                            if !force {
+                                anyhow::bail!(
+                                    "Floating tag {} would move backward ({} → {}). Use --force to override.",
+                                    float_tag,
+                                    old_ver,
+                                    new_version,
+                                );
+                            }
+                            eprintln!(
+                                "{}",
+                                format!(
+                                    "  ⚠ Floating tag {} moves backward ({} → {})",
+                                    float_tag, old_ver, new_version,
+                                )
+                                .yellow()
+                            );
+                        }
+                        let msg = format!("Release {new_version}");
+                        let moved = create_or_move_tag(&repo, &float_tag, &msg)?;
+                        let verb = if moved { "Moved" } else { "Created" };
+                        println!("  ✓ {} floating tag {}", verb, float_tag.cyan());
+                        floating_tag_names.push(float_tag);
+                    }
+                }
+            }
         }
 
         // --- pre_publish hooks (per released package) ---
@@ -527,6 +607,13 @@ fn run_release_logic(
                         println!("  ✓ Pushed tags");
                     }
                 }
+            }
+
+            // Force-push floating tags (they may already exist on the remote).
+            if !floating_tag_names.is_empty() {
+                let float_refs: Vec<&str> = floating_tag_names.iter().map(String::as_str).collect();
+                force_push_tags(&repo, &config.workspace.remote, &float_refs)?;
+                println!("  ✓ Pushed floating tags");
             }
 
             if config.workspace.anonymous_telemetry {
@@ -694,6 +781,7 @@ mod tests {
             versioning: None,
             tag_template: None,
             hooks: None,
+            floating_tags: None,
         }
     }
 

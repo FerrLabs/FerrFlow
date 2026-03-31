@@ -74,6 +74,8 @@ pub struct WorkspaceConfig {
     pub auto_merge_releases: bool,
     #[serde(default, alias = "skipCi")]
     pub skip_ci: Option<bool>,
+    #[serde(default, alias = "floatingTags")]
+    pub floating_tags: Vec<FloatingTagLevel>,
     #[serde(default)]
     pub hooks: Option<HooksConfig>,
 }
@@ -122,6 +124,8 @@ pub struct PackageConfig {
     pub versioning: Option<VersioningStrategy>,
     #[serde(alias = "tagTemplate")]
     pub tag_template: Option<String>,
+    #[serde(default, alias = "floatingTags")]
+    pub floating_tags: Option<Vec<FloatingTagLevel>>,
     #[serde(default)]
     pub hooks: Option<HooksConfig>,
 }
@@ -136,6 +140,13 @@ pub enum VersioningStrategy {
     CalverSeq,
     Sequential,
     Zerover,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum FloatingTagLevel {
+    Major,
+    Minor,
 }
 
 impl PackageConfig {
@@ -173,6 +184,16 @@ impl PackageConfig {
         let template = self.effective_template(workspace, is_monorepo);
         let prefix = template.split("{version}").next().unwrap_or(template);
         prefix.replace("{name}", &self.name)
+    }
+
+    pub fn effective_floating_tags<'a>(
+        &'a self,
+        workspace: &'a WorkspaceConfig,
+    ) -> &'a [FloatingTagLevel] {
+        match &self.floating_tags {
+            Some(tags) => tags,
+            None => &workspace.floating_tags,
+        }
     }
 }
 
@@ -253,6 +274,7 @@ const CAMEL_CASE_KEYS: &[&str] = &[
     "pre_publish",
     "post_publish",
     "on_failure",
+    "floating_tags",
 ];
 
 fn to_camel_case_keys(value: serde_json::Value) -> serde_json::Value {
@@ -496,6 +518,7 @@ impl Config {
                     versioning: None,
                     tag_template: None,
                     hooks: None,
+                    floating_tags: None,
                 }]
             },
         }
@@ -679,6 +702,7 @@ fn collect_package(path_default: &str, monorepo: bool) -> PackageConfig {
         versioning: None,
         tag_template: None,
         hooks: None,
+        floating_tags: None,
     }
 }
 
@@ -877,6 +901,7 @@ format = "toml"
             versioning: None,
             tag_template: None,
             hooks: None,
+            floating_tags: None,
         };
         assert_eq!(pkg.effective_versioning(&ws), VersioningStrategy::Calver);
     }
@@ -896,6 +921,7 @@ format = "toml"
             versioning: Some(VersioningStrategy::Zerover),
             tag_template: None,
             hooks: None,
+            floating_tags: None,
         };
         assert_eq!(pkg.effective_versioning(&ws), VersioningStrategy::Zerover);
     }
@@ -914,6 +940,7 @@ format = "toml"
             versioning: None,
             tag_template: tag_template.map(String::from),
             hooks: None,
+            floating_tags: None,
         }
     }
 
@@ -1125,6 +1152,7 @@ format = "toml"
                 versioning: None,
                 tag_template: Some("{name}@v{version}".into()),
                 hooks: None,
+                floating_tags: None,
             }],
         };
         let serialized = handler.serialize(&config).unwrap();
@@ -1168,6 +1196,7 @@ format = "toml"
                 versioning: None,
                 tag_template: Some("{name}@v{version}".into()),
                 hooks: None,
+                floating_tags: None,
             }],
         };
         let serialized = handler.serialize(&config).unwrap();
@@ -1699,6 +1728,7 @@ format = "toml"
             versioning: None,
             tag_template: Some("release-latest".to_string()),
             hooks: None,
+            floating_tags: None,
         };
         // When template has no {version}, prefix is the entire template
         assert_eq!(pkg.tag_prefix(&ws, false), "release-latest");
@@ -1716,6 +1746,7 @@ format = "toml"
             versioning: None,
             tag_template: Some("{name}/v{version}".to_string()),
             hooks: None,
+            floating_tags: None,
         };
         assert_eq!(pkg.tag_for_version(&ws, true, "1.2.3"), "api/v1.2.3");
     }
