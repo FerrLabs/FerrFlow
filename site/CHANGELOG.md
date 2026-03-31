@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.5.0] - 2026-03-31
+
+### Features
+
+- feat(site): show file paths as titles on code blocks (#128)
+- feat(playground): hide undefined config fields with Show all toggle (#127)
+
+### Bug Fixes
+
+- fix(playground): Update @ferrflow/wasm to v2.6.1 (#126)
+- fix(playground): Update @ferrflow/wasm to v2.6.0 (#125)
+
 ## [1.4.2] - 2026-03-31
 
 ### Bug Fixes
