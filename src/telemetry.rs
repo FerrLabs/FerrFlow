@@ -7,8 +7,8 @@ type HmacSha256 = Hmac<sha2::Sha256>;
 
 const DEFAULT_API_URL: &str = "https://api.ferrflow.com";
 
-fn hmac_secret() -> &'static str {
-    option_env!("FERRFLOW_HMAC_SECRET").unwrap_or(env!("FERRFLOW_HMAC_SECRET"))
+fn hmac_secret() -> Option<&'static str> {
+    option_env!("FERRFLOW_HMAC_SECRET")
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -107,19 +107,21 @@ pub fn send_event(
             .as_secs()
             .to_string();
 
-        let message = format!("{timestamp}.{body}");
-        let mut mac = HmacSha256::new_from_slice(hmac_secret().as_bytes())
-            .expect("HMAC accepts any key length");
-        mac.update(message.as_bytes());
-        let signature = hex::encode(mac.finalize().into_bytes());
-
         let agent = ureq::Agent::new_with_defaults();
-        let _ = agent
-            .post(&url)
-            .header("Content-Type", "application/json")
-            .header("X-Timestamp", &timestamp)
-            .header("X-Signature", &signature)
-            .send(body.as_bytes());
+        let mut req = agent.post(&url).header("Content-Type", "application/json");
+
+        if let Some(secret) = hmac_secret() {
+            let message = format!("{timestamp}.{body}");
+            let mut mac =
+                HmacSha256::new_from_slice(secret.as_bytes()).expect("HMAC accepts any key length");
+            mac.update(message.as_bytes());
+            let signature = hex::encode(mac.finalize().into_bytes());
+            req = req
+                .header("X-Timestamp", &timestamp)
+                .header("X-Signature", &signature);
+        }
+
+        let _ = req.send(body.as_bytes());
     });
 }
 
