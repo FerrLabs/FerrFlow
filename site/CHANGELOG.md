@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.4.0] - 2026-03-31
+
+### Features
+
+- feat(site): add floating tags documentation and sync schema (#122)
+
 ## [1.3.1] - 2026-03-31
 
 ### Bug Fixes
