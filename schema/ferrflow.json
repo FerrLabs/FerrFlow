@@ -64,6 +64,15 @@
           "type": "boolean",
           "description": "Append [skip ci] to the release commit message. Defaults to true in 'commit' mode, false in 'pr' mode."
         },
+        "floatingTags": {
+          "type": "array",
+          "description": "Floating tag levels to create/move on each release. Each level produces a tag pointing to the latest matching release (e.g. 'major' creates a v1 tag for v1.2.3).",
+          "items": {
+            "type": "string",
+            "enum": ["major", "minor"]
+          },
+          "default": []
+        },
         "hooks": {
           "$ref": "#/$defs/hooks"
         }
@@ -125,6 +134,14 @@
             "type": "string",
             "description": "Tag template for this package. Use {name} for package name and {version} for version. Overrides workspace default.",
             "examples": ["v{version}", "{name}@v{version}", "{name}/v{version}", "release-{version}"]
+          },
+          "floatingTags": {
+            "type": "array",
+            "description": "Floating tag levels for this package. Overrides workspace default.",
+            "items": {
+              "type": "string",
+              "enum": ["major", "minor"]
+            }
           },
           "hooks": {
             "$ref": "#/$defs/hooks"
