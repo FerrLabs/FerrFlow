@@ -4,6 +4,16 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.7.0] - 2026-03-31
+
+### Features
+
+- feat(ci): include benchmark results in GitHub release notes (#192)
+
+### Bug Fixes
+
+- fix(ci): repair YAML syntax in release benchmark step (#193)
+
 ## [2.6.1] - 2026-03-31
 
 ### Bug Fixes
