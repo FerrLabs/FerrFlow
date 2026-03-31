@@ -1,3 +1,6 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use anyhow::{Context, Result};
 use git2::{Cred, CredentialType, PushOptions, RemoteCallbacks, Repository, Sort};
 use std::path::{Path, PathBuf};
@@ -266,13 +269,19 @@ pub fn force_push_tags(repo: &Repository, remote_name: &str, tags: &[&str]) -> R
     let mut remote = repo
         .find_remote(remote_name)
         .with_context(|| format!("Remote '{}' not found", remote_name))?;
-    let mut push_options = make_push_options();
+
+    let push_errors = Rc::new(RefCell::new(Vec::new()));
+    let mut push_options = make_push_options(push_errors.clone());
+
     let refspecs: Vec<String> = tags
         .iter()
         .map(|tag| format!("+refs/tags/{tag}:refs/tags/{tag}"))
         .collect();
     let refspec_refs: Vec<&str> = refspecs.iter().map(String::as_str).collect();
-    remote.push(&refspec_refs, Some(&mut push_options))?;
+    remote
+        .push(&refspec_refs, Some(&mut push_options))
+        .with_context(|| "Failed to force-push floating tags")?;
+    check_push_errors(&push_errors).with_context(|| "Floating tag push rejected")?;
     Ok(())
 }
 
@@ -346,12 +355,60 @@ pub fn create_branch_and_commit(
     Ok(())
 }
 
-fn make_push_options() -> PushOptions<'static> {
+fn make_push_options(push_errors: Rc<RefCell<Vec<String>>>) -> PushOptions<'static> {
     let mut callbacks = RemoteCallbacks::new();
     callbacks.credentials(credentials_callback);
+    let errors = push_errors.clone();
+    callbacks.push_update_reference(move |refname, status| {
+        if let Some(msg) = status {
+            errors.borrow_mut().push(format!("{refname}: {msg}"));
+        }
+        Ok(())
+    });
     let mut push_options = PushOptions::new();
     push_options.remote_callbacks(callbacks);
     push_options
+}
+
+fn check_push_errors(errors: &RefCell<Vec<String>>) -> Result<()> {
+    let errs = errors.borrow();
+    if errs.is_empty() {
+        return Ok(());
+    }
+    let joined = errs.join("; ");
+    anyhow::bail!("Push rejected by remote: {joined}");
+}
+
+pub fn verify_remote_branch(
+    repo: &Repository,
+    remote_name: &str,
+    branch: &str,
+    expected_oid: git2::Oid,
+) -> Result<()> {
+    let mut remote = repo
+        .find_remote(remote_name)
+        .with_context(|| format!("Remote '{}' not found", remote_name))?;
+
+    let mut callbacks = RemoteCallbacks::new();
+    callbacks.credentials(credentials_callback);
+
+    let connection = remote.connect_auth(git2::Direction::Fetch, Some(callbacks), None)?;
+
+    let expected_ref = format!("refs/heads/{branch}");
+    for head in connection.list()? {
+        if head.name() == expected_ref {
+            if head.oid() == expected_oid {
+                return Ok(());
+            }
+            anyhow::bail!(
+                "Remote branch '{}' points to {} but expected {}",
+                branch,
+                head.oid(),
+                expected_oid,
+            );
+        }
+    }
+    anyhow::bail!("Remote branch '{}' not found after push", branch);
 }
 
 pub fn push_branch(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
@@ -359,27 +416,65 @@ pub fn push_branch(repo: &Repository, remote_name: &str, branch: &str) -> Result
         .find_remote(remote_name)
         .with_context(|| format!("Remote '{}' not found", remote_name))?;
 
-    let mut push_options = make_push_options();
+    let push_errors = Rc::new(RefCell::new(Vec::new()));
+    let mut push_options = make_push_options(push_errors.clone());
 
     let refspec = format!("refs/heads/{branch}:refs/heads/{branch}");
-    remote.push(&[&refspec], Some(&mut push_options))?;
+    remote
+        .push(&[&refspec], Some(&mut push_options))
+        .with_context(|| format!("Failed to push branch '{branch}'"))?;
+    check_push_errors(&push_errors)
+        .with_context(|| format!("Branch push rejected for '{branch}'"))?;
 
     Ok(())
 }
 
-pub fn push(repo: &Repository, remote_name: &str, branch: &str, tags: &[&str]) -> Result<()> {
+pub fn push_tags(repo: &Repository, remote_name: &str, tags: &[&str]) -> Result<()> {
+    if tags.is_empty() {
+        return Ok(());
+    }
     let mut remote = repo
         .find_remote(remote_name)
         .with_context(|| format!("Remote '{}' not found", remote_name))?;
 
-    let mut push_options = make_push_options();
+    let push_errors = Rc::new(RefCell::new(Vec::new()));
+    let mut opts = make_push_options(push_errors.clone());
 
-    let mut refspecs: Vec<String> = vec![format!("refs/heads/{branch}:refs/heads/{branch}")];
-    for tag in tags {
-        refspecs.push(format!("refs/tags/{tag}:refs/tags/{tag}"));
+    let tag_refspecs: Vec<String> = tags
+        .iter()
+        .map(|tag| format!("refs/tags/{tag}:refs/tags/{tag}"))
+        .collect();
+    let tag_refs: Vec<&str> = tag_refspecs.iter().map(String::as_str).collect();
+    remote
+        .push(&tag_refs, Some(&mut opts))
+        .with_context(|| "Failed to push tags")?;
+    check_push_errors(&push_errors).with_context(|| "Tag push rejected")?;
+    Ok(())
+}
+
+pub fn push(repo: &Repository, remote_name: &str, branch: &str, tags: &[&str]) -> Result<()> {
+    // Push branch first
+    {
+        let mut remote = repo
+            .find_remote(remote_name)
+            .with_context(|| format!("Remote '{}' not found", remote_name))?;
+        let push_errors = Rc::new(RefCell::new(Vec::new()));
+        let mut opts = make_push_options(push_errors.clone());
+        let branch_refspec = format!("refs/heads/{branch}:refs/heads/{branch}");
+        remote
+            .push(&[&branch_refspec], Some(&mut opts))
+            .with_context(|| format!("Failed to push branch '{branch}'"))?;
+        check_push_errors(&push_errors)
+            .with_context(|| format!("Branch push rejected for '{branch}'"))?;
     }
-    let refspec_refs: Vec<&str> = refspecs.iter().map(String::as_str).collect();
-    remote.push(&refspec_refs, Some(&mut push_options))?;
+
+    // Verify branch landed on remote
+    let head_oid = repo.head()?.peel_to_commit()?.id();
+    verify_remote_branch(repo, remote_name, branch, head_oid)
+        .with_context(|| "Post-push verification failed: release commit not on remote branch")?;
+
+    // Push tags separately
+    push_tags(repo, remote_name, tags)?;
 
     Ok(())
 }

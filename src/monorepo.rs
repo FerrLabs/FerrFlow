@@ -6,7 +6,8 @@ use crate::formats::{get_handler, read_version, write_version};
 use crate::git::{
     create_branch_and_commit, create_commit, create_or_move_tag, create_tag, fetch_tags,
     force_push_tags, get_changed_files, get_changed_files_since_tag, get_commits_since_last_tag,
-    get_repo_root, get_repo_slug, get_tag_message, open_repo, push, push_branch, tag_exists,
+    get_repo_root, get_repo_slug, get_tag_message, open_repo, push, push_branch, push_tags,
+    tag_exists,
 };
 use crate::hooks::{HookContext, HookPoint, resolve_hook, resolve_on_failure, run_hook};
 use crate::release::{create_github_pr, create_github_release, enable_auto_merge};
@@ -592,18 +593,13 @@ fn run_release_logic(
                         &tag_refs,
                     )?;
                     println!(
-                        "  ✓ Pushed to {}/{}",
+                        "  ✓ Pushed and verified on {}/{}",
                         config.workspace.remote, config.workspace.branch
                     );
                 }
                 ReleaseCommitMode::Pr | ReleaseCommitMode::None => {
                     if !tag_refs.is_empty() {
-                        push(
-                            &repo,
-                            &config.workspace.remote,
-                            &config.workspace.branch,
-                            &tag_refs,
-                        )?;
+                        push_tags(&repo, &config.workspace.remote, &tag_refs)?;
                         println!("  ✓ Pushed tags");
                     }
                 }
