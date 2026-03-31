@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.2.0] - 2026-03-31
+
+### Features
+
+- feat: rework landing page metrics (repos tracked, commits analyzed) (#103)
+- feat(playground): run simulation live on input change (#95)
+
+### Bug Fixes
+
+- fix(deps): update rust crate sha2 to 0.11 (#104)
+- fix(playground): Update @ferrflow/wasm to v2.3.0 (#105)
+- fix(deps): update rust crate hmac to 0.13 (#102)
+- fix(playground): Update @ferrflow/wasm to v2.2.2 (#98)
+- fix(playground): add vite-plugin-wasm and renovate auto-merge rule (#91)
+- fix(api): fix analytics events insert and remove PII columns (#90)
+- fix(playground): add @ferrflow/wasm dependency (#89)
+
 ## [1.1.0] - 2026-03-31
 
 ### Features
