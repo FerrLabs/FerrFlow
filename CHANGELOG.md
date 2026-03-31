@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.6.0] - 2026-03-31
+
+### Features
+
+- feat(config): add configurable floating tag aliases (#189)
+
 ## [2.5.3] - 2026-03-31
 
 ## [2.5.2] - 2026-03-31
