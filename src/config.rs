@@ -60,8 +60,8 @@ pub struct WorkspaceConfig {
     pub remote: String,
     #[serde(default = "default_branch")]
     pub branch: String,
-    #[serde(default = "default_telemetry")]
-    pub telemetry: bool,
+    #[serde(default = "default_telemetry", alias = "telemetry")]
+    pub anonymous_telemetry: bool,
     #[serde(default)]
     pub versioning: VersioningStrategy,
     #[serde(alias = "tagTemplate")]
@@ -727,7 +727,7 @@ pub fn init(format: Option<ConfigFileFormat>) -> Result<()> {
     println!("Created {filename}");
     println!("Run: ferrflow check");
 
-    if config.workspace.telemetry {
+    if config.workspace.anonymous_telemetry {
         telemetry::send_event(telemetry::EventType::Init, None, None, None, None);
     }
 
@@ -1667,7 +1667,7 @@ format = "toml"
         let json = r#"{"workspace":{"remote":"origin"},"package":[]}"#;
         let config: Config = serde_json::from_str(json).unwrap();
         assert_eq!(config.workspace.remote, "origin");
-        assert!(config.workspace.telemetry);
+        assert!(config.workspace.anonymous_telemetry);
         assert!(config.workspace.auto_merge_releases);
     }
 

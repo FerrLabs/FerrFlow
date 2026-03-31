@@ -23,9 +23,14 @@
           "description": "Main branch name.",
           "default": "main"
         },
+        "anonymous_telemetry": {
+          "type": "boolean",
+          "description": "Send anonymous usage statistics to improve FerrFlow. No identifying data is collected.",
+          "default": true
+        },
         "telemetry": {
           "type": "boolean",
-          "description": "Send anonymous usage statistics to improve FerrFlow.",
+          "description": "Deprecated: use anonymous_telemetry instead.",
           "default": true
         },
         "versioning": {

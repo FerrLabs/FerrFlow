@@ -27,7 +27,7 @@ pub fn check(config_path: Option<&Path>, verbose: bool) -> Result<()> {
 
     let result = run_release_logic(&root, &config, true, verbose);
 
-    if config.workspace.telemetry {
+    if config.workspace.anonymous_telemetry {
         telemetry::send_event(telemetry::EventType::Check, None, None, None, None);
     }
 
@@ -274,7 +274,7 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
                 auto_stage_new_files(&repo, &before, &mut files_to_commit);
             }
 
-            if config.workspace.telemetry {
+            if config.workspace.anonymous_telemetry {
                 telemetry::send_event(
                     telemetry::EventType::VersionBump,
                     Some(&pkg.name),
@@ -459,7 +459,7 @@ fn run_release_logic(root: &Path, config: &Config, dry_run: bool, verbose: bool)
                 }
             }
 
-            if config.workspace.telemetry {
+            if config.workspace.anonymous_telemetry {
                 for (_, _, _, pkg_name, version, commit_count) in &tags_to_create {
                     telemetry::send_event(
                         telemetry::EventType::Release,

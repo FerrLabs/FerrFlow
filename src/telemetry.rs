@@ -38,7 +38,12 @@ struct EventPayload {
 }
 
 fn is_enabled() -> bool {
-    check_enabled(std::env::var("FERRFLOW_TELEMETRY").ok().as_deref())
+    check_enabled(
+        std::env::var("FERRFLOW_ANONYMOUS_TELEMETRY")
+            .or_else(|_| std::env::var("FERRFLOW_TELEMETRY"))
+            .ok()
+            .as_deref(),
+    )
 }
 
 fn check_enabled(val: Option<&str>) -> bool {
