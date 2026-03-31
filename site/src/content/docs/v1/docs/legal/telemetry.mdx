@@ -13,7 +13,7 @@ Each time you run a command, FerrFlow may send a single event containing:
 
 | Field | Description |
 |-------|-------------|
-| `event_type` | The action performed: `check`, `release`, `version-bump`, or `init` |
+| `event_type` | The action performed: `check`, `release`, `version_bump`, or `init` |
 | `commits_count` | Number of commits since the last release |
 | `repo_hash` | A SHA-256 hash of your git remote URL (see below) |
 
@@ -74,4 +74,4 @@ Accepted values to disable: `false`, `0`, `off`, `no` (case-insensitive).
   </TabItem>
 </Tabs>
 
-The environment variable takes precedence over the config file.
+Either method is sufficient to disable telemetry. If the config file disables it, the environment variable cannot re-enable it, and vice versa.
