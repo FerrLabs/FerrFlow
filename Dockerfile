@@ -11,9 +11,10 @@ COPY ferrflow-wasm/Cargo.toml ferrflow-wasm/Cargo.toml
 # Create stubs for all crates/bins so cargo resolves the workspace
 RUN mkdir src && echo 'fn main() {}' > src/main.rs && echo '' > src/lib.rs \
     && mkdir -p benchmarks/fixtures && echo 'fn main() {}' > benchmarks/fixtures/generate.rs \
+    && mkdir -p benches && echo 'fn main() {}' > benches/ferrflow_benchmarks.rs \
     && mkdir -p ferrflow-wasm/src && echo '' > ferrflow-wasm/src/lib.rs \
     && cargo build --release --package ferrflow \
-    && rm -rf src benchmarks ferrflow-wasm/src
+    && rm -rf src benchmarks benches ferrflow-wasm/src
 
 # Build for real
 COPY src ./src
