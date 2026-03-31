@@ -78,6 +78,7 @@ Global settings that apply to all packages.
 | `skipCi` | boolean | depends on mode | Add `[skip ci]` to release commits. Defaults to `true` when mode is `"commit"`, `false` otherwise. |
 | `autoMergeReleases` | boolean | `true` | Enable auto-merge on release PRs (only applies when mode is `"pr"`) |
 | `recoverMissedReleases` | boolean | `false` | When enabled, if FerrFlow finds unreleased commits spanning multiple version bumps, it creates all intermediate releases instead of jumping to the latest version |
+| `floatingTags` | array | `[]` | Floating tag levels to create on each release: `"major"`, `"minor"`. For example, `["major"]` creates a `v1` tag that always points to the latest `v1.x.y` release. |
 | `telemetry` | boolean | `true` | Send anonymous usage telemetry ([details](/docs/legal/telemetry)) |
 
 ### Tag template
@@ -106,6 +107,22 @@ For monorepos, use `{name}` to namespace tags per package:
   }
 }
 ```
+
+### Floating tags
+
+Floating tags are version aliases that always point to the latest release matching a given level. This is useful for GitHub Actions or Docker images where users reference `v1` instead of `v1.2.3`.
+
+```json title="ferrflow.json"
+{
+  "workspace": {
+    "floatingTags": ["major"]
+  }
+}
+```
+
+When releasing `v1.2.3`, FerrFlow creates or moves a `v1` tag pointing to the same commit. With `["major", "minor"]`, both `v1` and `v1.2` tags are maintained.
+
+If a floating tag would move backward (e.g. releasing a `v1.1.0` hotfix when `v1.2.0` already exists), FerrFlow blocks the release. Use `--force` to override this check.
 
 ### Release commit mode
 
@@ -159,6 +176,7 @@ Defines a package to version. You can have one or many.
 | `sharedPaths` | no | `[]` | Paths that trigger this package when changed |
 | `versioning` | no | inherited from workspace | Override versioning strategy for this package |
 | `tagTemplate` | no | inherited from workspace | Override tag template for this package |
+| `floatingTags` | no | inherited from workspace | Override floating tags for this package |
 
 ### `versionedFiles`
 
