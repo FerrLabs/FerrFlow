@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.4.2] - 2026-03-31
+
+### Bug Fixes
+
+- fix(site): handle 404 for missing versioned pages (#124)
+
 ## [1.4.1] - 2026-03-31
 
 ### Bug Fixes
