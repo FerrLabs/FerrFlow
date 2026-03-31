@@ -14,8 +14,6 @@ Each time you run a command, FerrFlow may send a single event containing:
 | Field | Description |
 |-------|-------------|
 | `event_type` | The action performed: `check`, `release`, `version-bump`, or `init` |
-| `package_name` | Name of the package being versioned |
-| `package_version` | The new version number |
 | `commits_count` | Number of commits since the last release |
 | `repo_hash` | A SHA-256 hash of your git remote URL (see below) |
 
@@ -25,7 +23,7 @@ Only fields relevant to the command are included. Empty fields are omitted.
 
 Your repository URL is **never sent in plain text**. FerrFlow computes a SHA-256 hash of the git remote URL and sends only the resulting hex digest. This lets us count unique repositories without knowing which repositories they are.
 
-No source code, file names, commit messages, branch names, IP addresses, or personal information are ever collected or stored.
+No source code, file names, commit messages, branch names, package names, version numbers, IP addresses, or personal information are ever collected or stored.
 
 ## Where data is sent
 
