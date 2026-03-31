@@ -4,7 +4,7 @@ resolver = "3"
 
 [package]
 name = "ferrflow"
-version = "2.3.0"
+version = "2.4.0"
 edition = "2024"
 description = "Universal semantic versioning for monorepos and classic repos"
 license = "MPL-2.0"

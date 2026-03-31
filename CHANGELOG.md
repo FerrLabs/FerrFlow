@@ -4,6 +4,16 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.4.0] - 2026-03-31
+
+### Features
+
+- feat(telemetry): sign requests with HMAC-SHA256 (#179)
+
+### Bug Fixes
+
+- fix(ci): use option_env for HMAC secret and add it to benchmark jobs (#182)
+
 ## [2.3.0] - 2026-03-31
 
 ### Features
