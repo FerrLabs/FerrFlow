@@ -85,6 +85,12 @@ export default defineConfig({
             { label: 'Conventional Commits', slug: 'docs/reference/conventional-commits' },
           ],
         },
+        {
+          label: 'Legal',
+          items: [
+            { label: 'Telemetry', slug: 'docs/legal/telemetry' },
+          ],
+        },
       ],
     }),
   ],
