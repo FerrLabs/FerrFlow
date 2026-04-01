@@ -33,6 +33,15 @@ pub enum OnFailure {
     Continue,
 }
 
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum OrphanedTagStrategy {
+    #[default]
+    Warn,
+    TreeHash,
+    Message,
+}
+
 // ---------------------------------------------------------------------------
 // Config structs
 // ---------------------------------------------------------------------------
@@ -76,6 +85,8 @@ pub struct WorkspaceConfig {
     pub skip_ci: Option<bool>,
     #[serde(default, alias = "floatingTags")]
     pub floating_tags: Vec<FloatingTagLevel>,
+    #[serde(default, alias = "orphanedTagStrategy")]
+    pub orphaned_tag_strategy: OrphanedTagStrategy,
     #[serde(default)]
     pub hooks: Option<HooksConfig>,
 }
@@ -275,6 +286,7 @@ const CAMEL_CASE_KEYS: &[&str] = &[
     "post_publish",
     "on_failure",
     "floating_tags",
+    "orphaned_tag_strategy",
 ];
 
 fn to_camel_case_keys(value: serde_json::Value) -> serde_json::Value {

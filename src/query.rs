@@ -124,7 +124,7 @@ pub fn tag(config_path: Option<&std::path::Path>, package: Option<&str>, json: b
             .ok_or_else(|| anyhow::anyhow!("package '{}' not found", name))?;
 
         let prefix = pkg.tag_prefix(&config.workspace, config.is_monorepo());
-        let last_tag = find_last_tag_name(&repo, &prefix)?;
+        let last_tag = find_last_tag_name(&repo, &prefix, config.workspace.orphaned_tag_strategy)?;
 
         if json {
             println!(
@@ -144,7 +144,7 @@ pub fn tag(config_path: Option<&std::path::Path>, package: Option<&str>, json: b
     if config.packages.len() == 1 {
         let pkg = &config.packages[0];
         let prefix = pkg.tag_prefix(&config.workspace, config.is_monorepo());
-        let last_tag = find_last_tag_name(&repo, &prefix)?;
+        let last_tag = find_last_tag_name(&repo, &prefix, config.workspace.orphaned_tag_strategy)?;
 
         if json {
             println!(
@@ -163,7 +163,9 @@ pub fn tag(config_path: Option<&std::path::Path>, package: Option<&str>, json: b
             .iter()
             .map(|pkg| {
                 let prefix = pkg.tag_prefix(&config.workspace, config.is_monorepo());
-                let tag = find_last_tag_name(&repo, &prefix).unwrap_or(None);
+                let tag =
+                    find_last_tag_name(&repo, &prefix, config.workspace.orphaned_tag_strategy)
+                        .unwrap_or(None);
                 TagEntry {
                     name: pkg.name.clone(),
                     tag,

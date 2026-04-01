@@ -73,6 +73,12 @@
           },
           "default": []
         },
+        "orphanedTagStrategy": {
+          "type": "string",
+          "enum": ["warn", "treeHash", "message"],
+          "description": "How to handle tags pointing to orphaned commits (after rebase + force-push). 'warn' logs a warning and skips. 'treeHash' attempts recovery by matching the commit's tree hash. 'message' attempts recovery by matching the commit message.",
+          "default": "warn"
+        },
         "hooks": {
           "$ref": "#/$defs/hooks"
         }

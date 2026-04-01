@@ -37,7 +37,11 @@ pub fn run(config_path: Option<&std::path::Path>, output: &OutputFormat) -> Resu
 
     for pkg in &config.packages {
         let tag_search_prefix = pkg.tag_prefix(&config.workspace, config.is_monorepo());
-        let last_tag = find_last_tag_name(&repo, &tag_search_prefix)?;
+        let last_tag = find_last_tag_name(
+            &repo,
+            &tag_search_prefix,
+            config.workspace.orphaned_tag_strategy,
+        )?;
 
         let version = if let Some(vf) = pkg.versioned_files.first() {
             read_version(vf, &root).unwrap_or_else(|_| "unknown".to_string())
@@ -45,7 +49,11 @@ pub fn run(config_path: Option<&std::path::Path>, output: &OutputFormat) -> Resu
             "unknown".to_string()
         };
 
-        let commits = get_commits_since_last_tag(&repo, &tag_search_prefix)?;
+        let commits = get_commits_since_last_tag(
+            &repo,
+            &tag_search_prefix,
+            config.workspace.orphaned_tag_strategy,
+        )?;
         let has_changes = commits
             .iter()
             .map(|c| determine_bump(&c.message))
