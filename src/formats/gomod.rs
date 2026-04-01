@@ -49,6 +49,12 @@ impl VersionFile for GoModVersionFile {
     fn modifies_file(&self) -> bool {
         false
     }
+
+    fn read_version_from_bytes(&self, _content: &[u8], filename: &str) -> Result<String> {
+        anyhow::bail!(
+            "go.mod version is derived from git tags, cannot parse version from file content ({filename})"
+        )
+    }
 }
 
 #[cfg(test)]

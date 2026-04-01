@@ -72,6 +72,18 @@ pub enum Commands {
         #[arg(long)]
         json: bool,
     },
+    /// Validate config and versioned files
+    Validate {
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+        /// Remote repository (e.g. owner/repo for GitHub, or gitlab:group/project)
+        #[arg(long)]
+        repo: Option<String>,
+        /// Git ref for remote validation (branch, tag, commit)
+        #[arg(long, name = "ref")]
+        git_ref: Option<String>,
+    },
     /// Generate shell completion scripts
     Completions {
         /// Shell to generate completions for
@@ -99,6 +111,16 @@ impl Cli {
             Commands::Tag { package, json } => {
                 crate::query::tag(self.config.as_deref(), package.as_deref(), json)
             }
+            Commands::Validate {
+                json,
+                repo,
+                git_ref,
+            } => crate::validate::run(
+                self.config.as_deref(),
+                json,
+                repo.as_deref(),
+                git_ref.as_deref(),
+            ),
             Commands::Completions { shell } => {
                 clap_complete::generate(
                     shell,

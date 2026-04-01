@@ -8,3 +8,5 @@ pub mod versioning;
 pub mod git;
 #[cfg(feature = "cli")]
 pub mod telemetry;
+#[cfg(feature = "cli")]
+pub mod validate;

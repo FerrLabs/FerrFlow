@@ -10,6 +10,7 @@ mod query;
 mod release;
 mod status;
 mod telemetry;
+mod validate;
 mod versioning;
 
 use anyhow::Result;

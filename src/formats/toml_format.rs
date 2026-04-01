@@ -143,4 +143,35 @@ impl VersionFile for TomlVersionFile {
         std::fs::write(file_path, doc.to_string())?;
         Ok(())
     }
+
+    fn read_version_from_bytes(&self, content: &[u8], filename: &str) -> Result<String> {
+        let text =
+            std::str::from_utf8(content).with_context(|| format!("Invalid UTF-8 in {filename}"))?;
+        let doc: toml_edit::DocumentMut = text
+            .parse()
+            .with_context(|| format!("Invalid TOML in {filename}"))?;
+        if let Some(v) = doc
+            .get("package")
+            .and_then(|p| p.get("version"))
+            .and_then(|v| v.as_str())
+        {
+            return Ok(v.to_string());
+        }
+        if let Some(v) = doc
+            .get("project")
+            .and_then(|p| p.get("version"))
+            .and_then(|v| v.as_str())
+        {
+            return Ok(v.to_string());
+        }
+        if let Some(v) = doc
+            .get("tool")
+            .and_then(|t| t.get("poetry"))
+            .and_then(|p| p.get("version"))
+            .and_then(|v| v.as_str())
+        {
+            return Ok(v.to_string());
+        }
+        anyhow::bail!("No version found in {filename}")
+    }
 }

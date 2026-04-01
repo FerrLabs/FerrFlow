@@ -59,4 +59,14 @@ impl super::VersionFile for TxtVersionFile {
             .with_context(|| format!("failed to write {}", file_path.display()))?;
         Ok(())
     }
+
+    fn read_version_from_bytes(&self, content: &[u8], filename: &str) -> Result<String> {
+        let text =
+            std::str::from_utf8(content).with_context(|| format!("Invalid UTF-8 in {filename}"))?;
+        let version = text.trim();
+        if version.is_empty() {
+            anyhow::bail!("no version found in {filename}");
+        }
+        Ok(version.to_string())
+    }
 }

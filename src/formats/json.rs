@@ -72,4 +72,15 @@ impl VersionFile for JsonVersionFile {
         std::fs::write(file_path, new_content)?;
         Ok(())
     }
+
+    fn read_version_from_bytes(&self, content: &[u8], filename: &str) -> Result<String> {
+        let text =
+            std::str::from_utf8(content).with_context(|| format!("Invalid UTF-8 in {filename}"))?;
+        let v: serde_json::Value =
+            serde_json::from_str(text).with_context(|| format!("Invalid JSON in {filename}"))?;
+        v["version"]
+            .as_str()
+            .map(|s| s.to_string())
+            .ok_or_else(|| anyhow::anyhow!("No 'version' field in {filename}"))
+    }
 }

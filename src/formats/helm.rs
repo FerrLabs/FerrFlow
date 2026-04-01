@@ -59,6 +59,20 @@ impl VersionFile for HelmVersionFile {
         std::fs::write(file_path, out)?;
         Ok(())
     }
+
+    fn read_version_from_bytes(&self, content: &[u8], filename: &str) -> Result<String> {
+        let text =
+            std::str::from_utf8(content).with_context(|| format!("Invalid UTF-8 in {filename}"))?;
+        for line in text.lines() {
+            if let Some(v) = line.strip_prefix("version:") {
+                let v = v.trim().trim_matches('"').trim_matches('\'');
+                if !v.is_empty() {
+                    return Ok(v.to_string());
+                }
+            }
+        }
+        anyhow::bail!("No `version` field found in {filename}")
+    }
 }
 
 #[cfg(test)]

@@ -20,6 +20,8 @@ pub trait VersionFile {
     fn modifies_file(&self) -> bool {
         true
     }
+    /// Parse version from raw file content without filesystem access.
+    fn read_version_from_bytes(&self, content: &[u8], filename: &str) -> Result<String>;
 }
 
 pub fn get_handler(format: &FileFormat) -> Box<dyn VersionFile> {
