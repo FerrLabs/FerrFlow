@@ -5,100 +5,125 @@ description: Connect AI assistants to FerrFlow via the Model Context Protocol.
 
 import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
 
-The FerrFlow MCP server lets AI assistants (Claude, Cursor, Windsurf, etc.) interact with your FerrFlow setup through the [Model Context Protocol](https://modelcontextprotocol.io).
+The FerrFlow MCP server lets AI assistants (Claude, Cursor, Windsurf, etc.) interact with your FerrFlow setup through the [Model Context Protocol](https://modelcontextprotocol.io). It runs locally via stdio transport.
 
 ## Installation
 
-<Tabs>
-  <TabItem label="Docker">
-    ```bash
-    docker run -d \
-      --name ferrflow-mcp \
-      -p 3001:3001 \
-      ghcr.io/ferrflow-org/mcp:latest
-    ```
-  </TabItem>
-  <TabItem label="From source">
-    ```bash
-    git clone https://github.com/FerrFlow-Org/MCP.git
-    cd MCP
-    pnpm install
-    pnpm build
-    pnpm start
-    ```
+The MCP server is published as an npm package and runs via `npx` — no installation needed.
 
-    Requires Node.js 22+ and pnpm 9+.
-  </TabItem>
-</Tabs>
+```bash
+npx -y @ferrflow/mcp
+```
 
-The server starts on port **3001** by default.
-
-## Configuration
-
-The MCP server is configured via environment variables:
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `PORT` | Server listen port | `3001` |
-| `API_URL` | FerrFlow API base URL | `http://localhost:3000` |
+Requires Node.js 22+.
 
 ## Connecting to your AI assistant
 
-### Claude Desktop
+<Tabs>
+  <TabItem label="Claude Code">
+    ```bash
+    claude mcp add ferrflow -- npx -y @ferrflow/mcp
+    ```
+  </TabItem>
+  <TabItem label="Claude Desktop">
+    Add to your `claude_desktop_config.json`:
 
-Add the server to your `claude_desktop_config.json`:
-
-```json title="claude_desktop_config.json"
-{
-  "mcpServers": {
-    "ferrflow": {
-      "url": "http://localhost:3001"
+    ```json title="claude_desktop_config.json"
+    {
+      "mcpServers": {
+        "ferrflow": {
+          "command": "npx",
+          "args": ["-y", "@ferrflow/mcp"]
+        }
+      }
     }
-  }
-}
-```
+    ```
+  </TabItem>
+  <TabItem label="Cursor / Windsurf">
+    Add to your MCP settings:
 
-### Claude Code
-
-```bash
-claude mcp add ferrflow http://localhost:3001
-```
-
-### Cursor / Windsurf
-
-Add to your MCP settings:
-
-```json title="mcp_config.json"
-{
-  "mcpServers": {
-    "ferrflow": {
-      "url": "http://localhost:3001"
+    ```json title="mcp_config.json"
+    {
+      "mcpServers": {
+        "ferrflow": {
+          "command": "npx",
+          "args": ["-y", "@ferrflow/mcp"]
+        }
+      }
     }
-  }
-}
-```
+    ```
+  </TabItem>
+</Tabs>
 
-## Endpoints
+## Available tools
 
-| Path | Description |
+| Tool | Description |
 |------|-------------|
-| `/` | MCP StreamableHTTP transport |
-| `/health` | Health check (returns `ok`) |
+| `get_stats` | Get public usage statistics |
+| `health_check` | Check API health status |
+| `record_event` | Record an analytics event (release, check, init, or error) |
+| `read_config` | Read FerrFlow configuration from a GitHub repository |
+| `read_changelog` | Read changelog entries for a FerrFlow-managed package |
+| `list_release_tags` | List release tags for a package |
+| `dry_run` | Run a local dry-run and see what would be bumped |
+| `validate_config` | Validate a configuration file against the schema and check paths |
+| `get_me` | Get the current authenticated user profile |
+| `list_tokens` | List API tokens for the authenticated user |
+| `create_token` | Create a new API token |
+| `revoke_token` | Revoke an API token by ID |
+
+## Configuration
+
+The server is configured via environment variables:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `API_URL` | FerrFlow API base URL | `https://api.ferrflow.com` |
+| `FERRFLOW_API_TOKEN` | API authentication token (required for authenticated tools) | — |
+| `GITHUB_TOKEN` | GitHub personal access token (for reading private repos) | — |
+
+To pass environment variables, add an `env` block to your MCP config:
+
+```json
+{
+  "mcpServers": {
+    "ferrflow": {
+      "command": "npx",
+      "args": ["-y", "@ferrflow/mcp"],
+      "env": {
+        "FERRFLOW_API_TOKEN": "your-token-here"
+      }
+    }
+  }
+}
+```
+
+## Telemetry
+
+FerrFlow collects anonymous usage statistics to improve the tool. The remote URL of your repository is **never sent in plain text** — it is normalized (stripped of credentials, lowercased) and then SHA-256 hashed before being transmitted. This means FerrFlow can count unique repositories without knowing which repositories are being used.
+
+All URL formats produce the same hash:
+
+| Input | Normalized form |
+|-------|----------------|
+| `git@github.com:Org/Repo.git` | `github.com/org/repo` |
+| `https://github.com/Org/Repo.git` | `github.com/org/repo` |
+| `https://x-access-token:TOKEN@github.com/Org/Repo` | `github.com/org/repo` |
+
+The normalized form is hashed — only the hash is sent.
+
+Telemetry is enabled by default and can be disabled:
+
+- In the config file: set `workspace.anonymous_telemetry` to `false`
+- Via environment variable: set `FERRFLOW_ANONYMOUS_TELEMETRY=false`
 
 ## Development
 
 ```bash
+git clone https://github.com/FerrFlow-Org/MCP.git
+cd MCP
 pnpm install
 pnpm dev
-```
-
-## Kubernetes deployment
-
-The MCP server is designed to run on Kubernetes. The Docker image is available at:
-
-```
-ghcr.io/ferrflow-org/mcp:latest
-ghcr.io/ferrflow-org/mcp:0.2
 ```
 
 ## Source
