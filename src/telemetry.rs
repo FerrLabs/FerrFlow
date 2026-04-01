@@ -53,6 +53,40 @@ fn api_url() -> String {
     std::env::var("FERRFLOW_API_URL").unwrap_or_else(|_| DEFAULT_API_URL.to_string())
 }
 
+fn normalize_remote_url(raw: &str) -> String {
+    let url = raw.trim();
+
+    // SSH: git@github.com:Owner/Repo.git -> github.com/Owner/Repo
+    if let Some(rest) = url.strip_prefix("git@") {
+        let normalized = rest.replace(':', "/");
+        return normalized.trim_end_matches(".git").to_lowercase();
+    }
+
+    // HTTPS: strip scheme, credentials, and .git suffix
+    // https://x-access-token:TOKEN@github.com/Owner/Repo.git -> github.com/Owner/Repo
+    let without_scheme = url
+        .strip_prefix("https://")
+        .or_else(|| url.strip_prefix("http://"))
+        .unwrap_or(url);
+
+    // Strip credentials (user:pass@ or token@)
+    let without_creds = match without_scheme.find('@') {
+        Some(pos) => &without_scheme[pos + 1..],
+        None => without_scheme,
+    };
+
+    without_creds
+        .trim_end_matches(".git")
+        .trim_end_matches('/')
+        .to_lowercase()
+}
+
+fn hash_remote_url(url: &str) -> String {
+    let normalized = normalize_remote_url(url);
+    let hash = sha2::Sha256::digest(normalized.as_bytes());
+    hex::encode(hash)
+}
+
 fn get_repo_hash() -> Option<String> {
     let output = std::process::Command::new("git")
         .args(["remote", "get-url", "origin"])
@@ -65,8 +99,7 @@ fn get_repo_hash() -> Option<String> {
     if url.is_empty() {
         return None;
     }
-    let hash = sha2::Sha256::digest(url.as_bytes());
-    Some(hex::encode(hash))
+    Some(hash_remote_url(&url))
 }
 
 pub fn send_event(
@@ -187,5 +220,86 @@ mod tests {
         for val in ["true", "1", "yes", "anything"] {
             assert!(check_enabled(Some(val)), "should be enabled for {val}");
         }
+    }
+
+    #[test]
+    fn hash_remote_url_produces_consistent_hash() {
+        let h1 = hash_remote_url("git@github.com:Org/Repo.git");
+        let h2 = hash_remote_url("https://github.com/Org/Repo.git");
+        let h3 = hash_remote_url("https://x-access-token:TOKEN@github.com/Org/Repo");
+        assert_eq!(h1, h2);
+        assert_eq!(h2, h3);
+        assert_eq!(h1.len(), 64); // SHA-256 hex
+    }
+
+    #[test]
+    fn normalize_ssh_url() {
+        assert_eq!(
+            normalize_remote_url("git@github.com:FerrFlow-Org/FerrFlow.git"),
+            "github.com/ferrflow-org/ferrflow"
+        );
+    }
+
+    #[test]
+    fn normalize_https_url() {
+        assert_eq!(
+            normalize_remote_url("https://github.com/FerrFlow-Org/FerrFlow.git"),
+            "github.com/ferrflow-org/ferrflow"
+        );
+    }
+
+    #[test]
+    fn normalize_https_without_git_suffix() {
+        assert_eq!(
+            normalize_remote_url("https://github.com/FerrFlow-Org/FerrFlow"),
+            "github.com/ferrflow-org/ferrflow"
+        );
+    }
+
+    #[test]
+    fn normalize_https_with_token() {
+        assert_eq!(
+            normalize_remote_url(
+                "https://x-access-token:ghs_abc123@github.com/FerrFlow-Org/FerrFlow.git"
+            ),
+            "github.com/ferrflow-org/ferrflow"
+        );
+    }
+
+    #[test]
+    fn normalize_https_with_user_pass() {
+        assert_eq!(
+            normalize_remote_url("https://user:pass@github.com/Org/Repo.git"),
+            "github.com/org/repo"
+        );
+    }
+
+    #[test]
+    fn normalize_ssh_and_https_produce_same_hash() {
+        let ssh = normalize_remote_url("git@github.com:FerrFlow-Org/FerrFlow.git");
+        let https = normalize_remote_url("https://github.com/FerrFlow-Org/FerrFlow.git");
+        let https_no_git = normalize_remote_url("https://github.com/FerrFlow-Org/FerrFlow");
+        let https_token = normalize_remote_url(
+            "https://x-access-token:TOKEN@github.com/FerrFlow-Org/FerrFlow.git",
+        );
+        assert_eq!(ssh, https);
+        assert_eq!(https, https_no_git);
+        assert_eq!(https_no_git, https_token);
+    }
+
+    #[test]
+    fn normalize_trailing_slash() {
+        assert_eq!(
+            normalize_remote_url("https://github.com/Org/Repo/"),
+            "github.com/org/repo"
+        );
+    }
+
+    #[test]
+    fn normalize_http_url() {
+        assert_eq!(
+            normalize_remote_url("http://github.com/Org/Repo.git"),
+            "github.com/org/repo"
+        );
     }
 }
