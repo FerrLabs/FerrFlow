@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.8.0] - 2026-04-01
+
+### Features
+
+- feat(formats): add csproj format handler for .NET project files (#198)
+
 ## [2.7.1] - 2026-04-01
 
 ### Bug Fixes
