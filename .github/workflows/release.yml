@@ -201,35 +201,6 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: bash npm/scripts/publish-wasm.sh "${{ steps.version.outputs.value }}"
 
-  update-major-tag:
-    name: Update major version tag
-    needs: release
-    runs-on: ubuntu-latest
-    concurrency:
-      group: update-major-tag
-      cancel-in-progress: false
-    permissions:
-      contents: write
-    steps:
-      - name: Resolve tag
-        id: tag
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "name=${{ inputs.tag }}" >> $GITHUB_OUTPUT
-          else
-            echo "name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
-          fi
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ steps.tag.outputs.name }}
-      - name: Move major version tag
-        run: |
-          MAJOR="v$(echo "${TAG#v}" | cut -d. -f1)"
-          git tag -f "$MAJOR"
-          git push origin "refs/tags/$MAJOR" --force
-        env:
-          TAG: ${{ steps.tag.outputs.name }}
-
   publish-docker:
     name: Publish Docker
     needs: release
