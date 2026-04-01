@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.8.1] - 2026-04-01
+
+### Bug Fixes
+
+- fix(site): update MCP server docs for stdio-only transport (#147)
+- fix(playground): Update @ferrflow/wasm to v2.9.2 (#145)
+- fix(playground): Update @ferrflow/wasm to v2.9.1 (#144)
+
 ## [1.8.0] - 2026-04-01
 
 ### Features
