@@ -20,6 +20,13 @@
       "automergeType": "pr",
       "automergeStrategy": "squash",
       "groupName": "GitHub Actions"
+    },
+    {
+      "matchManagers": ["dockerfile"],
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "squash",
+      "groupName": "Docker images"
     }
   ]
 }
