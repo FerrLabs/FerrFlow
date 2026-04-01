@@ -5,6 +5,7 @@
 [![Latest release](https://img.shields.io/github/v/release/FerrFlow-Org/FerrFlow)](https://github.com/FerrFlow-Org/FerrFlow/releases/latest)
 [![Coverage](https://codecov.io/gh/FerrFlow-Org/FerrFlow/graph/badge.svg)](https://codecov.io/gh/FerrFlow-Org/FerrFlow)
 [![License](https://img.shields.io/github/license/FerrFlow-Org/FerrFlow)](LICENSE)
+[![Socket Badge](https://badge.socket.dev/npm/package/ferrflow/latest)](https://badge.socket.dev/npm/package/ferrflow/latest)
 
 Universal semantic versioning for monorepos and classic repos.
 
