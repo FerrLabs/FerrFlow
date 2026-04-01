@@ -17,6 +17,8 @@ RUN pnpm --filter @ferrflow/site build
 # Runtime stage
 FROM docker.io/library/nginx:alpine
 
+RUN apk upgrade --no-cache
+
 COPY --from=builder /app/packages/site/dist /usr/share/nginx/html
 COPY packages/site/nginx.conf /etc/nginx/conf.d/default.conf
 
