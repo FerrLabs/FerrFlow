@@ -176,20 +176,43 @@ const currentPath = lang === 'en' ? '/' : '/fr/';
 </section>
 
 <script>
-  async function fetchStats() {
-    try {
-      const res = await fetch('https://api.ferrflow.com/stats');
-      if (!res.ok) return;
-      const data = await res.json();
-      for (const [key, value] of Object.entries(data)) {
-        const el = document.querySelector(`[data-stat="${key}"]`);
-        if (el) el.textContent = Number(value).toLocaleString();
-      }
-    } catch {
-      // Keep fallback
+  const API_URL = 'https://api.ferrflow.com';
+
+  function updateStats(data: Record<string, unknown>) {
+    for (const [key, value] of Object.entries(data)) {
+      const el = document.querySelector(`[data-stat="${key}"]`);
+      if (el) el.textContent = Number(value).toLocaleString();
     }
   }
+
+  async function fetchStats() {
+    try {
+      const res = await fetch(`${API_URL}/stats`);
+      if (!res.ok) return;
+      updateStats(await res.json());
+    } catch {
+      // Keep fallback values
+    }
+  }
+
+  function connectStatsStream() {
+    const source = new EventSource(`${API_URL}/stats/stream?interval=30`);
+
+    source.addEventListener('stats', (e) => {
+      try {
+        updateStats(JSON.parse(e.data));
+      } catch {
+        // Ignore malformed events
+      }
+    });
+
+    source.addEventListener('error', () => {
+      source.close();
+    });
+  }
+
   fetchStats();
+  connectStatsStream();
 </script>
 
 <!-- ─── Features ──────────────────────────────────────────── -->
