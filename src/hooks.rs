@@ -284,4 +284,73 @@ mod tests {
         };
         assert_eq!(resolve_on_failure(Some(&pkg), Some(&ws)), OnFailure::Abort);
     }
+
+    #[test]
+    fn handle_failure_abort_returns_error() {
+        let result = handle_failure(HookPoint::PreBump, "echo fail", Some(1), OnFailure::Abort);
+        assert!(result.is_err());
+        let msg = result.unwrap_err().to_string();
+        assert!(msg.contains("pre_bump"));
+        assert!(msg.contains("exit 1"));
+        assert!(msg.contains("echo fail"));
+    }
+
+    #[test]
+    fn handle_failure_continue_returns_ok() {
+        let result = handle_failure(
+            HookPoint::PostBump,
+            "echo fail",
+            Some(42),
+            OnFailure::Continue,
+        );
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn handle_failure_signal_no_exit_code() {
+        let result = handle_failure(HookPoint::PreCommit, "killed", None, OnFailure::Abort);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("signal"));
+    }
+
+    #[test]
+    fn hook_point_labels() {
+        assert_eq!(HookPoint::PreBump.label(), "pre_bump");
+        assert_eq!(HookPoint::PostBump.label(), "post_bump");
+        assert_eq!(HookPoint::PreCommit.label(), "pre_commit");
+        assert_eq!(HookPoint::PrePublish.label(), "pre_publish");
+        assert_eq!(HookPoint::PostPublish.label(), "post_publish");
+    }
+
+    #[test]
+    fn resolve_all_hook_points() {
+        let hooks = HooksConfig {
+            pre_bump: Some("a".into()),
+            post_bump: Some("b".into()),
+            pre_commit: Some("c".into()),
+            pre_publish: Some("d".into()),
+            post_publish: Some("e".into()),
+            on_failure: None,
+        };
+        assert_eq!(
+            resolve_hook(Some(&hooks), None, HookPoint::PreBump).as_deref(),
+            Some("a")
+        );
+        assert_eq!(
+            resolve_hook(Some(&hooks), None, HookPoint::PostBump).as_deref(),
+            Some("b")
+        );
+        assert_eq!(
+            resolve_hook(Some(&hooks), None, HookPoint::PreCommit).as_deref(),
+            Some("c")
+        );
+        assert_eq!(
+            resolve_hook(Some(&hooks), None, HookPoint::PrePublish).as_deref(),
+            Some("d")
+        );
+        assert_eq!(
+            resolve_hook(Some(&hooks), None, HookPoint::PostPublish).as_deref(),
+            Some("e")
+        );
+    }
 }

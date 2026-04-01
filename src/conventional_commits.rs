@@ -220,4 +220,55 @@ mod tests {
             BumpType::Patch
         );
     }
+
+    #[test]
+    fn test_uppercase_types_not_matched() {
+        assert_eq!(determine_bump("FEAT: add login"), BumpType::None);
+        assert_eq!(determine_bump("FIX: bug"), BumpType::None);
+        assert_eq!(determine_bump("Feat: add login"), BumpType::None);
+    }
+
+    #[test]
+    fn test_missing_colon() {
+        assert_eq!(determine_bump("feat add login"), BumpType::None);
+        assert_eq!(determine_bump("fix something"), BumpType::None);
+    }
+
+    #[test]
+    fn test_extra_space_after_type() {
+        // "feat : add" has a space before colon — should not match
+        assert_eq!(determine_bump("feat : add login"), BumpType::None);
+    }
+
+    #[test]
+    fn test_empty_scope() {
+        // Empty parens don't match the (.+) scope regex — requires at least one char
+        assert_eq!(determine_bump("feat(): add login"), BumpType::None);
+        assert_eq!(determine_bump("fix(): bug"), BumpType::None);
+    }
+
+    #[test]
+    fn test_breaking_change_not_at_line_start() {
+        // "not BREAKING CHANGE" in body — BREAKING CHANGE must be at start of line
+        let msg = "feat: something\n\nnot a BREAKING CHANGE here";
+        // The regex requires ^BREAKING CHANGE at line start, so this should NOT match
+        assert_eq!(determine_bump(msg), BumpType::Minor);
+    }
+
+    #[test]
+    fn test_parse_subject_crlf() {
+        assert_eq!(parse_subject("feat: add\r\nbody text"), "feat: add");
+    }
+
+    #[test]
+    fn test_parse_subject_only_newlines() {
+        assert_eq!(parse_subject("\n\n\n"), "");
+    }
+
+    #[test]
+    fn test_multiline_body_feat_in_body_matches() {
+        let msg = "chore: update deps\n\nfeat: this is in the body";
+        // The regex uses (?m) multiline, so feat: in the body DOES match
+        assert_eq!(determine_bump(msg), BumpType::Minor);
+    }
 }
