@@ -2,6 +2,7 @@
   "$schema": "https://ferrflow.com/schema/ferrflow.json",
   "workspace": {
     "tagTemplate": "v{version}",
+    "floatingTags": ["major"],
     "hooks": {
       "postBump": "node scripts/sync-optional-deps.js"
     }
