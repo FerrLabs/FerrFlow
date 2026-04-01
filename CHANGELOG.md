@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.8.3] - 2026-04-01
+
+### Bug Fixes
+
+- fix(ci): wait for GitHub release propagation before appending benchmarks (#203)
+
 ## [2.8.2] - 2026-04-01
 
 ### Bug Fixes
