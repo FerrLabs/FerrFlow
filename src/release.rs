@@ -22,6 +22,11 @@ pub fn create_github_release(token: &str, repo: &str, tag: &str, body: &str) -> 
     Ok(())
 }
 
+pub struct PullRequest {
+    pub number: u64,
+    pub node_id: String,
+}
+
 pub fn create_github_pr(
     token: &str,
     repo: &str,
@@ -29,7 +34,7 @@ pub fn create_github_pr(
     base: &str,
     title: &str,
     body: &str,
-) -> Result<u64> {
+) -> Result<PullRequest> {
     let url = format!("https://api.github.com/repos/{repo}/pulls");
 
     let payload = serde_json::json!({
@@ -54,21 +59,35 @@ pub fn create_github_pr(
         .as_u64()
         .ok_or_else(|| anyhow::anyhow!("PR response missing number field"))?;
 
-    Ok(number)
+    let node_id = response["node_id"]
+        .as_str()
+        .ok_or_else(|| anyhow::anyhow!("PR response missing node_id field"))?
+        .to_string();
+
+    Ok(PullRequest { number, node_id })
 }
 
-pub fn enable_auto_merge(token: &str, repo: &str, pr_number: u64) -> Result<()> {
-    let url = format!("https://api.github.com/repos/{repo}/pulls/{pr_number}/merge");
+pub fn enable_auto_merge(token: &str, pr_node_id: &str, pr_number: u64) -> Result<()> {
+    let query = serde_json::json!({
+        "query": "mutation($prId: ID!) { enablePullRequestAutoMerge(input: { pullRequestId: $prId, mergeMethod: SQUASH }) { pullRequest { number } } }",
+        "variables": { "prId": pr_node_id },
+    });
 
-    ureq::put(&url)
+    let response: serde_json::Value = ureq::post("https://api.github.com/graphql")
         .header("Authorization", &format!("Bearer {token}"))
-        .header("Accept", "application/vnd.github+json")
-        .header("X-GitHub-Api-Version", "2022-11-28")
         .header("User-Agent", "ferrflow")
-        .send_json(serde_json::json!({
-            "merge_method": "squash",
-        }))
-        .with_context(|| format!("Failed to enable auto-merge on PR #{pr_number}"))?;
+        .send_json(query)
+        .with_context(|| format!("Failed to enable auto-merge on PR #{pr_number}"))?
+        .body_mut()
+        .read_json()
+        .with_context(|| "Failed to parse GraphQL response")?;
+
+    if let Some(errors) = response.get("errors") {
+        let msg = errors[0]["message"]
+            .as_str()
+            .unwrap_or("unknown GraphQL error");
+        anyhow::bail!("Auto-merge failed on PR #{pr_number}: {msg}");
+    }
 
     Ok(())
 }

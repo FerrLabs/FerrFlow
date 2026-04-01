@@ -481,10 +481,10 @@ fn run_release_logic(
                             &pr_title,
                             &pr_body,
                         ) {
-                            Ok(pr_number) => {
-                                println!("  ✓ Created PR #{}", pr_number.to_string().cyan());
+                            Ok(pr) => {
+                                println!("  ✓ Created PR #{}", pr.number.to_string().cyan());
                                 if config.workspace.auto_merge_releases {
-                                    match enable_auto_merge(&token, &slug, pr_number) {
+                                    match enable_auto_merge(&token, &pr.node_id, pr.number) {
                                         Ok(()) => println!("  ✓ Auto-merge enabled"),
                                         Err(err) => eprintln!(
                                             "{}",
