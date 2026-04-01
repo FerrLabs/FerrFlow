@@ -844,4 +844,55 @@ mod tests {
         let files = vec!["packages/api/src/main.rs".to_string()];
         assert!(is_package_touched(&pkg, &files, true));
     }
+
+    #[test]
+    fn single_package_mode_always_touched() {
+        let pkg = make_pkg("api", "packages/api", &[]);
+        let files = vec!["unrelated/file.rs".to_string()];
+        assert!(is_package_touched(&pkg, &files, false));
+    }
+
+    #[test]
+    fn monorepo_empty_path_is_root() {
+        let pkg = make_pkg("root", "", &[]);
+        let files = vec!["anything.rs".to_string()];
+        assert!(is_package_touched(&pkg, &files, true));
+    }
+
+    #[test]
+    fn monorepo_exact_shared_path_file() {
+        let pkg = make_pkg("api", "packages/api", &["shared-config.json"]);
+        let files = vec!["shared-config.json".to_string()];
+        assert!(is_package_touched(&pkg, &files, true));
+    }
+
+    #[test]
+    fn monorepo_multiple_shared_paths() {
+        let pkg = make_pkg("api", "packages/api", &["lib/", "proto/"]);
+        let files = vec!["proto/schema.proto".to_string()];
+        assert!(is_package_touched(&pkg, &files, true));
+    }
+
+    #[test]
+    fn monorepo_similar_prefix_no_false_positive() {
+        let pkg = make_pkg("api", "packages/api", &[]);
+        // "packages/api-docs" should NOT match "packages/api/"
+        let files = vec!["packages/api-docs/README.md".to_string()];
+        assert!(!is_package_touched(&pkg, &files, true));
+    }
+
+    #[test]
+    fn monorepo_shared_path_with_trailing_slash() {
+        let pkg = make_pkg("api", "packages/api", &["packages/shared/"]);
+        let files = vec!["packages/shared/types.ts".to_string()];
+        assert!(is_package_touched(&pkg, &files, true));
+    }
+
+    #[test]
+    fn monorepo_empty_changed_files_single_package() {
+        let pkg = make_pkg("app", "packages/app", &[]);
+        let files: Vec<String> = vec![];
+        // Even single-package mode returns true regardless of changed files
+        assert!(is_package_touched(&pkg, &files, false));
+    }
 }

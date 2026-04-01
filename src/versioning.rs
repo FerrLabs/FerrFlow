@@ -387,4 +387,114 @@ mod tests {
             Some("1".to_string())
         );
     }
+
+    #[test]
+    fn bump_from_zero() {
+        assert_eq!(bump_version("0.0.0", BumpType::Patch).unwrap(), "0.0.1");
+        assert_eq!(bump_version("0.0.0", BumpType::Minor).unwrap(), "0.1.0");
+        assert_eq!(bump_version("0.0.0", BumpType::Major).unwrap(), "1.0.0");
+    }
+
+    #[test]
+    fn bump_large_versions() {
+        assert_eq!(
+            bump_version("99.99.99", BumpType::Patch).unwrap(),
+            "99.99.100"
+        );
+        assert_eq!(
+            bump_version("99.99.99", BumpType::Minor).unwrap(),
+            "99.100.0"
+        );
+        assert_eq!(
+            bump_version("99.99.99", BumpType::Major).unwrap(),
+            "100.0.0"
+        );
+    }
+
+    #[test]
+    fn zerover_from_zero() {
+        assert_eq!(bump_zerover("0.0.0", BumpType::Major).unwrap(), "0.1.0");
+        assert_eq!(bump_zerover("0.0.0", BumpType::Minor).unwrap(), "0.1.0");
+        assert_eq!(bump_zerover("0.0.0", BumpType::Patch).unwrap(), "0.0.1");
+    }
+
+    #[test]
+    fn zerover_with_v_prefix() {
+        assert_eq!(bump_zerover("v0.3.0", BumpType::Patch).unwrap(), "0.3.1");
+    }
+
+    #[test]
+    fn sequential_with_v_prefix_semver() {
+        assert_eq!(bump_sequential("v1.2.5").unwrap(), "6");
+    }
+
+    #[test]
+    fn calver_seq_empty_string() {
+        let v = calver_seq_version("").unwrap();
+        let parts: Vec<&str> = v.split('.').collect();
+        assert_eq!(parts.len(), 3);
+        assert_eq!(parts[2], "1");
+    }
+
+    #[test]
+    fn calver_seq_malformed_input() {
+        let v = calver_seq_version("garbage").unwrap();
+        assert!(v.ends_with(".1"));
+    }
+
+    #[test]
+    fn calver_seq_two_parts_only() {
+        let now = chrono::Local::now();
+        let current = format!("{}.{}", now.format("%Y"), now.format("%-m"));
+        let v = calver_seq_version(&current).unwrap();
+        // Two parts means splitn(3, '.') yields 2 elements, so seq = 1
+        assert!(v.ends_with(".1"));
+    }
+
+    #[test]
+    fn calver_seq_non_numeric_seq() {
+        let now = chrono::Local::now();
+        let current = format!("{}.{}.abc", now.format("%Y"), now.format("%-m"));
+        let v = calver_seq_version(&current).unwrap();
+        // "abc".parse::<u32>() fails -> unwrap_or(0) -> 0 + 1 = 1
+        assert!(v.ends_with(".1"));
+    }
+
+    #[test]
+    fn truncate_single_component() {
+        assert_eq!(
+            truncate_version("42", FloatingTagLevel::Major),
+            Some("42".to_string())
+        );
+        assert_eq!(truncate_version("42", FloatingTagLevel::Minor), None);
+    }
+
+    #[test]
+    fn truncate_v_prefix_minor() {
+        assert_eq!(
+            truncate_version("v2.5.9", FloatingTagLevel::Minor),
+            Some("2.5".to_string())
+        );
+    }
+
+    #[test]
+    fn compute_next_version_all_strategies() {
+        // Verify each strategy variant works through the dispatch
+        assert!(compute_next_version("1.0.0", BumpType::Patch, VersioningStrategy::Semver).is_ok());
+        assert!(
+            compute_next_version("0.1.0", BumpType::Patch, VersioningStrategy::Zerover).is_ok()
+        );
+        assert!(compute_next_version("5", BumpType::Patch, VersioningStrategy::Sequential).is_ok());
+        assert!(
+            compute_next_version("2020.1.1", BumpType::Patch, VersioningStrategy::Calver).is_ok()
+        );
+        assert!(
+            compute_next_version("2020.1.1", BumpType::Patch, VersioningStrategy::CalverShort)
+                .is_ok()
+        );
+        assert!(
+            compute_next_version("2020.1.1", BumpType::Patch, VersioningStrategy::CalverSeq)
+                .is_ok()
+        );
+    }
 }
