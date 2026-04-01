@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.7.0] - 2026-04-01
+
+### Features
+
+- feat(playground): add markdown rendering toggle in changelog preview (#135)
+- feat(site): document orphanedTagStrategy config option (#134)
+
+### Bug Fixes
+
+- fix(playground): Update @ferrflow/wasm to v2.7.0 (#132)
+
 ## [1.6.1] - 2026-03-31
 
 ### Bug Fixes
