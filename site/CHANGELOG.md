@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.7.1] - 2026-04-01
+
+### Bug Fixes
+
+- fix(docker): patch Alpine zlib CVE and add Renovate Docker automerge (#142)
+- fix(playground): Update @ferrflow/wasm to v2.8.5 (#140)
+- fix(playground): Update @ferrflow/wasm to v2.8.4 (#139)
+- fix(playground): Update @ferrflow/wasm to v2.8.1 (#138)
+- fix(playground): Update @ferrflow/wasm to v2.7.1 (#137)
+- fix: remove broken license badge on private repo (#136)
+
 ## [1.7.0] - 2026-04-01
 
 ### Features
