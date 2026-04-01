@@ -132,7 +132,11 @@ fn run_release_logic(
         let mut touched = is_package_touched(pkg, &changed_files, config.is_monorepo());
 
         if !touched && config.workspace.recover_missed_releases && config.is_monorepo() {
-            let files_since_tag = get_changed_files_since_tag(&repo, &tag_search_prefix)?;
+            let files_since_tag = get_changed_files_since_tag(
+                &repo,
+                &tag_search_prefix,
+                config.workspace.orphaned_tag_strategy,
+            )?;
             if is_package_touched(pkg, &files_since_tag, true) {
                 touched = true;
                 if verbose && !json {
@@ -156,7 +160,11 @@ fn run_release_logic(
             continue;
         }
 
-        let commits = get_commits_since_last_tag(&repo, &tag_search_prefix)?;
+        let commits = get_commits_since_last_tag(
+            &repo,
+            &tag_search_prefix,
+            config.workspace.orphaned_tag_strategy,
+        )?;
 
         if commits.is_empty() {
             if verbose && !json {

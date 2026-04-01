@@ -6,6 +6,7 @@ use git2::{Cred, CredentialType, PushOptions, RemoteCallbacks, Repository, Sort}
 use std::path::{Path, PathBuf};
 
 pub use crate::changelog::GitLog;
+use crate::config::OrphanedTagStrategy;
 
 pub fn open_repo(path: &Path) -> Result<Repository> {
     Repository::discover(path).with_context(|| format!("Not a git repository: {}", path.display()))
@@ -17,8 +18,12 @@ pub fn get_repo_root(repo: &Repository) -> Result<PathBuf> {
         .ok_or_else(|| anyhow::anyhow!("Bare repositories are not supported"))
 }
 
-pub fn get_commits_since_last_tag(repo: &Repository, tag_prefix: &str) -> Result<Vec<GitLog>> {
-    let last_tag_oid = find_last_tag_commit(repo, tag_prefix)?;
+pub fn get_commits_since_last_tag(
+    repo: &Repository,
+    tag_prefix: &str,
+    strategy: OrphanedTagStrategy,
+) -> Result<Vec<GitLog>> {
+    let last_tag_oid = find_last_tag_commit(repo, tag_prefix, strategy)?;
 
     let mut walk = repo.revwalk()?;
     walk.push_head()?;
@@ -47,66 +52,166 @@ pub fn get_commits_since_last_tag(repo: &Repository, tag_prefix: &str) -> Result
     Ok(commits)
 }
 
-pub fn find_last_tag_name(repo: &Repository, prefix: &str) -> Result<Option<String>> {
-    let head = repo.head()?.peel_to_commit()?.id();
-    let mut latest: Option<(i64, String)> = None;
-
-    repo.tag_foreach(|oid, name| {
-        let name = String::from_utf8_lossy(name);
-        let tag_name = name.trim_start_matches("refs/tags/");
-        if tag_name.starts_with(prefix) {
-            let commit_oid = if let Ok(tag_obj) = repo.find_tag(oid) {
-                tag_obj.target_id()
-            } else {
-                oid
-            };
-            if let Ok(commit) = repo.find_commit(commit_oid) {
-                let reachable = head == commit_oid
-                    || repo.graph_descendant_of(head, commit_oid).unwrap_or(false);
-                if !reachable {
-                    return true;
-                }
-                let time = commit.time().seconds();
-                if latest.is_none() || time > latest.as_ref().unwrap().0 {
-                    latest = Some((time, tag_name.to_string()));
-                }
-            }
-        }
-        true
-    })?;
-
-    Ok(latest.map(|(_, name)| name))
+struct TagMatch {
+    name: String,
+    commit_oid: git2::Oid,
+    time: i64,
 }
 
-fn find_last_tag_commit(repo: &Repository, prefix: &str) -> Result<Option<git2::Oid>> {
+fn find_matching_commit(
+    repo: &Repository,
+    orphaned_commit: &git2::Commit,
+    strategy: &OrphanedTagStrategy,
+) -> Option<git2::Oid> {
+    let mut walk = repo.revwalk().ok()?;
+    walk.push_head().ok()?;
+    walk.set_sorting(Sort::TOPOLOGICAL | Sort::TIME).ok()?;
+
+    let limit = 1000;
+
+    for (count, oid) in walk.enumerate() {
+        if count >= limit {
+            break;
+        }
+        let oid = match oid {
+            Ok(o) => o,
+            Err(_) => continue,
+        };
+        let candidate = match repo.find_commit(oid) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        let matched = match strategy {
+            OrphanedTagStrategy::TreeHash => candidate.tree_id() == orphaned_commit.tree_id(),
+            OrphanedTagStrategy::Message => candidate.message() == orphaned_commit.message(),
+            OrphanedTagStrategy::Warn => return None,
+        };
+        if matched {
+            return Some(oid);
+        }
+    }
+    None
+}
+
+fn find_last_tag(
+    repo: &Repository,
+    prefix: &str,
+    strategy: OrphanedTagStrategy,
+) -> Result<Option<TagMatch>> {
     let head = repo.head()?.peel_to_commit()?.id();
-    let mut latest: Option<(i64, git2::Oid)> = None;
+    let latest: RefCell<Option<TagMatch>> = RefCell::new(None);
+    let warnings: RefCell<Vec<String>> = RefCell::new(Vec::new());
 
     repo.tag_foreach(|oid, name| {
         let name = String::from_utf8_lossy(name);
         let tag_name = name.trim_start_matches("refs/tags/");
-        if tag_name.starts_with(prefix) {
-            let commit_oid = if let Ok(tag_obj) = repo.find_tag(oid) {
-                tag_obj.target_id()
-            } else {
-                oid
-            };
-            if let Ok(commit) = repo.find_commit(commit_oid) {
-                let reachable = head == commit_oid
-                    || repo.graph_descendant_of(head, commit_oid).unwrap_or(false);
-                if !reachable {
+        if !tag_name.starts_with(prefix) {
+            return true;
+        }
+
+        let commit_oid = if let Ok(tag_obj) = repo.find_tag(oid) {
+            tag_obj.target_id()
+        } else {
+            oid
+        };
+
+        let commit = match repo.find_commit(commit_oid) {
+            Ok(c) => c,
+            Err(_) => {
+                warnings.borrow_mut().push(format!(
+                    "Warning: tag '{}' points to missing commit {} (likely garbage-collected). Skipping.\n  \
+                     Hint: set 'orphanedTagStrategy' to 'treeHash' or 'message' for automatic recovery.\n  \
+                     See https://ferrflow.com/docs/configuration#orphaned-tag-strategy",
+                    tag_name,
+                    &commit_oid.to_string()[..7]
+                ));
+                return true;
+            }
+        };
+
+        let reachable =
+            head == commit_oid || repo.graph_descendant_of(head, commit_oid).unwrap_or(false);
+
+        let (effective_oid, effective_time) = if reachable {
+            (commit_oid, commit.time().seconds())
+        } else {
+            let short = &commit_oid.to_string()[..7];
+            if strategy == OrphanedTagStrategy::Warn {
+                warnings.borrow_mut().push(format!(
+                    "Warning: tag '{}' points to orphaned commit {} (not reachable from HEAD).\n  \
+                     Hint: set 'orphanedTagStrategy' to 'treeHash' or 'message' for automatic recovery.\n  \
+                     See https://ferrflow.com/docs/configuration#orphaned-tag-strategy",
+                    tag_name, short
+                ));
+                return true;
+            }
+            match find_matching_commit(repo, &commit, &strategy) {
+                Some(matched_oid) => {
+                    let strategy_name = match strategy {
+                        OrphanedTagStrategy::TreeHash => "tree-hash",
+                        OrphanedTagStrategy::Message => "message",
+                        OrphanedTagStrategy::Warn => unreachable!(),
+                    };
+                    warnings.borrow_mut().push(format!(
+                        "Info: tag '{}' was orphaned but matched commit {} on current branch via {}.",
+                        tag_name,
+                        &matched_oid.to_string()[..7],
+                        strategy_name
+                    ));
+                    let matched_commit = match repo.find_commit(matched_oid) {
+                        Ok(c) => c,
+                        Err(_) => return true,
+                    };
+                    (matched_oid, matched_commit.time().seconds())
+                }
+                None => {
+                    let strategy_name = match strategy {
+                        OrphanedTagStrategy::TreeHash => "tree-hash",
+                        OrphanedTagStrategy::Message => "message",
+                        OrphanedTagStrategy::Warn => unreachable!(),
+                    };
+                    warnings.borrow_mut().push(format!(
+                        "Warning: tag '{}' points to orphaned commit {}. No match found via {}. Skipping.\n  \
+                         Hint: re-tag manually with 'git tag -f {} <correct-commit>'",
+                        tag_name, short, strategy_name, tag_name
+                    ));
                     return true;
                 }
-                let time = commit.time().seconds();
-                if latest.is_none() || time > latest.unwrap().0 {
-                    latest = Some((time, commit_oid));
-                }
             }
+        };
+
+        let mut latest_ref = latest.borrow_mut();
+        if latest_ref.is_none() || effective_time > latest_ref.as_ref().unwrap().time {
+            *latest_ref = Some(TagMatch {
+                name: tag_name.to_string(),
+                commit_oid: effective_oid,
+                time: effective_time,
+            });
         }
         true
     })?;
 
-    Ok(latest.map(|(_, oid)| oid))
+    for w in warnings.borrow().iter() {
+        eprintln!("{}", w);
+    }
+
+    Ok(latest.into_inner())
+}
+
+pub fn find_last_tag_name(
+    repo: &Repository,
+    prefix: &str,
+    strategy: OrphanedTagStrategy,
+) -> Result<Option<String>> {
+    Ok(find_last_tag(repo, prefix, strategy)?.map(|t| t.name))
+}
+
+fn find_last_tag_commit(
+    repo: &Repository,
+    prefix: &str,
+    strategy: OrphanedTagStrategy,
+) -> Result<Option<git2::Oid>> {
+    Ok(find_last_tag(repo, prefix, strategy)?.map(|t| t.commit_oid))
 }
 
 pub fn get_changed_files(repo: &Repository) -> Result<Vec<String>> {
@@ -146,14 +251,18 @@ pub fn get_changed_files(repo: &Repository) -> Result<Vec<String>> {
     Ok(files)
 }
 
-pub fn get_changed_files_since_tag(repo: &Repository, tag_prefix: &str) -> Result<Vec<String>> {
+pub fn get_changed_files_since_tag(
+    repo: &Repository,
+    tag_prefix: &str,
+    strategy: OrphanedTagStrategy,
+) -> Result<Vec<String>> {
     let head = match repo.head() {
         Ok(h) => h.peel_to_commit()?,
         Err(_) => return Ok(vec![]),
     };
     let head_tree = head.tree()?;
 
-    let old_tree = if let Some(tag_oid) = find_last_tag_commit(repo, tag_prefix)? {
+    let old_tree = if let Some(tag_oid) = find_last_tag_commit(repo, tag_prefix, strategy)? {
         let tag_commit = repo.find_commit(tag_oid)?;
         Some(tag_commit.tree()?)
     } else {
@@ -482,6 +591,7 @@ pub fn push(repo: &Repository, remote_name: &str, branch: &str, tags: &[&str]) -
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::OrphanedTagStrategy;
     use git2::{Repository, Signature};
     use std::fs;
 
@@ -612,7 +722,10 @@ mod tests {
     fn find_last_tag_name_no_tags() {
         let (dir, repo) = init_repo();
         create_commit_in_repo(&repo, dir.path(), "file.txt", "initial");
-        assert_eq!(find_last_tag_name(&repo, "v").unwrap(), None);
+        assert_eq!(
+            find_last_tag_name(&repo, "v", OrphanedTagStrategy::Warn).unwrap(),
+            None
+        );
     }
 
     #[test]
@@ -625,7 +738,7 @@ mod tests {
         create_commit_in_repo(&repo, dir.path(), "c.txt", "third");
         create_lightweight_tag(&repo, "other-tag");
 
-        let result = find_last_tag_name(&repo, "v").unwrap();
+        let result = find_last_tag_name(&repo, "v", OrphanedTagStrategy::Warn).unwrap();
         assert_eq!(result, Some("v1.1.0".to_string()));
     }
 
@@ -637,7 +750,7 @@ mod tests {
         create_commit_in_repo(&repo, dir.path(), "b.txt", "second");
         create_annotated_tag(&repo, "v2.0.0", "Release 2.0.0");
 
-        let result = find_last_tag_name(&repo, "v").unwrap();
+        let result = find_last_tag_name(&repo, "v", OrphanedTagStrategy::Warn).unwrap();
         assert_eq!(result, Some("v2.0.0".to_string()));
     }
 
@@ -651,11 +764,11 @@ mod tests {
         create_lightweight_tag(&repo, "api@v1.1.0");
 
         assert_eq!(
-            find_last_tag_name(&repo, "api@v").unwrap(),
+            find_last_tag_name(&repo, "api@v", OrphanedTagStrategy::Warn).unwrap(),
             Some("api@v1.1.0".to_string())
         );
         assert_eq!(
-            find_last_tag_name(&repo, "site@v").unwrap(),
+            find_last_tag_name(&repo, "site@v", OrphanedTagStrategy::Warn).unwrap(),
             Some("site@v2.0.0".to_string())
         );
     }
@@ -670,7 +783,7 @@ mod tests {
         create_commit_in_repo(&repo, dir.path(), "a.txt", "feat: first");
         create_commit_in_repo(&repo, dir.path(), "b.txt", "fix: second");
 
-        let commits = get_commits_since_last_tag(&repo, "v").unwrap();
+        let commits = get_commits_since_last_tag(&repo, "v", OrphanedTagStrategy::Warn).unwrap();
         assert_eq!(commits.len(), 2);
         assert_eq!(commits[0].message.trim(), "fix: second");
         assert_eq!(commits[1].message.trim(), "feat: first");
@@ -684,7 +797,7 @@ mod tests {
         create_commit_in_repo(&repo, dir.path(), "b.txt", "fix: second");
         create_commit_in_repo(&repo, dir.path(), "c.txt", "feat: third");
 
-        let commits = get_commits_since_last_tag(&repo, "v").unwrap();
+        let commits = get_commits_since_last_tag(&repo, "v", OrphanedTagStrategy::Warn).unwrap();
         assert_eq!(commits.len(), 2);
         // Most recent first (topological order)
         assert!(commits[0].message.contains("third"));
@@ -699,7 +812,7 @@ mod tests {
         create_commit_in_repo(&repo, dir.path(), "b.txt", "chore(release): bump [skip ci]");
         create_commit_in_repo(&repo, dir.path(), "c.txt", "feat: real change");
 
-        let commits = get_commits_since_last_tag(&repo, "v").unwrap();
+        let commits = get_commits_since_last_tag(&repo, "v", OrphanedTagStrategy::Warn).unwrap();
         assert_eq!(commits.len(), 1);
         assert!(commits[0].message.contains("real change"));
     }
@@ -737,7 +850,7 @@ mod tests {
         create_commit_in_repo(&repo, dir.path(), "a.txt", "first");
         create_commit_in_repo(&repo, dir.path(), "b.txt", "second");
 
-        let files = get_changed_files_since_tag(&repo, "v").unwrap();
+        let files = get_changed_files_since_tag(&repo, "v", OrphanedTagStrategy::Warn).unwrap();
         assert!(files.contains(&"a.txt".to_string()));
         assert!(files.contains(&"b.txt".to_string()));
     }
@@ -749,7 +862,7 @@ mod tests {
         create_lightweight_tag(&repo, "v1.0.0");
         create_commit_in_repo(&repo, dir.path(), "b.txt", "second");
 
-        let files = get_changed_files_since_tag(&repo, "v").unwrap();
+        let files = get_changed_files_since_tag(&repo, "v", OrphanedTagStrategy::Warn).unwrap();
         assert!(!files.contains(&"a.txt".to_string()));
         assert!(files.contains(&"b.txt".to_string()));
     }
@@ -911,5 +1024,99 @@ mod tests {
         let moved = super::create_or_move_tag(&repo, "v1", "Floating tag").unwrap();
         assert!(moved);
         assert!(super::tag_exists(&repo, "v1"));
+    }
+
+    // -----------------------------------------------------------------------
+    // orphaned tag handling
+    // -----------------------------------------------------------------------
+
+    /// Creates an orphaned tag scenario: tag points to a commit not reachable
+    /// from HEAD, but whose tree hash and message match HEAD's commit.
+    fn create_orphaned_tag_scenario(tag_name: &str) -> (Repository, tempfile::TempDir) {
+        let (dir, repo) = init_repo();
+        create_commit_in_repo(&repo, dir.path(), "a.txt", "feat: original");
+        create_lightweight_tag(&repo, tag_name);
+
+        // Create a new root commit with the same tree and message (simulates rebase).
+        // We write the commit without updating HEAD, then force-move HEAD to it.
+        {
+            let head = repo.head().unwrap().peel_to_commit().unwrap();
+            let tree = head.tree().unwrap();
+            let ts = COMMIT_TIME.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            let sig = Signature::new("Test", "test@test.com", &git2::Time::new(ts, 0)).unwrap();
+            let old_id = head.id();
+            let new_oid = repo
+                .commit(None, &sig, &sig, "feat: original", &tree, &[])
+                .unwrap();
+            assert_ne!(old_id, new_oid);
+            // Force-move the current branch to the new orphan commit
+            let head_ref = repo.head().unwrap();
+            let branch_name = head_ref.name().unwrap();
+            repo.reference(branch_name, new_oid, true, "force-move for test")
+                .unwrap();
+        }
+
+        (repo, dir)
+    }
+
+    #[test]
+    fn orphaned_tag_warn_skips() {
+        let (repo, _dir) = create_orphaned_tag_scenario("v1.0.0");
+        let result = find_last_tag_name(&repo, "v", OrphanedTagStrategy::Warn).unwrap();
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn orphaned_tag_tree_hash_recovers() {
+        let (repo, _dir) = create_orphaned_tag_scenario("v1.0.0");
+        let result = find_last_tag_name(&repo, "v", OrphanedTagStrategy::TreeHash).unwrap();
+        assert_eq!(result, Some("v1.0.0".to_string()));
+    }
+
+    #[test]
+    fn orphaned_tag_message_recovers() {
+        let (repo, _dir) = create_orphaned_tag_scenario("v1.0.0");
+        let result = find_last_tag_name(&repo, "v", OrphanedTagStrategy::Message).unwrap();
+        assert_eq!(result, Some("v1.0.0".to_string()));
+    }
+
+    #[test]
+    fn orphaned_tag_no_match() {
+        let (dir, repo) = init_repo();
+        create_commit_in_repo(&repo, dir.path(), "a.txt", "feat: original");
+        create_lightweight_tag(&repo, "v1.0.0");
+
+        // Create a completely different root commit (different tree and message)
+        {
+            let ts = COMMIT_TIME.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            let sig = Signature::new("Test", "test@test.com", &git2::Time::new(ts, 0)).unwrap();
+            fs::write(dir.path().join("b.txt"), "different").unwrap();
+            let mut index = repo.index().unwrap();
+            index.add_path(Path::new("b.txt")).unwrap();
+            index.write().unwrap();
+            let tree_id = index.write_tree().unwrap();
+            let tree = repo.find_tree(tree_id).unwrap();
+            let new_oid = repo
+                .commit(None, &sig, &sig, "feat: totally different", &tree, &[])
+                .unwrap();
+            let head_ref = repo.head().unwrap();
+            let branch_name = head_ref.name().unwrap();
+            repo.reference(branch_name, new_oid, true, "force-move for test")
+                .unwrap();
+        }
+
+        let result = find_last_tag_name(&repo, "v", OrphanedTagStrategy::TreeHash).unwrap();
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn get_commits_since_orphaned_tag_with_recovery() {
+        let (repo, dir) = create_orphaned_tag_scenario("v1.0.0");
+        create_commit_in_repo(&repo, dir.path(), "b.txt", "feat: new feature");
+
+        let commits =
+            get_commits_since_last_tag(&repo, "v", OrphanedTagStrategy::TreeHash).unwrap();
+        assert_eq!(commits.len(), 1);
+        assert!(commits[0].message.contains("new feature"));
     }
 }
