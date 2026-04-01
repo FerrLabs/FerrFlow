@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.8.0] - 2026-04-01
+
+### Features
+
+- feat(api): real-time analytics stats via SSE (#143)
+
 ## [1.7.1] - 2026-04-01
 
 ### Bug Fixes
