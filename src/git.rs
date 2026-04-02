@@ -425,7 +425,13 @@ fn credentials_callback(
         }
         // 2. Try FERRFLOW_TOKEN env var
         if let Ok(token) = std::env::var("FERRFLOW_TOKEN") {
-            let user = username_from_url.unwrap_or("x-access-token");
+            let user = username_from_url.unwrap_or_else(|| {
+                if url.contains("gitlab") {
+                    "oauth2"
+                } else {
+                    "x-access-token"
+                }
+            });
             return Cred::userpass_plaintext(user, &token);
         }
         // 3. Try git credential helper (local dev)
@@ -1238,6 +1244,42 @@ mod tests {
         let tags = collect_all_tags(&repo);
         assert!(tags.contains(&"v1.0.0".to_string()));
         assert!(tags.contains(&"v1.1.0-beta.1".to_string()));
+    }
+
+    #[test]
+    fn credentials_callback_uses_oauth2_for_gitlab() {
+        unsafe { std::env::set_var("FERRFLOW_TOKEN", "test-token") };
+        let result = credentials_callback(
+            "https://gitlab.com/group/project.git",
+            None,
+            CredentialType::USER_PASS_PLAINTEXT,
+        );
+        unsafe { std::env::remove_var("FERRFLOW_TOKEN") };
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn credentials_callback_uses_x_access_token_for_github() {
+        unsafe { std::env::set_var("FERRFLOW_TOKEN", "test-token") };
+        let result = credentials_callback(
+            "https://github.com/owner/repo.git",
+            None,
+            CredentialType::USER_PASS_PLAINTEXT,
+        );
+        unsafe { std::env::remove_var("FERRFLOW_TOKEN") };
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn credentials_callback_uses_oauth2_for_self_hosted_gitlab() {
+        unsafe { std::env::set_var("FERRFLOW_TOKEN", "test-token") };
+        let result = credentials_callback(
+            "https://git.example.gitlab.com/group/project.git",
+            None,
+            CredentialType::USER_PASS_PLAINTEXT,
+        );
+        unsafe { std::env::remove_var("FERRFLOW_TOKEN") };
+        assert!(result.is_ok());
     }
 
     #[test]
