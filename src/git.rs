@@ -425,19 +425,9 @@ pub fn create_commit(repo: &Repository, files: &[&str], message: &str) -> Result
     Ok(())
 }
 
-pub fn get_repo_slug(repo: &Repository, remote_name: &str) -> Option<String> {
+pub fn get_remote_url(repo: &Repository, remote_name: &str) -> Option<String> {
     let remote = repo.find_remote(remote_name).ok()?;
-    let url = remote.url()?.to_string();
-
-    let after = if url.contains("github.com/") {
-        url.split("github.com/").nth(1)?
-    } else if url.contains("github.com:") {
-        url.split("github.com:").nth(1)?
-    } else {
-        return None;
-    };
-
-    Some(after.trim_end_matches(".git").to_string())
+    Some(remote.url()?.to_string())
 }
 
 pub fn create_branch_and_commit(
@@ -904,45 +894,28 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
-    // get_repo_slug
+    // get_remote_url
     // -----------------------------------------------------------------------
 
     #[test]
-    fn get_repo_slug_https() {
+    fn get_remote_url_https() {
         let (dir, repo) = init_repo();
         create_commit_in_repo(&repo, dir.path(), "a.txt", "initial");
         repo.remote("origin", "https://github.com/FerrFlow-Org/FerrFlow.git")
             .unwrap();
-        let slug = get_repo_slug(&repo, "origin");
-        assert_eq!(slug, Some("FerrFlow-Org/FerrFlow".to_string()));
+        let url = get_remote_url(&repo, "origin");
+        assert_eq!(
+            url,
+            Some("https://github.com/FerrFlow-Org/FerrFlow.git".to_string())
+        );
     }
 
     #[test]
-    fn get_repo_slug_ssh() {
+    fn get_remote_url_no_remote() {
         let (dir, repo) = init_repo();
         create_commit_in_repo(&repo, dir.path(), "a.txt", "initial");
-        repo.remote("origin", "git@github.com:FerrFlow-Org/FerrFlow.git")
-            .unwrap();
-        let slug = get_repo_slug(&repo, "origin");
-        assert_eq!(slug, Some("FerrFlow-Org/FerrFlow".to_string()));
-    }
-
-    #[test]
-    fn get_repo_slug_no_remote() {
-        let (dir, repo) = init_repo();
-        create_commit_in_repo(&repo, dir.path(), "a.txt", "initial");
-        let slug = get_repo_slug(&repo, "origin");
-        assert_eq!(slug, None);
-    }
-
-    #[test]
-    fn get_repo_slug_non_github() {
-        let (dir, repo) = init_repo();
-        create_commit_in_repo(&repo, dir.path(), "a.txt", "initial");
-        repo.remote("origin", "https://gitlab.com/foo/bar.git")
-            .unwrap();
-        let slug = get_repo_slug(&repo, "origin");
-        assert_eq!(slug, None);
+        let url = get_remote_url(&repo, "origin");
+        assert_eq!(url, None);
     }
 
     // -----------------------------------------------------------------------

@@ -2,21 +2,35 @@ use crate::changelog::{build_section, update_changelog};
 use crate::config::ReleaseCommitMode;
 use crate::config::{Config, PackageConfig, VersioningStrategy};
 use crate::conventional_commits::{BumpType, determine_bump};
+use crate::forge::{self, ForgeKind};
 use crate::formats::{get_handler, read_version, write_version};
 use crate::git::{
     create_branch_and_commit, create_commit, create_or_move_tag, create_tag, fetch_tags,
     force_push_tags, get_changed_files, get_changed_files_since_tag, get_commits_since_last_tag,
-    get_repo_root, get_repo_slug, get_tag_message, open_repo, push, push_branch, push_tags,
+    get_remote_url, get_repo_root, get_tag_message, open_repo, push, push_branch, push_tags,
     tag_exists,
 };
 use crate::hooks::{HookContext, HookPoint, resolve_hook, resolve_on_failure, run_hook};
-use crate::release::{create_github_pr, create_github_release, enable_auto_merge};
 use crate::telemetry;
 use crate::versioning::{compute_next_version, truncate_version};
 use anyhow::Result;
 use colored::Colorize;
+use git2::Repository;
 use std::collections::HashSet;
 use std::path::Path;
+
+fn build_forge_instance(repo: &Repository, config: &Config) -> Option<Box<dyn forge::Forge>> {
+    let remote_url = get_remote_url(repo, &config.workspace.remote)?;
+    let slug = forge::extract_repo_slug(&remote_url)?;
+
+    let kind = match config.workspace.forge {
+        ForgeKind::Auto => forge::detect_forge_from_url(&remote_url)?,
+        explicit => explicit,
+    };
+
+    let token = forge::resolve_token(kind)?;
+    Some(forge::build_forge(kind, token, slug))
+}
 
 #[derive(serde::Serialize)]
 struct CheckCommit {
@@ -461,9 +475,7 @@ fn run_release_logic(
                     push_branch(&repo, &config.workspace.remote, &branch_name)?;
                     println!("  ✓ Pushed branch {}", branch_name.cyan());
 
-                    if let Ok(token) = std::env::var("GITHUB_TOKEN")
-                        && let Some(slug) = get_repo_slug(&repo, &config.workspace.remote)
-                    {
+                    if let Some(forge_instance) = build_forge_instance(&repo, config) {
                         let pr_title = format!("chore(release): {}", release_parts.join(", "));
                         let pr_body = format!(
                             "Automated release commit.\n\n{}",
@@ -473,18 +485,20 @@ fn run_release_logic(
                                 .collect::<Vec<_>>()
                                 .join("\n")
                         );
-                        match create_github_pr(
-                            &token,
-                            &slug,
+                        match forge_instance.create_merge_request(
                             &branch_name,
                             &config.workspace.branch,
                             &pr_title,
                             &pr_body,
                         ) {
-                            Ok(pr) => {
-                                println!("  ✓ Created PR #{}", pr.number.to_string().cyan());
+                            Ok(mr) => {
+                                println!(
+                                    "  ✓ Created {} #{}",
+                                    forge_instance.mr_noun(),
+                                    mr.id.to_string().cyan()
+                                );
                                 if config.workspace.auto_merge_releases {
-                                    match enable_auto_merge(&token, &pr.node_id, pr.number) {
+                                    match forge_instance.enable_auto_merge(&mr) {
                                         Ok(()) => println!("  ✓ Auto-merge enabled"),
                                         Err(err) => eprintln!(
                                             "{}",
@@ -498,7 +512,11 @@ fn run_release_logic(
                             }
                             Err(err) => eprintln!(
                                 "{}",
-                                format!("  Warning: failed to create PR: {err}").yellow()
+                                format!(
+                                    "  Warning: failed to create {}: {err}",
+                                    forge_instance.mr_noun()
+                                )
+                                .yellow()
                             ),
                         }
                     }
@@ -626,16 +644,17 @@ fn run_release_logic(
                 }
             }
 
-            if let Ok(token) = std::env::var("GITHUB_TOKEN")
-                && let Some(slug) = get_repo_slug(&repo, &config.workspace.remote)
-            {
+            if let Some(forge_instance) = build_forge_instance(&repo, config) {
                 for (tag_name, _, body, _, _, _) in &tags_to_create {
-                    match create_github_release(&token, &slug, tag_name, body) {
-                        Ok(()) => println!("  ✓ GitHub Release {}", tag_name.cyan()),
+                    match forge_instance.create_release(tag_name, body) {
+                        Ok(()) => {
+                            println!("  ✓ {} {}", forge_instance.release_noun(), tag_name.cyan())
+                        }
                         Err(err) => eprintln!(
                             "{}",
                             format!(
-                                "  Warning: failed to create GitHub Release for {tag_name}: {err}"
+                                "  Warning: failed to create {} for {tag_name}: {err}",
+                                forge_instance.release_noun()
                             )
                             .yellow()
                         ),

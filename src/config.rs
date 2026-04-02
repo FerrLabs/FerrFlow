@@ -5,6 +5,17 @@ use std::path::{Path, PathBuf};
 #[cfg(feature = "cli")]
 use crate::telemetry;
 
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum ForgeKind {
+    #[default]
+    Auto,
+    #[serde(alias = "GitHub")]
+    Github,
+    #[serde(alias = "GitLab")]
+    Gitlab,
+}
+
 // ---------------------------------------------------------------------------
 // Hooks config
 // ---------------------------------------------------------------------------
@@ -87,6 +98,8 @@ pub struct WorkspaceConfig {
     pub floating_tags: Vec<FloatingTagLevel>,
     #[serde(default, alias = "orphanedTagStrategy")]
     pub orphaned_tag_strategy: OrphanedTagStrategy,
+    #[serde(default)]
+    pub forge: ForgeKind,
     #[serde(default)]
     pub hooks: Option<HooksConfig>,
 }

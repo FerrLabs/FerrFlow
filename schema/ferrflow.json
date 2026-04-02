@@ -73,6 +73,12 @@
           },
           "default": []
         },
+        "forge": {
+          "type": "string",
+          "description": "Git forge type. 'auto' detects from the remote URL. Use 'github' or 'gitlab' to override (useful for self-hosted instances with custom domains).",
+          "enum": ["auto", "github", "gitlab"],
+          "default": "auto"
+        },
         "orphanedTagStrategy": {
           "type": "string",
           "enum": ["warn", "treeHash", "message"],

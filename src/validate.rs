@@ -613,13 +613,17 @@ pub fn run(
                 owner,
                 repo: repo_name,
                 git_ref: git_ref.map(|s| s.to_string()),
-                token: std::env::var("GITHUB_TOKEN").ok(),
+                token: std::env::var("FERRFLOW_TOKEN")
+                    .ok()
+                    .or_else(|| std::env::var("GITHUB_TOKEN").ok()),
             }),
             RemoteProvider::GitLab => Box::new(GitLabSource {
                 owner,
                 repo: repo_name,
                 git_ref: git_ref.map(|s| s.to_string()),
-                token: std::env::var("GITLAB_TOKEN").ok(),
+                token: std::env::var("FERRFLOW_TOKEN")
+                    .ok()
+                    .or_else(|| std::env::var("GITLAB_TOKEN").ok()),
             }),
         }
     } else {
