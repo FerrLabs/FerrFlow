@@ -7,6 +7,7 @@ pub struct PrereleaseContext {
     pub identifier_strategy: PrereleaseIdentifier,
 }
 
+#[allow(dead_code)]
 pub struct ResolvedPrerelease {
     pub channel: String,
     pub identifier: String,

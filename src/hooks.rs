@@ -41,6 +41,7 @@ pub struct HookContext {
     pub tag: String,
     pub dry_run: bool,
     pub package_path: String,
+    pub channel: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -132,7 +133,9 @@ pub fn run_hook(
         .env("FERRFLOW_BUMP_TYPE", &ctx.bump_type)
         .env("FERRFLOW_TAG", &ctx.tag)
         .env("FERRFLOW_DRY_RUN", ctx.dry_run.to_string())
-        .env("FERRFLOW_PACKAGE_PATH", &ctx.package_path);
+        .env("FERRFLOW_PACKAGE_PATH", &ctx.package_path)
+        .env("FERRFLOW_CHANNEL", ctx.channel.as_deref().unwrap_or(""))
+        .env("FERRFLOW_IS_PRERELEASE", ctx.channel.is_some().to_string());
 
     if verbose {
         let status = cmd

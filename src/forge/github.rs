@@ -8,7 +8,7 @@ pub struct GitHubForge {
 }
 
 impl Forge for GitHubForge {
-    fn create_release(&self, tag: &str, body: &str) -> Result<()> {
+    fn create_release(&self, tag: &str, body: &str, prerelease: bool) -> Result<()> {
         let url = format!("https://api.github.com/repos/{}/releases", self.slug);
 
         let payload = serde_json::json!({
@@ -16,7 +16,7 @@ impl Forge for GitHubForge {
             "name": tag,
             "body": body,
             "draft": false,
-            "prerelease": false,
+            "prerelease": prerelease,
         });
 
         ureq::post(&url)

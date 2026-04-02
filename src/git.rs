@@ -214,6 +214,119 @@ fn find_last_tag_commit(
     Ok(find_last_tag(repo, prefix, strategy)?.map(|t| t.commit_oid))
 }
 
+/// Check if a tag name contains a pre-release suffix (has a `-` in the version part).
+fn is_prerelease_tag(tag_name: &str, prefix: &str) -> bool {
+    let version_part = tag_name.strip_prefix(prefix).unwrap_or(tag_name);
+    version_part.contains('-')
+}
+
+/// Like `find_last_tag`, but skips pre-release tags (those with `-` in version part).
+fn find_last_stable_tag(
+    repo: &Repository,
+    prefix: &str,
+    strategy: OrphanedTagStrategy,
+) -> Result<Option<TagMatch>> {
+    let head = repo.head()?.peel_to_commit()?.id();
+    let latest: RefCell<Option<TagMatch>> = RefCell::new(None);
+
+    repo.tag_foreach(|oid, name| {
+        let name = String::from_utf8_lossy(name);
+        let tag_name = name.trim_start_matches("refs/tags/");
+        if !tag_name.starts_with(prefix) || is_prerelease_tag(tag_name, prefix) {
+            return true;
+        }
+
+        let commit_oid = if let Ok(tag_obj) = repo.find_tag(oid) {
+            tag_obj.target_id()
+        } else {
+            oid
+        };
+
+        let commit = match repo.find_commit(commit_oid) {
+            Ok(c) => c,
+            Err(_) => return true,
+        };
+
+        let reachable =
+            head == commit_oid || repo.graph_descendant_of(head, commit_oid).unwrap_or(false);
+
+        let (effective_oid, effective_time) = if reachable {
+            (commit_oid, commit.time().seconds())
+        } else {
+            if strategy == OrphanedTagStrategy::Warn {
+                return true;
+            }
+            match find_matching_commit(repo, &commit, &strategy) {
+                Some(matched_oid) => {
+                    let matched_commit = match repo.find_commit(matched_oid) {
+                        Ok(c) => c,
+                        Err(_) => return true,
+                    };
+                    (matched_oid, matched_commit.time().seconds())
+                }
+                None => return true,
+            }
+        };
+
+        let mut latest_ref = latest.borrow_mut();
+        if latest_ref.is_none() || effective_time > latest_ref.as_ref().unwrap().time {
+            *latest_ref = Some(TagMatch {
+                name: tag_name.to_string(),
+                commit_oid: effective_oid,
+                time: effective_time,
+            });
+        }
+        true
+    })?;
+
+    Ok(latest.into_inner())
+}
+
+pub fn get_commits_since_last_stable_tag(
+    repo: &Repository,
+    tag_prefix: &str,
+    strategy: OrphanedTagStrategy,
+) -> Result<Vec<GitLog>> {
+    let last_tag_oid = find_last_stable_tag(repo, tag_prefix, strategy)?.map(|t| t.commit_oid);
+
+    let mut walk = repo.revwalk()?;
+    walk.push_head()?;
+    walk.set_sorting(Sort::TOPOLOGICAL | Sort::TIME)?;
+
+    let mut commits = Vec::new();
+    for oid in walk {
+        let oid = oid?;
+        if let Some(stop) = last_tag_oid
+            && oid == stop
+        {
+            break;
+        }
+        if let Ok(commit) = repo.find_commit(oid) {
+            let message = commit.message().unwrap_or("").to_string();
+            if message.contains("[skip ci]") {
+                continue;
+            }
+            commits.push(GitLog {
+                hash: oid.to_string()[..8].to_string(),
+                message,
+            });
+        }
+    }
+
+    Ok(commits)
+}
+
+/// Collect all tag names in the repository.
+pub fn collect_all_tags(repo: &Repository) -> Vec<String> {
+    let mut tags = Vec::new();
+    let _ = repo.tag_foreach(|_oid, name| {
+        let name = String::from_utf8_lossy(name);
+        tags.push(name.trim_start_matches("refs/tags/").to_string());
+        true
+    });
+    tags
+}
+
 pub fn get_changed_files(repo: &Repository) -> Result<Vec<String>> {
     let head = match repo.head() {
         Ok(h) => h.peel_to_commit()?,

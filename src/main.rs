@@ -7,6 +7,7 @@ mod formats;
 mod git;
 mod hooks;
 mod monorepo;
+mod prerelease;
 mod query;
 mod status;
 mod telemetry;
