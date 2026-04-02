@@ -419,11 +419,7 @@ fn credentials_callback(
         return Cred::ssh_key_from_agent(username_from_url.unwrap_or("git"));
     }
     if allowed_types.contains(CredentialType::USER_PASS_PLAINTEXT) {
-        // 1. Try credentials embedded in the remote URL
-        if let Some((user, password)) = extract_url_password(url) {
-            return Cred::userpass_plaintext(&user, &password);
-        }
-        // 2. Try FERRFLOW_TOKEN env var
+        // 1. Try FERRFLOW_TOKEN env var (takes priority over embedded credentials)
         if let Ok(token) = std::env::var("FERRFLOW_TOKEN") {
             let user = username_from_url.unwrap_or_else(|| {
                 if url.contains("gitlab") {
@@ -433,6 +429,10 @@ fn credentials_callback(
                 }
             });
             return Cred::userpass_plaintext(user, &token);
+        }
+        // 2. Try credentials embedded in the remote URL
+        if let Some((user, password)) = extract_url_password(url) {
+            return Cred::userpass_plaintext(&user, &password);
         }
         // 3. Try git credential helper (local dev)
         if let Ok(cfg) = git2::Config::open_default()
@@ -456,9 +456,7 @@ fn make_fetch_options() -> git2::FetchOptions<'static> {
 }
 
 pub fn fetch_tags(repo: &Repository, remote_name: &str) -> Result<()> {
-    let mut remote = repo
-        .find_remote(remote_name)
-        .with_context(|| format!("Remote '{}' not found", remote_name))?;
+    let mut remote = get_authenticated_remote(repo, remote_name)?;
     let mut opts = make_fetch_options();
     remote.fetch(&["refs/tags/*:refs/tags/*"], Some(&mut opts), None)?;
     Ok(())
@@ -494,9 +492,7 @@ pub fn force_push_tags(repo: &Repository, remote_name: &str, tags: &[&str]) -> R
     if tags.is_empty() {
         return Ok(());
     }
-    let mut remote = repo
-        .find_remote(remote_name)
-        .with_context(|| format!("Remote '{}' not found", remote_name))?;
+    let mut remote = get_authenticated_remote(repo, remote_name)?;
 
     let push_errors = Rc::new(RefCell::new(Vec::new()));
     let mut push_options = make_push_options(push_errors.clone());
@@ -573,6 +569,47 @@ pub fn create_branch_and_commit(
     Ok(())
 }
 
+/// Build an authenticated remote URL when `FERRFLOW_TOKEN` is set.
+/// This ensures the token takes priority over any credentials embedded in the
+/// original URL (e.g. `gitlab-ci-token:xxx` injected by GitLab CI).
+fn authenticated_remote_url(url: &str) -> Option<String> {
+    let token = std::env::var("FERRFLOW_TOKEN").ok()?;
+    let user = if url.contains("gitlab") {
+        "oauth2"
+    } else {
+        "x-access-token"
+    };
+    if let Some(scheme_end) = url.find("://") {
+        let scheme = &url[..scheme_end];
+        let rest = &url[scheme_end + 3..];
+        let host_and_path = if let Some(at) = rest.find('@') {
+            &rest[at + 1..]
+        } else {
+            rest
+        };
+        Some(format!("{scheme}://{user}:{token}@{host_and_path}"))
+    } else {
+        None
+    }
+}
+
+/// Get a remote, overriding its URL with `FERRFLOW_TOKEN` credentials when available.
+fn get_authenticated_remote<'a>(
+    repo: &'a Repository,
+    remote_name: &str,
+) -> Result<git2::Remote<'a>> {
+    let remote = repo
+        .find_remote(remote_name)
+        .with_context(|| format!("Remote '{}' not found", remote_name))?;
+    if let Some(url) = remote.url()
+        && let Some(authed_url) = authenticated_remote_url(url)
+    {
+        drop(remote);
+        return Ok(repo.remote_anonymous(&authed_url)?);
+    }
+    Ok(remote)
+}
+
 fn make_push_options(push_errors: Rc<RefCell<Vec<String>>>) -> PushOptions<'static> {
     let mut callbacks = RemoteCallbacks::new();
     callbacks.credentials(credentials_callback);
@@ -603,9 +640,7 @@ pub fn verify_remote_branch(
     branch: &str,
     expected_oid: git2::Oid,
 ) -> Result<()> {
-    let mut remote = repo
-        .find_remote(remote_name)
-        .with_context(|| format!("Remote '{}' not found", remote_name))?;
+    let mut remote = get_authenticated_remote(repo, remote_name)?;
 
     let mut callbacks = RemoteCallbacks::new();
     callbacks.credentials(credentials_callback);
@@ -630,9 +665,7 @@ pub fn verify_remote_branch(
 }
 
 pub fn push_branch(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
-    let mut remote = repo
-        .find_remote(remote_name)
-        .with_context(|| format!("Remote '{}' not found", remote_name))?;
+    let mut remote = get_authenticated_remote(repo, remote_name)?;
 
     let push_errors = Rc::new(RefCell::new(Vec::new()));
     let mut push_options = make_push_options(push_errors.clone());
@@ -651,9 +684,7 @@ pub fn push_tags(repo: &Repository, remote_name: &str, tags: &[&str]) -> Result<
     if tags.is_empty() {
         return Ok(());
     }
-    let mut remote = repo
-        .find_remote(remote_name)
-        .with_context(|| format!("Remote '{}' not found", remote_name))?;
+    let mut remote = get_authenticated_remote(repo, remote_name)?;
 
     let push_errors = Rc::new(RefCell::new(Vec::new()));
     let mut opts = make_push_options(push_errors.clone());
@@ -673,9 +704,7 @@ pub fn push_tags(repo: &Repository, remote_name: &str, tags: &[&str]) -> Result<
 pub fn push(repo: &Repository, remote_name: &str, branch: &str, tags: &[&str]) -> Result<()> {
     // Push branch first
     {
-        let mut remote = repo
-            .find_remote(remote_name)
-            .with_context(|| format!("Remote '{}' not found", remote_name))?;
+        let mut remote = get_authenticated_remote(repo, remote_name)?;
         let push_errors = Rc::new(RefCell::new(Vec::new()));
         let mut opts = make_push_options(push_errors.clone());
         let branch_refspec = format!("refs/heads/{branch}:refs/heads/{branch}");
