@@ -2,6 +2,7 @@ pub mod changelog;
 pub mod config;
 pub mod conventional_commits;
 pub mod formats;
+pub mod prerelease;
 pub mod versioning;
 
 #[cfg(feature = "cli")]

@@ -491,7 +491,7 @@ checksum = "37909eebbb50d72f9059c3b6d82c0463f2ff062c9e95845c43a6c9c0355411be"
 
 [[package]]
 name = "ferrflow"
-version = "2.10.0"
+version = "2.11.0"
 dependencies = [
  "anyhow",
  "cargo-husky",
@@ -501,6 +501,7 @@ dependencies = [
  "colored",
  "criterion",
  "git2",
+ "glob-match",
  "hex",
  "hmac",
  "json5",
@@ -605,6 +606,12 @@ dependencies = [
  "openssl-sys",
  "url",
 ]
+
+[[package]]
+name = "glob-match"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9985c9503b412198aa4197559e9a318524ebc4519c229bfa05a535828c950b9d"
 
 [[package]]
 name = "half"

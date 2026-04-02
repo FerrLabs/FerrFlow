@@ -5,12 +5,13 @@ use crate::conventional_commits::{BumpType, determine_bump};
 use crate::forge::{self, ForgeKind};
 use crate::formats::{get_handler, read_version, write_version};
 use crate::git::{
-    create_branch_and_commit, create_commit, create_or_move_tag, create_tag, fetch_tags,
-    force_push_tags, get_changed_files, get_changed_files_since_tag, get_commits_since_last_tag,
-    get_remote_url, get_repo_root, get_tag_message, open_repo, push, push_branch, push_tags,
-    tag_exists,
+    collect_all_tags, create_branch_and_commit, create_commit, create_or_move_tag, create_tag,
+    fetch_tags, force_push_tags, get_changed_files, get_changed_files_since_tag,
+    get_commits_since_last_stable_tag, get_commits_since_last_tag, get_remote_url, get_repo_root,
+    get_tag_message, open_repo, push, push_branch, push_tags, tag_exists,
 };
 use crate::hooks::{HookContext, HookPoint, resolve_hook, resolve_on_failure, run_hook};
+use crate::prerelease::PrereleaseContext;
 use crate::telemetry;
 use crate::versioning::{compute_next_version, truncate_version};
 use anyhow::Result;
@@ -45,6 +46,9 @@ struct CheckPackage {
     next_version: String,
     bump_type: String,
     tag: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    channel: Option<String>,
+    prerelease: bool,
     commits: Vec<CheckCommit>,
 }
 
@@ -53,7 +57,12 @@ struct CheckResult {
     packages: Vec<CheckPackage>,
 }
 
-pub fn check(config_path: Option<&Path>, verbose: bool, json: bool) -> Result<()> {
+pub fn check(
+    config_path: Option<&Path>,
+    verbose: bool,
+    json: bool,
+    channel: Option<&str>,
+) -> Result<()> {
     let repo = open_repo(&std::env::current_dir()?)?;
     let root = get_repo_root(&repo)?;
     let config = Config::load(&root, config_path)?;
@@ -63,7 +72,7 @@ pub fn check(config_path: Option<&Path>, verbose: bool, json: bool) -> Result<()
         println!();
     }
 
-    let result = run_release_logic(&root, &config, true, verbose, json, false);
+    let result = run_release_logic(&root, &config, true, verbose, json, false, channel);
 
     if config.workspace.anonymous_telemetry {
         telemetry::send_event(telemetry::EventType::Check, None, None);
@@ -77,6 +86,7 @@ pub fn release(
     dry_run: bool,
     verbose: bool,
     force: bool,
+    channel: Option<&str>,
 ) -> Result<()> {
     let repo = open_repo(&std::env::current_dir()?)?;
     let root = get_repo_root(&repo)?;
@@ -89,7 +99,7 @@ pub fn release(
     }
     println!();
 
-    run_release_logic(&root, &config, dry_run, verbose, false, force)
+    run_release_logic(&root, &config, dry_run, verbose, false, force, channel)
 }
 
 fn run_release_logic(
@@ -99,6 +109,7 @@ fn run_release_logic(
     verbose: bool,
     json: bool,
     force: bool,
+    channel: Option<&str>,
 ) -> Result<()> {
     if config.packages.is_empty() {
         if json {
@@ -124,6 +135,31 @@ fn run_release_logic(
         eprintln!("Warning: could not fetch remote tags: {e}");
     }
 
+    // Resolve pre-release channel context
+    let current_branch = std::process::Command::new("git")
+        .args(["rev-parse", "--abbrev-ref", "HEAD"])
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .and_then(|o| String::from_utf8(o.stdout).ok())
+        .map(|s| s.trim().to_string())
+        .unwrap_or_else(|| config.workspace.branch.clone());
+
+    let prerelease_ctx = PrereleaseContext::resolve(
+        channel,
+        &current_branch,
+        config.workspace.branches.as_deref(),
+    )?;
+
+    let short_hash = repo
+        .head()
+        .ok()
+        .and_then(|h| h.peel_to_commit().ok())
+        .map(|c| c.id().to_string()[..7].to_string())
+        .unwrap_or_default();
+
+    let all_tags = collect_all_tags(&repo);
+
     let changed_files = get_changed_files(&repo)?;
 
     if verbose && !json && !changed_files.is_empty() {
@@ -137,8 +173,8 @@ fn run_release_logic(
     let mut any_bumped = false;
     let mut json_packages: Vec<CheckPackage> = Vec::new();
     let mut files_to_commit: Vec<String> = Vec::new();
-    // (tag_name, tag_msg, body, pkg_name, version, commits_count)
-    let mut tags_to_create: Vec<(String, String, String, String, String, i32)> = Vec::new();
+    // (tag_name, tag_msg, body, pkg_name, version, commits_count, is_prerelease)
+    let mut tags_to_create: Vec<(String, String, String, String, String, i32, bool)> = Vec::new();
     let mut hook_contexts: Vec<(HookContext, usize)> = Vec::new(); // (ctx, pkg_index)
 
     for (pkg_idx, pkg) in config.packages.iter().enumerate() {
@@ -174,11 +210,21 @@ fn run_release_logic(
             continue;
         }
 
-        let commits = get_commits_since_last_tag(
-            &repo,
-            &tag_search_prefix,
-            config.workspace.orphaned_tag_strategy,
-        )?;
+        let commits = if !prerelease_ctx.is_prerelease() {
+            // For stable releases, get all commits since the last stable tag
+            // (skipping any pre-release tags) for a complete changelog
+            get_commits_since_last_stable_tag(
+                &repo,
+                &tag_search_prefix,
+                config.workspace.orphaned_tag_strategy,
+            )?
+        } else {
+            get_commits_since_last_tag(
+                &repo,
+                &tag_search_prefix,
+                config.workspace.orphaned_tag_strategy,
+            )?
+        };
 
         if commits.is_empty() {
             if verbose && !json {
@@ -226,7 +272,23 @@ fn run_release_logic(
         };
 
         let current_version = read_version(vf, root)?;
-        let new_version = compute_next_version(&current_version, bump, strategy)?;
+        let base_version = compute_next_version(&current_version, bump, strategy)?;
+
+        let (new_version, is_prerelease) = if prerelease_ctx.is_prerelease() {
+            let tag_prefix = pkg.tag_prefix(&config.workspace, config.is_monorepo());
+            if let Some(resolved) = prerelease_ctx.compute_identifier(
+                &base_version,
+                &tag_prefix,
+                &all_tags,
+                &short_hash,
+            ) {
+                (format!("{base_version}{}", resolved.full_suffix), true)
+            } else {
+                (base_version, false)
+            }
+        } else {
+            (base_version, false)
+        };
 
         if current_version == new_version {
             if verbose && !json {
@@ -259,16 +321,24 @@ fn run_release_logic(
                 next_version: new_version.clone(),
                 bump_type: strategy_label.clone(),
                 tag: tag.clone(),
+                channel: prerelease_ctx.channel.clone(),
+                prerelease: is_prerelease,
                 commits: check_commits,
             });
         } else {
+            let channel_label = if is_prerelease {
+                format!(" [{}]", prerelease_ctx.channel.as_deref().unwrap_or("pre"))
+            } else {
+                String::new()
+            };
             println!(
-                "{} {}  {} → {}  ({})",
+                "{} {}  {} → {}  ({}{})",
                 "●".green().bold(),
                 pkg.name.bold(),
                 current_version.dimmed(),
                 new_version.green().bold(),
-                strategy_label.cyan()
+                strategy_label.cyan(),
+                channel_label.yellow()
             );
 
             if verbose {
@@ -279,22 +349,27 @@ fn run_release_logic(
                 }
             }
 
-            // Show floating tags that would be created/moved.
-            let levels = pkg.effective_floating_tags(&config.workspace);
-            for level in levels {
-                if let Some(truncated) = truncate_version(&new_version, *level) {
-                    let float_tag =
-                        pkg.tag_for_version(&config.workspace, config.is_monorepo(), &truncated);
-                    let verb = if tag_exists(&repo, &float_tag) {
-                        "move"
-                    } else {
-                        "create"
-                    };
-                    println!(
-                        "    {} floating tag {}",
-                        format!("→ {verb}").dimmed(),
-                        float_tag.cyan()
-                    );
+            // Floating tags (e.g. v1, v1.2) — skip for pre-releases.
+            if !is_prerelease {
+                let levels = pkg.effective_floating_tags(&config.workspace);
+                for level in levels {
+                    if let Some(truncated) = truncate_version(&new_version, *level) {
+                        let float_tag = pkg.tag_for_version(
+                            &config.workspace,
+                            config.is_monorepo(),
+                            &truncated,
+                        );
+                        let verb = if tag_exists(&repo, &float_tag) {
+                            "move"
+                        } else {
+                            "create"
+                        };
+                        println!(
+                            "    {} floating tag {}",
+                            format!("→ {verb}").dimmed(),
+                            float_tag.cyan()
+                        );
+                    }
                 }
             }
         }
@@ -310,6 +385,7 @@ fn run_release_logic(
                 .join(pkg.path.trim_start_matches("./"))
                 .to_string_lossy()
                 .into_owned(),
+            channel: prerelease_ctx.channel.clone(),
         };
 
         let ws_hooks = config.workspace.hooks.as_ref();
@@ -400,6 +476,7 @@ fn run_release_logic(
                 pkg.name.clone(),
                 new_version.clone(),
                 commits.len() as i32,
+                is_prerelease,
             ));
         }
 
@@ -447,7 +524,7 @@ fn run_release_logic(
         // Build the release commit message.
         let release_parts: Vec<String> = tags_to_create
             .iter()
-            .map(|(_, _, _, name, ver, _)| format!("{name} v{ver}"))
+            .map(|(_, _, _, name, ver, _, _)| format!("{name} v{ver}"))
             .collect();
         let skip_ci = if config.workspace.effective_skip_ci() {
             " [skip ci]"
@@ -481,7 +558,7 @@ fn run_release_logic(
                             "Automated release commit.\n\n{}",
                             tags_to_create
                                 .iter()
-                                .map(|(tag, _, _, _, _, _)| format!("- `{tag}`"))
+                                .map(|(tag, _, _, _, _, _, _)| format!("- `{tag}`"))
                                 .collect::<Vec<_>>()
                                 .join("\n")
                         );
@@ -525,13 +602,17 @@ fn run_release_logic(
             }
 
             // Tags are always created on the current HEAD.
-            for (tag_name, tag_msg, _, _, _, _) in &tags_to_create {
+            for (tag_name, tag_msg, _, _, _, _, _) in &tags_to_create {
                 create_tag(&repo, tag_name, tag_msg)?;
                 println!("  ✓ Created tag {}", tag_name.cyan());
             }
 
             // Floating tags (e.g. v1, v1.2) point to the latest release.
-            for (_, _, _, pkg_name, new_version, _) in &tags_to_create {
+            // Pre-releases never move floating tags.
+            for (_, _, _, pkg_name, new_version, _, is_pre) in &tags_to_create {
+                if *is_pre {
+                    continue;
+                }
                 let pkg = config
                     .packages
                     .iter()
@@ -608,7 +689,7 @@ fn run_release_logic(
             // Push tags (and branch for commit mode).
             let tag_refs: Vec<&str> = tags_to_create
                 .iter()
-                .map(|(t, _, _, _, _, _)| t.as_str())
+                .map(|(t, _, _, _, _, _, _)| t.as_str())
                 .collect();
             match mode {
                 ReleaseCommitMode::Commit => {
@@ -639,14 +720,14 @@ fn run_release_logic(
             }
 
             if config.workspace.anonymous_telemetry {
-                for (_, _, _, _, _, commit_count) in &tags_to_create {
+                for (_, _, _, _, _, commit_count, _) in &tags_to_create {
                     telemetry::send_event(telemetry::EventType::Release, None, Some(*commit_count));
                 }
             }
 
             if let Some(forge_instance) = build_forge_instance(&repo, config) {
-                for (tag_name, _, body, _, _, _) in &tags_to_create {
-                    match forge_instance.create_release(tag_name, body) {
+                for (tag_name, _, body, _, _, _, is_pre) in &tags_to_create {
+                    match forge_instance.create_release(tag_name, body, *is_pre) {
                         Ok(()) => {
                             println!("  ✓ {} {}", forge_instance.release_noun(), tag_name.cyan())
                         }
@@ -670,7 +751,7 @@ fn run_release_logic(
                     .open(&summary_path)
                 {
                     let _ = writeln!(file, "## Released\n");
-                    for (tag_name, _, body, _, _, _) in &tags_to_create {
+                    for (tag_name, _, body, _, _, _, _) in &tags_to_create {
                         let _ = writeln!(file, "### {tag_name}\n");
                         let _ = writeln!(file, "{body}");
                     }

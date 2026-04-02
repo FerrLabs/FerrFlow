@@ -14,15 +14,18 @@ impl GitLabForge {
 }
 
 impl Forge for GitLabForge {
-    fn create_release(&self, tag: &str, body: &str) -> Result<()> {
+    fn create_release(&self, tag: &str, body: &str, prerelease: bool) -> Result<()> {
         let project = self.encoded_project_id();
         let url = format!("https://gitlab.com/api/v4/projects/{project}/releases");
 
-        let payload = serde_json::json!({
+        let mut payload = serde_json::json!({
             "tag_name": tag,
             "name": tag,
             "description": body,
         });
+        if prerelease {
+            payload["upcoming_release"] = serde_json::json!(true);
+        }
 
         ureq::post(&url)
             .header("PRIVATE-TOKEN", &self.token)

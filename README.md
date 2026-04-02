@@ -68,6 +68,9 @@ ferrflow release
 # Dry run
 ferrflow release --dry-run
 
+# Pre-release
+ferrflow release --channel beta
+
 # Scaffold a config file
 ferrflow init
 
@@ -294,6 +297,51 @@ tag_template = "{name}/v{version}"  # override: api/v1.2.3
 | Single repo | `v{version}` | `v1.2.3` |
 | Monorepo | `{name}@v{version}` | `api@v1.2.3` |
 | Custom | `release-{version}` | `release-1.2.3` |
+
+## Pre-release Channels
+
+Publish pre-release versions (alpha, beta, rc, dev) using the `--channel` flag or branch-based configuration. Pre-release versions follow the format `MAJOR.MINOR.PATCH-CHANNEL.IDENTIFIER`.
+
+### CLI flag
+
+```bash
+ferrflow release --channel beta       # 2.0.0-beta.1
+ferrflow check --channel rc           # preview pre-release version
+```
+
+### Branch-based configuration
+
+Map branches to channels automatically:
+
+```json
+{
+  "workspace": {
+    "branches": [
+      { "name": "main", "channel": false },
+      { "name": "develop", "channel": "dev", "prereleaseIdentifier": "timestamp" },
+      { "name": "release/*", "channel": "rc" }
+    ]
+  }
+}
+```
+
+Branch names support glob patterns. The first match wins.
+
+### Identifier strategies
+
+| Strategy | Example | Description |
+|----------|---------|-------------|
+| `increment` | `-beta.3` | Auto-incrementing counter (default) |
+| `timestamp` | `-dev.20250402T1430` | UTC timestamp |
+| `short-hash` | `-dev.a1b2c3d` | Git short hash |
+| `timestamp-hash` | `-dev.20250402T1430-a1b2c3d` | Timestamp + hash |
+
+### Behavior
+
+- Floating tags (e.g. `v1`, `v1.2`) are never moved by pre-release versions
+- GitHub Releases are marked as pre-release
+- Stable releases include all commits since the last stable tag (skipping pre-release tags)
+- Hook environment includes `FERRFLOW_CHANNEL` and `FERRFLOW_IS_PRERELEASE`
 
 ## Conventional Commits
 

@@ -87,6 +87,35 @@
         },
         "hooks": {
           "$ref": "#/$defs/hooks"
+        },
+        "branches": {
+          "type": "array",
+          "description": "Map branches to pre-release channels. When FerrFlow runs on a branch matching a configured name/pattern, it uses the corresponding channel.",
+          "items": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Branch name or glob pattern (e.g. 'main', 'release/*')."
+              },
+              "channel": {
+                "oneOf": [
+                  { "type": "boolean", "const": false, "description": "Stable release (no pre-release suffix)." },
+                  { "type": "string", "description": "Pre-release channel name (e.g. 'beta', 'dev', 'rc')." }
+                ],
+                "description": "false for stable releases, string for pre-release channel name.",
+                "default": false
+              },
+              "prereleaseIdentifier": {
+                "type": "string",
+                "description": "Strategy for the pre-release identifier after the channel name.",
+                "enum": ["increment", "timestamp", "short-hash", "timestamp-hash"],
+                "default": "increment"
+              }
+            },
+            "additionalProperties": false
+          }
         }
       },
       "additionalProperties": false

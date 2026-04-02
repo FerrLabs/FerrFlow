@@ -35,12 +35,18 @@ pub enum Commands {
         /// Output as JSON
         #[arg(long)]
         json: bool,
+        /// Pre-release channel override (e.g. beta, rc, dev)
+        #[arg(long)]
+        channel: Option<String>,
     },
     /// Bump versions, update changelogs, create tags and push
     Release {
         /// Allow floating tags to move backward to a lower version
         #[arg(long)]
         force: bool,
+        /// Pre-release channel override (e.g. beta, rc, dev)
+        #[arg(long)]
+        channel: Option<String>,
     },
     /// Generate/update CHANGELOG.md only
     Changelog,
@@ -94,12 +100,19 @@ pub enum Commands {
 impl Cli {
     pub fn run(self) -> Result<()> {
         match self.command {
-            Commands::Check { json } => {
-                crate::monorepo::check(self.config.as_deref(), self.verbose, json)
-            }
-            Commands::Release { force } => {
-                crate::monorepo::release(self.config.as_deref(), self.dry_run, self.verbose, force)
-            }
+            Commands::Check { json, channel } => crate::monorepo::check(
+                self.config.as_deref(),
+                self.verbose,
+                json,
+                channel.as_deref(),
+            ),
+            Commands::Release { force, channel } => crate::monorepo::release(
+                self.config.as_deref(),
+                self.dry_run,
+                self.verbose,
+                force,
+                channel.as_deref(),
+            ),
             Commands::Changelog => {
                 crate::changelog::generate_only(self.config.as_deref(), self.dry_run)
             }

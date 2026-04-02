@@ -54,6 +54,42 @@ pub enum OrphanedTagStrategy {
 }
 
 // ---------------------------------------------------------------------------
+// Pre-release channel config
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct BranchChannelConfig {
+    pub name: String,
+    #[serde(default)]
+    pub channel: ChannelValue,
+    #[serde(default, alias = "prereleaseIdentifier")]
+    pub prerelease_identifier: PrereleaseIdentifier,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum ChannelValue {
+    Stable(bool),
+    Named(String),
+}
+
+impl Default for ChannelValue {
+    fn default() -> Self {
+        ChannelValue::Stable(false)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "kebab-case")]
+pub enum PrereleaseIdentifier {
+    #[default]
+    Increment,
+    Timestamp,
+    ShortHash,
+    TimestampHash,
+}
+
+// ---------------------------------------------------------------------------
 // Config structs
 // ---------------------------------------------------------------------------
 
@@ -102,6 +138,8 @@ pub struct WorkspaceConfig {
     pub forge: ForgeKind,
     #[serde(default)]
     pub hooks: Option<HooksConfig>,
+    #[serde(default)]
+    pub branches: Option<Vec<BranchChannelConfig>>,
 }
 
 impl WorkspaceConfig {
@@ -301,6 +339,7 @@ const CAMEL_CASE_KEYS: &[&str] = &[
     "on_failure",
     "floating_tags",
     "orphaned_tag_strategy",
+    "prerelease_identifier",
 ];
 
 fn to_camel_case_keys(value: serde_json::Value) -> serde_json::Value {
@@ -1838,5 +1877,72 @@ format = "toml"
 
         let input = serde_json::json!(null);
         assert_eq!(to_camel_case_keys(input.clone()), input);
+    }
+
+    #[test]
+    fn deserialize_branches_json() {
+        let json = r#"{
+            "workspace": {
+                "branches": [
+                    { "name": "main", "channel": false },
+                    { "name": "develop", "channel": "dev" },
+                    { "name": "beta", "channel": "beta", "prereleaseIdentifier": "timestamp" }
+                ]
+            },
+            "package": []
+        }"#;
+        let config: Config = serde_json::from_str(json).unwrap();
+        let branches = config.workspace.branches.unwrap();
+        assert_eq!(branches.len(), 3);
+        assert!(matches!(branches[0].channel, ChannelValue::Stable(false)));
+        assert!(matches!(&branches[1].channel, ChannelValue::Named(s) if s == "dev"));
+        assert_eq!(
+            branches[1].prerelease_identifier,
+            PrereleaseIdentifier::Increment
+        );
+        assert_eq!(
+            branches[2].prerelease_identifier,
+            PrereleaseIdentifier::Timestamp
+        );
+    }
+
+    #[test]
+    fn deserialize_branches_toml() {
+        let toml_str = r#"
+            [[workspace.branches]]
+            name = "main"
+            channel = false
+
+            [[workspace.branches]]
+            name = "develop"
+            channel = "dev"
+            prereleaseIdentifier = "short-hash"
+
+            [[package]]
+            name = "test"
+            path = "."
+        "#;
+        let config: Config = toml_edit::de::from_str(toml_str).unwrap();
+        let branches = config.workspace.branches.unwrap();
+        assert_eq!(branches.len(), 2);
+        assert!(matches!(branches[0].channel, ChannelValue::Stable(false)));
+        assert_eq!(
+            branches[1].prerelease_identifier,
+            PrereleaseIdentifier::ShortHash
+        );
+    }
+
+    #[test]
+    fn deserialize_no_branches_backward_compatible() {
+        let json = r#"{ "workspace": {}, "package": [] }"#;
+        let config: Config = serde_json::from_str(json).unwrap();
+        assert!(config.workspace.branches.is_none());
+    }
+
+    #[test]
+    fn channel_value_rejects_true() {
+        let json = r#"{ "name": "main", "channel": true }"#;
+        let config: BranchChannelConfig = serde_json::from_str(json).unwrap();
+        assert!(matches!(config.channel, ChannelValue::Stable(true)));
     }
 }

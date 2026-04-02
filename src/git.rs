@@ -214,6 +214,119 @@ fn find_last_tag_commit(
     Ok(find_last_tag(repo, prefix, strategy)?.map(|t| t.commit_oid))
 }
 
+/// Check if a tag name contains a pre-release suffix (has a `-` in the version part).
+fn is_prerelease_tag(tag_name: &str, prefix: &str) -> bool {
+    let version_part = tag_name.strip_prefix(prefix).unwrap_or(tag_name);
+    version_part.contains('-')
+}
+
+/// Like `find_last_tag`, but skips pre-release tags (those with `-` in version part).
+fn find_last_stable_tag(
+    repo: &Repository,
+    prefix: &str,
+    strategy: OrphanedTagStrategy,
+) -> Result<Option<TagMatch>> {
+    let head = repo.head()?.peel_to_commit()?.id();
+    let latest: RefCell<Option<TagMatch>> = RefCell::new(None);
+
+    repo.tag_foreach(|oid, name| {
+        let name = String::from_utf8_lossy(name);
+        let tag_name = name.trim_start_matches("refs/tags/");
+        if !tag_name.starts_with(prefix) || is_prerelease_tag(tag_name, prefix) {
+            return true;
+        }
+
+        let commit_oid = if let Ok(tag_obj) = repo.find_tag(oid) {
+            tag_obj.target_id()
+        } else {
+            oid
+        };
+
+        let commit = match repo.find_commit(commit_oid) {
+            Ok(c) => c,
+            Err(_) => return true,
+        };
+
+        let reachable =
+            head == commit_oid || repo.graph_descendant_of(head, commit_oid).unwrap_or(false);
+
+        let (effective_oid, effective_time) = if reachable {
+            (commit_oid, commit.time().seconds())
+        } else {
+            if strategy == OrphanedTagStrategy::Warn {
+                return true;
+            }
+            match find_matching_commit(repo, &commit, &strategy) {
+                Some(matched_oid) => {
+                    let matched_commit = match repo.find_commit(matched_oid) {
+                        Ok(c) => c,
+                        Err(_) => return true,
+                    };
+                    (matched_oid, matched_commit.time().seconds())
+                }
+                None => return true,
+            }
+        };
+
+        let mut latest_ref = latest.borrow_mut();
+        if latest_ref.is_none() || effective_time > latest_ref.as_ref().unwrap().time {
+            *latest_ref = Some(TagMatch {
+                name: tag_name.to_string(),
+                commit_oid: effective_oid,
+                time: effective_time,
+            });
+        }
+        true
+    })?;
+
+    Ok(latest.into_inner())
+}
+
+pub fn get_commits_since_last_stable_tag(
+    repo: &Repository,
+    tag_prefix: &str,
+    strategy: OrphanedTagStrategy,
+) -> Result<Vec<GitLog>> {
+    let last_tag_oid = find_last_stable_tag(repo, tag_prefix, strategy)?.map(|t| t.commit_oid);
+
+    let mut walk = repo.revwalk()?;
+    walk.push_head()?;
+    walk.set_sorting(Sort::TOPOLOGICAL | Sort::TIME)?;
+
+    let mut commits = Vec::new();
+    for oid in walk {
+        let oid = oid?;
+        if let Some(stop) = last_tag_oid
+            && oid == stop
+        {
+            break;
+        }
+        if let Ok(commit) = repo.find_commit(oid) {
+            let message = commit.message().unwrap_or("").to_string();
+            if message.contains("[skip ci]") {
+                continue;
+            }
+            commits.push(GitLog {
+                hash: oid.to_string()[..8].to_string(),
+                message,
+            });
+        }
+    }
+
+    Ok(commits)
+}
+
+/// Collect all tag names in the repository.
+pub fn collect_all_tags(repo: &Repository) -> Vec<String> {
+    let mut tags = Vec::new();
+    let _ = repo.tag_foreach(|_oid, name| {
+        let name = String::from_utf8_lossy(name);
+        tags.push(name.trim_start_matches("refs/tags/").to_string());
+        true
+    });
+    tags
+}
+
 pub fn get_changed_files(repo: &Repository) -> Result<Vec<String>> {
     let head = match repo.head() {
         Ok(h) => h.peel_to_commit()?,
@@ -1091,5 +1204,49 @@ mod tests {
             get_commits_since_last_tag(&repo, "v", OrphanedTagStrategy::TreeHash).unwrap();
         assert_eq!(commits.len(), 1);
         assert!(commits[0].message.contains("new feature"));
+    }
+
+    #[test]
+    fn get_commits_since_last_stable_tag_skips_prereleases() {
+        let (dir, repo) = init_repo();
+        create_commit_in_repo(&repo, dir.path(), "a.txt", "feat: initial");
+        create_annotated_tag(&repo, "v1.0.0", "Release v1.0.0");
+        create_commit_in_repo(&repo, dir.path(), "b.txt", "feat: beta feature");
+        create_annotated_tag(&repo, "v2.0.0-beta.1", "Release v2.0.0-beta.1");
+        create_commit_in_repo(&repo, dir.path(), "c.txt", "feat: another beta feature");
+        create_annotated_tag(&repo, "v2.0.0-beta.2", "Release v2.0.0-beta.2");
+        create_commit_in_repo(&repo, dir.path(), "d.txt", "fix: last fix");
+
+        // Stable commits should include everything since v1.0.0
+        let commits =
+            get_commits_since_last_stable_tag(&repo, "v", OrphanedTagStrategy::Warn).unwrap();
+        assert_eq!(commits.len(), 3);
+
+        // Regular commits should include only since v2.0.0-beta.2
+        let commits = get_commits_since_last_tag(&repo, "v", OrphanedTagStrategy::Warn).unwrap();
+        assert_eq!(commits.len(), 1);
+    }
+
+    #[test]
+    fn collect_all_tags_returns_tag_names() {
+        let (dir, repo) = init_repo();
+        create_commit_in_repo(&repo, dir.path(), "a.txt", "feat: initial");
+        create_annotated_tag(&repo, "v1.0.0", "Release v1.0.0");
+        create_commit_in_repo(&repo, dir.path(), "b.txt", "feat: second");
+        create_annotated_tag(&repo, "v1.1.0-beta.1", "Release v1.1.0-beta.1");
+
+        let tags = collect_all_tags(&repo);
+        assert!(tags.contains(&"v1.0.0".to_string()));
+        assert!(tags.contains(&"v1.1.0-beta.1".to_string()));
+    }
+
+    #[test]
+    fn is_prerelease_tag_detection() {
+        assert!(!is_prerelease_tag("v1.0.0", "v"));
+        assert!(is_prerelease_tag("v1.0.0-beta.1", "v"));
+        assert!(is_prerelease_tag("v2.0.0-rc.3", "v"));
+        assert!(!is_prerelease_tag("v2.0.0", "v"));
+        assert!(is_prerelease_tag("sdk@v1.0.0-dev.1", "sdk@v"));
+        assert!(!is_prerelease_tag("sdk@v1.0.0", "sdk@v"));
     }
 }
