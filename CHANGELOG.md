@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.12.3] - 2026-04-02
+
+### Bug Fixes
+
+- fix(git): override CI-embedded credentials when FERRFLOW_TOKEN is set (#237)
+
 ## [2.12.2] - 2026-04-02
 
 ### Bug Fixes
