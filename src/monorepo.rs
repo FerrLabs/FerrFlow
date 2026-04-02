@@ -160,6 +160,14 @@ fn run_release_logic(
 
     let all_tags = collect_all_tags(&repo);
 
+    // For pre-releases, commit/push/PR target the current branch (e.g. develop),
+    // not the configured stable branch (e.g. main).
+    let target_branch = if prerelease_ctx.is_prerelease() {
+        current_branch.clone()
+    } else {
+        config.workspace.branch.clone()
+    };
+
     let changed_files = get_changed_files(&repo)?;
 
     if verbose && !json && !changed_files.is_empty() {
@@ -564,7 +572,7 @@ fn run_release_logic(
                         );
                         match forge_instance.create_merge_request(
                             &branch_name,
-                            &config.workspace.branch,
+                            &target_branch,
                             &pr_title,
                             &pr_body,
                         ) {
@@ -693,15 +701,10 @@ fn run_release_logic(
                 .collect();
             match mode {
                 ReleaseCommitMode::Commit => {
-                    push(
-                        &repo,
-                        &config.workspace.remote,
-                        &config.workspace.branch,
-                        &tag_refs,
-                    )?;
+                    push(&repo, &config.workspace.remote, &target_branch, &tag_refs)?;
                     println!(
                         "  ✓ Pushed and verified on {}/{}",
-                        config.workspace.remote, config.workspace.branch
+                        config.workspace.remote, target_branch
                     );
                 }
                 ReleaseCommitMode::Pr | ReleaseCommitMode::None => {
