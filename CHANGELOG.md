@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.12.1] - 2026-04-02
+
+### Bug Fixes
+
+- fix(release): target current branch for pre-release commits and PRs (#233)
+
 ## [2.12.0] - 2026-04-02
 
 ### Features
