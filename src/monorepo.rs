@@ -185,6 +185,11 @@ fn run_release_logic(
     let mut tags_to_create: Vec<(String, String, String, String, String, i32, bool)> = Vec::new();
     let mut hook_contexts: Vec<(HookContext, usize)> = Vec::new(); // (ctx, pkg_index)
 
+    // Buffered output: per-package lines and shared (commit/push) lines.
+    // Each entry is (pkg_name, lines) in insertion order.
+    let mut pkg_outputs: Vec<(String, Vec<String>)> = Vec::new();
+    let mut shared_outputs: Vec<String> = Vec::new();
+
     for (pkg_idx, pkg) in config.packages.iter().enumerate() {
         let tag_search_prefix = pkg.tag_prefix(&config.workspace, config.is_monorepo());
         let mut touched = is_package_touched(pkg, &changed_files, config.is_monorepo());
@@ -339,7 +344,7 @@ fn run_release_logic(
             } else {
                 String::new()
             };
-            println!(
+            let mut lines = vec![format!(
                 "{} {}  {} → {}  ({}{})",
                 "●".green().bold(),
                 pkg.name.bold(),
@@ -347,12 +352,12 @@ fn run_release_logic(
                 new_version.green().bold(),
                 strategy_label.cyan(),
                 channel_label.yellow()
-            );
+            )];
 
             if verbose {
                 for c in &commits {
                     if let Some(line) = c.message.lines().next() {
-                        println!("    {} {}", c.hash.dimmed(), line.dimmed());
+                        lines.push(format!("    {} {}", c.hash.dimmed(), line.dimmed()));
                     }
                 }
             }
@@ -372,14 +377,16 @@ fn run_release_logic(
                         } else {
                             "create"
                         };
-                        println!(
+                        lines.push(format!(
                             "    {} floating tag {}",
                             format!("→ {verb}").dimmed(),
                             float_tag.cyan()
-                        );
+                        ));
                     }
                 }
             }
+
+            pkg_outputs.push((pkg.name.clone(), lines));
         }
 
         let hook_ctx = HookContext {
@@ -410,12 +417,15 @@ fn run_release_logic(
             }
         } else {
             if repo.refname_to_id(&format!("refs/tags/{tag}")).is_ok() {
-                println!(
-                    "  {} {} — tag {} already exists, skipping",
-                    "○".dimmed(),
-                    pkg.name.dimmed(),
-                    tag.cyan()
-                );
+                if let Some((_, lines)) = pkg_outputs.iter_mut().rev().find(|(n, _)| n == &pkg.name)
+                {
+                    lines.push(format!(
+                        "  {} {} — tag {} already exists, skipping",
+                        "○".dimmed(),
+                        pkg.name.dimmed(),
+                        tag.cyan()
+                    ));
+                }
                 continue;
             }
 
@@ -435,7 +445,11 @@ fn run_release_logic(
             for vf in &pkg.versioned_files {
                 write_version(vf, root, &new_version)?;
                 if get_handler(&vf.format).modifies_file() {
-                    println!("  ✓ Updated {}", vf.path);
+                    if let Some((_, lines)) =
+                        pkg_outputs.iter_mut().rev().find(|(n, _)| n == &pkg.name)
+                    {
+                        lines.push(format!("  ✓ Updated {}", vf.path));
+                    }
                     files_to_commit.push(vf.path.clone());
                 }
             }
@@ -546,7 +560,7 @@ fn run_release_logic(
             match mode {
                 ReleaseCommitMode::Commit => {
                     create_commit(&repo, &file_refs, &commit_msg)?;
-                    println!("  ✓ Committed release changes");
+                    shared_outputs.push("✓ Committed release changes".to_string());
                 }
                 ReleaseCommitMode::Pr => {
                     let branch_name = format!(
@@ -558,7 +572,7 @@ fn run_release_logic(
                     );
                     create_branch_and_commit(&repo, &branch_name, &file_refs, &commit_msg)?;
                     push_branch(&repo, &config.workspace.remote, &branch_name)?;
-                    println!("  ✓ Pushed branch {}", branch_name.cyan());
+                    shared_outputs.push(format!("✓ Pushed branch {}", branch_name.cyan()));
 
                     if let Some(forge_instance) = build_forge_instance(&repo, config) {
                         let pr_title = format!("chore(release): {}", release_parts.join(", "));
@@ -577,14 +591,16 @@ fn run_release_logic(
                             &pr_body,
                         ) {
                             Ok(mr) => {
-                                println!(
-                                    "  ✓ Created {} #{}",
+                                shared_outputs.push(format!(
+                                    "✓ Created {} #{}",
                                     forge_instance.mr_noun(),
                                     mr.id.to_string().cyan()
-                                );
+                                ));
                                 if config.workspace.auto_merge_releases {
                                     match forge_instance.enable_auto_merge(&mr) {
-                                        Ok(()) => println!("  ✓ Auto-merge enabled"),
+                                        Ok(()) => {
+                                            shared_outputs.push("✓ Auto-merge enabled".to_string())
+                                        }
                                         Err(err) => eprintln!(
                                             "{}",
                                             format!(
@@ -610,9 +626,12 @@ fn run_release_logic(
             }
 
             // Tags are always created on the current HEAD.
-            for (tag_name, tag_msg, _, _, _, _, _) in &tags_to_create {
+            for (tag_name, tag_msg, _, pkg_name, _, _, _) in &tags_to_create {
                 create_tag(&repo, tag_name, tag_msg)?;
-                println!("  ✓ Created tag {}", tag_name.cyan());
+                if let Some((_, lines)) = pkg_outputs.iter_mut().rev().find(|(n, _)| n == pkg_name)
+                {
+                    lines.push(format!("  ✓ Created tag {}", tag_name.cyan()));
+                }
             }
 
             // Floating tags (e.g. v1, v1.2) point to the latest release.
@@ -667,7 +686,11 @@ fn run_release_logic(
                         let msg = format!("Release {new_version}");
                         let moved = create_or_move_tag(&repo, &float_tag, &msg)?;
                         let verb = if moved { "Moved" } else { "Created" };
-                        println!("  ✓ {} floating tag {}", verb, float_tag.cyan());
+                        if let Some((_, lines)) =
+                            pkg_outputs.iter_mut().rev().find(|(n, _)| n == pkg_name)
+                        {
+                            lines.push(format!("  ✓ {} floating tag {}", verb, float_tag.cyan()));
+                        }
                         floating_tag_names.push(float_tag);
                     }
                 }
@@ -702,15 +725,15 @@ fn run_release_logic(
             match mode {
                 ReleaseCommitMode::Commit => {
                     push(&repo, &config.workspace.remote, &target_branch, &tag_refs)?;
-                    println!(
-                        "  ✓ Pushed and verified on {}/{}",
+                    shared_outputs.push(format!(
+                        "✓ Pushed and verified on {}/{}",
                         config.workspace.remote, target_branch
-                    );
+                    ));
                 }
                 ReleaseCommitMode::Pr | ReleaseCommitMode::None => {
                     if !tag_refs.is_empty() {
                         push_tags(&repo, &config.workspace.remote, &tag_refs)?;
-                        println!("  ✓ Pushed tags");
+                        shared_outputs.push("✓ Pushed tags".to_string());
                     }
                 }
             }
@@ -719,14 +742,22 @@ fn run_release_logic(
             if !floating_tag_names.is_empty() {
                 let float_refs: Vec<&str> = floating_tag_names.iter().map(String::as_str).collect();
                 force_push_tags(&repo, &config.workspace.remote, &float_refs)?;
-                println!("  ✓ Pushed floating tags");
+                shared_outputs.push("✓ Pushed floating tags".to_string());
             }
 
             if let Some(forge_instance) = build_forge_instance(&repo, config) {
-                for (tag_name, _, body, _, _, _, is_pre) in &tags_to_create {
+                for (tag_name, _, body, pkg_name, _, _, is_pre) in &tags_to_create {
                     match forge_instance.create_release(tag_name, body, *is_pre) {
                         Ok(()) => {
-                            println!("  ✓ {} {}", forge_instance.release_noun(), tag_name.cyan())
+                            if let Some((_, lines)) =
+                                pkg_outputs.iter_mut().rev().find(|(n, _)| n == pkg_name)
+                            {
+                                lines.push(format!(
+                                    "  ✓ {} {}",
+                                    forge_instance.release_noun(),
+                                    tag_name.cyan()
+                                ));
+                            }
                         }
                         Err(err) => eprintln!(
                             "{}",
@@ -796,6 +827,22 @@ fn run_release_logic(
                     run_hook(point, &cmd, ctx, on_failure, true, verbose, root)?;
                 }
             }
+        }
+    }
+
+    // Print grouped output: per-package sections, then shared operations.
+    for (i, (_, lines)) in pkg_outputs.iter().enumerate() {
+        if i > 0 {
+            println!();
+        }
+        for line in lines {
+            println!("{line}");
+        }
+    }
+    if !shared_outputs.is_empty() {
+        println!();
+        for line in &shared_outputs {
+            println!("{line}");
         }
     }
 
