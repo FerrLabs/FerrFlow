@@ -4,6 +4,13 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.12.5] - 2026-04-03
+
+### Bug Fixes
+
+- fix: correct GitHub org slug in Cargo.toml and README (#240)
+- fix(monorepo): replace .unwrap() with proper error handling in package lookup (#239)
+
 ## [2.12.4] - 2026-04-03
 
 ### Bug Fixes
