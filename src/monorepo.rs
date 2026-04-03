@@ -468,14 +468,6 @@ fn run_release_logic(
                 auto_stage_new_files(&repo, &before, &mut files_to_commit);
             }
 
-            if config.workspace.anonymous_telemetry {
-                telemetry::send_event(
-                    telemetry::EventType::VersionBump,
-                    None,
-                    Some(commits.len() as i32),
-                );
-            }
-
             let body = build_section(&new_version, &commits);
             tags_to_create.push((
                 tag.clone(),
@@ -486,6 +478,14 @@ fn run_release_logic(
                 commits.len() as i32,
                 is_prerelease,
             ));
+        }
+
+        if config.workspace.anonymous_telemetry {
+            telemetry::send_event(
+                telemetry::EventType::VersionBump,
+                None,
+                Some(commits.len() as i32),
+            );
         }
 
         hook_contexts.push((hook_ctx, pkg_idx));
@@ -722,12 +722,6 @@ fn run_release_logic(
                 println!("  ✓ Pushed floating tags");
             }
 
-            if config.workspace.anonymous_telemetry {
-                for (_, _, _, _, _, commit_count, _) in &tags_to_create {
-                    telemetry::send_event(telemetry::EventType::Release, None, Some(*commit_count));
-                }
-            }
-
             if let Some(forge_instance) = build_forge_instance(&repo, config) {
                 for (tag_name, _, body, _, _, _, is_pre) in &tags_to_create {
                     match forge_instance.create_release(tag_name, body, *is_pre) {
@@ -759,6 +753,12 @@ fn run_release_logic(
                         let _ = writeln!(file, "{body}");
                     }
                 }
+            }
+        }
+
+        if config.workspace.anonymous_telemetry {
+            for (_, _, _, _, _, commit_count, _) in &tags_to_create {
+                telemetry::send_event(telemetry::EventType::Release, None, Some(*commit_count));
             }
         }
 
