@@ -625,7 +625,7 @@ fn run_release_logic(
                     .packages
                     .iter()
                     .find(|p| &p.name == pkg_name)
-                    .unwrap();
+                    .ok_or_else(|| anyhow::anyhow!("package '{pkg_name}' not found in config"))?;
                 let levels = pkg.effective_floating_tags(&config.workspace);
                 for level in levels {
                     if let Some(truncated) = truncate_version(new_version, *level) {
