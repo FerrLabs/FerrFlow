@@ -54,7 +54,7 @@ docker run ghcr.io/ferrflow/ferrflow:latest check
 
 **Pre-built binaries**
 
-Download from [Releases](https://github.com/FerrFlow/FerrFlow/releases).
+Download from [Releases](https://github.com/FerrFlow-Org/FerrFlow/releases).
 
 ## Usage
 
