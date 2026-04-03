@@ -378,4 +378,4 @@ release:
 
 ## License
 
-MPL-2.0
+MIT
