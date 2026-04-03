@@ -121,7 +121,7 @@ fn find_last_tag(
                 warnings.borrow_mut().push(format!(
                     "Warning: tag '{}' points to missing commit {} (likely garbage-collected). Skipping.\n  \
                      Hint: set 'orphanedTagStrategy' to 'treeHash' or 'message' for automatic recovery.\n  \
-                     See https://ferrflow.com/docs/configuration#orphaned-tag-strategy",
+                     See https://ferrflow.com/docs/configuration/config-file#orphaned-tag-strategy",
                     tag_name,
                     &commit_oid.to_string()[..7]
                 ));
@@ -140,7 +140,7 @@ fn find_last_tag(
                 warnings.borrow_mut().push(format!(
                     "Warning: tag '{}' points to orphaned commit {} (not reachable from HEAD).\n  \
                      Hint: set 'orphanedTagStrategy' to 'treeHash' or 'message' for automatic recovery.\n  \
-                     See https://ferrflow.com/docs/configuration#orphaned-tag-strategy",
+                     See https://ferrflow.com/docs/configuration/config-file#orphaned-tag-strategy",
                     tag_name, short
                 ));
                 return true;
