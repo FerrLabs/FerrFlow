@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.12.4] - 2026-04-03
+
+### Bug Fixes
+
+- fix(git): correct orphaned tag strategy documentation URL (#238)
+
 ## [2.12.3] - 2026-04-02
 
 ### Bug Fixes

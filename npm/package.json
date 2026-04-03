@@ -14,16 +14,16 @@
   "license": "MPL-2.0",
   "name": "ferrflow",
   "optionalDependencies": {
-    "@ferrflow/darwin-arm64": "2.12.3",
-    "@ferrflow/darwin-x64": "2.12.3",
-    "@ferrflow/linux-arm64": "2.12.3",
-    "@ferrflow/linux-x64": "2.12.3",
-    "@ferrflow/win32-x64": "2.12.3"
+    "@ferrflow/darwin-arm64": "2.12.4",
+    "@ferrflow/darwin-x64": "2.12.4",
+    "@ferrflow/linux-arm64": "2.12.4",
+    "@ferrflow/linux-x64": "2.12.4",
+    "@ferrflow/win32-x64": "2.12.4"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/FerrFlow-Org/FerrFlow.git"
   },
   "type": "module",
-  "version": "2.12.3"
+  "version": "2.12.4"
 }
