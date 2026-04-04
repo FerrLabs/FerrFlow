@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.15.1] - 2026-04-04
+
+### Bug Fixes
+
+- fix(ci): filter floating tags from publish trigger and dedupe benchmark section (#280)
+
 ## [2.15.0] - 2026-04-04
 
 ### Features
