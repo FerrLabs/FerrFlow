@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.15.0] - 2026-04-04
+
+### Features
+
+- feat(test): fixture-based integration tests (#268)
+
 ## [2.14.3] - 2026-04-04
 
 ## [2.14.2] - 2026-04-04
