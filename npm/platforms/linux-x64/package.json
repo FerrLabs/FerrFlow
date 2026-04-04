@@ -3,7 +3,7 @@
     "x64"
   ],
   "description": "FerrFlow Linux x64 binary",
-  "license": "MPL-2.0",
+  "license": "MIT",
   "name": "@ferrflow/linux-x64",
   "os": [
     "linux"

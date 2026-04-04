@@ -35,8 +35,10 @@ for archive in "${!ARCHIVES[@]}"; do
     tar xzf "${WORK_DIR}/${archive}" -C "${pkg_dir}/bin/"
   fi
 
-  # Copy and patch package.json
+  # Copy package.json, README, and LICENSE
   cp "${NPM_DIR}/platforms/${platform}/package.json" "${pkg_dir}/package.json"
+  cp "${NPM_DIR}/../README.md" "${pkg_dir}/README.md"
+  cp "${NPM_DIR}/../LICENSE" "${pkg_dir}/LICENSE" 2>/dev/null || true
   cd "$pkg_dir"
   npm version "$VERSION" --no-git-tag-version --allow-same-version
   npm publish --access public
@@ -45,6 +47,8 @@ done
 
 # Publish main wrapper
 echo "Publishing main package ferrflow@${VERSION}..."
+cp "${NPM_DIR}/../README.md" "${NPM_DIR}/README.md"
+cp "${NPM_DIR}/../LICENSE" "${NPM_DIR}/LICENSE" 2>/dev/null || true
 cd "$NPM_DIR"
 
 # Update version and optionalDependencies versions
