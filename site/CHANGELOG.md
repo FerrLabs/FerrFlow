@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.9.0] - 2026-04-04
+
+### Features
+
+- feat(site): show config examples in all supported formats (JSON, TOML, JSON5, YAML) (#174)
+- feat(playground): interactive commit/tag simulator in the playground (#150)
+
+### Bug Fixes
+
+- fix(ci): add FERRFLOW_TOKEN env var to release job (#178)
+- fix(playground): Update @ferrflow/wasm to v2.14.0 (#171)
+- fix(playground): Update @ferrflow/wasm to v2.13.1 (#170)
+- fix(playground): Update @ferrflow/wasm to v2.13.0 (#169)
+- fix(api): add x-signature and x-timestamp to CORS allowed headers (#168)
+- fix(playground): Update @ferrflow/wasm to v2.12.7 (#167)
+- fix(playground): Update @ferrflow/wasm to v2.12.6 (#166)
+- fix(playground): Update @ferrflow/wasm to v2.12.5 (#165)
+- fix(playground): Update @ferrflow/wasm to v2.12.4 (#162)
+- fix(playground): Update @ferrflow/wasm to v2.12.3 (#161)
+- fix(playground): Update @ferrflow/wasm to v2.12.2 (#160)
+- fix(playground): Update @ferrflow/wasm to v2.11.0 (#152)
+- fix(playground): Update @ferrflow/wasm to v2.10.0 (#149)
+
 ## [1.8.1] - 2026-04-01
 
 ### Bug Fixes
