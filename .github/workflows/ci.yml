@@ -67,11 +67,15 @@ jobs:
         run: cargo build --release
         env:
           FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
-      - uses: FerrFlow-Org/Fixtures@v0
+      - name: Generate fixtures
+        id: fixtures
+        uses: FerrFlow-Org/Fixtures@v0
         with:
           definitions: tests/fixtures/definitions
-          ferrflow-bin: ./target/release/ferrflow
-          mode: test
+      - name: Run fixture tests
+        env:
+          FERRFLOW_BIN: ./target/release/ferrflow
+        run: bash tests/fixtures/run-tests.sh ${{ steps.fixtures.outputs.generated-path }}
 
   micro-bench:
     name: Micro Benchmarks
