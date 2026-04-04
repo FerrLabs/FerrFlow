@@ -79,6 +79,7 @@ jobs:
 
   micro-bench:
     name: Micro Benchmarks
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
@@ -116,7 +117,7 @@ jobs:
 
   release:
     name: Release
-    needs: [test, benchmark]
+    needs: [test, fixture-tests, benchmark]
     runs-on: ubuntu-latest
     concurrency:
       group: release-${{ github.workflow }}-${{ github.ref }}
@@ -124,6 +125,7 @@ jobs:
     if: |
       always() &&
       needs.test.result == 'success' &&
+      needs.fixture-tests.result == 'success' &&
       (needs.benchmark.result == 'success' || needs.benchmark.result == 'skipped') &&
       (
         (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
