@@ -1,0 +1,30 @@
+[meta]
+name = "single-package-no-releasable"
+description = "Chore commits don't trigger a release"
+
+[config]
+content = '''
+{
+  "package": [
+    {
+      "name": "myapp",
+      "path": ".",
+      "versioned_files": [{"path": "version.toml", "format": "toml"}]
+    }
+  ]
+}
+'''
+
+[[packages]]
+name = "myapp"
+path = "."
+initial_version = "1.0.0"
+tag = "v1.0.0"
+
+[[commits]]
+message = "chore: update dependencies"
+files = ["Cargo.lock"]
+
+[expect]
+check_contains = ["no releasable commits"]
+check_not_contains = ["1.1.0", "1.0.1"]

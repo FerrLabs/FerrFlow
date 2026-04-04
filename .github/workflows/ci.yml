@@ -55,6 +55,28 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
 
+  fixture-tests:
+    name: Fixture Tests
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: Swatinem/rust-cache@v2
+      - name: Build ferrflow
+        run: cargo build --release
+        env:
+          FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
+      - name: Generate fixtures
+        id: fixtures
+        uses: FerrFlow-Org/Fixtures@v0
+        with:
+          definitions: tests/fixtures/definitions
+      - name: Run fixture tests
+        env:
+          FERRFLOW_BIN: ./target/release/ferrflow
+        run: bash tests/fixtures/run-tests.sh ${{ steps.fixtures.outputs.generated-path }}
+
   micro-bench:
     name: Micro Benchmarks
     runs-on: ubuntu-latest

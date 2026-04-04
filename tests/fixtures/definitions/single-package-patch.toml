@@ -1,0 +1,30 @@
+[meta]
+name = "single-package-patch"
+description = "Single package with a fix commit triggers patch bump"
+
+[config]
+content = '''
+{
+  "package": [
+    {
+      "name": "myapp",
+      "path": ".",
+      "versioned_files": [{"path": "version.toml", "format": "toml"}]
+    }
+  ]
+}
+'''
+
+[[packages]]
+name = "myapp"
+path = "."
+initial_version = "2.3.1"
+tag = "v2.3.1"
+
+[[commits]]
+message = "fix: handle null pointer in parser"
+files = ["src/parser.rs"]
+
+[expect]
+check_contains = ["myapp", "2.3.1", "2.3.2", "patch"]
+check_not_contains = ["Nothing to release"]

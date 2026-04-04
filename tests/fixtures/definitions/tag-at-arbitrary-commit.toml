@@ -1,0 +1,37 @@
+[meta]
+name = "tag-at-arbitrary-commit"
+description = "Tags placed at specific commits in the history, not just the initial commit"
+
+[config]
+content = '''
+{
+  "package": [
+    {
+      "name": "core",
+      "path": "core",
+      "versioned_files": [{"path": "core/version.toml", "format": "toml"}]
+    }
+  ]
+}
+'''
+
+[[packages]]
+name = "core"
+path = "core"
+initial_version = "1.0.0"
+
+[[tags]]
+name = "core@v1.0.0"
+at_commit = 0
+
+[[commits]]
+message = "fix: first patch"
+files = ["core/src/fix1.rs"]
+
+[[commits]]
+message = "feat: new feature after tag"
+files = ["core/src/feat.rs"]
+
+[expect]
+check_contains = ["core", "1.1.0"]
+check_not_contains = ["Nothing to release"]

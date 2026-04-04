@@ -1,0 +1,42 @@
+[meta]
+name = "prerelease-alpha"
+description = "Pre-release alpha channel produces versioned alpha tags"
+
+[config]
+content = '''
+{
+  "workspace": {
+    "branches": [
+      {
+        "name": "main",
+        "channel": "alpha",
+        "prereleaseIdentifier": "increment"
+      }
+    ]
+  },
+  "package": [
+    {
+      "name": "mylib",
+      "path": ".",
+      "versioned_files": [{"path": "version.toml", "format": "toml"}]
+    }
+  ]
+}
+'''
+
+[[packages]]
+name = "mylib"
+path = "."
+initial_version = "1.0.0"
+
+[[tags]]
+name = "v1.0.0"
+at_commit = -1
+
+[[commits]]
+message = "feat: add alpha feature"
+files = ["src/alpha.rs"]
+
+[expect]
+check_contains = ["mylib", "1.1.0", "minor"]
+check_not_contains = ["Nothing to release"]

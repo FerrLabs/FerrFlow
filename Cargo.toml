@@ -1,5 +1,6 @@
 [workspace]
 members = [".", "ferrflow-wasm"]
+exclude = ["__fixtures__"]
 resolver = "3"
 
 [package]

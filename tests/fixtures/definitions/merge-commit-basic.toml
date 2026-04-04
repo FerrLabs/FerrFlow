@@ -1,0 +1,35 @@
+[meta]
+name = "merge-commit-basic"
+description = "Merge commits in history are handled correctly by ferrflow"
+
+[config]
+content = '''
+{
+  "package": [
+    {
+      "name": "mylib",
+      "path": ".",
+      "versioned_files": [{"path": "version.toml", "format": "toml"}]
+    }
+  ]
+}
+'''
+
+[[packages]]
+name = "mylib"
+path = "."
+initial_version = "1.0.0"
+tag = "v1.0.0"
+
+[[commits]]
+message = "feat: feature on branch"
+files = ["src/feature.rs"]
+merge = true
+
+[[commits]]
+message = "fix: hotfix on main"
+files = ["src/hotfix.rs"]
+
+[expect]
+check_contains = ["mylib", "1.1.0"]
+check_not_contains = ["Nothing to release"]

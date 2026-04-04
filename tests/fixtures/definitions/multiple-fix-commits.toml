@@ -1,0 +1,38 @@
+[meta]
+name = "multiple-fix-commits"
+description = "Multiple fix commits produce a single patch bump, not cumulative"
+
+[config]
+content = '''
+{
+  "package": [
+    {
+      "name": "myapp",
+      "path": ".",
+      "versioned_files": [{"path": "version.toml", "format": "toml"}]
+    }
+  ]
+}
+'''
+
+[[packages]]
+name = "myapp"
+path = "."
+initial_version = "1.0.0"
+tag = "v1.0.0"
+
+[[commits]]
+message = "fix: first bug"
+files = ["src/bug1.rs"]
+
+[[commits]]
+message = "fix: second bug"
+files = ["src/bug2.rs"]
+
+[[commits]]
+message = "fix: third bug"
+files = ["src/bug3.rs"]
+
+[expect]
+check_contains = ["myapp", "1.0.1", "patch"]
+check_not_contains = ["Nothing to release", "1.0.2", "1.0.3"]

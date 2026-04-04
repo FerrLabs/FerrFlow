@@ -1,0 +1,54 @@
+[meta]
+name = "monorepo-output-grouping"
+description = "Verify that multi-package output is grouped per package with blank line separators"
+
+[config]
+content = '''
+{
+  "package": [
+    {
+      "name": "alpha",
+      "path": "alpha",
+      "versioned_files": [{"path": "alpha/version.toml", "format": "toml"}]
+    },
+    {
+      "name": "beta",
+      "path": "beta",
+      "versioned_files": [{"path": "beta/version.toml", "format": "toml"}]
+    },
+    {
+      "name": "gamma",
+      "path": "gamma",
+      "versioned_files": [{"path": "gamma/version.toml", "format": "toml"}]
+    }
+  ]
+}
+'''
+
+[[packages]]
+name = "alpha"
+path = "alpha"
+initial_version = "0.1.0"
+tag = "alpha@v0.1.0"
+
+[[packages]]
+name = "beta"
+path = "beta"
+initial_version = "0.1.0"
+tag = "beta@v0.1.0"
+
+[[packages]]
+name = "gamma"
+path = "gamma"
+initial_version = "0.1.0"
+tag = "gamma@v0.1.0"
+
+[[commits]]
+message = "feat: update all packages"
+files = ["alpha/src/lib.rs", "beta/src/lib.rs", "gamma/src/lib.rs"]
+
+[expect]
+check_contains = ["alpha", "beta", "gamma", "0.2.0"]
+# Output should have blank lines between package groups
+output_order = ["alpha", "beta", "gamma"]
+packages_released = 3

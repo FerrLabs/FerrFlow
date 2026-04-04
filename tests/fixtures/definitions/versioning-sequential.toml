@@ -1,0 +1,33 @@
+[meta]
+name = "versioning-sequential"
+description = "Sequential versioning uses simple incrementing numbers"
+
+[config]
+content = '''
+{
+  "workspace": {
+    "versioning": "sequential"
+  },
+  "package": [
+    {
+      "name": "myapp",
+      "path": ".",
+      "versioned_files": [{"path": "version.toml", "format": "toml"}]
+    }
+  ]
+}
+'''
+
+[[packages]]
+name = "myapp"
+path = "."
+initial_version = "42"
+tag = "v42"
+
+[[commits]]
+message = "feat: add feature"
+files = ["src/lib.rs"]
+
+[expect]
+check_contains = ["myapp", "43"]
+check_not_contains = ["Nothing to release"]

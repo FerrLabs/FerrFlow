@@ -1,0 +1,45 @@
+[meta]
+name = "monorepo-scoped-commits"
+description = "Scoped commits only affect the package whose files are changed"
+
+[config]
+content = '''
+{
+  "package": [
+    {
+      "name": "core",
+      "path": "packages/core",
+      "versioned_files": [{"path": "packages/core/version.toml", "format": "toml"}]
+    },
+    {
+      "name": "cli",
+      "path": "packages/cli",
+      "versioned_files": [{"path": "packages/cli/version.toml", "format": "toml"}]
+    }
+  ]
+}
+'''
+
+[[packages]]
+name = "core"
+path = "packages/core"
+initial_version = "1.0.0"
+tag = "core@v1.0.0"
+
+[[packages]]
+name = "cli"
+path = "packages/cli"
+initial_version = "1.0.0"
+tag = "cli@v1.0.0"
+
+[[commits]]
+message = "fix(cli): typo in help text"
+files = ["packages/cli/src/help.rs"]
+
+[[commits]]
+message = "feat(core): add parser"
+files = ["packages/core/src/parser.rs", "packages/cli/src/compat.rs"]
+
+[expect]
+check_contains = ["core", "1.1.0", "cli", "1.1.0"]
+packages_released = 2

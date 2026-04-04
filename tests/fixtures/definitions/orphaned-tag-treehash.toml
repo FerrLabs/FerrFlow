@@ -1,0 +1,33 @@
+[meta]
+name = "orphaned-tag-treehash"
+description = "Orphaned tag with treeHash strategy recovers the correct version"
+
+[config]
+content = '''
+{
+  "workspace": {
+    "orphanedTagStrategy": "treeHash"
+  },
+  "package": [
+    {
+      "name": "myapp",
+      "path": ".",
+      "versioned_files": [{"path": "version.toml", "format": "toml"}]
+    }
+  ]
+}
+'''
+
+[[packages]]
+name = "myapp"
+path = "."
+initial_version = "1.0.0"
+tag = "v1.0.0"
+
+[[commits]]
+message = "feat: add feature"
+files = ["src/lib.rs"]
+
+[expect]
+check_contains = ["myapp", "1.1.0"]
+check_not_contains = ["Nothing to release"]

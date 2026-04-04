@@ -1,0 +1,44 @@
+[meta]
+name = "monorepo-shared-paths"
+description = "Shared paths trigger bumps on packages that depend on them"
+
+[config]
+content = '''
+{
+  "package": [
+    {
+      "name": "api",
+      "path": "packages/api",
+      "sharedPaths": ["packages/shared/"],
+      "versioned_files": [{"path": "packages/api/version.toml", "format": "toml"}]
+    },
+    {
+      "name": "web",
+      "path": "packages/web",
+      "sharedPaths": ["packages/shared/"],
+      "versioned_files": [{"path": "packages/web/version.toml", "format": "toml"}]
+    }
+  ]
+}
+'''
+
+[[packages]]
+name = "api"
+path = "packages/api"
+initial_version = "1.0.0"
+tag = "api@v1.0.0"
+
+[[packages]]
+name = "web"
+path = "packages/web"
+initial_version = "1.0.0"
+tag = "web@v1.0.0"
+
+[[commits]]
+message = "feat: add shared utility"
+files = ["packages/shared/src/utils.rs"]
+
+[expect]
+check_contains = ["api", "1.1.0", "web", "1.1.0"]
+check_not_contains = ["Nothing to release"]
+packages_released = 2

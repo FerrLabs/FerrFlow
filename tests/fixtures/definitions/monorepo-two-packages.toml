@@ -1,0 +1,42 @@
+[meta]
+name = "monorepo-two-packages"
+description = "Two packages both touched in the same commit get independent bumps"
+
+[config]
+content = '''
+{
+  "package": [
+    {
+      "name": "core",
+      "path": "core",
+      "versioned_files": [{"path": "core/version.toml", "format": "toml"}]
+    },
+    {
+      "name": "cli",
+      "path": "cli",
+      "versioned_files": [{"path": "cli/version.toml", "format": "toml"}]
+    }
+  ]
+}
+'''
+
+[[packages]]
+name = "core"
+path = "core"
+initial_version = "0.1.0"
+tag = "core@v0.1.0"
+
+[[packages]]
+name = "cli"
+path = "cli"
+initial_version = "0.1.0"
+tag = "cli@v0.1.0"
+
+[[commits]]
+message = "feat: add features to both packages"
+files = ["core/src/lib.rs", "cli/src/main.rs"]
+
+[expect]
+check_contains = ["core", "0.2.0", "cli", "0.2.0"]
+check_not_contains = ["Nothing to release"]
+packages_released = 2

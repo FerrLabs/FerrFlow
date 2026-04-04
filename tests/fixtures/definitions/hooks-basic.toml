@@ -1,0 +1,48 @@
+[meta]
+name = "hooks-basic"
+description = "Hooks defined in config are written as executable scripts in the generated repo"
+
+[config]
+content = '''
+{
+  "workspace": {
+    "hooks": {
+      "preBump": "./hooks/pre-bump.sh",
+      "postBump": "./hooks/post-bump.sh"
+    }
+  },
+  "package": [
+    {
+      "name": "mylib",
+      "path": ".",
+      "versioned_files": [{"path": "version.toml", "format": "toml"}]
+    }
+  ]
+}
+'''
+
+[[packages]]
+name = "mylib"
+path = "."
+initial_version = "1.0.0"
+tag = "v1.0.0"
+
+[[hooks]]
+path = "hooks/pre-bump.sh"
+content = """#!/usr/bin/env bash
+echo "pre-bump running" >> /tmp/ferrflow-hooks.log
+"""
+
+[[hooks]]
+path = "hooks/post-bump.sh"
+content = """#!/usr/bin/env bash
+echo "post-bump running" >> /tmp/ferrflow-hooks.log
+"""
+
+[[commits]]
+message = "feat: trigger a bump"
+files = ["src/lib.rs"]
+
+[expect]
+check_contains = ["mylib", "1.1.0"]
+check_not_contains = ["Nothing to release"]

@@ -1,0 +1,32 @@
+[meta]
+name = "config-dotfile-format"
+description = "FerrFlow reads .ferrflow dotfile config (JSON format)"
+
+[config]
+format = "json"
+filename = ".ferrflow"
+content = '''
+{
+  "package": [
+    {
+      "name": "myapp",
+      "path": ".",
+      "versioned_files": [{"path": "version.toml", "format": "toml"}]
+    }
+  ]
+}
+'''
+
+[[packages]]
+name = "myapp"
+path = "."
+initial_version = "2.0.0"
+tag = "v2.0.0"
+
+[[commits]]
+message = "fix: handle edge case"
+files = ["src/lib.rs"]
+
+[expect]
+check_contains = ["myapp", "2.0.1", "patch"]
+check_not_contains = ["Nothing to release"]

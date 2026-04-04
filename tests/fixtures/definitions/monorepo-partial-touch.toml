@@ -1,0 +1,40 @@
+[meta]
+name = "monorepo-partial-touch"
+description = "Only the touched package gets a bump, the other is skipped"
+
+[config]
+content = '''
+{
+  "package": [
+    {
+      "name": "api",
+      "path": "packages/api",
+      "versioned_files": [{"path": "packages/api/version.toml", "format": "toml"}]
+    },
+    {
+      "name": "site",
+      "path": "packages/site",
+      "versioned_files": [{"path": "packages/site/version.toml", "format": "toml"}]
+    }
+  ]
+}
+'''
+
+[[packages]]
+name = "api"
+path = "packages/api"
+initial_version = "1.0.0"
+tag = "api@v1.0.0"
+
+[[packages]]
+name = "site"
+path = "packages/site"
+initial_version = "1.0.0"
+tag = "site@v1.0.0"
+
+[[commits]]
+message = "fix(api): handle timeout"
+files = ["packages/api/src/handler.rs"]
+
+[expect]
+check_contains = ["api", "1.0.1"]

@@ -1,0 +1,26 @@
+[meta]
+name = "single-package-nothing"
+description = "No commits after tag means nothing to release"
+
+[config]
+content = '''
+{
+  "package": [
+    {
+      "name": "myapp",
+      "path": ".",
+      "versioned_files": [{"path": "version.toml", "format": "toml"}]
+    }
+  ]
+}
+'''
+
+[[packages]]
+name = "myapp"
+path = "."
+initial_version = "1.0.0"
+tag = "v1.0.0"
+
+[expect]
+check_contains = ["Nothing to release"]
+check_not_contains = ["1.1.0", "2.0.0"]

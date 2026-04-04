@@ -1,0 +1,30 @@
+[meta]
+name = "single-package-major"
+description = "Breaking change triggers major bump"
+
+[config]
+content = '''
+{
+  "package": [
+    {
+      "name": "mylib",
+      "path": ".",
+      "versioned_files": [{"path": "version.toml", "format": "toml"}]
+    }
+  ]
+}
+'''
+
+[[packages]]
+name = "mylib"
+path = "."
+initial_version = "1.2.3"
+tag = "v1.2.3"
+
+[[commits]]
+message = "feat!: redesign config API"
+files = ["src/config.rs"]
+
+[expect]
+check_contains = ["mylib", "1.2.3", "2.0.0", "major"]
+check_not_contains = ["Nothing to release"]
