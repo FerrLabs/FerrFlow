@@ -4,6 +4,20 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.15.0] - 2026-04-04
+
+### Features
+
+- feat: benchmark tool_configs, reset version, disable skipCi (#279)
+- feat: migrate benchmark definitions to tool_configs format (#276)
+- feat(test): fixture-based integration tests (#268)
+
+### Bug Fixes
+
+- fix(npm): set license to MIT and include README in published packages (#278)
+- fix(git): filter floating tags from tag resolution (#266)
+- fix: fall back to GITHUB_TOKEN/GITLAB_TOKEN for git push credentials (#263)
+
 ## [2.15.2] - 2026-04-04
 
 ### Bug Fixes
