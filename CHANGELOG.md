@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.14.0] - 2026-04-04
+
+### Features
+
+- feat: draft release support for GitHub (#260)
+
 ## [2.13.1] - 2026-04-04
 
 ### Bug Fixes
