@@ -8,14 +8,14 @@ pub struct GitHubForge {
 }
 
 impl Forge for GitHubForge {
-    fn create_release(&self, tag: &str, body: &str, prerelease: bool) -> Result<()> {
+    fn create_release(&self, tag: &str, body: &str, prerelease: bool, draft: bool) -> Result<()> {
         let url = format!("https://api.github.com/repos/{}/releases", self.slug);
 
         let payload = serde_json::json!({
             "tag_name": tag,
             "name": tag,
             "body": body,
-            "draft": false,
+            "draft": draft,
             "prerelease": prerelease,
         });
 
@@ -26,6 +26,55 @@ impl Forge for GitHubForge {
             .header("User-Agent", "ferrflow")
             .send_json(payload)
             .with_context(|| format!("Failed to create GitHub release for {tag}"))?;
+
+        Ok(())
+    }
+
+    fn find_draft_release(&self, tag: &str) -> Result<Option<u64>> {
+        let url = format!("https://api.github.com/repos/{}/releases", self.slug);
+
+        let response: serde_json::Value = ureq::get(&url)
+            .header("Authorization", &format!("Bearer {}", self.token))
+            .header("Accept", "application/vnd.github+json")
+            .header("X-GitHub-Api-Version", "2022-11-28")
+            .header("User-Agent", "ferrflow")
+            .call()
+            .with_context(|| "Failed to list GitHub releases")?
+            .body_mut()
+            .read_json()
+            .with_context(|| "Failed to parse releases response")?;
+
+        let empty = vec![];
+        let releases = response.as_array().unwrap_or(&empty);
+        for release in releases {
+            if release["draft"].as_bool() == Some(true)
+                && release["tag_name"].as_str() == Some(tag)
+                && let Some(id) = release["id"].as_u64()
+            {
+                return Ok(Some(id));
+            }
+        }
+
+        Ok(None)
+    }
+
+    fn publish_release(&self, release_id: u64) -> Result<()> {
+        let url = format!(
+            "https://api.github.com/repos/{}/releases/{release_id}",
+            self.slug
+        );
+
+        let payload = serde_json::json!({
+            "draft": false,
+        });
+
+        ureq::patch(&url)
+            .header("Authorization", &format!("Bearer {}", self.token))
+            .header("Accept", "application/vnd.github+json")
+            .header("X-GitHub-Api-Version", "2022-11-28")
+            .header("User-Agent", "ferrflow")
+            .send_json(payload)
+            .with_context(|| format!("Failed to publish GitHub release {release_id}"))?;
 
         Ok(())
     }

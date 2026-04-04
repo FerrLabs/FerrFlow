@@ -124,7 +124,7 @@ jobs:
         env:
           FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
       - name: Run ferrflow release
-        run: ./target/release/ferrflow ${{ inputs.dry_run == 'true' && '--dry-run' || '' }} release
+        run: ./target/release/ferrflow ${{ inputs.dry_run == 'true' && '--dry-run' || '' }} release --draft
         env:
           FERRFLOW_TOKEN: ${{ secrets.FERRFLOW_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.FERRFLOW_TOKEN }}
@@ -239,11 +239,14 @@ jobs:
         uses: actions/attest-build-provenance@v4
         with:
           subject-path: artifacts/*
-      - uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ needs.release.outputs.tag }}
-          files: artifacts/*
-          generate_release_notes: false
+      - name: Upload assets to draft release
+        run: |
+          TAG="${{ needs.release.outputs.tag }}"
+          for file in artifacts/*; do
+            gh release upload "$TAG" "$file" --clobber
+          done
+        env:
+          GH_TOKEN: ${{ secrets.FERRFLOW_TOKEN }}
       - name: Append benchmark results to release
         if: needs.benchmark.result == 'success'
         run: |
@@ -257,6 +260,10 @@ jobs:
           BENCH=$(cat "$BENCH_FILE")
           printf -v NEW_BODY '%s\n\n%s' "$CURRENT_BODY" "$BENCH"
           gh release edit "$TAG" --notes "$NEW_BODY"
+        env:
+          GH_TOKEN: ${{ secrets.FERRFLOW_TOKEN }}
+      - name: Publish draft release
+        run: gh release edit "${{ needs.release.outputs.tag }}" --draft=false
         env:
           GH_TOKEN: ${{ secrets.FERRFLOW_TOKEN }}
 

@@ -47,6 +47,10 @@ pub enum Commands {
         /// Pre-release channel override (e.g. beta, rc, dev)
         #[arg(long)]
         channel: Option<String>,
+        /// Create releases as drafts (GitHub only). A subsequent `ferrflow release`
+        /// without --draft will detect and publish existing drafts automatically.
+        #[arg(long)]
+        draft: bool,
     },
     /// Generate/update CHANGELOG.md only
     Changelog,
@@ -106,12 +110,17 @@ impl Cli {
                 json,
                 channel.as_deref(),
             ),
-            Commands::Release { force, channel } => crate::monorepo::release(
+            Commands::Release {
+                force,
+                channel,
+                draft,
+            } => crate::monorepo::release(
                 self.config.as_deref(),
                 self.dry_run,
                 self.verbose,
                 force,
                 channel.as_deref(),
+                draft,
             ),
             Commands::Changelog => {
                 crate::changelog::generate_only(self.config.as_deref(), self.dry_run)

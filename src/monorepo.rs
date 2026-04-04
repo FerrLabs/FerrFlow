@@ -72,7 +72,7 @@ pub fn check(
         println!();
     }
 
-    let result = run_release_logic(&root, &config, true, verbose, json, false, channel);
+    let result = run_release_logic(&root, &config, true, verbose, json, false, channel, false);
 
     if config.workspace.anonymous_telemetry {
         telemetry::send_event(telemetry::EventType::Check, None, None, None, None);
@@ -87,6 +87,7 @@ pub fn release(
     verbose: bool,
     force: bool,
     channel: Option<&str>,
+    draft: bool,
 ) -> Result<()> {
     let repo = open_repo(&std::env::current_dir()?)?;
     let root = get_repo_root(&repo)?;
@@ -99,9 +100,12 @@ pub fn release(
     }
     println!();
 
-    run_release_logic(&root, &config, dry_run, verbose, false, force, channel)
+    run_release_logic(
+        &root, &config, dry_run, verbose, false, force, channel, draft,
+    )
 }
 
+#[allow(clippy::too_many_arguments)]
 fn run_release_logic(
     root: &Path,
     config: &Config,
@@ -110,6 +114,7 @@ fn run_release_logic(
     json: bool,
     force: bool,
     channel: Option<&str>,
+    draft: bool,
 ) -> Result<()> {
     if config.packages.is_empty() {
         if json {
@@ -749,16 +754,60 @@ fn run_release_logic(
 
             if let Some(forge_instance) = build_forge_instance(&repo, config) {
                 for (tag_name, _, body, pkg_name, _, _, is_pre) in &tags_to_create {
-                    match forge_instance.create_release(tag_name, body, *is_pre) {
+                    if !draft {
+                        // Check for existing draft release and publish it
+                        match forge_instance.find_draft_release(tag_name) {
+                            Ok(Some(release_id)) => {
+                                match forge_instance.publish_release(release_id) {
+                                    Ok(()) => {
+                                        if let Some((_, lines)) = pkg_outputs
+                                            .iter_mut()
+                                            .rev()
+                                            .find(|(n, _)| n == pkg_name)
+                                        {
+                                            lines.push(format!(
+                                                "  ✓ Published draft {} {}",
+                                                forge_instance.release_noun(),
+                                                tag_name.cyan()
+                                            ));
+                                        }
+                                        continue;
+                                    }
+                                    Err(err) => eprintln!(
+                                        "{}",
+                                        format!(
+                                            "  Warning: failed to publish draft for {tag_name}: {err}"
+                                        )
+                                        .yellow()
+                                    ),
+                                }
+                            }
+                            Ok(None) => {}
+                            Err(err) => {
+                                if verbose {
+                                    eprintln!(
+                                        "{}",
+                                        format!(
+                                            "  Warning: failed to check for draft release {tag_name}: {err}"
+                                        )
+                                        .yellow()
+                                    );
+                                }
+                            }
+                        }
+                    }
+
+                    match forge_instance.create_release(tag_name, body, *is_pre, draft) {
                         Ok(()) => {
                             if let Some((_, lines)) =
                                 pkg_outputs.iter_mut().rev().find(|(n, _)| n == pkg_name)
                             {
-                                lines.push(format!(
-                                    "  ✓ {} {}",
-                                    forge_instance.release_noun(),
-                                    tag_name.cyan()
-                                ));
+                                let noun = forge_instance.release_noun();
+                                if draft {
+                                    lines.push(format!("  ✓ Draft {} {}", noun, tag_name.cyan()));
+                                } else {
+                                    lines.push(format!("  ✓ {} {}", noun, tag_name.cyan()));
+                                }
                             }
                         }
                         Err(err) => eprintln!(

@@ -11,7 +11,9 @@ pub struct MergeRequestResult {
 }
 
 pub trait Forge {
-    fn create_release(&self, tag: &str, body: &str, prerelease: bool) -> Result<()>;
+    fn create_release(&self, tag: &str, body: &str, prerelease: bool, draft: bool) -> Result<()>;
+    fn find_draft_release(&self, tag: &str) -> Result<Option<u64>>;
+    fn publish_release(&self, release_id: u64) -> Result<()>;
     fn create_merge_request(
         &self,
         head: &str,

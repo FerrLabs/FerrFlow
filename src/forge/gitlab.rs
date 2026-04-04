@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use colored::Colorize;
 
 use super::{Forge, MergeRequestResult};
 
@@ -14,7 +15,14 @@ impl GitLabForge {
 }
 
 impl Forge for GitLabForge {
-    fn create_release(&self, tag: &str, body: &str, prerelease: bool) -> Result<()> {
+    fn create_release(&self, tag: &str, body: &str, prerelease: bool, draft: bool) -> Result<()> {
+        if draft {
+            eprintln!(
+                "{}",
+                "Warning: GitLab does not support draft releases, creating as published".yellow()
+            );
+        }
+
         let project = self.encoded_project_id();
         let url = format!("https://gitlab.com/api/v4/projects/{project}/releases");
 
@@ -33,6 +41,14 @@ impl Forge for GitLabForge {
             .send_json(payload)
             .with_context(|| format!("Failed to create GitLab release for {tag}"))?;
 
+        Ok(())
+    }
+
+    fn find_draft_release(&self, _tag: &str) -> Result<Option<u64>> {
+        Ok(None)
+    }
+
+    fn publish_release(&self, _release_id: u64) -> Result<()> {
         Ok(())
     }
 
