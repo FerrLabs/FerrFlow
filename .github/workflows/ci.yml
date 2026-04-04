@@ -105,9 +105,6 @@ jobs:
         (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
         github.event_name == 'workflow_dispatch'
       )
-    outputs:
-      tag: ${{ steps.detect-tag.outputs.tag }}
-      released: ${{ steps.detect-tag.outputs.released }}
     permissions:
       contents: write
     steps:
@@ -126,286 +123,29 @@ jobs:
         env:
           FERRFLOW_TOKEN: ${{ secrets.FERRFLOW_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.FERRFLOW_TOKEN }}
-      - name: Detect created tag
-        id: detect-tag
-        run: |
-          TAG=$(./target/release/ferrflow tag --json 2>/dev/null | jq -r '.tag // empty')
-          HEAD_TAG=$(git tag --points-at HEAD | head -1 || true)
-          if [[ -n "$HEAD_TAG" && "$HEAD_TAG" == "$TAG" ]]; then
-            echo "tag=$TAG" >> $GITHUB_OUTPUT
-            echo "released=true" >> $GITHUB_OUTPUT
-            echo "Release detected: $TAG"
-          else
-            echo "released=false" >> $GITHUB_OUTPUT
-            echo "No release detected"
-          fi
-      - name: Upload ferrflow binary
-        if: steps.detect-tag.outputs.released == 'true'
-        uses: actions/upload-artifact@v7
-        with:
-          name: ferrflow-ci-binary
-          path: target/release/ferrflow
-          retention-days: 1
-
-  build:
-    name: Build ${{ matrix.target }}
-    needs: release
-    if: needs.release.outputs.released == 'true'
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        include:
-          - target: x86_64-unknown-linux-musl
-            os: ubuntu-latest
-            binary: ferrflow
-            archive: ferrflow-linux-x64.tar.gz
-          - target: aarch64-unknown-linux-musl
-            os: ubuntu-latest
-            binary: ferrflow
-            archive: ferrflow-linux-arm64.tar.gz
-          - target: x86_64-apple-darwin
-            os: macos-latest
-            binary: ferrflow
-            archive: ferrflow-darwin-x64.tar.gz
-          - target: aarch64-apple-darwin
-            os: macos-latest
-            binary: ferrflow
-            archive: ferrflow-darwin-arm64.tar.gz
-          - target: x86_64-pc-windows-msvc
-            os: windows-latest
-            binary: ferrflow.exe
-            archive: ferrflow-windows-x64.zip
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ needs.release.outputs.tag }}
-      - uses: dtolnay/rust-toolchain@nightly
-        with:
-          targets: ${{ matrix.target }}
-      - uses: Swatinem/rust-cache@v2
-      - name: Install cross
-        if: matrix.os == 'ubuntu-latest'
-        run: cargo install cross --git https://github.com/cross-rs/cross
-      - name: Build (Linux)
-        if: matrix.os == 'ubuntu-latest'
-        run: cross build --release --target ${{ matrix.target }}
-        env:
-          FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
-      - name: Build (macOS / Windows)
-        if: matrix.os != 'ubuntu-latest'
-        run: cargo build --release --target ${{ matrix.target }}
-        env:
-          FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
-      - name: Package (Unix)
-        if: matrix.os != 'windows-latest'
-        run: |
-          tar -czf ${{ matrix.archive }} \
-            -C target/${{ matrix.target }}/release ${{ matrix.binary }}
-      - name: Package (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          Compress-Archive `
-            -Path target/${{ matrix.target }}/release/${{ matrix.binary }} `
-            -DestinationPath ${{ matrix.archive }}
-      - uses: actions/upload-artifact@v7
-        with:
-          name: ${{ matrix.archive }}
-          path: ${{ matrix.archive }}
-
-  upload:
-    name: Upload Release Assets
-    needs: [release, build, benchmark]
-    if: |
-      always() &&
-      needs.release.outputs.released == 'true' &&
-      needs.build.result == 'success'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      id-token: write
-      attestations: write
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ needs.release.outputs.tag }}
-          fetch-depth: 0
-          token: ${{ secrets.FERRFLOW_TOKEN }}
-      - name: Download ferrflow binary
+      - name: Download benchmark summary
+        if: needs.benchmark.result == 'success'
         uses: actions/download-artifact@v8
         with:
-          name: ferrflow-ci-binary
-          path: /tmp/ferrflow-bin/
-      - run: chmod +x /tmp/ferrflow-bin/ferrflow
-      - uses: actions/download-artifact@v8
-        with:
-          path: artifacts/
-          pattern: ferrflow-*
-          merge-multiple: true
-      - name: Generate shell completions
-        run: |
-          tar -xzf artifacts/ferrflow-linux-x64.tar.gz -C /tmp
-          chmod +x /tmp/ferrflow
-          mkdir -p completions
-          /tmp/ferrflow completions bash > completions/ferrflow.bash
-          /tmp/ferrflow completions zsh  > completions/_ferrflow
-          /tmp/ferrflow completions fish > completions/ferrflow.fish
-          tar -czf artifacts/ferrflow-completions.tar.gz -C completions .
-      - name: Attest build provenance
-        uses: actions/attest-build-provenance@v4
-        with:
-          subject-path: artifacts/*
-      - name: Upload assets to draft release
-        run: |
-          TAG="${{ needs.release.outputs.tag }}"
-          for file in artifacts/*; do
-            gh release upload "$TAG" "$file" --clobber
-          done
-        env:
-          GH_TOKEN: ${{ secrets.FERRFLOW_TOKEN }}
-      - name: Append benchmark results to release
+          name: benchmark-release-summary
+          path: benchmark-summary/
+        continue-on-error: true
+      - name: Append benchmark results to draft release
         if: needs.benchmark.result == 'success'
         run: |
-          BENCH_FILE="artifacts/benchmark-release-summary/release-summary.md"
+          BENCH_FILE="benchmark-summary/release-summary.md"
           if [[ ! -f "$BENCH_FILE" ]]; then
             echo "No benchmark summary found, skipping"
             exit 0
           fi
-          TAG="${{ needs.release.outputs.tag }}"
+          TAG=$(./target/release/ferrflow tag --json 2>/dev/null | jq -r '.tag // empty')
+          if [[ -z "$TAG" ]]; then
+            echo "No tag found, skipping"
+            exit 0
+          fi
           CURRENT_BODY=$(gh release view "$TAG" --json body --jq '.body' 2>/dev/null || echo "")
           BENCH=$(cat "$BENCH_FILE")
           printf -v NEW_BODY '%s\n\n%s' "$CURRENT_BODY" "$BENCH"
           gh release edit "$TAG" --notes "$NEW_BODY"
         env:
           GH_TOKEN: ${{ secrets.FERRFLOW_TOKEN }}
-      - name: Publish draft release
-        run: /tmp/ferrflow-bin/ferrflow release
-        env:
-          FERRFLOW_TOKEN: ${{ secrets.FERRFLOW_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.FERRFLOW_TOKEN }}
-
-  publish-crate:
-    name: Publish crates.io
-    needs: [release, upload]
-    if: needs.release.outputs.released == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ needs.release.outputs.tag }}
-      - uses: dtolnay/rust-toolchain@nightly
-      - run: cargo publish --allow-dirty --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
-
-  publish-npm:
-    name: Publish npm
-    needs: [release, upload]
-    if: needs.release.outputs.released == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ needs.release.outputs.tag }}
-      - uses: actions/setup-node@v6
-        with:
-          node-version: '24'
-          registry-url: 'https://registry.npmjs.org'
-      - name: Extract version
-        id: version
-        run: echo "value=${TAG#v}" >> $GITHUB_OUTPUT
-        env:
-          TAG: ${{ needs.release.outputs.tag }}
-      - name: Publish platform packages and wrapper
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: bash npm/scripts/publish.sh "${{ steps.version.outputs.value }}"
-
-  publish-wasm:
-    name: Publish @ferrflow/wasm
-    needs: [release, upload]
-    if: needs.release.outputs.released == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ needs.release.outputs.tag }}
-      - uses: dtolnay/rust-toolchain@nightly
-        with:
-          targets: wasm32-unknown-unknown
-      - uses: actions/setup-node@v6
-        with:
-          node-version: '24'
-          registry-url: 'https://registry.npmjs.org'
-      - name: Install wasm-pack
-        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
-      - name: Extract version
-        id: version
-        run: echo "value=${TAG#v}" >> $GITHUB_OUTPUT
-        env:
-          TAG: ${{ needs.release.outputs.tag }}
-      - name: Build and publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: bash npm/scripts/publish-wasm.sh "${{ steps.version.outputs.value }}"
-
-  publish-docker:
-    name: Publish Docker
-    needs: [release, upload]
-    if: needs.release.outputs.released == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-      id-token: write
-      attestations: write
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ needs.release.outputs.tag }}
-      - name: Download Linux artifacts
-        uses: actions/download-artifact@v8
-        with:
-          path: artifacts/
-          pattern: ferrflow-linux-*
-          merge-multiple: true
-      - name: Prepare binaries
-        run: |
-          mkdir -p docker-context
-          tar -xzf artifacts/ferrflow-linux-x64.tar.gz -C docker-context/
-          mv docker-context/ferrflow docker-context/ferrflow-amd64
-          tar -xzf artifacts/ferrflow-linux-arm64.tar.gz -C docker-context/
-          mv docker-context/ferrflow docker-context/ferrflow-arm64
-          chmod +x docker-context/ferrflow-*
-          cp Dockerfile.release docker-context/Dockerfile
-      - uses: docker/setup-buildx-action@v4
-      - uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/login-action@v4
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Extract version
-        id: version
-        run: echo "value=${TAG#v}" >> $GITHUB_OUTPUT
-        env:
-          TAG: ${{ needs.release.outputs.tag }}
-      - uses: docker/build-push-action@v7
-        id: docker-push
-        with:
-          context: docker-context
-          push: true
-          platforms: linux/amd64,linux/arm64
-          tags: |
-            ghcr.io/ferrflow-org/ferrflow:latest
-            ghcr.io/ferrflow-org/ferrflow:${{ steps.version.outputs.value }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/ferrflow:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/ferrflow:${{ steps.version.outputs.value }}
-      - name: Attest Docker image
-        uses: actions/attest-build-provenance@v4
-        with:
-          subject-name: ghcr.io/ferrflow-org/ferrflow
-          subject-digest: ${{ steps.docker-push.outputs.digest }}
-          push-to-registry: true
-        continue-on-error: true

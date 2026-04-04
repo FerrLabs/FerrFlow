@@ -1,0 +1,236 @@
+name: Publish
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            binary: ferrflow
+            archive: ferrflow-linux-x64.tar.gz
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-latest
+            binary: ferrflow
+            archive: ferrflow-linux-arm64.tar.gz
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            binary: ferrflow
+            archive: ferrflow-darwin-x64.tar.gz
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            binary: ferrflow
+            archive: ferrflow-darwin-arm64.tar.gz
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            binary: ferrflow.exe
+            archive: ferrflow-windows-x64.zip
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Install cross
+        if: matrix.os == 'ubuntu-latest'
+        run: cargo install cross --git https://github.com/cross-rs/cross
+      - name: Build (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: cross build --release --target ${{ matrix.target }}
+        env:
+          FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
+      - name: Build (macOS / Windows)
+        if: matrix.os != 'ubuntu-latest'
+        run: cargo build --release --target ${{ matrix.target }}
+        env:
+          FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
+      - name: Package (Unix)
+        if: matrix.os != 'windows-latest'
+        run: |
+          tar -czf ${{ matrix.archive }} \
+            -C target/${{ matrix.target }}/release ${{ matrix.binary }}
+      - name: Package (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          Compress-Archive `
+            -Path target/${{ matrix.target }}/release/${{ matrix.binary }} `
+            -DestinationPath ${{ matrix.archive }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.archive }}
+          path: ${{ matrix.archive }}
+
+  upload:
+    name: Upload Release Assets
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.FERRFLOW_TOKEN }}
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: Swatinem/rust-cache@v2
+      - name: Build ferrflow
+        run: cargo build --release
+        env:
+          FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
+      - uses: actions/download-artifact@v8
+        with:
+          path: artifacts/
+          pattern: ferrflow-*
+          merge-multiple: true
+      - name: Generate shell completions
+        run: |
+          tar -xzf artifacts/ferrflow-linux-x64.tar.gz -C /tmp
+          chmod +x /tmp/ferrflow
+          mkdir -p completions
+          /tmp/ferrflow completions bash > completions/ferrflow.bash
+          /tmp/ferrflow completions zsh  > completions/_ferrflow
+          /tmp/ferrflow completions fish > completions/ferrflow.fish
+          tar -czf artifacts/ferrflow-completions.tar.gz -C completions .
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: artifacts/*
+      - name: Upload assets to draft release
+        run: |
+          TAG="${{ github.ref_name }}"
+          for file in artifacts/*; do
+            gh release upload "$TAG" "$file" --clobber
+          done
+        env:
+          GH_TOKEN: ${{ secrets.FERRFLOW_TOKEN }}
+      - name: Publish draft release
+        run: ./target/release/ferrflow release
+        env:
+          FERRFLOW_TOKEN: ${{ secrets.FERRFLOW_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.FERRFLOW_TOKEN }}
+
+  publish-crate:
+    name: Publish crates.io
+    needs: upload
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@nightly
+      - run: cargo publish --allow-dirty --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+  publish-npm:
+    name: Publish npm
+    needs: upload
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Extract version
+        id: version
+        run: echo "value=${TAG#v}" >> $GITHUB_OUTPUT
+        env:
+          TAG: ${{ github.ref_name }}
+      - name: Publish platform packages and wrapper
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash npm/scripts/publish.sh "${{ steps.version.outputs.value }}"
+
+  publish-wasm:
+    name: Publish @ferrflow/wasm
+    needs: upload
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      - name: Extract version
+        id: version
+        run: echo "value=${TAG#v}" >> $GITHUB_OUTPUT
+        env:
+          TAG: ${{ github.ref_name }}
+      - name: Build and publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: bash npm/scripts/publish-wasm.sh "${{ steps.version.outputs.value }}"
+
+  publish-docker:
+    name: Publish Docker
+    needs: upload
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v6
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: artifacts/
+          pattern: ferrflow-linux-*
+          merge-multiple: true
+      - name: Prepare binaries
+        run: |
+          mkdir -p docker-context
+          tar -xzf artifacts/ferrflow-linux-x64.tar.gz -C docker-context/
+          mv docker-context/ferrflow docker-context/ferrflow-amd64
+          tar -xzf artifacts/ferrflow-linux-arm64.tar.gz -C docker-context/
+          mv docker-context/ferrflow docker-context/ferrflow-arm64
+          chmod +x docker-context/ferrflow-*
+          cp Dockerfile.release docker-context/Dockerfile
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Extract version
+        id: version
+        run: echo "value=${TAG#v}" >> $GITHUB_OUTPUT
+        env:
+          TAG: ${{ github.ref_name }}
+      - uses: docker/build-push-action@v7
+        id: docker-push
+        with:
+          context: docker-context
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ghcr.io/ferrflow-org/ferrflow:latest
+            ghcr.io/ferrflow-org/ferrflow:${{ steps.version.outputs.value }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/ferrflow:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/ferrflow:${{ steps.version.outputs.value }}
+      - name: Attest Docker image
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-name: ghcr.io/ferrflow-org/ferrflow
+          subject-digest: ${{ steps.docker-push.outputs.digest }}
+          push-to-registry: true
+        continue-on-error: true
