@@ -817,7 +817,7 @@ pub fn init(format: Option<ConfigFileFormat>) -> Result<()> {
     println!("Run: ferrflow check");
 
     if config.workspace.anonymous_telemetry {
-        telemetry::send_event(telemetry::EventType::Init, None, None);
+        telemetry::send_event(telemetry::EventType::Init, None, None, None, None);
     }
 
     Ok(())

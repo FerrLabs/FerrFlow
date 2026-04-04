@@ -30,6 +30,10 @@ pub enum EventType {
 struct EventPayload {
     event_type: EventType,
     #[serde(skip_serializing_if = "Option::is_none")]
+    package_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    package_version: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     metadata: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     repo_hash: Option<String>,
@@ -110,6 +114,8 @@ pub fn send_event(
     event_type: EventType,
     metadata: Option<serde_json::Value>,
     commits_count: Option<i32>,
+    package_name: Option<String>,
+    package_version: Option<String>,
 ) {
     if !is_enabled() {
         return;
@@ -117,6 +123,8 @@ pub fn send_event(
 
     let payload = EventPayload {
         event_type,
+        package_name,
+        package_version,
         metadata,
         repo_hash: get_repo_hash(),
         commits_count,
@@ -213,11 +221,15 @@ mod tests {
     fn payload_skips_none_fields() {
         let payload = EventPayload {
             event_type: EventType::Check,
+            package_name: None,
+            package_version: None,
             metadata: None,
             repo_hash: None,
             commits_count: None,
         };
         let json = serde_json::to_value(&payload).unwrap();
+        assert!(!json.as_object().unwrap().contains_key("package_name"));
+        assert!(!json.as_object().unwrap().contains_key("package_version"));
         assert!(!json.as_object().unwrap().contains_key("metadata"));
         assert!(!json.as_object().unwrap().contains_key("repo_hash"));
         assert!(!json.as_object().unwrap().contains_key("commits_count"));
@@ -227,12 +239,16 @@ mod tests {
     fn payload_includes_present_fields() {
         let payload = EventPayload {
             event_type: EventType::Release,
+            package_name: Some("my-pkg".into()),
+            package_version: Some("1.2.3".into()),
             metadata: None,
             repo_hash: Some("abc123".into()),
             commits_count: Some(42),
         };
         let json = serde_json::to_value(&payload).unwrap();
         assert_eq!(json["event_type"], "release");
+        assert_eq!(json["package_name"], "my-pkg");
+        assert_eq!(json["package_version"], "1.2.3");
         assert_eq!(json["repo_hash"], "abc123");
         assert_eq!(json["commits_count"], 42);
     }
