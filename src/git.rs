@@ -419,8 +419,14 @@ fn credentials_callback(
         return Cred::ssh_key_from_agent(username_from_url.unwrap_or("git"));
     }
     if allowed_types.contains(CredentialType::USER_PASS_PLAINTEXT) {
-        // 1. Try FERRFLOW_TOKEN env var (takes priority over embedded credentials)
-        if let Ok(token) = std::env::var("FERRFLOW_TOKEN") {
+        // 1. Try FERRFLOW_TOKEN or GITHUB_TOKEN/GITLAB_TOKEN env vars
+        if let Ok(token) = std::env::var("FERRFLOW_TOKEN").or_else(|_| {
+            if url.contains("gitlab") {
+                std::env::var("GITLAB_TOKEN")
+            } else {
+                std::env::var("GITHUB_TOKEN")
+            }
+        }) {
             let user = username_from_url.unwrap_or_else(|| {
                 if url.contains("gitlab") {
                     "oauth2"
@@ -441,7 +447,7 @@ fn credentials_callback(
             return Ok(cred);
         }
         eprintln!(
-            "Warning: No git credentials found. Set FERRFLOW_TOKEN or embed credentials in the remote URL."
+            "Warning: No git credentials found. Set FERRFLOW_TOKEN (or GITHUB_TOKEN/GITLAB_TOKEN) or embed credentials in the remote URL."
         );
     }
     Cred::default()
@@ -1296,6 +1302,32 @@ mod tests {
             CredentialType::USER_PASS_PLAINTEXT,
         );
         unsafe { std::env::remove_var("FERRFLOW_TOKEN") };
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn credentials_callback_falls_back_to_github_token() {
+        unsafe { std::env::remove_var("FERRFLOW_TOKEN") };
+        unsafe { std::env::set_var("GITHUB_TOKEN", "gh-fallback-token") };
+        let result = credentials_callback(
+            "https://github.com/owner/repo.git",
+            None,
+            CredentialType::USER_PASS_PLAINTEXT,
+        );
+        unsafe { std::env::remove_var("GITHUB_TOKEN") };
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn credentials_callback_falls_back_to_gitlab_token() {
+        unsafe { std::env::remove_var("FERRFLOW_TOKEN") };
+        unsafe { std::env::set_var("GITLAB_TOKEN", "gl-fallback-token") };
+        let result = credentials_callback(
+            "https://gitlab.com/group/project.git",
+            None,
+            CredentialType::USER_PASS_PLAINTEXT,
+        );
+        unsafe { std::env::remove_var("GITLAB_TOKEN") };
         assert!(result.is_ok());
     }
 
