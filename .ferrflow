@@ -3,6 +3,7 @@
   "workspace": {
     "tagTemplate": "v{version}",
     "floatingTags": ["major"],
+    "skipCi": false,
     "hooks": {
       "postBump": "node scripts/sync-optional-deps.js"
     }
