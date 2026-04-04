@@ -107,6 +107,28 @@ A package can have as many versioned file entries as needed:
     format = "json"
     ```
   </TabItem>
+  <TabItem label="JSON5">
+    ```json5 title="ferrflow.json5"
+    {
+      package: {
+        versionedFiles: [
+          { path: "Cargo.toml", format: "toml" },
+          { path: "npm/package.json", format: "json" },
+        ],
+      },
+    }
+    ```
+  </TabItem>
+  <TabItem label="YAML">
+    ```yaml title="ferrflow.yaml"
+    package:
+      versionedFiles:
+        - path: Cargo.toml
+          format: toml
+        - path: npm/package.json
+          format: json
+    ```
+  </TabItem>
 </Tabs>
 
 Both files will be updated to the same version before the git commit.

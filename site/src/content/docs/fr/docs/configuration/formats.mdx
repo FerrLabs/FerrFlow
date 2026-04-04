@@ -3,6 +3,8 @@ title: Formats supportés
 description: Formats de fichiers de version que FerrFlow peut lire et mettre à jour.
 ---
 
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
 ## TOML
 
 Utilisé par Rust (`Cargo.toml`) et Python (`pyproject.toml`).
@@ -83,16 +85,54 @@ appVersion: "1.2.3"   # ← mis à jour si présent
 
 ## Plusieurs fichiers par package
 
-Un package peut avoir autant d'entrées `[[package.versioned_files]]` que nécessaire :
+Un package peut avoir autant d'entrées de fichiers versionnés que nécessaire :
 
-```toml
-[[package.versioned_files]]
-path   = "Cargo.toml"
-format = "toml"
+<Tabs syncKey="config-format">
+  <TabItem label="JSON">
+    ```json title="ferrflow.json"
+    {
+      "package": {
+        "versionedFiles": [
+          { "path": "Cargo.toml", "format": "toml" },
+          { "path": "npm/package.json", "format": "json" }
+        ]
+      }
+    }
+    ```
+  </TabItem>
+  <TabItem label="TOML">
+    ```toml title="ferrflow.toml"
+    [[package.versioned_files]]
+    path   = "Cargo.toml"
+    format = "toml"
 
-[[package.versioned_files]]
-path   = "npm/package.json"
-format = "json"
-```
+    [[package.versioned_files]]
+    path   = "npm/package.json"
+    format = "json"
+    ```
+  </TabItem>
+  <TabItem label="JSON5">
+    ```json5 title="ferrflow.json5"
+    {
+      package: {
+        versionedFiles: [
+          { path: "Cargo.toml", format: "toml" },
+          { path: "npm/package.json", format: "json" },
+        ],
+      },
+    }
+    ```
+  </TabItem>
+  <TabItem label="YAML">
+    ```yaml title="ferrflow.yaml"
+    package:
+      versionedFiles:
+        - path: Cargo.toml
+          format: toml
+        - path: npm/package.json
+          format: json
+    ```
+  </TabItem>
+</Tabs>
 
 Les deux fichiers seront mis à jour avec la même version avant le commit git.

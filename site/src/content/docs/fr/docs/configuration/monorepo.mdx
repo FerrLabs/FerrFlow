@@ -3,7 +3,7 @@ title: Monorepo
 description: Versionner plusieurs packages indépendamment dans un seul repository.
 ---
 
-import { Aside } from '@astrojs/starlight/components';
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
 
 FerrFlow considère un repository comme un monorepo lorsque la configuration définit plus d'un package. Chaque package est versionné indépendamment en fonction de son propre historique git.
 
@@ -11,41 +11,129 @@ FerrFlow considère un repository comme un monorepo lorsque la configuration dé
 
 FerrFlow utilise les préfixes de chemin pour déterminer quels commits appartiennent à quel package. Seuls les commits qui touchent des fichiers sous `path` (ou `sharedPaths`) déclenchent une release pour ce package.
 
-```json
-{
-  "package": [
+<Tabs syncKey="config-format">
+  <TabItem label="JSON">
+    ```json title="ferrflow.json"
     {
-      "name": "api",
-      "path": "packages/api"
-    },
-    {
-      "name": "site",
-      "path": "packages/site"
+      "package": [
+        {
+          "name": "api",
+          "path": "packages/api"
+        },
+        {
+          "name": "site",
+          "path": "packages/site"
+        }
+      ]
     }
-  ]
-}
-```
+    ```
+  </TabItem>
+  <TabItem label="TOML">
+    ```toml title="ferrflow.toml"
+    [[package]]
+    name = "api"
+    path = "packages/api"
+
+    [[package]]
+    name = "site"
+    path = "packages/site"
+    ```
+  </TabItem>
+  <TabItem label="JSON5">
+    ```json5 title="ferrflow.json5"
+    {
+      package: [
+        {
+          name: "api",
+          path: "packages/api",
+        },
+        {
+          name: "site",
+          path: "packages/site",
+        },
+      ],
+    }
+    ```
+  </TabItem>
+  <TabItem label="YAML">
+    ```yaml title="ferrflow.yaml"
+    package:
+      - name: api
+        path: packages/api
+      - name: site
+        path: packages/site
+    ```
+  </TabItem>
+</Tabs>
 
 ## Dépendances partagées
 
 Si vous avez du code partagé entre packages (ex. une bibliothèque `packages/shared/`), déclarez-le comme entrée `sharedPaths`. Un changement dans un chemin partagé déclenche une release pour chaque package qui le référence :
 
-```json
-{
-  "package": [
+<Tabs syncKey="config-format">
+  <TabItem label="JSON">
+    ```json title="ferrflow.json"
     {
-      "name": "api",
-      "path": "packages/api",
-      "sharedPaths": ["packages/shared/"]
-    },
-    {
-      "name": "site",
-      "path": "packages/site",
-      "sharedPaths": ["packages/shared/"]
+      "package": [
+        {
+          "name": "api",
+          "path": "packages/api",
+          "sharedPaths": ["packages/shared/"]
+        },
+        {
+          "name": "site",
+          "path": "packages/site",
+          "sharedPaths": ["packages/shared/"]
+        }
+      ]
     }
-  ]
-}
-```
+    ```
+  </TabItem>
+  <TabItem label="TOML">
+    ```toml title="ferrflow.toml"
+    [[package]]
+    name = "api"
+    path = "packages/api"
+    shared_paths = ["packages/shared/"]
+
+    [[package]]
+    name = "site"
+    path = "packages/site"
+    shared_paths = ["packages/shared/"]
+    ```
+  </TabItem>
+  <TabItem label="JSON5">
+    ```json5 title="ferrflow.json5"
+    {
+      package: [
+        {
+          name: "api",
+          path: "packages/api",
+          sharedPaths: ["packages/shared/"],
+        },
+        {
+          name: "site",
+          path: "packages/site",
+          sharedPaths: ["packages/shared/"],
+        },
+      ],
+    }
+    ```
+  </TabItem>
+  <TabItem label="YAML">
+    ```yaml title="ferrflow.yaml"
+    package:
+      - name: api
+        path: packages/api
+        sharedPaths:
+          - packages/shared/
+      - name: site
+        path: packages/site
+        sharedPaths:
+          - packages/shared/
+    ```
+  </TabItem>
+</Tabs>
 
 ## Format des tags git
 
@@ -58,13 +146,38 @@ site@v0.4.1
 
 Configurez cela avec le champ `tagTemplate` :
 
-```json
-{
-  "workspace": {
-    "tagTemplate": "{name}@v{version}"
-  }
-}
-```
+<Tabs syncKey="config-format">
+  <TabItem label="JSON">
+    ```json title="ferrflow.json"
+    {
+      "workspace": {
+        "tagTemplate": "{name}@v{version}"
+      }
+    }
+    ```
+  </TabItem>
+  <TabItem label="TOML">
+    ```toml title="ferrflow.toml"
+    [workspace]
+    tag_template = "{name}@v{version}"
+    ```
+  </TabItem>
+  <TabItem label="JSON5">
+    ```json5 title="ferrflow.json5"
+    {
+      workspace: {
+        tagTemplate: "{name}@v{version}",
+      },
+    }
+    ```
+  </TabItem>
+  <TabItem label="YAML">
+    ```yaml title="ferrflow.yaml"
+    workspace:
+      tagTemplate: "{name}@v{version}"
+    ```
+  </TabItem>
+</Tabs>
 
 Pour un repo mono-package, le défaut est `v{version}` (sans préfixe de nom).
 
@@ -82,26 +195,84 @@ Les packages sont publiés indépendamment. Dans une seule exécution de `ferrfl
 
 Chaque package peut surcharger la stratégie de `versioning` et le `tagTemplate` du workspace :
 
-```json
-{
-  "workspace": {
-    "versioning": "semver",
-    "tagTemplate": "{name}@v{version}"
-  },
-  "package": [
+<Tabs syncKey="config-format">
+  <TabItem label="JSON">
+    ```json title="ferrflow.json"
     {
-      "name": "api",
-      "path": "packages/api",
-      "versioning": "calver"
-    },
-    {
-      "name": "site",
-      "path": "packages/site",
-      "tagTemplate": "site-v{version}"
+      "workspace": {
+        "versioning": "semver",
+        "tagTemplate": "{name}@v{version}"
+      },
+      "package": [
+        {
+          "name": "api",
+          "path": "packages/api",
+          "versioning": "calver"
+        },
+        {
+          "name": "site",
+          "path": "packages/site",
+          "tagTemplate": "site-v{version}"
+        }
+      ]
     }
-  ]
-}
-```
+    ```
+  </TabItem>
+  <TabItem label="TOML">
+    ```toml title="ferrflow.toml"
+    [workspace]
+    versioning = "semver"
+    tag_template = "{name}@v{version}"
+
+    [[package]]
+    name = "api"
+    path = "packages/api"
+    versioning = "calver"
+
+    [[package]]
+    name = "site"
+    path = "packages/site"
+    tag_template = "site-v{version}"
+    ```
+  </TabItem>
+  <TabItem label="JSON5">
+    ```json5 title="ferrflow.json5"
+    {
+      workspace: {
+        versioning: "semver",
+        tagTemplate: "{name}@v{version}",
+      },
+      package: [
+        {
+          name: "api",
+          path: "packages/api",
+          versioning: "calver",
+        },
+        {
+          name: "site",
+          path: "packages/site",
+          tagTemplate: "site-v{version}",
+        },
+      ],
+    }
+    ```
+  </TabItem>
+  <TabItem label="YAML">
+    ```yaml title="ferrflow.yaml"
+    workspace:
+      versioning: semver
+      tagTemplate: "{name}@v{version}"
+
+    package:
+      - name: api
+        path: packages/api
+        versioning: calver
+      - name: site
+        path: packages/site
+        tagTemplate: "site-v{version}"
+    ```
+  </TabItem>
+</Tabs>
 
 <Aside type="tip">
 Utilisez `ferrflow check` pour prévisualiser exactement quels packages seraient publiés et à quelle version avant de lancer une release.

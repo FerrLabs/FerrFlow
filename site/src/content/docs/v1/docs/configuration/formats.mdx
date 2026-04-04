@@ -3,6 +3,8 @@ title: Supported formats
 description: Version file formats that FerrFlow can read and update.
 ---
 
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
 ## TOML
 
 Used by Rust (`Cargo.toml`) and Python (`pyproject.toml`).
@@ -70,16 +72,54 @@ Go modules use git tags directly — FerrFlow does **not** modify `go.mod`. The 
 
 ## Multiple files per package
 
-A package can have as many `[[package.versioned_files]]` entries as needed:
+A package can have as many versioned file entries as needed:
 
-```toml
-[[package.versioned_files]]
-path   = "Cargo.toml"
-format = "toml"
+<Tabs syncKey="config-format">
+  <TabItem label="JSON">
+    ```json title="ferrflow.json"
+    {
+      "package": {
+        "versionedFiles": [
+          { "path": "Cargo.toml", "format": "toml" },
+          { "path": "npm/package.json", "format": "json" }
+        ]
+      }
+    }
+    ```
+  </TabItem>
+  <TabItem label="TOML">
+    ```toml title="ferrflow.toml"
+    [[package.versioned_files]]
+    path   = "Cargo.toml"
+    format = "toml"
 
-[[package.versioned_files]]
-path   = "npm/package.json"
-format = "json"
-```
+    [[package.versioned_files]]
+    path   = "npm/package.json"
+    format = "json"
+    ```
+  </TabItem>
+  <TabItem label="JSON5">
+    ```json5 title="ferrflow.json5"
+    {
+      package: {
+        versionedFiles: [
+          { path: "Cargo.toml", format: "toml" },
+          { path: "npm/package.json", format: "json" },
+        ],
+      },
+    }
+    ```
+  </TabItem>
+  <TabItem label="YAML">
+    ```yaml title="ferrflow.yaml"
+    package:
+      versionedFiles:
+        - path: Cargo.toml
+          format: toml
+        - path: npm/package.json
+          format: json
+    ```
+  </TabItem>
+</Tabs>
 
 Both files will be updated to the same version before the git commit.

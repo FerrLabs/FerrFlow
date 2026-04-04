@@ -20,7 +20,7 @@ Add `"$schema": "https://ferrflow.com/schema/ferrflow.json"` to your JSON config
 
 ## Config formats
 
-<Tabs>
+<Tabs syncKey="config-format">
   <TabItem label="JSON">
     ```json
     {
@@ -56,12 +56,47 @@ Add `"$schema": "https://ferrflow.com/schema/ferrflow.json"` to your JSON config
     format = "toml"
     ```
   </TabItem>
+  <TabItem label="JSON5">
+    ```json5
+    {
+      $schema: "https://ferrflow.com/schema/ferrflow.json",
+      workspace: {
+        tagTemplate: "v{version}",
+      },
+      package: [
+        {
+          name: "my-app",
+          path: ".",
+          changelog: "CHANGELOG.md",
+          versionedFiles: [
+            { path: "Cargo.toml", format: "toml" },
+          ],
+        },
+      ],
+    }
+    ```
+  </TabItem>
+  <TabItem label="YAML">
+    ```yaml
+    workspace:
+      tagTemplate: "v{version}"
+
+    package:
+      - name: my-app
+        path: "."
+        changelog: CHANGELOG.md
+        versionedFiles:
+          - path: Cargo.toml
+            format: toml
+    ```
+  </TabItem>
 </Tabs>
 
 <Aside type="note">
-JSON config uses **camelCase** keys (`tagTemplate`, `versionedFiles`, `sharedPaths`).
-TOML config uses **snake_case** keys (`tag_template`, `versioned_files`, `shared_paths`).
-Both are equivalent.
+JSON and JSON5 configs use **camelCase** keys (`tagTemplate`, `versionedFiles`).
+TOML configs use **snake_case** keys (`tag_template`, `versioned_files`).
+YAML configs support both, but **camelCase** is recommended for consistency with JSON.
+All forms are equivalent.
 </Aside>
 
 ## `workspace`
@@ -89,23 +124,73 @@ The `tagTemplate` field controls how git tags are named. Available placeholders:
 | `{version}` | The version number (e.g. `1.2.3`) |
 | `{name}` | The package name |
 
-```json
-{
-  "workspace": {
-    "tagTemplate": "v{version}"
-  }
-}
-```
+<Tabs syncKey="config-format">
+  <TabItem label="JSON">
+    ```json title="ferrflow.json"
+    {
+      "workspace": {
+        "tagTemplate": "v{version}"
+      }
+    }
+    ```
+  </TabItem>
+  <TabItem label="TOML">
+    ```toml title="ferrflow.toml"
+    [workspace]
+    tag_template = "v{version}"
+    ```
+  </TabItem>
+  <TabItem label="JSON5">
+    ```json5 title="ferrflow.json5"
+    {
+      workspace: {
+        tagTemplate: "v{version}",
+      },
+    }
+    ```
+  </TabItem>
+  <TabItem label="YAML">
+    ```yaml title="ferrflow.yaml"
+    workspace:
+      tagTemplate: "v{version}"
+    ```
+  </TabItem>
+</Tabs>
 
 For monorepos, use `{name}` to namespace tags per package:
 
-```json
-{
-  "workspace": {
-    "tagTemplate": "{name}@v{version}"
-  }
-}
-```
+<Tabs syncKey="config-format">
+  <TabItem label="JSON">
+    ```json title="ferrflow.json"
+    {
+      "workspace": {
+        "tagTemplate": "{name}@v{version}"
+      }
+    }
+    ```
+  </TabItem>
+  <TabItem label="TOML">
+    ```toml title="ferrflow.toml"
+    [workspace]
+    tag_template = "{name}@v{version}"
+    ```
+  </TabItem>
+  <TabItem label="JSON5">
+    ```json5 title="ferrflow.json5"
+    {
+      workspace: {
+        tagTemplate: "{name}@v{version}",
+      },
+    }
+    ```
+  </TabItem>
+  <TabItem label="YAML">
+    ```yaml title="ferrflow.yaml"
+    workspace:
+      tagTemplate: "{name}@v{version}"
+    ```
+  </TabItem>
+</Tabs>
 
 ### Release commit mode
 
@@ -117,14 +202,42 @@ Controls how FerrFlow handles the commit that updates version files and changelo
 | `"pr"` | Creates a `release/` branch and opens a pull request |
 | `"none"` | Only creates tags and releases, does not commit file changes |
 
-```json
-{
-  "workspace": {
-    "releaseCommitMode": "pr",
-    "autoMergeReleases": true
-  }
-}
-```
+<Tabs syncKey="config-format">
+  <TabItem label="JSON">
+    ```json title="ferrflow.json"
+    {
+      "workspace": {
+        "releaseCommitMode": "pr",
+        "autoMergeReleases": true
+      }
+    }
+    ```
+  </TabItem>
+  <TabItem label="TOML">
+    ```toml title="ferrflow.toml"
+    [workspace]
+    release_commit_mode = "pr"
+    auto_merge_releases = true
+    ```
+  </TabItem>
+  <TabItem label="JSON5">
+    ```json5 title="ferrflow.json5"
+    {
+      workspace: {
+        releaseCommitMode: "pr",
+        autoMergeReleases: true,
+      },
+    }
+    ```
+  </TabItem>
+  <TabItem label="YAML">
+    ```yaml title="ferrflow.yaml"
+    workspace:
+      releaseCommitMode: pr
+      autoMergeReleases: true
+    ```
+  </TabItem>
+</Tabs>
 
 ### Versioning strategies
 
@@ -139,13 +252,38 @@ FerrFlow supports multiple versioning strategies, configurable at workspace or p
 | `sequential` | `N` | `1` → `2` → `3` |
 | `zerover` | `0.MINOR.PATCH` | `0.1.0` → `0.2.0` (never reaches 1.0) |
 
-```json
-{
-  "workspace": {
-    "versioning": "calver"
-  }
-}
-```
+<Tabs syncKey="config-format">
+  <TabItem label="JSON">
+    ```json title="ferrflow.json"
+    {
+      "workspace": {
+        "versioning": "calver"
+      }
+    }
+    ```
+  </TabItem>
+  <TabItem label="TOML">
+    ```toml title="ferrflow.toml"
+    [workspace]
+    versioning = "calver"
+    ```
+  </TabItem>
+  <TabItem label="JSON5">
+    ```json5 title="ferrflow.json5"
+    {
+      workspace: {
+        versioning: "calver",
+      },
+    }
+    ```
+  </TabItem>
+  <TabItem label="YAML">
+    ```yaml title="ferrflow.yaml"
+    workspace:
+      versioning: calver
+    ```
+  </TabItem>
+</Tabs>
 
 ## `package`
 
@@ -164,20 +302,67 @@ Defines a package to version. You can have one or many.
 
 Files where the version number should be updated.
 
-```json
-{
-  "package": [
+<Tabs syncKey="config-format">
+  <TabItem label="JSON">
+    ```json title="ferrflow.json"
     {
-      "name": "my-app",
-      "path": ".",
-      "versionedFiles": [
-        { "path": "Cargo.toml", "format": "toml" },
-        { "path": "npm/package.json", "format": "json" }
+      "package": [
+        {
+          "name": "my-app",
+          "path": ".",
+          "versionedFiles": [
+            { "path": "Cargo.toml", "format": "toml" },
+            { "path": "npm/package.json", "format": "json" }
+          ]
+        }
       ]
     }
-  ]
-}
-```
+    ```
+  </TabItem>
+  <TabItem label="TOML">
+    ```toml title="ferrflow.toml"
+    [[package]]
+    name = "my-app"
+    path = "."
+
+    [[package.versioned_files]]
+    path = "Cargo.toml"
+    format = "toml"
+
+    [[package.versioned_files]]
+    path = "npm/package.json"
+    format = "json"
+    ```
+  </TabItem>
+  <TabItem label="JSON5">
+    ```json5 title="ferrflow.json5"
+    {
+      package: [
+        {
+          name: "my-app",
+          path: ".",
+          versionedFiles: [
+            { path: "Cargo.toml", format: "toml" },
+            { path: "npm/package.json", format: "json" },
+          ],
+        },
+      ],
+    }
+    ```
+  </TabItem>
+  <TabItem label="YAML">
+    ```yaml title="ferrflow.yaml"
+    package:
+      - name: my-app
+        path: "."
+        versionedFiles:
+          - path: Cargo.toml
+            format: toml
+          - path: npm/package.json
+            format: json
+    ```
+  </TabItem>
+</Tabs>
 
 | `format` | File | Field updated |
 |---|---|---|
@@ -190,54 +375,203 @@ Files where the version number should be updated.
 
 ## Complete examples
 
-### Single repo (JSON)
+### Single repo
 
-```json
-{
-  "$schema": "https://ferrflow.com/schema/ferrflow.json",
-  "workspace": {
-    "tagTemplate": "v{version}"
-  },
-  "package": [
+<Tabs syncKey="config-format">
+  <TabItem label="JSON">
+    ```json title="ferrflow.json"
     {
-      "name": "ferrflow",
-      "path": ".",
-      "changelog": "CHANGELOG.md",
-      "versionedFiles": [
-        { "path": "Cargo.toml", "format": "toml" },
-        { "path": "npm/package.json", "format": "json" }
+      "$schema": "https://ferrflow.com/schema/ferrflow.json",
+      "workspace": {
+        "tagTemplate": "v{version}"
+      },
+      "package": [
+        {
+          "name": "ferrflow",
+          "path": ".",
+          "changelog": "CHANGELOG.md",
+          "versionedFiles": [
+            { "path": "Cargo.toml", "format": "toml" },
+            { "path": "npm/package.json", "format": "json" }
+          ]
+        }
       ]
     }
-  ]
-}
-```
+    ```
+  </TabItem>
+  <TabItem label="TOML">
+    ```toml title="ferrflow.toml"
+    [workspace]
+    tag_template = "v{version}"
 
-### Monorepo (TOML)
+    [[package]]
+    name = "ferrflow"
+    path = "."
+    changelog = "CHANGELOG.md"
 
-```toml
-[workspace]
-tag_template = "{name}@v{version}"
+    [[package.versioned_files]]
+    path = "Cargo.toml"
+    format = "toml"
 
-[[package]]
-name = "api"
-path = "packages/api"
-changelog = "packages/api/CHANGELOG.md"
-shared_paths = ["packages/shared/"]
+    [[package.versioned_files]]
+    path = "npm/package.json"
+    format = "json"
+    ```
+  </TabItem>
+  <TabItem label="JSON5">
+    ```json5 title="ferrflow.json5"
+    {
+      $schema: "https://ferrflow.com/schema/ferrflow.json",
+      workspace: {
+        tagTemplate: "v{version}",
+      },
+      package: [
+        {
+          name: "ferrflow",
+          path: ".",
+          changelog: "CHANGELOG.md",
+          versionedFiles: [
+            { path: "Cargo.toml", format: "toml" },
+            { path: "npm/package.json", format: "json" },
+          ],
+        },
+      ],
+    }
+    ```
+  </TabItem>
+  <TabItem label="YAML">
+    ```yaml title="ferrflow.yaml"
+    workspace:
+      tagTemplate: "v{version}"
 
-[[package.versioned_files]]
-path = "packages/api/Cargo.toml"
-format = "toml"
+    package:
+      - name: ferrflow
+        path: "."
+        changelog: CHANGELOG.md
+        versionedFiles:
+          - path: Cargo.toml
+            format: toml
+          - path: npm/package.json
+            format: json
+    ```
+  </TabItem>
+</Tabs>
 
-[[package]]
-name = "site"
-path = "packages/site"
-changelog = "packages/site/CHANGELOG.md"
-shared_paths = ["packages/shared/"]
+### Monorepo
 
-[[package.versioned_files]]
-path = "packages/site/package.json"
-format = "json"
-```
+<Tabs syncKey="config-format">
+  <TabItem label="JSON">
+    ```json title="ferrflow.json"
+    {
+      "$schema": "https://ferrflow.com/schema/ferrflow.json",
+      "workspace": {
+        "tagTemplate": "{name}@v{version}"
+      },
+      "package": [
+        {
+          "name": "api",
+          "path": "packages/api",
+          "changelog": "packages/api/CHANGELOG.md",
+          "sharedPaths": ["packages/shared/"],
+          "versionedFiles": [
+            { "path": "packages/api/Cargo.toml", "format": "toml" }
+          ]
+        },
+        {
+          "name": "site",
+          "path": "packages/site",
+          "changelog": "packages/site/CHANGELOG.md",
+          "sharedPaths": ["packages/shared/"],
+          "versionedFiles": [
+            { "path": "packages/site/package.json", "format": "json" }
+          ]
+        }
+      ]
+    }
+    ```
+  </TabItem>
+  <TabItem label="TOML">
+    ```toml title="ferrflow.toml"
+    [workspace]
+    tag_template = "{name}@v{version}"
+
+    [[package]]
+    name = "api"
+    path = "packages/api"
+    changelog = "packages/api/CHANGELOG.md"
+    shared_paths = ["packages/shared/"]
+
+    [[package.versioned_files]]
+    path = "packages/api/Cargo.toml"
+    format = "toml"
+
+    [[package]]
+    name = "site"
+    path = "packages/site"
+    changelog = "packages/site/CHANGELOG.md"
+    shared_paths = ["packages/shared/"]
+
+    [[package.versioned_files]]
+    path = "packages/site/package.json"
+    format = "json"
+    ```
+  </TabItem>
+  <TabItem label="JSON5">
+    ```json5 title="ferrflow.json5"
+    {
+      $schema: "https://ferrflow.com/schema/ferrflow.json",
+      workspace: {
+        tagTemplate: "{name}@v{version}",
+      },
+      package: [
+        {
+          name: "api",
+          path: "packages/api",
+          changelog: "packages/api/CHANGELOG.md",
+          sharedPaths: ["packages/shared/"],
+          versionedFiles: [
+            { path: "packages/api/Cargo.toml", format: "toml" },
+          ],
+        },
+        {
+          name: "site",
+          path: "packages/site",
+          changelog: "packages/site/CHANGELOG.md",
+          sharedPaths: ["packages/shared/"],
+          versionedFiles: [
+            { path: "packages/site/package.json", format: "json" },
+          ],
+        },
+      ],
+    }
+    ```
+  </TabItem>
+  <TabItem label="YAML">
+    ```yaml title="ferrflow.yaml"
+    workspace:
+      tagTemplate: "{name}@v{version}"
+
+    package:
+      - name: api
+        path: packages/api
+        changelog: packages/api/CHANGELOG.md
+        sharedPaths:
+          - packages/shared/
+        versionedFiles:
+          - path: packages/api/Cargo.toml
+            format: toml
+
+      - name: site
+        path: packages/site
+        changelog: packages/site/CHANGELOG.md
+        sharedPaths:
+          - packages/shared/
+        versionedFiles:
+          - path: packages/site/package.json
+            format: json
+    ```
+  </TabItem>
+</Tabs>
 
 <Aside type="tip">
 Run `ferrflow init` to generate a config file automatically based on what FerrFlow detects in your repo.
