@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.14.1] - 2026-04-04
+
+### Bug Fixes
+
+- fix: fall back to GITHUB_TOKEN/GITLAB_TOKEN for git push credentials (#263)
+
 ## [2.14.0] - 2026-04-04
 
 ### Features
