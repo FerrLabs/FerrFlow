@@ -1,0 +1,10 @@
+[meta]
+name = "mono-medium"
+description = "50 packages, 500 commits"
+
+[config]
+content = '{}'
+
+[generate]
+packages = 50
+commits = 500

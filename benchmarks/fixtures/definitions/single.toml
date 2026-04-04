@@ -1,0 +1,23 @@
+[meta]
+name = "single"
+description = "Single package, 100 commits"
+
+[config]
+content = '''
+{
+  "package": [
+    {
+      "name": "myapp",
+      "path": ".",
+      "changelog": "CHANGELOG.md",
+      "versioned_files": [
+        { "path": "package.json", "format": "json" }
+      ]
+    }
+  ]
+}
+'''
+
+[generate]
+packages = 1
+commits = 100

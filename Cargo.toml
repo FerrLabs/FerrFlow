@@ -19,10 +19,6 @@ readme = "README.md"
 name = "ferrflow"
 path = "src/main.rs"
 
-[[bin]]
-name = "generate-fixtures"
-path = "benchmarks/fixtures/generate.rs"
-
 [lib]
 name = "ferrflow"
 path = "src/lib.rs"

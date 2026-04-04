@@ -1,0 +1,10 @@
+[meta]
+name = "mono-large"
+description = "200 packages, 10000 commits"
+
+[config]
+content = '{}'
+
+[generate]
+packages = 200
+commits = 10000

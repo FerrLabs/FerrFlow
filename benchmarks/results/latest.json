@@ -1,9 +1,0 @@
-{
-  "timestamp": "2026-03-28T14:38:42Z",
-  "ferrflow_version": "ferrflow 0.4.0",
-  "fixtures": {
-    "single": {"cold_ms": 26.0, "warm_ms": 23.5, "size_mb": "16.0", "memory_mb": ""},
-    "mono-small": {"cold_ms": 26.7, "warm_ms": 29.6, "size_mb": "16.0", "memory_mb": ""},
-    "mono-large": {"cold_ms": 63.7, "warm_ms": 44.7, "size_mb": "16.0", "memory_mb": ""}
-  }
-}
