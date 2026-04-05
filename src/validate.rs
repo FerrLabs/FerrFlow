@@ -692,6 +692,7 @@ mod tests {
             versioned_files: vec![],
             changelog: None,
             shared_paths: vec![],
+            depends_on: vec![],
             versioning: None,
             tag_template: None,
             floating_tags: None,

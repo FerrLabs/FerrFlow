@@ -183,6 +183,8 @@ pub struct PackageConfig {
     pub changelog: Option<String>,
     #[serde(default, alias = "sharedPaths")]
     pub shared_paths: Vec<String>,
+    #[serde(default, alias = "dependsOn")]
+    pub depends_on: Vec<String>,
     pub versioning: Option<VersioningStrategy>,
     #[serde(alias = "tagTemplate")]
     pub tag_template: Option<String>,
@@ -580,6 +582,7 @@ impl Config {
                     versioned_files,
                     changelog: Some("CHANGELOG.md".to_string()),
                     shared_paths: Vec::new(),
+                    depends_on: vec![],
                     versioning: None,
                     tag_template: None,
                     hooks: None,
@@ -764,6 +767,7 @@ fn collect_package(path_default: &str, monorepo: bool) -> PackageConfig {
         }],
         changelog: Some(changelog),
         shared_paths: Vec::new(),
+        depends_on: vec![],
         versioning: None,
         tag_template: None,
         hooks: None,
@@ -963,6 +967,7 @@ format = "toml"
             versioned_files: vec![],
             changelog: None,
             shared_paths: vec![],
+            depends_on: vec![],
             versioning: None,
             tag_template: None,
             hooks: None,
@@ -983,6 +988,7 @@ format = "toml"
             versioned_files: vec![],
             changelog: None,
             shared_paths: vec![],
+            depends_on: vec![],
             versioning: Some(VersioningStrategy::Zerover),
             tag_template: None,
             hooks: None,
@@ -1002,6 +1008,7 @@ format = "toml"
             versioned_files: vec![],
             changelog: None,
             shared_paths: vec![],
+            depends_on: vec![],
             versioning: None,
             tag_template: tag_template.map(String::from),
             hooks: None,
@@ -1214,6 +1221,7 @@ format = "toml"
                 }],
                 changelog: None,
                 shared_paths: vec!["shared/".into()],
+                depends_on: vec![],
                 versioning: None,
                 tag_template: Some("{name}@v{version}".into()),
                 hooks: None,
@@ -1258,6 +1266,7 @@ format = "toml"
                 }],
                 changelog: None,
                 shared_paths: vec!["shared/".into()],
+                depends_on: vec![],
                 versioning: None,
                 tag_template: Some("{name}@v{version}".into()),
                 hooks: None,
@@ -1782,6 +1791,28 @@ format = "toml"
     }
 
     #[test]
+    fn depends_on_deserializes_from_json() {
+        let json =
+            r#"{"package":[{"name":"cli","path":"cli","dependsOn":["core"],"versionedFiles":[]}]}"#;
+        let config: Config = serde_json::from_str(json).unwrap();
+        assert_eq!(config.packages[0].depends_on, vec!["core"]);
+    }
+
+    #[test]
+    fn depends_on_defaults_to_empty() {
+        let json = r#"{"package":[{"name":"cli","path":"cli","versionedFiles":[]}]}"#;
+        let config: Config = serde_json::from_str(json).unwrap();
+        assert!(config.packages[0].depends_on.is_empty());
+    }
+
+    #[test]
+    fn depends_on_deserializes_snake_case() {
+        let json = r#"{"package":[{"name":"cli","path":"cli","depends_on":["core"],"versionedFiles":[]}]}"#;
+        let config: Config = serde_json::from_str(json).unwrap();
+        assert_eq!(config.packages[0].depends_on, vec!["core"]);
+    }
+
+    #[test]
     fn tag_prefix_no_version_placeholder() {
         let ws = WorkspaceConfig::default();
         let pkg = PackageConfig {
@@ -1790,6 +1821,7 @@ format = "toml"
             versioned_files: vec![],
             changelog: None,
             shared_paths: vec![],
+            depends_on: vec![],
             versioning: None,
             tag_template: Some("release-latest".to_string()),
             hooks: None,
@@ -1808,6 +1840,7 @@ format = "toml"
             versioned_files: vec![],
             changelog: None,
             shared_paths: vec![],
+            depends_on: vec![],
             versioning: None,
             tag_template: Some("{name}/v{version}".to_string()),
             hooks: None,

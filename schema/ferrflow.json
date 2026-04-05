@@ -166,6 +166,13 @@
               "type": "string"
             }
           },
+          "dependsOn": {
+            "type": "array",
+            "description": "Package names this package depends on. When a dependency is bumped, this package gets a patch bump automatically.",
+            "items": {
+              "type": "string"
+            }
+          },
           "versioning": {
             "type": "string",
             "description": "Versioning strategy for this package. Overrides workspace default.",
