@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.11.0] - 2026-04-05
+
+### Features
+
+- feat(site): document dependsOn package config for auto-bump dependents (#189)
+
+### Bug Fixes
+
+- fix(site): add missing og.png, favicon.ico, and PNG icons (#188)
+
 ## [1.10.0] - 2026-04-05
 
 ### Features
