@@ -26,6 +26,15 @@ export default defineConfig({
         ThemeSelect: './src/components/ThemeSelect.astro',
         Header: './src/components/Header.astro',
       },
+      favicon: '/favicon.svg',
+      head: [
+        { tag: 'link', attrs: { rel: 'icon', href: '/favicon.ico', sizes: '32x32' } },
+        { tag: 'link', attrs: { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' } },
+        { tag: 'meta', attrs: { property: 'og:image', content: 'https://ferrflow.com/og.png' } },
+        { tag: 'meta', attrs: { property: 'og:site_name', content: 'FerrFlow' } },
+        { tag: 'meta', attrs: { name: 'twitter:card', content: 'summary_large_image' } },
+        { tag: 'meta', attrs: { name: 'twitter:image', content: 'https://ferrflow.com/og.png' } },
+      ],
       social: [],
       customCss: ['./src/styles/docs.css'],
       expressiveCode: {
