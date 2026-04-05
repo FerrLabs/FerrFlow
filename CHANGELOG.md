@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.15.4] - 2026-04-05
+
+### Bug Fixes
+
+- fix(ci): revert to tag push trigger with CI filter for release commits (#286)
+
 ## [2.15.3] - 2026-04-05
 
 ### Bug Fixes
