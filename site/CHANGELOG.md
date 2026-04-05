@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.10.0] - 2026-04-05
+
+### Features
+
+- feat(site): unify navbar across landing page and docs (#185)
+
+### Bug Fixes
+
+- fix: update renovate config to use recommended preset (#183)
+- fix: remove references to non-existent packages from README (#182)
+
 ## [1.9.1] - 2026-04-05
 
 ### Bug Fixes
