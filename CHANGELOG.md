@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.16.0] - 2026-04-05
+
+### Features
+
+- feat(fixtures): add head branch auto-detection test definitions (#289)
+
 ## [2.15.5] - 2026-04-05
 
 ### Bug Fixes
