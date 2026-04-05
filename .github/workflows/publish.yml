@@ -1,8 +1,8 @@
 name: Publish
 
 on:
-  release:
-    types: [created] # fires on draft releases too
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+*']
 
 permissions:
   contents: read
