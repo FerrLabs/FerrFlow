@@ -532,8 +532,15 @@ fn load_js_ts_config(path: &Path) -> Result<Config> {
         let tsx_available = Command::new("tsx").arg("--version").output().is_ok();
         let runtime = if tsx_available { "tsx" } else { "npx tsx" };
 
+        // Use relative import (wrapper lives in the same directory as the config)
+        let config_filename = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("ferrflow.ts");
+        let import_path = format!("./{config_filename}");
+
         let wrapper_content = format!(
-            "import cfg from '{file_url}';\n\
+            "import cfg from '{import_path}';\n\
              {LOADER_SCRIPT}\n\
              const resolved = typeof cfg === 'function' ? await cfg() : cfg;\n\
              if (resolved.workspace && resolved.workspace.hooks) {{\n\
@@ -2319,7 +2326,15 @@ format = "toml"
 export default config;"#,
         )
         .unwrap();
-        let config = Config::load_explicit(&path).unwrap();
+        let config = match Config::load_explicit(&path) {
+            Ok(c) => c,
+            Err(e) => panic!("load_explicit failed: {e}"),
+        };
+        assert!(
+            !config.packages.is_empty(),
+            "Expected packages but got none. Config: {:?}",
+            config
+        );
         assert_eq!(config.packages[0].name, "ts-app");
     }
 
