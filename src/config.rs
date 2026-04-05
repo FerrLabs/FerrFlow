@@ -462,7 +462,13 @@ fn path_to_file_url(path: &Path) -> Result<String> {
         .unwrap_or(&path_str)
         .replace('\\', "/");
 
-    Ok(format!("file:///{normalized}"))
+    // On Unix, paths start with / so file:// + /path = file:///path (correct).
+    // On Windows, paths are C:/... so we need file:///C:/... (extra slash).
+    if normalized.starts_with('/') {
+        Ok(format!("file://{normalized}"))
+    } else {
+        Ok(format!("file:///{normalized}"))
+    }
 }
 
 /// JS snippet that resolves the config, converts function hooks to shell
