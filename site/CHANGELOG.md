@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.1] - 2026-04-05
+
+### Bug Fixes
+
+- fix(site): remove redundant Tools section from docs sidebar (#180)
+- fix: disable skipCi in release commits (#179)
+
 ## [1.9.0] - 2026-04-04
 
 ### Features
