@@ -2,7 +2,7 @@ name: Publish
 
 on:
   release:
-    types: [created]
+    types: [created] # fires on draft releases too
 
 permissions:
   contents: read
