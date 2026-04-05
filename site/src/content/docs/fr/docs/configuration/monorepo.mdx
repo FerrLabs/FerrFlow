@@ -135,6 +135,93 @@ Si vous avez du code partagé entre packages (ex. une bibliothèque `packages/sh
   </TabItem>
 </Tabs>
 
+## Dependances entre packages
+
+Utilisez `dependsOn` pour declarer qu'un package depend d'un autre. Quand une dependance est publiee, le package dependant recoit automatiquement un bump patch — meme si aucun de ses propres fichiers n'a change. La cascade est transitive : si `app` depend de `cli` et `cli` depend de `core`, publier `core` bumpe aussi `cli` et `app`.
+
+<Tabs syncKey="config-format">
+  <TabItem label="JSON">
+    ```json title="ferrflow.json"
+    {
+      "package": [
+        {
+          "name": "core",
+          "path": "packages/core"
+        },
+        {
+          "name": "cli",
+          "path": "packages/cli",
+          "dependsOn": ["core"]
+        },
+        {
+          "name": "app",
+          "path": "packages/app",
+          "dependsOn": ["cli"]
+        }
+      ]
+    }
+    ```
+  </TabItem>
+  <TabItem label="TOML">
+    ```toml title="ferrflow.toml"
+    [[package]]
+    name = "core"
+    path = "packages/core"
+
+    [[package]]
+    name = "cli"
+    path = "packages/cli"
+    depends_on = ["core"]
+
+    [[package]]
+    name = "app"
+    path = "packages/app"
+    depends_on = ["cli"]
+    ```
+  </TabItem>
+  <TabItem label="JSON5">
+    ```json5 title="ferrflow.json5"
+    {
+      package: [
+        {
+          name: "core",
+          path: "packages/core",
+        },
+        {
+          name: "cli",
+          path: "packages/cli",
+          dependsOn: ["core"],
+        },
+        {
+          name: "app",
+          path: "packages/app",
+          dependsOn: ["cli"],
+        },
+      ],
+    }
+    ```
+  </TabItem>
+  <TabItem label="YAML">
+    ```yaml title="ferrflow.yaml"
+    package:
+      - name: core
+        path: packages/core
+      - name: cli
+        path: packages/cli
+        dependsOn:
+          - core
+      - name: app
+        path: packages/app
+        dependsOn:
+          - cli
+    ```
+  </TabItem>
+</Tabs>
+
+<Aside type="note">
+`dependsOn` est different de `sharedPaths`. Les chemins partages declenchent un bump quand des fichiers dans le repertoire partage changent. `dependsOn` declenche un bump quand un autre **package** est publie, independamment des fichiers modifies.
+</Aside>
+
 ## Format des tags git
 
 Par défaut, les tags en monorepo utilisent le format `{name}@v{version}` :

@@ -390,6 +390,7 @@ Defines a package to version. You can have one or many.
 | `path` | yes | — | Relative path to the package directory |
 | `changelog` | no | `{path}/CHANGELOG.md` | Path to the changelog file |
 | `sharedPaths` | no | `[]` | Paths that trigger this package when changed |
+| `dependsOn` | no | `[]` | Package names this package depends on. When a dependency is bumped, this package gets a patch bump automatically. |
 | `versioning` | no | inherited from workspace | Override versioning strategy for this package |
 | `tagTemplate` | no | inherited from workspace | Override tag template for this package |
 | `floatingTags` | no | inherited from workspace | Override floating tags for this package |
