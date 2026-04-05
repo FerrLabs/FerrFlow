@@ -189,6 +189,7 @@ fn run_release_logic(
     // (tag_name, tag_msg, body, pkg_name, version, commits_count, is_prerelease)
     let mut tags_to_create: Vec<(String, String, String, String, String, i32, bool)> = Vec::new();
     let mut hook_contexts: Vec<(HookContext, usize)> = Vec::new(); // (ctx, pkg_index)
+    let mut bumped_names: HashSet<String> = HashSet::new();
 
     // Buffered output: per-package lines and shared (commit/push) lines.
     // Each entry is (pkg_name, lines) in insertion order.
@@ -510,7 +511,117 @@ fn run_release_logic(
         }
 
         hook_contexts.push((hook_ctx, pkg_idx));
+        bumped_names.insert(pkg.name.clone());
         any_bumped = true;
+    }
+
+    // --- Dependency cascade: auto-bump packages that depend on bumped packages ---
+    if config.is_monorepo() {
+        let mut cascade_round = 0;
+        loop {
+            cascade_round += 1;
+            if cascade_round > config.packages.len() {
+                break; // safety: avoid infinite loops from circular deps
+            }
+            let mut new_bumps = Vec::new();
+            for (pkg_idx, pkg) in config.packages.iter().enumerate() {
+                if bumped_names.contains(&pkg.name) {
+                    continue;
+                }
+                if pkg.depends_on.iter().any(|dep| bumped_names.contains(dep)) {
+                    new_bumps.push(pkg_idx);
+                }
+            }
+            if new_bumps.is_empty() {
+                break;
+            }
+            for pkg_idx in new_bumps {
+                let pkg = &config.packages[pkg_idx];
+                let Some(vf) = pkg.versioned_files.first() else {
+                    continue;
+                };
+                let Ok(current_version) = read_version(vf, root) else {
+                    continue;
+                };
+                let strategy = pkg.effective_versioning(&config.workspace);
+                let Ok(new_version) =
+                    compute_next_version(&current_version, BumpType::Patch, strategy)
+                else {
+                    continue;
+                };
+                if current_version == new_version {
+                    continue;
+                }
+                let tag =
+                    pkg.tag_for_version(&config.workspace, config.is_monorepo(), &new_version);
+                let dep_trigger: Vec<&str> = pkg
+                    .depends_on
+                    .iter()
+                    .filter(|d| bumped_names.contains(*d))
+                    .map(|s| s.as_str())
+                    .collect();
+
+                if json {
+                    json_packages.push(CheckPackage {
+                        name: pkg.name.clone(),
+                        current_version: current_version.clone(),
+                        next_version: new_version.clone(),
+                        bump_type: "patch".to_string(),
+                        tag: tag.clone(),
+                        channel: prerelease_ctx.channel.clone(),
+                        prerelease: false,
+                        commits: vec![],
+                    });
+                } else {
+                    let mut lines = vec![format!(
+                        "{} {}  {} → {}  ({}, dependency: {})",
+                        "●".green().bold(),
+                        pkg.name.bold(),
+                        current_version.dimmed(),
+                        new_version.green().bold(),
+                        "patch".cyan(),
+                        dep_trigger.join(", ").cyan()
+                    )];
+                    if !dry_run {
+                        for vf in &pkg.versioned_files {
+                            write_version(vf, root, &new_version)?;
+                            if get_handler(&vf.format).modifies_file() {
+                                lines.push(format!("  ✓ Updated {}", vf.path));
+                                files_to_commit.push(vf.path.clone());
+                            }
+                        }
+                        if let Some(changelog_rel) = &pkg.changelog {
+                            let changelog_path = root.join(changelog_rel);
+                            update_changelog(
+                                &changelog_path,
+                                &pkg.name,
+                                &new_version,
+                                &[],
+                                BumpType::Patch,
+                                false,
+                            )?;
+                            files_to_commit.push(changelog_rel.clone());
+                        }
+                    }
+                    pkg_outputs.push((pkg.name.clone(), lines));
+                }
+                let body = format!("Dependency update: {}", dep_trigger.join(", "));
+                tags_to_create.push((
+                    tag,
+                    format!(
+                        "Release {}",
+                        pkg.tag_for_version(&config.workspace, config.is_monorepo(), &new_version)
+                    ),
+                    body,
+                    pkg.name.clone(),
+                    new_version,
+                    0,
+                    false,
+                ));
+                bumped_names.insert(pkg.name.clone());
+                any_bumped = true;
+            }
+        }
     }
 
     if json {
@@ -1033,6 +1144,7 @@ mod tests {
             versioned_files: vec![],
             changelog: None,
             shared_paths: shared.iter().map(|s| s.to_string()).collect(),
+            depends_on: vec![],
             versioning: None,
             tag_template: None,
             hooks: None,
