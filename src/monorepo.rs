@@ -820,54 +820,6 @@ fn run_release_logic(
                         ),
                     }
                 }
-
-                // Publish orphaned draft releases when no new tags were created.
-                // This handles the case where `ferrflow release` runs after the
-                // tag and release commit already exist (e.g. in a publish workflow).
-                if !draft && !dry_run && tags_to_create.is_empty() {
-                    for pkg in &config.packages {
-                        let Some(vf) = pkg.versioned_files.first() else {
-                            continue;
-                        };
-                        let Ok(version) = read_version(vf, root) else {
-                            continue;
-                        };
-                        let tag =
-                            pkg.tag_for_version(&config.workspace, config.is_monorepo(), &version);
-                        match forge_instance.find_draft_release(&tag) {
-                            Ok(Some(release_id)) => {
-                                match forge_instance.publish_release(release_id) {
-                                    Ok(()) => {
-                                        shared_outputs.push(format!(
-                                            "✓ Published draft {} {}",
-                                            forge_instance.release_noun(),
-                                            tag.cyan()
-                                        ));
-                                    }
-                                    Err(err) => eprintln!(
-                                        "{}",
-                                        format!(
-                                            "  Warning: failed to publish draft for {tag}: {err}"
-                                        )
-                                        .yellow()
-                                    ),
-                                }
-                            }
-                            Ok(None) => {}
-                            Err(err) => {
-                                if verbose {
-                                    eprintln!(
-                                        "{}",
-                                        format!(
-                                            "  Warning: failed to check draft release {tag}: {err}"
-                                        )
-                                        .yellow()
-                                    );
-                                }
-                            }
-                        }
-                    }
-                }
             }
 
             if let Ok(summary_path) = std::env::var("GITHUB_STEP_SUMMARY") {
@@ -930,6 +882,50 @@ fn run_release_logic(
             ] {
                 if let Some(cmd) = resolve_hook(pkg_hooks, ws_hooks, point) {
                     run_hook(point, &cmd, ctx, on_failure, true, verbose, root)?;
+                }
+            }
+        }
+    }
+
+    // Publish orphaned draft releases when nothing was bumped.
+    // This handles the case where `ferrflow release` runs after the
+    // tag and release commit already exist (e.g. in a publish workflow).
+    if !any_bumped
+        && !draft
+        && !dry_run
+        && let Some(forge_instance) = build_forge_instance(&repo, config)
+    {
+        for pkg in &config.packages {
+            let Some(vf) = pkg.versioned_files.first() else {
+                continue;
+            };
+            let Ok(version) = read_version(vf, root) else {
+                continue;
+            };
+            let tag = pkg.tag_for_version(&config.workspace, config.is_monorepo(), &version);
+            match forge_instance.find_draft_release(&tag) {
+                Ok(Some(release_id)) => match forge_instance.publish_release(release_id) {
+                    Ok(()) => {
+                        shared_outputs.push(format!(
+                            "✓ Published draft {} {}",
+                            forge_instance.release_noun(),
+                            tag.cyan()
+                        ));
+                    }
+                    Err(err) => eprintln!(
+                        "{}",
+                        format!("  Warning: failed to publish draft for {tag}: {err}").yellow()
+                    ),
+                },
+                Ok(None) => {}
+                Err(err) => {
+                    if verbose {
+                        eprintln!(
+                            "{}",
+                            format!("  Warning: failed to check draft release {tag}: {err}")
+                                .yellow()
+                        );
+                    }
                 }
             }
         }
