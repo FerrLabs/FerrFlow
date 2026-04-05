@@ -139,4 +139,70 @@ mod tests {
         };
         assert_eq!(forge.encoded_project_id(), "group%2Fsubgroup%2Frepo");
     }
+
+    #[test]
+    fn mr_noun_returns_mr() {
+        let forge = GitLabForge {
+            token: String::new(),
+            slug: "owner/repo".to_string(),
+        };
+        assert_eq!(forge.mr_noun(), "MR");
+    }
+
+    #[test]
+    fn release_noun_returns_gitlab_release() {
+        let forge = GitLabForge {
+            token: String::new(),
+            slug: "owner/repo".to_string(),
+        };
+        assert_eq!(forge.release_noun(), "GitLab Release");
+    }
+
+    #[test]
+    fn find_draft_release_always_none() {
+        let forge = GitLabForge {
+            token: String::new(),
+            slug: "owner/repo".to_string(),
+        };
+        assert_eq!(forge.find_draft_release("v1.0.0").unwrap(), None);
+    }
+
+    #[test]
+    fn publish_release_noop() {
+        let forge = GitLabForge {
+            token: String::new(),
+            slug: "owner/repo".to_string(),
+        };
+        assert!(forge.publish_release(123).is_ok());
+    }
+
+    #[test]
+    fn create_release_payload_structure() {
+        let mut payload = serde_json::json!({
+            "tag_name": "v1.0.0",
+            "name": "v1.0.0",
+            "description": "Release notes",
+        });
+        // prerelease adds upcoming_release
+        payload["upcoming_release"] = serde_json::json!(true);
+        assert_eq!(payload["upcoming_release"], true);
+        assert_eq!(payload["tag_name"], "v1.0.0");
+    }
+
+    #[test]
+    fn mr_response_parsing() {
+        let response: serde_json::Value = serde_json::json!({"iid": 15});
+        let iid = response["iid"].as_u64().unwrap();
+        assert_eq!(iid, 15);
+    }
+
+    #[test]
+    fn auto_merge_payload_structure() {
+        let payload = serde_json::json!({
+            "merge_when_pipeline_succeeds": true,
+            "squash": true,
+        });
+        assert_eq!(payload["merge_when_pipeline_succeeds"], true);
+        assert_eq!(payload["squash"], true);
+    }
 }

@@ -206,4 +206,99 @@ mod tests {
             "\"gitlab\""
         );
     }
+
+    #[test]
+    fn resolve_token_ferrflow_token_takes_precedence() {
+        unsafe {
+            std::env::set_var("FERRFLOW_TOKEN", "ferrflow-tok");
+            std::env::set_var("GITHUB_TOKEN", "gh-tok");
+        }
+        let result = resolve_token(ForgeKind::Github);
+        unsafe {
+            std::env::remove_var("FERRFLOW_TOKEN");
+            std::env::remove_var("GITHUB_TOKEN");
+        }
+        assert_eq!(result, Some("ferrflow-tok".to_string()));
+    }
+
+    #[test]
+    fn resolve_token_falls_back_to_github_token() {
+        unsafe {
+            std::env::remove_var("FERRFLOW_TOKEN");
+            std::env::set_var("GITHUB_TOKEN", "gh-tok");
+        }
+        let result = resolve_token(ForgeKind::Github);
+        unsafe {
+            std::env::remove_var("GITHUB_TOKEN");
+        }
+        assert_eq!(result, Some("gh-tok".to_string()));
+    }
+
+    #[test]
+    fn resolve_token_falls_back_to_gitlab_token() {
+        unsafe {
+            std::env::remove_var("FERRFLOW_TOKEN");
+            std::env::set_var("GITLAB_TOKEN", "gl-tok");
+        }
+        let result = resolve_token(ForgeKind::Gitlab);
+        unsafe {
+            std::env::remove_var("GITLAB_TOKEN");
+        }
+        assert_eq!(result, Some("gl-tok".to_string()));
+    }
+
+    #[test]
+    fn resolve_token_empty_ferrflow_token_ignored() {
+        unsafe {
+            std::env::set_var("FERRFLOW_TOKEN", "");
+            std::env::set_var("GITHUB_TOKEN", "gh-tok");
+        }
+        let result = resolve_token(ForgeKind::Github);
+        unsafe {
+            std::env::remove_var("FERRFLOW_TOKEN");
+            std::env::remove_var("GITHUB_TOKEN");
+        }
+        assert_eq!(result, Some("gh-tok".to_string()));
+    }
+
+    #[test]
+    fn resolve_token_auto_returns_none() {
+        unsafe {
+            std::env::remove_var("FERRFLOW_TOKEN");
+        }
+        assert_eq!(resolve_token(ForgeKind::Auto), None);
+    }
+
+    #[test]
+    fn build_forge_github() {
+        let forge = build_forge(ForgeKind::Github, "tok".into(), "owner/repo".into());
+        assert_eq!(forge.mr_noun(), "PR");
+        assert_eq!(forge.release_noun(), "GitHub Release");
+    }
+
+    #[test]
+    fn build_forge_gitlab() {
+        let forge = build_forge(ForgeKind::Gitlab, "tok".into(), "owner/repo".into());
+        assert_eq!(forge.mr_noun(), "MR");
+        assert_eq!(forge.release_noun(), "GitLab Release");
+    }
+
+    #[test]
+    #[should_panic(expected = "unreachable")]
+    fn build_forge_auto_panics() {
+        build_forge(ForgeKind::Auto, "tok".into(), "owner/repo".into());
+    }
+
+    #[test]
+    fn slug_no_suffix() {
+        assert_eq!(
+            extract_repo_slug("https://github.com/owner/repo"),
+            Some("owner/repo".to_string())
+        );
+    }
+
+    #[test]
+    fn detect_forge_empty_string() {
+        assert_eq!(detect_forge_from_url(""), None);
+    }
 }

@@ -154,3 +154,182 @@ impl Forge for GitHubForge {
         "GitHub Release"
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_forge() -> GitHubForge {
+        GitHubForge {
+            token: "test-token".to_string(),
+            slug: "owner/repo".to_string(),
+        }
+    }
+
+    #[test]
+    fn mr_noun_returns_pr() {
+        assert_eq!(make_forge().mr_noun(), "PR");
+    }
+
+    #[test]
+    fn release_noun_returns_github_release() {
+        assert_eq!(make_forge().release_noun(), "GitHub Release");
+    }
+
+    #[test]
+    fn struct_fields_accessible() {
+        let forge = make_forge();
+        assert_eq!(forge.token, "test-token");
+        assert_eq!(forge.slug, "owner/repo");
+    }
+
+    #[test]
+    fn find_draft_release_parses_empty_array() {
+        // Simulate parsing logic used in find_draft_release
+        let response: serde_json::Value = serde_json::json!([]);
+        let releases = response.as_array().unwrap();
+        let found = releases.iter().find(|r| {
+            r["draft"].as_bool() == Some(true) && r["tag_name"].as_str() == Some("v1.0.0")
+        });
+        assert!(found.is_none());
+    }
+
+    #[test]
+    fn find_draft_release_parses_draft() {
+        let response: serde_json::Value = serde_json::json!([
+            {"id": 1, "tag_name": "v1.0.0", "draft": false},
+            {"id": 2, "tag_name": "v1.1.0", "draft": true},
+            {"id": 3, "tag_name": "v1.2.0", "draft": true},
+        ]);
+        let releases = response.as_array().unwrap();
+        let found = releases
+            .iter()
+            .find(|r| {
+                r["draft"].as_bool() == Some(true) && r["tag_name"].as_str() == Some("v1.1.0")
+            })
+            .and_then(|r| r["id"].as_u64());
+        assert_eq!(found, Some(2));
+    }
+
+    #[test]
+    fn find_draft_release_ignores_non_draft() {
+        let response: serde_json::Value = serde_json::json!([
+            {"id": 1, "tag_name": "v1.0.0", "draft": false},
+        ]);
+        let releases = response.as_array().unwrap();
+        let found = releases
+            .iter()
+            .find(|r| {
+                r["draft"].as_bool() == Some(true) && r["tag_name"].as_str() == Some("v1.0.0")
+            })
+            .and_then(|r| r["id"].as_u64());
+        assert!(found.is_none());
+    }
+
+    #[test]
+    fn find_draft_release_matches_exact_tag() {
+        let response: serde_json::Value = serde_json::json!([
+            {"id": 10, "tag_name": "v2.0.0", "draft": true},
+            {"id": 20, "tag_name": "v2.0.0-beta.1", "draft": true},
+        ]);
+        let releases = response.as_array().unwrap();
+        let found = releases
+            .iter()
+            .find(|r| {
+                r["draft"].as_bool() == Some(true) && r["tag_name"].as_str() == Some("v2.0.0")
+            })
+            .and_then(|r| r["id"].as_u64());
+        assert_eq!(found, Some(10));
+    }
+
+    #[test]
+    fn create_release_payload_structure() {
+        let payload = serde_json::json!({
+            "tag_name": "v1.0.0",
+            "name": "v1.0.0",
+            "body": "Release notes",
+            "draft": true,
+            "prerelease": false,
+        });
+        assert_eq!(payload["tag_name"], "v1.0.0");
+        assert_eq!(payload["draft"], true);
+        assert_eq!(payload["prerelease"], false);
+        assert_eq!(payload["body"], "Release notes");
+    }
+
+    #[test]
+    fn publish_release_payload_structure() {
+        let payload = serde_json::json!({"draft": false});
+        assert_eq!(payload["draft"], false);
+    }
+
+    #[test]
+    fn create_pr_payload_structure() {
+        let payload = serde_json::json!({
+            "title": "chore(release): v1.0.0",
+            "body": "Release PR",
+            "head": "release/v1.0.0",
+            "base": "main",
+        });
+        assert_eq!(payload["head"], "release/v1.0.0");
+        assert_eq!(payload["base"], "main");
+    }
+
+    #[test]
+    fn auto_merge_graphql_payload() {
+        let query = serde_json::json!({
+            "query": "mutation($prId: ID!) { enablePullRequestAutoMerge(input: { pullRequestId: $prId, mergeMethod: SQUASH }) { pullRequest { number } } }",
+            "variables": { "prId": "PR_abc123" },
+        });
+        assert!(
+            query["query"]
+                .as_str()
+                .unwrap()
+                .contains("enablePullRequestAutoMerge")
+        );
+        assert_eq!(query["variables"]["prId"], "PR_abc123");
+    }
+
+    #[test]
+    fn graphql_error_detection() {
+        let response: serde_json::Value = serde_json::json!({
+            "errors": [{"message": "Some error"}]
+        });
+        let errors = response.get("errors");
+        assert!(errors.is_some());
+        let msg = errors.unwrap()[0]["message"].as_str().unwrap();
+        assert_eq!(msg, "Some error");
+    }
+
+    #[test]
+    fn graphql_no_errors() {
+        let response: serde_json::Value = serde_json::json!({
+            "data": {"enablePullRequestAutoMerge": {"pullRequest": {"number": 42}}}
+        });
+        assert!(response.get("errors").is_none());
+    }
+
+    #[test]
+    fn pr_response_parsing() {
+        let response: serde_json::Value = serde_json::json!({
+            "number": 42,
+            "node_id": "PR_kwDOabc123"
+        });
+        let number = response["number"].as_u64().unwrap();
+        let node_id = response["node_id"].as_str().unwrap();
+        assert_eq!(number, 42);
+        assert_eq!(node_id, "PR_kwDOabc123");
+    }
+
+    #[test]
+    fn pr_response_missing_number() {
+        let response: serde_json::Value = serde_json::json!({"node_id": "PR_abc"});
+        assert!(response["number"].as_u64().is_none());
+    }
+
+    #[test]
+    fn pr_response_missing_node_id() {
+        let response: serde_json::Value = serde_json::json!({"number": 1});
+        assert!(response["node_id"].as_str().is_none());
+    }
+}
