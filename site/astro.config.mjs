@@ -26,9 +26,7 @@ export default defineConfig({
         ThemeSelect: './src/components/ThemeSelect.astro',
         Header: './src/components/Header.astro',
       },
-      social: [
-        { icon: 'github', label: 'GitHub', href: 'https://github.com/FerrFlow-Org/FerrFlow' },
-      ],
+      social: [],
       customCss: ['./src/styles/docs.css'],
       expressiveCode: {
         styleOverrides: {

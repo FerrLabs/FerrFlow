@@ -1,0 +1,142 @@
+---
+import type { Lang } from '../i18n/translations';
+import { t, getLocalizedPath } from '../i18n/translations';
+
+interface Props {
+  lang: Lang;
+  activePage?: 'home' | 'docs' | 'playground';
+}
+
+const { lang, activePage = 'home' } = Astro.props;
+
+const docsPath = getLocalizedPath('/docs/introduction', lang);
+const homePath = lang === 'en' ? '/' : '/fr/';
+const altLang = lang === 'en' ? 'fr' : 'en';
+const altPath = activePage === 'docs'
+  ? (altLang === 'en' ? '/docs/introduction' : '/fr/docs/introduction')
+  : (altLang === 'en' ? '/' : '/fr/');
+---
+
+<div class="navbar">
+  <a href={homePath} class="navbar-logo">
+    <img src="/favicon.svg" alt="FerrFlow Logo" class="navbar-logo-img" />
+    <span class="navbar-logo-text">
+      Ferr<span class="navbar-logo-highlight">Flow</span>
+    </span>
+  </a>
+  <nav class="navbar-nav">
+    {activePage !== 'docs' && (
+      <a href={docsPath} class="navbar-link">
+        {t(lang, 'nav.docs')}
+      </a>
+    )}
+    <slot />
+    {activePage !== 'playground' && (
+      <a href="https://play.ferrflow.com" class="navbar-playground">
+        {t(lang, 'nav.playground')}
+      </a>
+    )}
+    <a href={altPath} class="navbar-link navbar-lang" title={altLang === 'en' ? 'English' : 'Français'}>
+      {altLang === 'en' ? 'EN' : 'FR'}
+    </a>
+    <a
+      href="https://github.com/FerrFlow-Org/FerrFlow"
+      class="navbar-github"
+      aria-label="GitHub"
+    >
+      <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+      </svg>
+    </a>
+  </nav>
+</div>
+
+<style>
+  .navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    height: 100%;
+  }
+
+  .navbar-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    flex-shrink: 0;
+  }
+
+  .navbar-logo-img {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .navbar-logo-text {
+    font-size: 1.25rem;
+    font-weight: 900;
+    color: #2d1b0e;
+    letter-spacing: -0.025em;
+    line-height: 1;
+  }
+
+  .navbar-logo-highlight {
+    color: #e8733a;
+  }
+
+  .navbar-nav {
+    display: none;
+    align-items: center;
+    gap: 1rem;
+    font-size: 0.875rem;
+    color: #6b270e;
+  }
+
+  @media (min-width: 640px) {
+    .navbar-nav {
+      display: flex;
+    }
+  }
+
+  .navbar-link {
+    color: #6b270e;
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+
+  .navbar-link:hover {
+    color: #2d1b0e;
+  }
+
+  .navbar-lang {
+    font-weight: 500;
+  }
+
+  .navbar-playground {
+    padding: 0.375rem 1rem;
+    border-radius: 9999px;
+    background: #2d1b0e;
+    color: #fff8f2;
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background-color 0.15s;
+  }
+
+  .navbar-playground:hover {
+    background: #4a2a14;
+  }
+
+  .navbar-github {
+    color: #2d1b0e;
+    text-decoration: none;
+    transition: color 0.15s;
+    display: flex;
+    align-items: center;
+  }
+
+  .navbar-github:hover {
+    color: #9e3f1a;
+  }
+</style>

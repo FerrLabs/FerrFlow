@@ -1,120 +1,35 @@
 ---
 import type { Props } from '@astrojs/starlight/props';
 import Search from '@astrojs/starlight/components/Search.astro';
-import SocialIcons from '@astrojs/starlight/components/SocialIcons.astro';
 import ThemeSelect from './ThemeSelect.astro';
 import VersionSelect from 'starlight-versions/components/VersionSelect.astro';
+import Navbar from './Navbar.astro';
+import type { Lang } from '../i18n/translations';
+
+const lang: Lang = Astro.url.pathname.startsWith('/fr/') ? 'fr' : 'en';
 ---
 
-<div class="header sl-flex">
-  <div class="title-wrapper">
-    <a href="/" class="site-title sl-flex">
-      <img src="/favicon.svg" alt="FerrFlow Logo" class="logo" />
-      <span class="text">
-        Ferr<span class="highlight">Flow</span>
-      </span>
-    </a>
-  </div>
-  <div class="sl-flex sl-hidden md:sl-flex right-group">
-    <a href="https://play.ferrflow.com" class="playground-link">Playground</a>
-    <div class="sl-flex social-icons">
+<div class="docs-header">
+  <Navbar lang={lang} activePage="docs">
+    <div class="docs-controls">
       <VersionSelect />
       <Search {...Astro.props} />
-      <SocialIcons {...Astro.props} />
-      <ThemeSelect {...Astro.props} />
     </div>
-  </div>
+  </Navbar>
+  <ThemeSelect {...Astro.props} />
 </div>
 
 <style>
-  .header {
-    gap: var(--sl-nav-gap);
-    justify-content: space-between;
-    align-items: center;
-    height: 100%;
-  }
-
-  .title-wrapper {
-    flex-shrink: 0;
-    font-weight: 900;
-    font-size: var(--sl-text-h4);
-    color: var(--sl-color-text);
-    line-height: 1;
-  }
-
-  .site-title {
-    align-items: center;
-    gap: 0.5rem;
-    text-decoration: none;
-    color: inherit;
-  }
-
-  .logo {
-    width: 2rem;
-    height: 2rem;
-  }
-
-  .text {
-    font-size: 1.25rem;
-    font-weight: 900;
-    letter-spacing: -0.025em;
-    line-height: 1;
-  }
-
-  .highlight {
-    color: var(--sl-color-text-accent);
-  }
-
-  .right-group {
-    gap: 1rem;
-    align-items: center;
-  }
-
-  .social-icons {
-    gap: 0.5rem;
-    align-items: center;
-  }
-
-  .social-icons :global(a) {
+  .docs-header {
     display: flex;
     align-items: center;
-    justify-content: center;
+    height: 100%;
+    width: 100%;
   }
 
-  .playground-link {
-    font-size: var(--sl-text-sm);
-    font-weight: 600;
-    color: var(--sl-color-text-accent);
-    text-decoration: none;
-    padding: 0.25rem 0.75rem;
-    border: 1px solid var(--sl-color-text-accent);
-    border-radius: 9999px;
-    transition: background-color 0.2s, color 0.2s;
-  }
-
-  .playground-link:hover {
-    background-color: var(--sl-color-text-accent);
-    color: var(--sl-color-white);
-  }
-
-  .right-group :global(a) {
-    color: var(--sl-color-text);
-    text-decoration: none;
-  }
-
-  @media (min-width: 50rem) {
-    .header {
-      --__sidebar-pad: calc(2 * var(--sl-nav-pad-x));
-      --__main-column-fr: calc(
-        (
-            100% + var(--__sidebar-pad) -
-              var(--__mobile-toc-overflow) - (2 * var(--sl-content-pad-x))
-          ) * 999
-      );
-
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
+  .docs-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
 </style>

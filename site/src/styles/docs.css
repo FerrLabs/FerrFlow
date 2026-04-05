@@ -95,3 +95,10 @@
 starlight-theme-select {
   display: none;
 }
+
+/* ── Unify header with landing page navbar ────────────────────── */
+header {
+  background: rgba(255, 248, 242, 0.9) !important; /* primary-50/90 */
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
