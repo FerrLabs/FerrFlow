@@ -90,6 +90,9 @@ pub fn build_forge(kind: ForgeKind, token: String, slug: String) -> Box<dyn Forg
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
+
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn detect_github_https() {
@@ -209,6 +212,7 @@ mod tests {
 
     #[test]
     fn resolve_token_ferrflow_token_takes_precedence() {
+        let _lock = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         unsafe {
             std::env::set_var("FERRFLOW_TOKEN", "ferrflow-tok");
             std::env::set_var("GITHUB_TOKEN", "gh-tok");
@@ -223,6 +227,7 @@ mod tests {
 
     #[test]
     fn resolve_token_falls_back_to_github_token() {
+        let _lock = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         unsafe {
             std::env::remove_var("FERRFLOW_TOKEN");
             std::env::set_var("GITHUB_TOKEN", "gh-tok");
@@ -236,6 +241,7 @@ mod tests {
 
     #[test]
     fn resolve_token_falls_back_to_gitlab_token() {
+        let _lock = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         unsafe {
             std::env::remove_var("FERRFLOW_TOKEN");
             std::env::set_var("GITLAB_TOKEN", "gl-tok");
@@ -249,6 +255,7 @@ mod tests {
 
     #[test]
     fn resolve_token_empty_ferrflow_token_ignored() {
+        let _lock = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         unsafe {
             std::env::set_var("FERRFLOW_TOKEN", "");
             std::env::set_var("GITHUB_TOKEN", "gh-tok");
@@ -263,6 +270,7 @@ mod tests {
 
     #[test]
     fn resolve_token_auto_returns_none() {
+        let _lock = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         unsafe {
             std::env::remove_var("FERRFLOW_TOKEN");
         }

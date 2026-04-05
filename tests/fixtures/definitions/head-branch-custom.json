@@ -1,0 +1,28 @@
+{
+  "meta": {
+    "name": "head-branch-custom",
+    "description": "Default branch is develop, ferrflow auto-detects HEAD correctly",
+    "default_branch": "develop"
+  },
+  "config": {
+    "content": "{\n  \"package\": [\n    {\n      \"name\": \"myapp\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    {
+      "name": "myapp",
+      "path": ".",
+      "initial_version": "0.5.0",
+      "tag": "v0.5.0"
+    }
+  ],
+  "commits": [
+    {
+      "message": "feat!: redesign API",
+      "files": ["src/api.rs"]
+    }
+  ],
+  "expect": {
+    "check_contains": ["myapp", "1.0.0", "major"],
+    "check_not_contains": ["Nothing to release"]
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "meta": {
+    "name": "head-branch-master",
+    "description": "Default branch is master, ferrflow auto-detects HEAD correctly",
+    "default_branch": "master"
+  },
+  "config": {
+    "content": "{\n  \"package\": [\n    {\n      \"name\": \"myapp\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    {
+      "name": "myapp",
+      "path": ".",
+      "initial_version": "2.0.0",
+      "tag": "v2.0.0"
+    }
+  ],
+  "commits": [
+    {
+      "message": "fix: resolve crash on startup",
+      "files": ["src/main.rs"]
+    }
+  ],
+  "expect": {
+    "check_contains": ["myapp", "2.0.1", "patch"],
+    "check_not_contains": ["Nothing to release"]
+  }
+}

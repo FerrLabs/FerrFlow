@@ -1,0 +1,28 @@
+{
+  "meta": {
+    "name": "head-branch-main",
+    "description": "Default branch is main, ferrflow auto-detects HEAD correctly",
+    "default_branch": "main"
+  },
+  "config": {
+    "content": "{\n  \"package\": [\n    {\n      \"name\": \"myapp\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    {
+      "name": "myapp",
+      "path": ".",
+      "initial_version": "1.0.0",
+      "tag": "v1.0.0"
+    }
+  ],
+  "commits": [
+    {
+      "message": "feat: add authentication",
+      "files": ["src/auth.rs"]
+    }
+  ],
+  "expect": {
+    "check_contains": ["myapp", "1.1.0", "minor"],
+    "check_not_contains": ["Nothing to release"]
+  }
+}
