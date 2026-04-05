@@ -465,6 +465,47 @@ fn path_to_file_url(path: &Path) -> Result<String> {
     Ok(format!("file:///{normalized}"))
 }
 
+/// JS snippet that resolves the config, converts function hooks to shell
+/// commands that re-invoke the config file at hook time, and dumps the result
+/// as JSON to stdout.
+#[cfg(feature = "cli")]
+const LOADER_SCRIPT: &str = r#"
+function reifyHooks(hooks, fileUrl, runtime, hookPath) {
+  if (!hooks || typeof hooks !== 'object') return hooks;
+  const ctx = `{ package: process.env.FERRFLOW_PACKAGE, oldVersion: process.env.FERRFLOW_OLD_VERSION, newVersion: process.env.FERRFLOW_NEW_VERSION, bumpType: process.env.FERRFLOW_BUMP_TYPE, tag: process.env.FERRFLOW_TAG, dryRun: process.env.FERRFLOW_DRY_RUN === 'true', packagePath: process.env.FERRFLOW_PACKAGE_PATH, channel: process.env.FERRFLOW_CHANNEL || null, isPrerelease: process.env.FERRFLOW_IS_PRERELEASE === 'true' }`;
+  const result = {};
+  for (const [key, value] of Object.entries(hooks)) {
+    if (typeof value === 'function') {
+      const cmd = `${runtime} --input-type=module -e "const m = await import('${fileUrl}'); const cfg = typeof m.default === 'function' ? await m.default() : m.default; const hooks = ${hookPath}; await hooks.${key}(${ctx});"`;
+      result[key] = cmd;
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+"#;
+
+#[cfg(feature = "cli")]
+fn loader_body(file_url: &str, runtime: &str) -> String {
+    format!(
+        r#"{LOADER_SCRIPT}
+const m = await import('{file_url}');
+const cfg = typeof m.default === 'function' ? await m.default() : m.default;
+if (cfg.workspace && cfg.workspace.hooks) {{
+  cfg.workspace.hooks = reifyHooks(cfg.workspace.hooks, '{file_url}', '{runtime}', 'cfg.workspace.hooks');
+}}
+if (cfg.package) {{
+  for (const pkg of cfg.package) {{
+    if (pkg.hooks) {{
+      pkg.hooks = reifyHooks(pkg.hooks, '{file_url}', '{runtime}', `cfg.package.find(p=>p.name==="${{pkg.name}}").hooks`);
+    }}
+  }}
+}}
+process.stdout.write(JSON.stringify(cfg));"#
+    )
+}
+
 #[cfg(feature = "cli")]
 fn load_js_ts_config(path: &Path) -> Result<Config> {
     use std::process::Command;
@@ -474,16 +515,31 @@ fn load_js_ts_config(path: &Path) -> Result<Config> {
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("ferrflow config");
+    let file_url = path_to_file_url(path)?;
 
     let output = if ext == "ts" {
         // For TS: create a temp wrapper that imports the config and dumps JSON.
-        // tsx handles the TS transpilation when it's the entry file or a static import.
-        let file_url = path_to_file_url(path)?;
         let wrapper_dir = path.parent().unwrap_or(Path::new("."));
         let wrapper_path = wrapper_dir.join(".ferrflow-loader.mts");
+
+        // Determine which runtime to use for hook callbacks
+        let tsx_available = Command::new("tsx").arg("--version").output().is_ok();
+        let runtime = if tsx_available { "tsx" } else { "npx tsx" };
+
         let wrapper_content = format!(
             "import cfg from '{file_url}';\n\
+             {LOADER_SCRIPT}\n\
              const resolved = typeof cfg === 'function' ? await cfg() : cfg;\n\
+             if (resolved.workspace && resolved.workspace.hooks) {{\n\
+               resolved.workspace.hooks = reifyHooks(resolved.workspace.hooks, '{file_url}', '{runtime}', 'cfg.workspace.hooks');\n\
+             }}\n\
+             if (resolved.package) {{\n\
+               for (const pkg of resolved.package) {{\n\
+                 if (pkg.hooks) {{\n\
+                   pkg.hooks = reifyHooks(pkg.hooks, '{file_url}', '{runtime}', `cfg.package.find(p=>p.name===\"${{pkg.name}}\").hooks`);\n\
+                 }}\n\
+               }}\n\
+             }}\n\
              process.stdout.write(JSON.stringify(resolved));\n"
         );
         std::fs::write(&wrapper_path, &wrapper_content)
@@ -513,18 +569,11 @@ fn load_js_ts_config(path: &Path) -> Result<Config> {
                 }
             });
 
-        // Clean up the wrapper file regardless of outcome
         let _ = std::fs::remove_file(&wrapper_path);
-
         result?
     } else {
         // .js — use node with inline script
-        let file_url = path_to_file_url(path)?;
-        let script = format!(
-            "const m = await import('{file_url}');\n\
-             const cfg = typeof m.default === 'function' ? await m.default() : m.default;\n\
-             process.stdout.write(JSON.stringify(cfg));"
-        );
+        let script = loader_body(&file_url, "node");
 
         Command::new("node")
             .args(["--input-type=module", "-e", &script])
@@ -2258,6 +2307,46 @@ export default config;"#,
         .unwrap();
         let config = Config::load_explicit(&path).unwrap();
         assert_eq!(config.packages[0].name, "ts-app");
+    }
+
+    #[test]
+    fn load_explicit_js_function_hooks() {
+        if std::process::Command::new("node")
+            .arg("--version")
+            .output()
+            .is_err()
+        {
+            eprintln!("Skipping: node not found");
+            return;
+        }
+
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("ferrflow.js");
+        std::fs::write(
+            &path,
+            r#"export default {
+                workspace: {
+                    hooks: {
+                        postBump: (ctx) => { console.log(ctx.newVersion); },
+                        preBump: "echo hello"
+                    }
+                },
+                package: [{ name: "hook-app", path: "." }]
+            };"#,
+        )
+        .unwrap();
+        let config = Config::load_explicit(&path).unwrap();
+        assert_eq!(config.packages[0].name, "hook-app");
+        // String hook should remain as-is
+        let hooks = config.workspace.hooks.unwrap();
+        assert_eq!(hooks.pre_bump.as_deref(), Some("echo hello"));
+        // Function hook should be converted to a node command
+        let post_bump = hooks.post_bump.unwrap();
+        assert!(
+            post_bump.contains("node"),
+            "function hook should be reified as a node command: {post_bump}"
+        );
+        assert!(post_bump.contains("postBump"));
     }
 
     #[cfg(feature = "cli")]
