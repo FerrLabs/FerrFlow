@@ -189,6 +189,7 @@ fn run_release_logic(
     // (tag_name, tag_msg, body, pkg_name, version, commits_count, is_prerelease)
     let mut tags_to_create: Vec<(String, String, String, String, String, i32, bool)> = Vec::new();
     let mut hook_contexts: Vec<(HookContext, usize)> = Vec::new(); // (ctx, pkg_index)
+    let mut bumped_names: HashSet<String> = HashSet::new();
 
     // Buffered output: per-package lines and shared (commit/push) lines.
     // Each entry is (pkg_name, lines) in insertion order.
@@ -510,15 +511,12 @@ fn run_release_logic(
         }
 
         hook_contexts.push((hook_ctx, pkg_idx));
+        bumped_names.insert(pkg.name.clone());
         any_bumped = true;
     }
 
     // --- Dependency cascade: auto-bump packages that depend on bumped packages ---
     if config.is_monorepo() {
-        let mut bumped_names: HashSet<String> = tags_to_create
-            .iter()
-            .map(|(_, _, _, n, _, _, _)| n.clone())
-            .collect();
         let mut cascade_round = 0;
         loop {
             cascade_round += 1;
