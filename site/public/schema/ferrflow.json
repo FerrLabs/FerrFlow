@@ -73,6 +73,12 @@
           },
           "default": []
         },
+        "forge": {
+          "type": "string",
+          "description": "Git forge type. 'auto' detects from the remote URL. Use 'github' or 'gitlab' to override (useful for self-hosted instances with custom domains).",
+          "enum": ["auto", "github", "gitlab"],
+          "default": "auto"
+        },
         "orphanedTagStrategy": {
           "type": "string",
           "enum": ["warn", "treeHash", "message"],
@@ -81,6 +87,35 @@
         },
         "hooks": {
           "$ref": "#/$defs/hooks"
+        },
+        "branches": {
+          "type": "array",
+          "description": "Map branches to pre-release channels. When FerrFlow runs on a branch matching a configured name/pattern, it uses the corresponding channel.",
+          "items": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Branch name or glob pattern (e.g. 'main', 'release/*')."
+              },
+              "channel": {
+                "oneOf": [
+                  { "type": "boolean", "const": false, "description": "Stable release (no pre-release suffix)." },
+                  { "type": "string", "description": "Pre-release channel name (e.g. 'beta', 'dev', 'rc')." }
+                ],
+                "description": "false for stable releases, string for pre-release channel name.",
+                "default": false
+              },
+              "prereleaseIdentifier": {
+                "type": "string",
+                "description": "Strategy for the pre-release identifier after the channel name.",
+                "enum": ["increment", "timestamp", "short-hash", "timestamp-hash"],
+                "default": "increment"
+              }
+            },
+            "additionalProperties": false
+          }
         }
       },
       "additionalProperties": false
@@ -118,7 +153,7 @@
                 "format": {
                   "type": "string",
                   "description": "File format used to locate and update the version field.",
-                  "enum": ["toml", "json", "xml", "gradle", "gomod", "helm", "txt"]
+                  "enum": ["csproj", "toml", "json", "xml", "gradle", "gomod", "helm", "txt"]
                 }
               },
               "additionalProperties": false
@@ -127,6 +162,13 @@
           "sharedPaths": {
             "type": "array",
             "description": "Paths whose changes should trigger a version bump for this package (monorepo only).",
+            "items": {
+              "type": "string"
+            }
+          },
+          "dependsOn": {
+            "type": "array",
+            "description": "Package names this package depends on. When a dependency is bumped, this package gets a patch bump automatically.",
             "items": {
               "type": "string"
             }
