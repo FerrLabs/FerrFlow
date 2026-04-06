@@ -23,6 +23,7 @@ use std::path::Path;
 fn build_forge_instance(repo: &Repository, config: &Config) -> Option<Box<dyn forge::Forge>> {
     let remote_url = get_remote_url(repo, &config.workspace.remote)?;
     let slug = forge::extract_repo_slug(&remote_url)?;
+    let host = forge::extract_host(&remote_url)?;
 
     let kind = match config.workspace.forge {
         ForgeKind::Auto => forge::detect_forge_from_url(&remote_url)?,
@@ -30,7 +31,7 @@ fn build_forge_instance(repo: &Repository, config: &Config) -> Option<Box<dyn fo
     };
 
     let token = forge::resolve_token(kind)?;
-    Some(forge::build_forge(kind, token, slug))
+    Some(forge::build_forge(kind, token, slug, host))
 }
 
 #[derive(serde::Serialize)]

@@ -6,6 +6,7 @@ use super::{Forge, MergeRequestResult};
 pub struct GitLabForge {
     pub token: String,
     pub slug: String,
+    pub api_base: String,
 }
 
 impl GitLabForge {
@@ -24,7 +25,7 @@ impl Forge for GitLabForge {
         }
 
         let project = self.encoded_project_id();
-        let url = format!("https://gitlab.com/api/v4/projects/{project}/releases");
+        let url = format!("{}/projects/{project}/releases", self.api_base);
 
         let mut payload = serde_json::json!({
             "tag_name": tag,
@@ -60,7 +61,7 @@ impl Forge for GitLabForge {
         body: &str,
     ) -> Result<MergeRequestResult> {
         let project = self.encoded_project_id();
-        let url = format!("https://gitlab.com/api/v4/projects/{project}/merge_requests");
+        let url = format!("{}/projects/{project}/merge_requests", self.api_base);
 
         let payload = serde_json::json!({
             "source_branch": head,
@@ -91,8 +92,8 @@ impl Forge for GitLabForge {
     fn enable_auto_merge(&self, mr: &MergeRequestResult) -> Result<()> {
         let project = self.encoded_project_id();
         let url = format!(
-            "https://gitlab.com/api/v4/projects/{project}/merge_requests/{}/merge",
-            mr.id
+            "{}/projects/{project}/merge_requests/{}/merge",
+            self.api_base, mr.id
         );
 
         let payload = serde_json::json!({
@@ -127,6 +128,7 @@ mod tests {
         let forge = GitLabForge {
             token: String::new(),
             slug: "owner/repo".to_string(),
+            api_base: "https://gitlab.com/api/v4".to_string(),
         };
         assert_eq!(forge.encoded_project_id(), "owner%2Frepo");
     }
@@ -136,6 +138,7 @@ mod tests {
         let forge = GitLabForge {
             token: String::new(),
             slug: "group/subgroup/repo".to_string(),
+            api_base: "https://gitlab.com/api/v4".to_string(),
         };
         assert_eq!(forge.encoded_project_id(), "group%2Fsubgroup%2Frepo");
     }
@@ -145,6 +148,7 @@ mod tests {
         let forge = GitLabForge {
             token: String::new(),
             slug: "owner/repo".to_string(),
+            api_base: "https://gitlab.com/api/v4".to_string(),
         };
         assert_eq!(forge.mr_noun(), "MR");
     }
@@ -154,6 +158,7 @@ mod tests {
         let forge = GitLabForge {
             token: String::new(),
             slug: "owner/repo".to_string(),
+            api_base: "https://gitlab.com/api/v4".to_string(),
         };
         assert_eq!(forge.release_noun(), "GitLab Release");
     }
@@ -163,6 +168,7 @@ mod tests {
         let forge = GitLabForge {
             token: String::new(),
             slug: "owner/repo".to_string(),
+            api_base: "https://gitlab.com/api/v4".to_string(),
         };
         assert_eq!(forge.find_draft_release("v1.0.0").unwrap(), None);
     }
@@ -172,6 +178,7 @@ mod tests {
         let forge = GitLabForge {
             token: String::new(),
             slug: "owner/repo".to_string(),
+            api_base: "https://gitlab.com/api/v4".to_string(),
         };
         assert!(forge.publish_release(123).is_ok());
     }
@@ -204,5 +211,15 @@ mod tests {
         });
         assert_eq!(payload["merge_when_pipeline_succeeds"], true);
         assert_eq!(payload["squash"], true);
+    }
+
+    #[test]
+    fn api_base_self_hosted() {
+        let forge = GitLabForge {
+            token: String::new(),
+            slug: "team/project".to_string(),
+            api_base: "https://gitlab.internal/api/v4".to_string(),
+        };
+        assert_eq!(forge.api_base, "https://gitlab.internal/api/v4");
     }
 }
