@@ -524,20 +524,25 @@ fn load_js_ts_config(path: &Path) -> Result<Config> {
     let file_url = path_to_file_url(path)?;
 
     let output = if ext == "ts" {
-        // For TS: use tsx with inline eval script, same pattern as the .js path.
-        // The file URL is used for the dynamic import so tsx resolves the .ts file.
+        // For TS: write a temporary .mjs loader that dynamically imports the .ts
+        // file via file URL. tsx handles the TS→JS transpilation at import time.
+        let wrapper_dir = path.parent().unwrap_or(Path::new("."));
+        let wrapper_path = wrapper_dir.join(".ferrflow-loader.mjs");
         let tsx_available = Command::new("tsx").arg("--version").output().is_ok();
         let runtime = if tsx_available { "tsx" } else { "npx tsx" };
 
         let script = loader_body(&file_url, runtime);
+        std::fs::write(&wrapper_path, &script)
+            .with_context(|| "Failed to write temporary loader file")?;
 
         let result = Command::new("tsx")
-            .args(["--input-type=module", "-e", &script])
+            .arg(&wrapper_path)
             .output()
             .or_else(|e| {
                 if e.kind() == std::io::ErrorKind::NotFound {
                     Command::new("npx")
-                        .args(["tsx", "--input-type=module", "-e", &script])
+                        .args(["tsx"])
+                        .arg(&wrapper_path)
                         .output()
                 } else {
                     Err(e)
@@ -554,6 +559,7 @@ fn load_js_ts_config(path: &Path) -> Result<Config> {
                 }
             });
 
+        let _ = std::fs::remove_file(&wrapper_path);
         result?
     } else {
         // .js — use node with inline script
