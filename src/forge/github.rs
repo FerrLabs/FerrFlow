@@ -5,11 +5,12 @@ use super::{Forge, MergeRequestResult};
 pub struct GitHubForge {
     pub token: String,
     pub slug: String,
+    pub api_base: String,
 }
 
 impl Forge for GitHubForge {
     fn create_release(&self, tag: &str, body: &str, prerelease: bool, draft: bool) -> Result<()> {
-        let url = format!("https://api.github.com/repos/{}/releases", self.slug);
+        let url = format!("{}/repos/{}/releases", self.api_base, self.slug);
 
         let payload = serde_json::json!({
             "tag_name": tag,
@@ -31,7 +32,7 @@ impl Forge for GitHubForge {
     }
 
     fn find_draft_release(&self, tag: &str) -> Result<Option<u64>> {
-        let url = format!("https://api.github.com/repos/{}/releases", self.slug);
+        let url = format!("{}/repos/{}/releases", self.api_base, self.slug);
 
         let response: serde_json::Value = ureq::get(&url)
             .header("Authorization", &format!("Bearer {}", self.token))
@@ -60,8 +61,8 @@ impl Forge for GitHubForge {
 
     fn publish_release(&self, release_id: u64) -> Result<()> {
         let url = format!(
-            "https://api.github.com/repos/{}/releases/{release_id}",
-            self.slug
+            "{}/repos/{}/releases/{release_id}",
+            self.api_base, self.slug
         );
 
         let payload = serde_json::json!({
@@ -86,7 +87,7 @@ impl Forge for GitHubForge {
         title: &str,
         body: &str,
     ) -> Result<MergeRequestResult> {
-        let url = format!("https://api.github.com/repos/{}/pulls", self.slug);
+        let url = format!("{}/repos/{}/pulls", self.api_base, self.slug);
 
         let payload = serde_json::json!({
             "title": title,
@@ -127,7 +128,8 @@ impl Forge for GitHubForge {
             "variables": { "prId": mr.auto_merge_key },
         });
 
-        let response: serde_json::Value = ureq::post("https://api.github.com/graphql")
+        let graphql_url = format!("{}/graphql", self.api_base);
+        let response: serde_json::Value = ureq::post(&graphql_url)
             .header("Authorization", &format!("Bearer {}", self.token))
             .header("User-Agent", "ferrflow")
             .send_json(query)
@@ -163,6 +165,7 @@ mod tests {
         GitHubForge {
             token: "test-token".to_string(),
             slug: "owner/repo".to_string(),
+            api_base: "https://api.github.com".to_string(),
         }
     }
 
@@ -331,5 +334,21 @@ mod tests {
     fn pr_response_missing_node_id() {
         let response: serde_json::Value = serde_json::json!({"number": 1});
         assert!(response["node_id"].as_str().is_none());
+    }
+
+    #[test]
+    fn api_base_github_com() {
+        let forge = make_forge();
+        assert_eq!(forge.api_base, "https://api.github.com");
+    }
+
+    #[test]
+    fn api_base_github_enterprise() {
+        let forge = GitHubForge {
+            token: "tok".to_string(),
+            slug: "owner/repo".to_string(),
+            api_base: "https://github.corp.com/api/v3".to_string(),
+        };
+        assert_eq!(forge.api_base, "https://github.corp.com/api/v3");
     }
 }
