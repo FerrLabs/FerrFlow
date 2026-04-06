@@ -36,6 +36,27 @@ pub fn detect_forge_from_url(url: &str) -> Option<ForgeKind> {
     }
 }
 
+/// Extract the hostname from a git remote URL.
+///
+/// Supports HTTPS (`https://host/...`) and SSH (`git@host:...`) formats.
+/// Returns `None` if the URL cannot be parsed.
+pub fn extract_host(url: &str) -> Option<String> {
+    if let Some(rest) = url
+        .strip_prefix("https://")
+        .or_else(|| url.strip_prefix("http://"))
+    {
+        // https://host/owner/repo.git or https://host:port/owner/repo.git
+        rest.split('/').next().map(|h| h.to_string())
+    } else if url.contains('@') && url.contains(':') {
+        // git@host:owner/repo.git
+        let after_at = url.split('@').nth(1)?;
+        let host = after_at.split(':').next()?;
+        Some(host.to_string())
+    } else {
+        None
+    }
+}
+
 pub fn extract_repo_slug(url: &str) -> Option<String> {
     for host in ["github.com", "gitlab.com"] {
         let after = if url.contains(&format!("{host}/")) {
@@ -79,10 +100,28 @@ pub fn resolve_token(kind: ForgeKind) -> Option<String> {
     }
 }
 
-pub fn build_forge(kind: ForgeKind, token: String, slug: String) -> Box<dyn Forge> {
+pub fn build_forge(kind: ForgeKind, token: String, slug: String, host: String) -> Box<dyn Forge> {
     match kind {
-        ForgeKind::Github => Box::new(github::GitHubForge { token, slug }),
-        ForgeKind::Gitlab => Box::new(gitlab::GitLabForge { token, slug }),
+        ForgeKind::Github => {
+            let api_base = if host == "github.com" {
+                "https://api.github.com".to_string()
+            } else {
+                format!("https://{host}/api/v3")
+            };
+            Box::new(github::GitHubForge {
+                token,
+                slug,
+                api_base,
+            })
+        }
+        ForgeKind::Gitlab => {
+            let api_base = format!("https://{host}/api/v4");
+            Box::new(gitlab::GitLabForge {
+                token,
+                slug,
+                api_base,
+            })
+        }
         ForgeKind::Auto => unreachable!("ForgeKind::Auto must be resolved before building"),
     }
 }
@@ -279,14 +318,24 @@ mod tests {
 
     #[test]
     fn build_forge_github() {
-        let forge = build_forge(ForgeKind::Github, "tok".into(), "owner/repo".into());
+        let forge = build_forge(
+            ForgeKind::Github,
+            "tok".into(),
+            "owner/repo".into(),
+            "github.com".into(),
+        );
         assert_eq!(forge.mr_noun(), "PR");
         assert_eq!(forge.release_noun(), "GitHub Release");
     }
 
     #[test]
     fn build_forge_gitlab() {
-        let forge = build_forge(ForgeKind::Gitlab, "tok".into(), "owner/repo".into());
+        let forge = build_forge(
+            ForgeKind::Gitlab,
+            "tok".into(),
+            "owner/repo".into(),
+            "gitlab.com".into(),
+        );
         assert_eq!(forge.mr_noun(), "MR");
         assert_eq!(forge.release_noun(), "GitLab Release");
     }
@@ -294,7 +343,12 @@ mod tests {
     #[test]
     #[should_panic(expected = "unreachable")]
     fn build_forge_auto_panics() {
-        build_forge(ForgeKind::Auto, "tok".into(), "owner/repo".into());
+        build_forge(
+            ForgeKind::Auto,
+            "tok".into(),
+            "owner/repo".into(),
+            "github.com".into(),
+        );
     }
 
     #[test]
@@ -308,5 +362,72 @@ mod tests {
     #[test]
     fn detect_forge_empty_string() {
         assert_eq!(detect_forge_from_url(""), None);
+    }
+
+    #[test]
+    fn extract_host_github_https() {
+        assert_eq!(
+            extract_host("https://github.com/owner/repo.git"),
+            Some("github.com".to_string())
+        );
+    }
+
+    #[test]
+    fn extract_host_github_ssh() {
+        assert_eq!(
+            extract_host("git@github.com:owner/repo.git"),
+            Some("github.com".to_string())
+        );
+    }
+
+    #[test]
+    fn extract_host_gitlab_https() {
+        assert_eq!(
+            extract_host("https://gitlab.com/owner/repo.git"),
+            Some("gitlab.com".to_string())
+        );
+    }
+
+    #[test]
+    fn extract_host_self_hosted_https() {
+        assert_eq!(
+            extract_host("https://git.company.com/team/project.git"),
+            Some("git.company.com".to_string())
+        );
+    }
+
+    #[test]
+    fn extract_host_self_hosted_ssh() {
+        assert_eq!(
+            extract_host("git@gitlab.internal:team/project.git"),
+            Some("gitlab.internal".to_string())
+        );
+    }
+
+    #[test]
+    fn extract_host_empty() {
+        assert_eq!(extract_host(""), None);
+    }
+
+    #[test]
+    fn build_forge_github_self_hosted() {
+        let forge = build_forge(
+            ForgeKind::Github,
+            "tok".into(),
+            "owner/repo".into(),
+            "github.corp.com".into(),
+        );
+        assert_eq!(forge.mr_noun(), "PR");
+    }
+
+    #[test]
+    fn build_forge_gitlab_self_hosted() {
+        let forge = build_forge(
+            ForgeKind::Gitlab,
+            "tok".into(),
+            "team/project".into(),
+            "gitlab.internal".into(),
+        );
+        assert_eq!(forge.mr_noun(), "MR");
     }
 }
