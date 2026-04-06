@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.11.1] - 2026-04-06
+
+### Bug Fixes
+
+- fix(site): sync JSON schema with source of truth (#201)
+
 ## [1.11.0] - 2026-04-05
 
 ### Features
