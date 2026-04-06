@@ -524,48 +524,20 @@ fn load_js_ts_config(path: &Path) -> Result<Config> {
     let file_url = path_to_file_url(path)?;
 
     let output = if ext == "ts" {
-        // For TS: create a temp wrapper that imports the config and dumps JSON.
-        let wrapper_dir = path.parent().unwrap_or(Path::new("."));
-        let wrapper_path = wrapper_dir.join(".ferrflow-loader.mts");
-
-        // Determine which runtime to use for hook callbacks
+        // For TS: use tsx with inline eval script, same pattern as the .js path.
+        // The file URL is used for the dynamic import so tsx resolves the .ts file.
         let tsx_available = Command::new("tsx").arg("--version").output().is_ok();
         let runtime = if tsx_available { "tsx" } else { "npx tsx" };
 
-        // Use relative import (wrapper lives in the same directory as the config)
-        let config_filename = path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("ferrflow.ts");
-        let import_path = format!("./{config_filename}");
-
-        let wrapper_content = format!(
-            "import cfg from '{import_path}';\n\
-             {LOADER_SCRIPT}\n\
-             const resolved = typeof cfg === 'function' ? await cfg() : cfg;\n\
-             if (resolved.workspace && resolved.workspace.hooks) {{\n\
-               resolved.workspace.hooks = reifyHooks(resolved.workspace.hooks, '{file_url}', '{runtime}', 'cfg.workspace.hooks');\n\
-             }}\n\
-             if (resolved.package) {{\n\
-               for (const pkg of resolved.package) {{\n\
-                 if (pkg.hooks) {{\n\
-                   pkg.hooks = reifyHooks(pkg.hooks, '{file_url}', '{runtime}', `cfg.package.find(p=>p.name===\"${{pkg.name}}\").hooks`);\n\
-                 }}\n\
-               }}\n\
-             }}\n\
-             process.stdout.write(JSON.stringify(resolved));\n"
-        );
-        std::fs::write(&wrapper_path, &wrapper_content)
-            .with_context(|| "Failed to write temporary loader file")?;
+        let script = loader_body(&file_url, runtime);
 
         let result = Command::new("tsx")
-            .arg(&wrapper_path)
+            .args(["--input-type=module", "-e", &script])
             .output()
             .or_else(|e| {
                 if e.kind() == std::io::ErrorKind::NotFound {
                     Command::new("npx")
-                        .args(["tsx"])
-                        .arg(&wrapper_path)
+                        .args(["tsx", "--input-type=module", "-e", &script])
                         .output()
                 } else {
                     Err(e)
@@ -582,7 +554,6 @@ fn load_js_ts_config(path: &Path) -> Result<Config> {
                 }
             });
 
-        let _ = std::fs::remove_file(&wrapper_path);
         result?
     } else {
         // .js — use node with inline script
