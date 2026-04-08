@@ -687,13 +687,26 @@ pub fn verify_remote_branch(
     anyhow::bail!("Remote branch '{}' not found after push", branch);
 }
 
+/// Resolve the local refspec source for a branch push.
+/// In CI environments with detached HEAD, `refs/heads/{branch}` may not exist,
+/// so we fall back to pushing HEAD directly.
+fn resolve_push_source(repo: &Repository, branch: &str) -> String {
+    let local_ref = format!("refs/heads/{branch}");
+    if repo.find_reference(&local_ref).is_ok() {
+        local_ref
+    } else {
+        "HEAD".to_string()
+    }
+}
+
 pub fn push_branch(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
     let mut remote = get_authenticated_remote(repo, remote_name)?;
 
     let push_errors = Rc::new(RefCell::new(Vec::new()));
     let mut push_options = make_push_options(push_errors.clone());
 
-    let refspec = format!("refs/heads/{branch}:refs/heads/{branch}");
+    let source = resolve_push_source(repo, branch);
+    let refspec = format!("{source}:refs/heads/{branch}");
     remote
         .push(&[&refspec], Some(&mut push_options))
         .with_context(|| format!("Failed to push branch '{branch}'"))?;
@@ -730,7 +743,8 @@ pub fn push(repo: &Repository, remote_name: &str, branch: &str, tags: &[&str]) -
         let mut remote = get_authenticated_remote(repo, remote_name)?;
         let push_errors = Rc::new(RefCell::new(Vec::new()));
         let mut opts = make_push_options(push_errors.clone());
-        let branch_refspec = format!("refs/heads/{branch}:refs/heads/{branch}");
+        let source = resolve_push_source(repo, branch);
+        let branch_refspec = format!("{source}:refs/heads/{branch}");
         remote
             .push(&[&branch_refspec], Some(&mut opts))
             .with_context(|| format!("Failed to push branch '{branch}'"))?;

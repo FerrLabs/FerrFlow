@@ -96,16 +96,32 @@ impl Forge for GitLabForge {
             self.api_base, mr.id
         );
 
+        // Try merge_when_pipeline_succeeds first (requires an active pipeline)
         let payload = serde_json::json!({
             "merge_when_pipeline_succeeds": true,
             "squash": true,
+        });
+
+        let result = ureq::put(&url)
+            .header("PRIVATE-TOKEN", &self.token)
+            .header("User-Agent", "ferrflow")
+            .send_json(payload);
+
+        if result.is_ok() {
+            return Ok(());
+        }
+
+        // Fallback: merge directly (pipeline may be skipped or absent)
+        let payload = serde_json::json!({
+            "squash": true,
+            "should_remove_source_branch": true,
         });
 
         ureq::put(&url)
             .header("PRIVATE-TOKEN", &self.token)
             .header("User-Agent", "ferrflow")
             .send_json(payload)
-            .with_context(|| format!("Failed to enable auto-merge on MR !{}", mr.id))?;
+            .with_context(|| format!("Failed to merge MR !{}", mr.id))?;
 
         Ok(())
     }

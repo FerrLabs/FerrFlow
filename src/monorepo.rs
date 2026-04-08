@@ -141,14 +141,17 @@ fn run_release_logic(
         eprintln!("Warning: could not fetch remote tags: {e}");
     }
 
-    // Resolve pre-release channel context
-    let current_branch = std::process::Command::new("git")
-        .args(["rev-parse", "--abbrev-ref", "HEAD"])
-        .output()
+    // Resolve pre-release channel context (use libgit2 to avoid requiring git CLI)
+    let current_branch = repo
+        .head()
         .ok()
-        .filter(|o| o.status.success())
-        .and_then(|o| String::from_utf8(o.stdout).ok())
-        .map(|s| s.trim().to_string())
+        .and_then(|h| {
+            if h.is_branch() {
+                h.shorthand().map(String::from)
+            } else {
+                None
+            }
+        })
         .unwrap_or_else(|| config.workspace.branch.clone());
 
     let prerelease_ctx = PrereleaseContext::resolve(
