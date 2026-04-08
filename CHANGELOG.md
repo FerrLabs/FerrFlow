@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.20.0] - 2026-04-08
+
+### Features
+
+- feat: auto-resolve branch name in detached HEAD (CI environments) (#310)
+
 ## [2.19.3] - 2026-04-08
 
 ### Bug Fixes
