@@ -31,6 +31,11 @@ Most versioning tools are tied to a specific ecosystem (semantic-release for JS,
 | TOML | `pyproject.toml` | Python |
 | JSON | `package.json` | Node.js |
 | XML | `pom.xml` | Java / Maven |
+| CSProj | `*.csproj` | .NET (C#, F#) |
+| Gradle | `build.gradle` | Java / Kotlin |
+| Helm | `Chart.yaml` | Kubernetes / Helm |
+| Go | `go.mod` | Go (tag-only, no file write) |
+| Text | `VERSION`, `VERSION.txt` | Any |
 
 ## Installation
 
