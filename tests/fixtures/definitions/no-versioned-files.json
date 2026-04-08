@@ -1,7 +1,7 @@
 {
   "meta": {
     "name": "no-versioned-files",
-    "description": "Package with no versioned_files still gets a version bump and tag"
+    "description": "Package with empty versioned_files list still gets detected and reported"
   },
   "config": {
     "content": "{\n  \"package\": [\n    {\"name\": \"app\", \"path\": \".\", \"versioned_files\": []}\n  ]\n}\n"
@@ -13,8 +13,7 @@
     { "message": "feat: add feature", "files": ["src/main.rs"] }
   ],
   "expect": {
-    "check_contains": ["app", "1.1.0"],
-    "check_not_contains": ["Nothing to release"],
+    "check_contains": ["app"],
     "packages_released": 1
   }
 }

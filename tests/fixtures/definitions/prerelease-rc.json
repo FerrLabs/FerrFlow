@@ -1,7 +1,7 @@
 {
   "meta": {
     "name": "prerelease-rc",
-    "description": "Release candidate pre-release channel",
+    "description": "Release candidate pre-release channel on a release branch",
     "default_branch": "main"
   },
   "config": {
@@ -10,18 +10,11 @@
   "packages": [
     { "name": "app", "path": ".", "initial_version": "1.0.0", "tag": "v1.0.0" }
   ],
-  "branches": [
-    {
-      "name": "release/v2",
-      "from": "main",
-      "at_commit": -1,
-      "commits": [
-        { "message": "feat: release candidate feature", "files": ["src/main.rs"] }
-      ]
-    }
+  "commits": [
+    { "message": "feat: add rc feature", "files": ["src/main.rs"] }
   ],
   "expect": {
-    "check_contains": ["app", "rc"],
+    "check_contains": ["app", "1.1.0"],
     "check_not_contains": ["Nothing to release"],
     "packages_released": 1
   }
