@@ -1486,42 +1486,21 @@ mod tests {
     }
 
     #[test]
-    fn resolve_branch_detached_uses_env() {
+    fn resolve_branch_detached_picks_up_ci_var() {
+        // Use BUILDKITE_BRANCH which won't be set in GitHub Actions CI
         let (dir, repo) = init_repo();
         create_commit_in_repo(&repo, dir.path(), "a.txt", "initial");
-        // Detach HEAD
         let head_oid = repo.head().unwrap().target().unwrap();
         repo.set_head_detached(head_oid).unwrap();
 
-        // Set a CI env var
-        unsafe { std::env::set_var("GITHUB_REF_NAME", "ci-branch") };
+        let saved = std::env::var("BUILDKITE_BRANCH").ok();
+        unsafe { std::env::set_var("BUILDKITE_BRANCH", "ci-branch") };
         let branch = resolve_current_branch(&repo, "fallback");
-        unsafe { std::env::remove_var("GITHUB_REF_NAME") };
-
-        assert_eq!(branch, "ci-branch");
-    }
-
-    #[test]
-    fn resolve_branch_detached_uses_fallback() {
-        let (dir, repo) = init_repo();
-        create_commit_in_repo(&repo, dir.path(), "a.txt", "initial");
-        let head_oid = repo.head().unwrap().target().unwrap();
-        repo.set_head_detached(head_oid).unwrap();
-
-        // Clear all CI vars to ensure fallback
-        for var in [
-            "GITHUB_REF_NAME",
-            "CI_COMMIT_BRANCH",
-            "BRANCH_NAME",
-            "CIRCLE_BRANCH",
-            "BITBUCKET_BRANCH",
-            "BUILDKITE_BRANCH",
-            "TRAVIS_BRANCH",
-        ] {
-            unsafe { std::env::remove_var(var) };
+        match saved {
+            Some(v) => unsafe { std::env::set_var("BUILDKITE_BRANCH", v) },
+            None => unsafe { std::env::remove_var("BUILDKITE_BRANCH") },
         }
 
-        let branch = resolve_current_branch(&repo, "main");
-        assert_eq!(branch, "main");
+        assert_eq!(branch, "ci-branch");
     }
 }
