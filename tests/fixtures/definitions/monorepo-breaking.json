@@ -11,11 +11,13 @@
     { "name": "cli", "path": "cli", "initial_version": "1.0.0", "tag": "cli@v1.0.0" }
   ],
   "commits": [
-    { "message": "feat!: redesign API", "files": ["core/src/lib.rs"] },
-    { "message": "fix: typo in help", "files": ["cli/src/main.rs"] }
+    {
+      "message": "feat!: redesign API and update CLI",
+      "files": ["core/src/lib.rs", "cli/src/main.rs"]
+    }
   ],
   "expect": {
-    "check_contains": ["core", "2.0.0", "cli"],
+    "check_contains": ["core", "2.0.0", "cli", "2.0.0"],
     "check_not_contains": ["Nothing to release"],
     "packages_released": 2
   }

@@ -1,7 +1,7 @@
 {
   "meta": {
     "name": "monorepo-5pkg-mixed",
-    "description": "Five packages with different commit types — only packages with releasable commits get bumped"
+    "description": "Five packages, single commit touches three — only touched packages get bumped"
   },
   "config": {
     "content": "{\n  \"package\": [\n    {\"name\": \"core\", \"path\": \"core\", \"versioned_files\": [{\"path\": \"core/version.toml\", \"format\": \"toml\"}]},\n    {\"name\": \"api\", \"path\": \"api\", \"versioned_files\": [{\"path\": \"api/version.toml\", \"format\": \"toml\"}]},\n    {\"name\": \"cli\", \"path\": \"cli\", \"versioned_files\": [{\"path\": \"cli/version.toml\", \"format\": \"toml\"}]},\n    {\"name\": \"web\", \"path\": \"web\", \"versioned_files\": [{\"path\": \"web/version.toml\", \"format\": \"toml\"}]},\n    {\"name\": \"tools\", \"path\": \"tools\", \"versioned_files\": [{\"path\": \"tools/version.toml\", \"format\": \"toml\"}]}\n  ]\n}\n"
@@ -14,9 +14,10 @@
     { "name": "tools", "path": "tools", "initial_version": "1.0.0", "tag": "tools@v1.0.0" }
   ],
   "commits": [
-    { "message": "feat: add parser", "files": ["core/src/parser.rs"] },
-    { "message": "fix: handle timeout", "files": ["api/src/handler.rs"] },
-    { "message": "feat: new subcommand", "files": ["cli/src/main.rs"] }
+    {
+      "message": "feat: cross-package improvements",
+      "files": ["core/src/parser.rs", "api/src/handler.rs", "cli/src/main.rs"]
+    }
   ],
   "expect": {
     "check_contains": ["core", "api", "cli"],
