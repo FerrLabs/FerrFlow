@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "name": "prerelease-promote",
+    "description": "Promote from alpha pre-release to stable by merging to main"
+  },
+  "config": {
+    "content": "{\n  \"workspace\": {\n    \"branches\": [\n      {\"name\": \"main\", \"channel\": false},\n      {\"name\": \"alpha\", \"channel\": \"alpha\"}\n    ]\n  },\n  \"package\": [\n    {\"name\": \"app\", \"path\": \".\", \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]}\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "app", "path": ".", "initial_version": "1.0.0", "tag": "v1.0.0" }
+  ],
+  "commits": [
+    { "message": "feat: new feature for promotion", "files": ["src/main.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["app", "1.1.0"],
+    "check_not_contains": ["Nothing to release", "alpha"],
+    "packages_released": 1
+  }
+}

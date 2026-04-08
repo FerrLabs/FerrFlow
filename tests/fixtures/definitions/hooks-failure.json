@@ -1,0 +1,25 @@
+{
+  "meta": {
+    "name": "hooks-failure",
+    "description": "Hook returning non-zero aborts the release when on_failure is abort"
+  },
+  "config": {
+    "content": "{\n  \"workspace\": {\n    \"hooks\": {\n      \"preBump\": \"./hooks/fail.sh\",\n      \"onFailure\": \"abort\"\n    }\n  },\n  \"package\": [\n    {\"name\": \"app\", \"path\": \".\", \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]}\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "app", "path": ".", "initial_version": "1.0.0", "tag": "v1.0.0" }
+  ],
+  "hooks": [
+    {
+      "path": "hooks/fail.sh",
+      "content": "#!/usr/bin/env bash\nexit 1\n"
+    }
+  ],
+  "commits": [
+    { "message": "feat: trigger bump", "files": ["src/main.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["app"],
+    "check_not_contains": ["Nothing to release"]
+  }
+}

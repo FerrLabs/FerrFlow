@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "name": "tag-v-only",
+    "description": "Single-package repo using v{version} tag template"
+  },
+  "config": {
+    "content": "{\n  \"workspace\": {\n    \"tagTemplate\": \"v{version}\"\n  },\n  \"package\": [\n    {\"name\": \"app\", \"path\": \".\", \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]}\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "app", "path": ".", "initial_version": "2.0.0", "tag": "v2.0.0" }
+  ],
+  "commits": [
+    { "message": "fix: resolve edge case", "files": ["src/main.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["app", "2.0.1"],
+    "check_not_contains": ["Nothing to release"],
+    "packages_released": 1
+  }
+}

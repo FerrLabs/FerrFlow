@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "name": "release-mode-commit",
+    "description": "Default release commit mode pushes directly to the branch"
+  },
+  "config": {
+    "content": "{\n  \"workspace\": {\n    \"releaseCommitMode\": \"commit\"\n  },\n  \"package\": [\n    {\"name\": \"app\", \"path\": \".\", \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]}\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "app", "path": ".", "initial_version": "1.0.0", "tag": "v1.0.0" }
+  ],
+  "commits": [
+    { "message": "feat: new feature", "files": ["src/main.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["app", "1.1.0"],
+    "check_not_contains": ["Nothing to release"],
+    "packages_released": 1
+  }
+}

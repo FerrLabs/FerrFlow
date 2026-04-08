@@ -1,0 +1,21 @@
+{
+  "meta": {
+    "name": "prerelease-rc",
+    "description": "Release candidate pre-release channel on a release branch",
+    "default_branch": "main"
+  },
+  "config": {
+    "content": "{\n  \"workspace\": {\n    \"branches\": [\n      {\"name\": \"main\", \"channel\": false},\n      {\"name\": \"release/*\", \"channel\": \"rc\"}\n    ]\n  },\n  \"package\": [\n    {\"name\": \"app\", \"path\": \".\", \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]}\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "app", "path": ".", "initial_version": "1.0.0", "tag": "v1.0.0" }
+  ],
+  "commits": [
+    { "message": "feat: add rc feature", "files": ["src/main.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["app", "1.1.0"],
+    "check_not_contains": ["Nothing to release"],
+    "packages_released": 1
+  }
+}

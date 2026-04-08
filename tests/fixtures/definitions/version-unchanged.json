@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "name": "version-unchanged",
+    "description": "Chore commits do not trigger a version bump"
+  },
+  "config": {
+    "content": "{\n  \"package\": [\n    {\"name\": \"app\", \"path\": \".\", \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]}\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "app", "path": ".", "initial_version": "1.0.0", "tag": "v1.0.0" }
+  ],
+  "commits": [
+    { "message": "chore: update CI config", "files": ["ci.yml"] },
+    { "message": "docs: update README", "files": ["README.md"] }
+  ],
+  "expect": {
+    "check_contains": ["Nothing to release"],
+    "packages_released": 0
+  }
+}

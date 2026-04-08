@@ -1,0 +1,19 @@
+{
+  "meta": {
+    "name": "no-versioned-files",
+    "description": "Package with empty versioned_files list still gets detected and reported"
+  },
+  "config": {
+    "content": "{\n  \"package\": [\n    {\"name\": \"app\", \"path\": \".\", \"versioned_files\": []}\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "app", "path": ".", "initial_version": "1.0.0", "tag": "v1.0.0" }
+  ],
+  "commits": [
+    { "message": "feat: add feature", "files": ["src/main.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["app"],
+    "packages_released": 1
+  }
+}
