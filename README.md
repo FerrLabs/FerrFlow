@@ -348,6 +348,132 @@ Branch names support glob patterns. The first match wins.
 - Stable releases include all commits since the last stable tag (skipping pre-release tags)
 - Hook environment includes `FERRFLOW_CHANNEL` and `FERRFLOW_IS_PRERELEASE`
 
+## Release Commit Mode
+
+Controls how FerrFlow commits version bumps and changelog updates after a release.
+
+```toml
+[workspace]
+release_commit_mode = "commit"  # default
+```
+
+| Mode | Description |
+|------|-------------|
+| `commit` | Push a release commit directly to the branch |
+| `pr` | Create a pull request with the release changes |
+| `none` | Skip committing entirely (useful when another tool handles it) |
+
+When using `pr` mode, `auto_merge_releases` controls whether the PR is automatically merged:
+
+```toml
+[workspace]
+release_commit_mode = "pr"
+auto_merge_releases = true  # default
+```
+
+### Skip CI
+
+By default, release commits in `commit` mode include `[skip ci]` in the message to avoid triggering a CI loop. Override with `skip_ci`:
+
+```toml
+[workspace]
+skip_ci = false  # force CI to run on release commits
+```
+
+In `pr` mode, `skip_ci` defaults to `false` since the PR merge triggers CI naturally.
+
+## Floating Tags
+
+Move abbreviated tags (e.g. `v1`, `v1.2`) to always point at the latest matching release:
+
+```toml
+[workspace]
+floating_tags = ["major"]  # creates/moves v1 when releasing v1.2.3
+```
+
+| Level | Tag | Points to |
+|-------|-----|-----------|
+| `major` | `v1` | Latest `v1.x.x` |
+| `minor` | `v1.2` | Latest `v1.2.x` |
+
+Floating tags are never moved by pre-release versions. Override per package:
+
+```toml
+[[package]]
+name = "api"
+path = "packages/api"
+floating_tags = ["major", "minor"]
+```
+
+## Orphaned Tag Strategy
+
+After a rebase + force-push, existing tags may point to commits that no longer exist on the branch. `orphaned_tag_strategy` controls how FerrFlow handles this:
+
+```toml
+[workspace]
+orphaned_tag_strategy = "warn"  # default
+```
+
+| Strategy | Description |
+|----------|-------------|
+| `warn` | Log a warning and skip the orphaned tag |
+| `treeHash` | Attempt recovery by matching the commit's tree hash |
+| `message` | Attempt recovery by matching the commit message |
+
+## Recover Missed Releases
+
+In monorepos, a package can miss a release if its files changed but FerrFlow wasn't run. Enable `recover_missed_releases` to compare files against the last tag instead of just the last commit:
+
+```toml
+[workspace]
+recover_missed_releases = true  # default: false
+```
+
+## Package Dependencies
+
+In a monorepo, use `depends_on` to automatically patch-bump a package when one of its dependencies is released:
+
+```json
+{
+  "package": [
+    { "name": "core", "path": "packages/core" },
+    {
+      "name": "cli",
+      "path": "packages/cli",
+      "depends_on": ["core"]
+    }
+  ]
+}
+```
+
+When `core` is bumped, `cli` gets a patch bump even if it had no direct commits.
+
+## Hooks
+
+Run shell commands at lifecycle points during a release. Hooks can be set at the workspace level (applies to all packages) or per package:
+
+```toml
+[workspace.hooks]
+pre_bump = "echo 'about to bump'"
+post_bump = "cargo check"
+pre_commit = "npm run build"
+pre_publish = "npm pack --dry-run"
+post_publish = "notify-slack.sh"
+on_failure = "abort"  # or "continue"
+```
+
+| Hook | When |
+|------|------|
+| `pre_bump` | After bump calculation, before writing version files |
+| `post_bump` | After writing version files, before changelog generation |
+| `pre_commit` | After changelog generation, before git commit |
+| `pre_publish` | After commit and tag, before push |
+| `post_publish` | After push and release creation |
+
+If a hook exits non-zero and `on_failure` is `abort` (default), the release is cancelled. Set `on_failure` to `continue` to ignore hook failures.
+
+Hook commands receive environment variables: `FERRFLOW_PACKAGE`, `FERRFLOW_VERSION`, `FERRFLOW_PREV_VERSION`, `FERRFLOW_CHANNEL`, `FERRFLOW_IS_PRERELEASE`.
+
 ## Conventional Commits
 
 FerrFlow follows the [Conventional Commits](https://www.conventionalcommits.org/) spec.
