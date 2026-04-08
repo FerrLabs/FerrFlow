@@ -141,20 +141,7 @@ fn run_release_logic(
         eprintln!("Warning: could not fetch remote tags: {e}");
     }
 
-    // Resolve pre-release channel context (use libgit2, with CI env fallback for detached HEAD)
-    let current_branch = repo
-        .head()
-        .ok()
-        .and_then(|h| {
-            if h.is_branch() {
-                h.shorthand().map(String::from)
-            } else {
-                None
-            }
-        })
-        .or_else(|| std::env::var("CI_COMMIT_BRANCH").ok())
-        .or_else(|| std::env::var("GITHUB_REF_NAME").ok())
-        .unwrap_or_else(|| config.workspace.branch.clone());
+    let current_branch = crate::git::resolve_current_branch(&repo, &config.workspace.branch);
 
     let prerelease_ctx = PrereleaseContext::resolve(
         channel,
