@@ -47,7 +47,9 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Install cross
         if: matrix.os == 'ubuntu-latest'
-        run: cargo install cross --git https://github.com/cross-rs/cross
+        run: |
+          curl -fsSL https://github.com/cross-rs/cross/releases/latest/download/cross-x86_64-unknown-linux-musl.tar.gz \
+            | tar xz -C "$HOME/.cargo/bin"
       - name: Build (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: cross build --release --target ${{ matrix.target }}
