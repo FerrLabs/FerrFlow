@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.20.2] - 2026-04-09
+
+### Bug Fixes
+
+- fix(ci): download cross binary instead of compiling from git (#315)
+
 ## [2.20.1] - 2026-04-09
 
 ### Bug Fixes
