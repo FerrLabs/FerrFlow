@@ -100,9 +100,18 @@ fn find_matching_branch<'a>(
     current_branch: &str,
     branches: &'a [BranchChannelConfig],
 ) -> Option<&'a BranchChannelConfig> {
-    branches
-        .iter()
-        .find(|b| glob_match::glob_match(&b.name, current_branch))
+    branches.iter().find(|b| {
+        // Branch names use `/` as separators (e.g. fix/global, feature/auth),
+        // but glob `*` doesn't cross `/`. Normalize lone `*` segments to `**`
+        // so that `*` matches any branch including those with slashes.
+        let pattern = b.name.replace("/*", "/**").replace("/*/", "/**/");
+        let pattern = if pattern == "*" {
+            "**".to_string()
+        } else {
+            pattern
+        };
+        glob_match::glob_match(&pattern, current_branch)
+    })
 }
 
 fn find_max_prerelease_number(search_prefix: &str, tags: &[String]) -> u64 {
@@ -234,6 +243,35 @@ mod tests {
             ),
         ];
         let ctx = PrereleaseContext::resolve(None, "develop", Some(&branches)).unwrap();
+        assert_eq!(ctx.channel.as_deref(), Some("dev"));
+    }
+
+    #[test]
+    fn wildcard_matches_branch_with_slash() {
+        let branches = vec![
+            branch(
+                "main",
+                ChannelValue::Stable(false),
+                PrereleaseIdentifier::Increment,
+            ),
+            branch(
+                "*",
+                ChannelValue::Named("dev".to_string()),
+                PrereleaseIdentifier::Increment,
+            ),
+        ];
+        let ctx = PrereleaseContext::resolve(None, "fix/global", Some(&branches)).unwrap();
+        assert_eq!(ctx.channel.as_deref(), Some("dev"));
+    }
+
+    #[test]
+    fn wildcard_prefix_matches_nested_branch() {
+        let branches = vec![branch(
+            "feature/*",
+            ChannelValue::Named("dev".to_string()),
+            PrereleaseIdentifier::Increment,
+        )];
+        let ctx = PrereleaseContext::resolve(None, "feature/auth/oauth", Some(&branches)).unwrap();
         assert_eq!(ctx.channel.as_deref(), Some("dev"));
     }
 

@@ -330,7 +330,9 @@ Map branches to channels automatically:
 }
 ```
 
-Branch names support glob patterns. The first match wins.
+Branch names support glob patterns. The first match wins. Wildcards match across
+`/` separators, so `*` matches branches like `fix/global` and `feature/*` matches
+`feature/auth/oauth`.
 
 ### Identifier strategies
 
