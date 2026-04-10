@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.21.0] - 2026-04-10
+
+### Features
+
+- feat(config): add releaseCommitScope option for per-package commits (#319)
+
 ## [2.20.3] - 2026-04-10
 
 ### Bug Fixes
