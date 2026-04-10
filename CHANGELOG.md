@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.22.0] - 2026-04-10
+
+### Features
+
+- feat(cli): add --force-version flag to release command (#320)
+
 ## [2.21.0] - 2026-04-10
 
 ### Features
