@@ -15,6 +15,10 @@ inputs:
     description: 'Run without creating releases or pushing changes'
     required: false
     default: 'false'
+  force_version:
+    description: 'Force a specific version, skipping commit analysis. Format: VERSION (single repo) or NAME@VERSION (monorepo)'
+    required: false
+    default: ''
 
 runs:
   using: composite
@@ -55,4 +59,4 @@ runs:
 
     - name: Run FerrFlow release
       shell: bash
-      run: ferrflow ${{ inputs.dry_run == 'true' && '--dry-run' || '' }} release
+      run: ferrflow ${{ inputs.dry_run == 'true' && '--dry-run' || '' }} release ${{ inputs.force_version != '' && format('--force-version {0}', inputs.force_version) || '' }}

@@ -73,6 +73,10 @@ ferrflow release
 # Dry run
 ferrflow release --dry-run
 
+# Force a specific version (skips commit analysis)
+ferrflow release --force-version 2.0.0          # single repo
+ferrflow release --force-version api@3.0.0      # monorepo
+
 # Pre-release
 ferrflow release --channel beta
 
