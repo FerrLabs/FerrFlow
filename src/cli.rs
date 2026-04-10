@@ -44,6 +44,10 @@ pub enum Commands {
         /// Allow floating tags to move backward to a lower version
         #[arg(long)]
         force: bool,
+        /// Force a specific version, skipping commit analysis.
+        /// Format: VERSION (single repo) or NAME@VERSION (monorepo)
+        #[arg(long, value_name = "VERSION")]
+        force_version: Option<String>,
         /// Pre-release channel override (e.g. beta, rc, dev)
         #[arg(long)]
         channel: Option<String>,
@@ -112,6 +116,7 @@ impl Cli {
             ),
             Commands::Release {
                 force,
+                force_version,
                 channel,
                 draft,
             } => crate::monorepo::release(
@@ -119,6 +124,7 @@ impl Cli {
                 self.dry_run,
                 self.verbose,
                 force,
+                force_version.as_deref(),
                 channel.as_deref(),
                 draft,
             ),
@@ -199,6 +205,7 @@ mod tests {
             cli.command,
             Commands::Release {
                 force: false,
+                force_version: None,
                 channel: None,
                 draft: false
             }
@@ -220,10 +227,22 @@ mod tests {
                 force,
                 channel,
                 draft,
+                ..
             } => {
                 assert!(force);
                 assert!(draft);
                 assert_eq!(channel.as_deref(), Some("rc"));
+            }
+            _ => panic!("expected Release"),
+        }
+    }
+
+    #[test]
+    fn parse_release_force_version() {
+        let cli = parse(&["ferrflow", "release", "--force-version", "api@2.0.0"]);
+        match cli.command {
+            Commands::Release { force_version, .. } => {
+                assert_eq!(force_version.as_deref(), Some("api@2.0.0"));
             }
             _ => panic!("expected Release"),
         }
