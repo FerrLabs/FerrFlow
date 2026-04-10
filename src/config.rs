@@ -162,21 +162,28 @@ fn default_remote() -> String {
 }
 
 fn default_branch() -> String {
-    let detected = (|| {
-        let repo = git2::Repository::discover(".").ok()?;
-        let reference = repo.find_reference("refs/remotes/origin/HEAD").ok()?;
-        let target = reference.symbolic_target().map(String::from)?;
-        let branch = target
-            .strip_prefix("refs/remotes/origin/")
-            .unwrap_or(&target);
-        if branch.is_empty() {
-            None
-        } else {
-            Some(branch.to_string())
-        }
-    })();
+    #[cfg(feature = "cli")]
+    {
+        let detected = (|| {
+            let repo = git2::Repository::discover(".").ok()?;
+            let reference = repo.find_reference("refs/remotes/origin/HEAD").ok()?;
+            let target = reference.symbolic_target().map(String::from)?;
+            let branch = target
+                .strip_prefix("refs/remotes/origin/")
+                .unwrap_or(&target);
+            if branch.is_empty() {
+                None
+            } else {
+                Some(branch.to_string())
+            }
+        })();
 
-    detected.unwrap_or_else(|| "main".to_string())
+        if let Some(branch) = detected {
+            return branch;
+        }
+    }
+
+    "main".to_string()
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
