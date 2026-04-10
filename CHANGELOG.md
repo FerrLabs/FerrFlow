@@ -4,6 +4,13 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.20.3] - 2026-04-10
+
+### Bug Fixes
+
+- fix(versioning): strip pre-release suffix before computing next version (#318)
+- fix(wasm): gate git2 usage in default_branch behind cli feature (#317)
+
 ## [2.20.2] - 2026-04-09
 
 ### Bug Fixes
