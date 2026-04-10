@@ -110,6 +110,14 @@ pub enum ReleaseCommitMode {
     None,
 }
 
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Default)]
+#[serde(rename_all = "kebab-case")]
+pub enum ReleaseCommitScope {
+    #[default]
+    Grouped,
+    PerPackage,
+}
+
 #[derive(Debug, Deserialize, Serialize, Default)]
 pub struct WorkspaceConfig {
     #[serde(default = "default_remote")]
@@ -126,6 +134,8 @@ pub struct WorkspaceConfig {
     pub recover_missed_releases: bool,
     #[serde(default, alias = "releaseCommitMode")]
     pub release_commit_mode: ReleaseCommitMode,
+    #[serde(default, alias = "releaseCommitScope")]
+    pub release_commit_scope: ReleaseCommitScope,
     #[serde(default = "default_auto_merge", alias = "autoMergeReleases")]
     pub auto_merge_releases: bool,
     #[serde(default, alias = "skipCi")]
@@ -343,6 +353,7 @@ const CAMEL_CASE_KEYS: &[&str] = &[
     "shared_paths",
     "recover_missed_releases",
     "release_commit_mode",
+    "release_commit_scope",
     "auto_merge_releases",
     "skip_ci",
     "pre_bump",
@@ -1847,6 +1858,42 @@ format = "toml"
                 "failed for {s}"
             );
         }
+    }
+
+    #[test]
+    fn parse_release_commit_scopes() {
+        for (s, expected) in [
+            ("grouped", ReleaseCommitScope::Grouped),
+            ("per-package", ReleaseCommitScope::PerPackage),
+        ] {
+            let json =
+                format!(r#"{{ "workspace": {{ "releaseCommitScope": "{s}" }}, "package": [] }}"#);
+            let config: Config = serde_json::from_str(&json).unwrap();
+            assert_eq!(
+                config.workspace.release_commit_scope, expected,
+                "failed for {s}"
+            );
+        }
+    }
+
+    #[test]
+    fn release_commit_scope_defaults_to_grouped() {
+        let json = r#"{ "workspace": {}, "package": [] }"#;
+        let config: Config = serde_json::from_str(json).unwrap();
+        assert_eq!(
+            config.workspace.release_commit_scope,
+            ReleaseCommitScope::Grouped
+        );
+    }
+
+    #[test]
+    fn release_commit_scope_camel_case_alias() {
+        let json = r#"{ "workspace": { "releaseCommitScope": "per-package" }, "package": [] }"#;
+        let config: Config = serde_json::from_str(json).unwrap();
+        assert_eq!(
+            config.workspace.release_commit_scope,
+            ReleaseCommitScope::PerPackage
+        );
     }
 
     // -----------------------------------------------------------------------

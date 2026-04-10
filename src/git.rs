@@ -607,21 +607,33 @@ pub fn create_branch_and_commit(
     files: &[&str],
     message: &str,
 ) -> Result<()> {
+    create_branch_and_commits(repo, branch_name, &[(files, message)])
+}
+
+pub fn create_branch_and_commits(
+    repo: &Repository,
+    branch_name: &str,
+    commits: &[(&[&str], &str)],
+) -> Result<()> {
     let head = repo.head()?.peel_to_commit()?;
     repo.branch(branch_name, &head, false)?;
 
     let refname = format!("refs/heads/{branch_name}");
-    let mut index = repo.index()?;
-    for file in files {
-        index.add_path(Path::new(file))?;
-    }
-    index.write()?;
-
-    let tree_id = index.write_tree()?;
-    let tree = repo.find_tree(tree_id)?;
     let sig = signature(repo)?;
+    let mut parent = head;
 
-    repo.commit(Some(&refname), &sig, &sig, message, &tree, &[&head])?;
+    for (files, message) in commits {
+        let mut index = repo.index()?;
+        for file in *files {
+            index.add_path(Path::new(file))?;
+        }
+        index.write()?;
+
+        let tree_id = index.write_tree()?;
+        let tree = repo.find_tree(tree_id)?;
+        let oid = repo.commit(Some(&refname), &sig, &sig, message, &tree, &[&parent])?;
+        parent = repo.find_commit(oid)?;
+    }
     Ok(())
 }
 
@@ -1109,6 +1121,29 @@ mod tests {
             repo.find_branch("release/v1.0.0", git2::BranchType::Local)
                 .is_ok()
         );
+    }
+
+    #[test]
+    fn create_branch_and_commits_multiple() {
+        let (dir, repo) = init_repo();
+        create_commit_in_repo(&repo, dir.path(), "a.txt", "initial");
+
+        fs::write(dir.path().join("pkg1.txt"), "v1").unwrap();
+        fs::write(dir.path().join("pkg2.txt"), "v2").unwrap();
+
+        let commits: Vec<(&[&str], &str)> = vec![
+            (&["pkg1.txt"], "chore(release): pkg1 v1.0.0"),
+            (&["pkg2.txt"], "chore(release): pkg2 v2.0.0"),
+        ];
+        create_branch_and_commits(&repo, "release/multi", &commits).unwrap();
+
+        let branch = repo
+            .find_branch("release/multi", git2::BranchType::Local)
+            .unwrap();
+        let tip = branch.get().peel_to_commit().unwrap();
+        assert_eq!(tip.message().unwrap(), "chore(release): pkg2 v2.0.0");
+        let parent = tip.parent(0).unwrap();
+        assert_eq!(parent.message().unwrap(), "chore(release): pkg1 v1.0.0");
     }
 
     // -----------------------------------------------------------------------

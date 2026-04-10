@@ -1,14 +1,16 @@
 use crate::changelog::{build_section, update_changelog};
 use crate::config::ReleaseCommitMode;
+use crate::config::ReleaseCommitScope;
 use crate::config::{Config, PackageConfig, VersioningStrategy};
 use crate::conventional_commits::{BumpType, determine_bump};
 use crate::forge::{self, ForgeKind};
 use crate::formats::{get_handler, read_version, write_version};
 use crate::git::{
-    collect_all_tags, create_branch_and_commit, create_commit, create_or_move_tag, create_tag,
-    fetch_tags, force_push_tags, get_changed_files, get_changed_files_since_tag,
-    get_commits_since_last_stable_tag, get_commits_since_last_tag, get_remote_url, get_repo_root,
-    get_tag_message, open_repo, push, push_branch, push_tags, tag_exists,
+    collect_all_tags, create_branch_and_commit, create_branch_and_commits, create_commit,
+    create_or_move_tag, create_tag, fetch_tags, force_push_tags, get_changed_files,
+    get_changed_files_since_tag, get_commits_since_last_stable_tag, get_commits_since_last_tag,
+    get_remote_url, get_repo_root, get_tag_message, open_repo, push, push_branch, push_tags,
+    tag_exists,
 };
 use crate::hooks::{HookContext, HookPoint, resolve_hook, resolve_on_failure, run_hook};
 use crate::prerelease::PrereleaseContext;
@@ -17,7 +19,7 @@ use crate::versioning::{compute_next_version, truncate_version};
 use anyhow::Result;
 use colored::Colorize;
 use git2::Repository;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 fn build_forge_instance(repo: &Repository, config: &Config) -> Option<Box<dyn forge::Forge>> {
@@ -179,6 +181,7 @@ fn run_release_logic(
     let mut any_bumped = false;
     let mut json_packages: Vec<CheckPackage> = Vec::new();
     let mut files_to_commit: Vec<String> = Vec::new();
+    let mut files_per_package: HashMap<String, Vec<String>> = HashMap::new();
     // (tag_name, tag_msg, body, pkg_name, version, commits_count, is_prerelease)
     let mut tags_to_create: Vec<(String, String, String, String, String, i32, bool)> = Vec::new();
     let mut hook_contexts: Vec<(HookContext, usize)> = Vec::new(); // (ctx, pkg_index)
@@ -450,6 +453,10 @@ fn run_release_logic(
                         lines.push(format!("  ✓ Updated {}", vf.path));
                     }
                     files_to_commit.push(vf.path.clone());
+                    files_per_package
+                        .entry(pkg.name.clone())
+                        .or_default()
+                        .push(vf.path.clone());
                 }
             }
 
@@ -464,6 +471,10 @@ fn run_release_logic(
                     false,
                 )?;
                 files_to_commit.push(changelog_rel.clone());
+                files_per_package
+                    .entry(pkg.name.clone())
+                    .or_default()
+                    .push(changelog_rel.clone());
             }
 
             // --- post_bump hook ---
@@ -478,7 +489,12 @@ fn run_release_logic(
                     verbose,
                     root,
                 )?;
+                let len_before = files_to_commit.len();
                 auto_stage_new_files(&repo, &before, &mut files_to_commit);
+                let pkg_files = files_per_package.entry(pkg.name.clone()).or_default();
+                for f in &files_to_commit[len_before..] {
+                    pkg_files.push(f.clone());
+                }
             }
 
             let body = build_section(&new_version, &commits);
@@ -581,6 +597,10 @@ fn run_release_logic(
                             if get_handler(&vf.format).modifies_file() {
                                 lines.push(format!("  ✓ Updated {}", vf.path));
                                 files_to_commit.push(vf.path.clone());
+                                files_per_package
+                                    .entry(pkg.name.clone())
+                                    .or_default()
+                                    .push(vf.path.clone());
                             }
                         }
                         if let Some(changelog_rel) = &pkg.changelog {
@@ -594,6 +614,10 @@ fn run_release_logic(
                                 false,
                             )?;
                             files_to_commit.push(changelog_rel.clone());
+                            files_per_package
+                                .entry(pkg.name.clone())
+                                .or_default()
+                                .push(changelog_rel.clone());
                         }
                     }
                     pkg_outputs.push((pkg.name.clone(), lines));
@@ -646,13 +670,19 @@ fn run_release_logic(
                     root,
                 )?;
                 if !dry_run {
+                    let len_before = files_to_commit.len();
                     auto_stage_new_files(&repo, &before, &mut files_to_commit);
+                    let pkg_files = files_per_package.entry(pkg.name.clone()).or_default();
+                    for f in &files_to_commit[len_before..] {
+                        pkg_files.push(f.clone());
+                    }
                 }
             }
         }
 
         let file_refs: Vec<&str> = files_to_commit.iter().map(String::as_str).collect();
         let mode = config.workspace.release_commit_mode;
+        let scope = config.workspace.release_commit_scope;
 
         // Build the release commit message.
         let release_parts: Vec<String> = tags_to_create
@@ -670,8 +700,21 @@ fn run_release_logic(
         if !dry_run {
             match mode {
                 ReleaseCommitMode::Commit => {
-                    create_commit(&repo, &file_refs, &commit_msg)?;
-                    shared_outputs.push("✓ Committed release changes".to_string());
+                    if scope == ReleaseCommitScope::PerPackage && tags_to_create.len() > 1 {
+                        for (_, _, _, pkg_name, ver, _, _) in &tags_to_create {
+                            if let Some(pkg_files) = files_per_package.get(pkg_name) {
+                                let refs: Vec<&str> =
+                                    pkg_files.iter().map(String::as_str).collect();
+                                let msg = format!("chore(release): {pkg_name} v{ver}{skip_ci}");
+                                create_commit(&repo, &refs, &msg)?;
+                            }
+                        }
+                        shared_outputs
+                            .push("✓ Committed release changes (per-package)".to_string());
+                    } else {
+                        create_commit(&repo, &file_refs, &commit_msg)?;
+                        shared_outputs.push("✓ Committed release changes".to_string());
+                    }
                 }
                 ReleaseCommitMode::Pr => {
                     let branch_name = format!(
@@ -681,7 +724,25 @@ fn run_release_logic(
                             .map(|s| s.replace(' ', "-"))
                             .unwrap_or_else(|| "bump".to_string())
                     );
-                    create_branch_and_commit(&repo, &branch_name, &file_refs, &commit_msg)?;
+                    if scope == ReleaseCommitScope::PerPackage && tags_to_create.len() > 1 {
+                        let commit_list: Vec<(Vec<&str>, String)> = tags_to_create
+                            .iter()
+                            .filter_map(|(_, _, _, pkg_name, ver, _, _)| {
+                                files_per_package.get(pkg_name).map(|pf| {
+                                    let refs: Vec<&str> = pf.iter().map(String::as_str).collect();
+                                    let msg = format!("chore(release): {pkg_name} v{ver}{skip_ci}");
+                                    (refs, msg)
+                                })
+                            })
+                            .collect();
+                        let commit_refs: Vec<(&[&str], &str)> = commit_list
+                            .iter()
+                            .map(|(f, m)| (f.as_slice(), m.as_str()))
+                            .collect();
+                        create_branch_and_commits(&repo, &branch_name, &commit_refs)?;
+                    } else {
+                        create_branch_and_commit(&repo, &branch_name, &file_refs, &commit_msg)?;
+                    }
                     push_branch(&repo, &config.workspace.remote, &branch_name)?;
                     shared_outputs.push(format!("✓ Pushed branch {}", branch_name.cyan()));
 
