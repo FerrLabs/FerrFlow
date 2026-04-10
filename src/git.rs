@@ -745,20 +745,7 @@ fn resolve_push_source(repo: &Repository, branch: &str) -> String {
 }
 
 pub fn push_branch(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
-    let mut remote = get_authenticated_remote(repo, remote_name)?;
-
-    let push_errors = Rc::new(RefCell::new(Vec::new()));
-    let mut push_options = make_push_options(push_errors.clone());
-
-    let source = resolve_push_source(repo, branch);
-    let refspec = format!("{source}:refs/heads/{branch}");
-    remote
-        .push(&[&refspec], Some(&mut push_options))
-        .with_context(|| format!("Failed to push branch '{branch}'"))?;
-    check_push_errors(&push_errors)
-        .with_context(|| format!("Branch push rejected for '{branch}'"))?;
-
-    Ok(())
+    try_push_branch(repo, remote_name, branch)
 }
 
 pub fn push_tags(repo: &Repository, remote_name: &str, tags: &[&str]) -> Result<()> {
@@ -782,19 +769,141 @@ pub fn push_tags(repo: &Repository, remote_name: &str, tags: &[&str]) -> Result<
     Ok(())
 }
 
+fn try_push_branch(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
+    let mut remote = get_authenticated_remote(repo, remote_name)?;
+    let push_errors = Rc::new(RefCell::new(Vec::new()));
+    let mut opts = make_push_options(push_errors.clone());
+    let source = resolve_push_source(repo, branch);
+    let branch_refspec = format!("{source}:refs/heads/{branch}");
+    remote
+        .push(&[&branch_refspec], Some(&mut opts))
+        .with_context(|| format!("Failed to push branch '{branch}'"))?;
+    check_push_errors(&push_errors)
+        .with_context(|| format!("Branch push rejected for '{branch}'"))?;
+    Ok(())
+}
+
+/// Fetch the remote branch and rebase local commits on top of it.
+/// Returns Ok(()) if the rebase succeeded, or an error if it failed.
+fn fetch_and_rebase(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
+    // Fetch the remote branch
+    let mut remote = get_authenticated_remote(repo, remote_name)?;
+    let mut opts = make_fetch_options();
+    remote.fetch(
+        &[&format!(
+            "refs/heads/{branch}:refs/remotes/{remote_name}/{branch}"
+        )],
+        Some(&mut opts),
+        None,
+    )?;
+    drop(remote);
+
+    let remote_ref = format!("refs/remotes/{remote_name}/{branch}");
+    let remote_oid = repo
+        .refname_to_id(&remote_ref)
+        .with_context(|| format!("Could not find remote ref {remote_ref} after fetch"))?;
+
+    let local_commit = repo.head()?.peel_to_commit()?;
+    let local_oid = local_commit.id();
+
+    // If already up-to-date or remote is behind, nothing to rebase
+    if remote_oid == local_oid || repo.graph_descendant_of(local_oid, remote_oid)? {
+        return Ok(());
+    }
+
+    // Count how many local commits are ahead of the merge base
+    let merge_base = repo
+        .merge_base(local_oid, remote_oid)
+        .with_context(|| "No common ancestor between local and remote branch")?;
+
+    // Collect local commits from HEAD back to merge_base (exclusive)
+    let mut local_commits = Vec::new();
+    let mut walk = repo.revwalk()?;
+    walk.push(local_oid)?;
+    walk.hide(merge_base)?;
+    walk.set_sorting(Sort::TOPOLOGICAL | Sort::REVERSE)?;
+    for oid in walk {
+        local_commits.push(oid?);
+    }
+
+    if local_commits.is_empty() {
+        return Ok(());
+    }
+
+    // Replay each local commit on top of remote HEAD
+    let mut current_parent = repo.find_commit(remote_oid)?;
+    for commit_oid in &local_commits {
+        let commit = repo.find_commit(*commit_oid)?;
+        let tree = commit.tree()?;
+        let parent_tree = current_parent.tree()?;
+
+        let mut merge_index =
+            repo.merge_trees(&parent_tree, &tree, &commit.parent(0)?.tree()?, None)?;
+        if merge_index.has_conflicts() {
+            anyhow::bail!(
+                "Rebase conflict: cannot rebase release commits on top of remote '{branch}'. \
+                 Run manually or use releaseCommitMode = \"pr\"."
+            );
+        }
+
+        let new_tree_oid = merge_index.write_tree_to(repo)?;
+        let new_tree = repo.find_tree(new_tree_oid)?;
+
+        let new_oid = repo.commit(
+            None,
+            &commit.author(),
+            &commit.committer(),
+            commit.message().unwrap_or(""),
+            &new_tree,
+            &[&current_parent],
+        )?;
+        current_parent = repo.find_commit(new_oid)?;
+    }
+
+    // Move HEAD (and local branch if it exists) to the new tip
+    let local_ref = format!("refs/heads/{branch}");
+    if repo.find_reference(&local_ref).is_ok() {
+        repo.reference(
+            &local_ref,
+            current_parent.id(),
+            true,
+            "ferrflow: rebase on push",
+        )?;
+    }
+    repo.set_head_detached(current_parent.id())?;
+    repo.checkout_head(Some(git2::build::CheckoutBuilder::new().force()))?;
+
+    Ok(())
+}
+
+const MAX_PUSH_RETRIES: usize = 3;
+
 pub fn push(repo: &Repository, remote_name: &str, branch: &str, tags: &[&str]) -> Result<()> {
-    // Push branch first
-    {
-        let mut remote = get_authenticated_remote(repo, remote_name)?;
-        let push_errors = Rc::new(RefCell::new(Vec::new()));
-        let mut opts = make_push_options(push_errors.clone());
-        let source = resolve_push_source(repo, branch);
-        let branch_refspec = format!("{source}:refs/heads/{branch}");
-        remote
-            .push(&[&branch_refspec], Some(&mut opts))
-            .with_context(|| format!("Failed to push branch '{branch}'"))?;
-        check_push_errors(&push_errors)
-            .with_context(|| format!("Branch push rejected for '{branch}'"))?;
+    // Push branch with retry on non-fast-forward
+    for attempt in 1..=MAX_PUSH_RETRIES {
+        match try_push_branch(repo, remote_name, branch) {
+            Ok(()) => break,
+            Err(e) => {
+                let is_non_ff = e.chain().any(|cause| {
+                    let msg = cause.to_string().to_lowercase();
+                    msg.contains("non-fastforward")
+                        || msg.contains("not fast forward")
+                        || msg.contains("non-fast-forward")
+                        || msg.contains("push rejected")
+                });
+
+                if !is_non_ff || attempt == MAX_PUSH_RETRIES {
+                    return Err(e).with_context(|| {
+                        format!("Failed to push branch '{branch}' after {attempt} attempt(s)")
+                    });
+                }
+
+                eprintln!(
+                    "Push rejected (non-fast-forward), rebasing on remote and retrying ({attempt}/{MAX_PUSH_RETRIES})..."
+                );
+                fetch_and_rebase(repo, remote_name, branch)?;
+            }
+        }
     }
 
     // Verify branch landed on remote
