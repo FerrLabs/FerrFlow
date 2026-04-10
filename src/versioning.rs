@@ -23,6 +23,11 @@ fn bump_semver(current: &str, bump: BumpType) -> Result<String> {
     let mut v = Version::parse(current.trim_start_matches('v'))
         .map_err(|e| anyhow::anyhow!("Invalid semver '{}': {}", current, e))?;
 
+    // Strip any existing pre-release/build metadata so the base version is clean.
+    // Pre-release suffixes are re-applied later by compute_identifier if needed.
+    v.pre = semver::Prerelease::EMPTY;
+    v.build = semver::BuildMetadata::EMPTY;
+
     match bump {
         BumpType::Major => {
             v.major += 1;
@@ -475,6 +480,30 @@ mod tests {
             truncate_version("v2.5.9", FloatingTagLevel::Minor),
             Some("2.5".to_string())
         );
+    }
+
+    #[test]
+    fn bump_semver_strips_prerelease() {
+        let result = bump_semver("1.1.0-dev.1", BumpType::Minor).unwrap();
+        assert_eq!(result, "1.2.0");
+    }
+
+    #[test]
+    fn bump_semver_strips_prerelease_on_patch() {
+        let result = bump_semver("2.0.0-rc.3", BumpType::Patch).unwrap();
+        assert_eq!(result, "2.0.1");
+    }
+
+    #[test]
+    fn bump_semver_strips_build_metadata() {
+        let result = bump_semver("1.0.0+build.42", BumpType::Major).unwrap();
+        assert_eq!(result, "2.0.0");
+    }
+
+    #[test]
+    fn bump_semver_none_strips_prerelease() {
+        let result = bump_semver("1.1.0-dev.1", BumpType::None).unwrap();
+        assert_eq!(result, "1.1.0");
     }
 
     #[test]
