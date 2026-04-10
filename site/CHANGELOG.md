@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.2] - 2026-04-10
+
+### Bug Fixes
+
+- fix(site): disable Google auto-translate on localized pages (#205)
+- fix(playground): collapse advanced workspace fields behind toggle (#204)
+
 ## [1.11.1] - 2026-04-06
 
 ### Bug Fixes
