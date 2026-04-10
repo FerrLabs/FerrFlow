@@ -55,6 +55,12 @@
           "enum": ["commit", "pr", "none"],
           "default": "commit"
         },
+        "releaseCommitScope": {
+          "type": "string",
+          "description": "In monorepo mode, whether to create a single grouped commit for all packages or one commit per package. Only affects behavior when multiple packages are bumped.",
+          "enum": ["grouped", "per-package"],
+          "default": "grouped"
+        },
         "autoMergeReleases": {
           "type": "boolean",
           "description": "Automatically merge release PRs when releaseCommitMode is 'pr'.",

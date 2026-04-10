@@ -373,6 +373,22 @@ release_commit_mode = "pr"
 auto_merge_releases = true  # default
 ```
 
+### Release Commit Scope
+
+In monorepo mode, controls whether all package bumps go into a single commit or one commit per package:
+
+```toml
+[workspace]
+release_commit_scope = "grouped"  # default
+```
+
+| Scope | Description |
+|-------|-------------|
+| `grouped` | Single commit for all packages (e.g. `chore(release): api v1.0.0, site v2.1.0`) |
+| `per-package` | One commit per package (e.g. `chore(release): api v1.0.0`, then `chore(release): site v2.1.0`) |
+
+Per-package commits make it easier to revert a single package bump without affecting others. This works with both `commit` and `pr` release modes.
+
 ### Skip CI
 
 By default, release commits in `commit` mode include `[skip ci]` in the message to avoid triggering a CI loop. Override with `skip_ci`:
