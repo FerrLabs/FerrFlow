@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.12.0] - 2026-04-10
+
+### Features
+
+- feat(site): show rolling 30-day metrics with animated counters (#207)
+
 ## [1.11.2] - 2026-04-10
 
 ### Bug Fixes
