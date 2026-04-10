@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.13.0] - 2026-04-10
+
+### Features
+
+- feat(site): document --force-version CLI flag (#208)
+
 ## [1.12.0] - 2026-04-10
 
 ### Features
