@@ -75,7 +75,9 @@ pub fn check(
         println!();
     }
 
-    let result = run_release_logic(&root, &config, true, verbose, json, false, channel, false);
+    let result = run_release_logic(
+        &root, &config, true, verbose, json, false, None, channel, false,
+    );
 
     if config.workspace.anonymous_telemetry {
         telemetry::send_event(telemetry::EventType::Check, None, None, None, None);
@@ -89,6 +91,7 @@ pub fn release(
     dry_run: bool,
     verbose: bool,
     force: bool,
+    force_version: Option<&str>,
     channel: Option<&str>,
     draft: bool,
 ) -> Result<()> {
@@ -104,7 +107,15 @@ pub fn release(
     println!();
 
     run_release_logic(
-        &root, &config, dry_run, verbose, false, force, channel, draft,
+        &root,
+        &config,
+        dry_run,
+        verbose,
+        false,
+        force,
+        force_version,
+        channel,
+        draft,
     )
 }
 
@@ -116,6 +127,7 @@ fn run_release_logic(
     verbose: bool,
     json: bool,
     force: bool,
+    force_version: Option<&str>,
     channel: Option<&str>,
     draft: bool,
 ) -> Result<()> {
@@ -192,8 +204,52 @@ fn run_release_logic(
     let mut pkg_outputs: Vec<(String, Vec<String>)> = Vec::new();
     let mut shared_outputs: Vec<String> = Vec::new();
 
+    // Parse --force-version: "VERSION" (single repo) or "NAME@VERSION" (monorepo)
+    let forced: Option<(Option<&str>, &str)> = if let Some(fv) = force_version {
+        if let Some(at_pos) = fv.find('@') {
+            let name = &fv[..at_pos];
+            let version = &fv[at_pos + 1..];
+            if name.is_empty() || version.is_empty() {
+                anyhow::bail!("Invalid --force-version format: expected NAME@VERSION, got {fv:?}");
+            }
+            Some((Some(name), version))
+        } else {
+            if config.is_monorepo() {
+                anyhow::bail!(
+                    "In a monorepo, --force-version requires NAME@VERSION format (e.g. api@1.2.3)"
+                );
+            }
+            Some((None, fv))
+        }
+    } else {
+        None
+    };
+
+    // Validate forced version is valid semver (strip leading 'v' if present)
+    if let Some((_, ver)) = &forced {
+        let clean = ver.strip_prefix('v').unwrap_or(ver);
+        if semver::Version::parse(clean).is_err() {
+            anyhow::bail!("Invalid version in --force-version: {ver:?} is not valid semver");
+        }
+    }
+
     for (pkg_idx, pkg) in config.packages.iter().enumerate() {
         let tag_search_prefix = pkg.tag_prefix(&config.workspace, config.is_monorepo());
+
+        // Check if this package is the target of --force-version
+        let forced_ver_for_pkg = forced.and_then(|(name, ver)| {
+            if let Some(target_name) = name {
+                if pkg.name == target_name {
+                    Some(ver)
+                } else {
+                    None
+                }
+            } else {
+                // Single repo: applies to the first (only) package
+                Some(ver)
+            }
+        });
+
         let mut touched = is_package_touched(pkg, &changed_files, config.is_monorepo());
 
         if !touched && config.workspace.recover_missed_releases && config.is_monorepo() {
@@ -214,60 +270,10 @@ fn run_release_logic(
             }
         }
 
-        if !touched {
+        if !touched && forced_ver_for_pkg.is_none() {
             if verbose && !json {
                 println!(
                     "{} {} — not touched, skipping",
-                    "○".dimmed(),
-                    pkg.name.dimmed()
-                );
-            }
-            continue;
-        }
-
-        let commits = if !prerelease_ctx.is_prerelease() {
-            // For stable releases, get all commits since the last stable tag
-            // (skipping any pre-release tags) for a complete changelog
-            get_commits_since_last_stable_tag(
-                &repo,
-                &tag_search_prefix,
-                config.workspace.orphaned_tag_strategy,
-            )?
-        } else {
-            get_commits_since_last_tag(
-                &repo,
-                &tag_search_prefix,
-                config.workspace.orphaned_tag_strategy,
-            )?
-        };
-
-        if commits.is_empty() {
-            if verbose && !json {
-                println!("{} {} — no new commits", "○".dimmed(), pkg.name.dimmed());
-            }
-            continue;
-        }
-
-        let strategy = pkg.effective_versioning(&config.workspace);
-
-        let bump = commits
-            .iter()
-            .map(|c| determine_bump(&c.message))
-            .max()
-            .unwrap_or(BumpType::None);
-
-        let is_date_or_seq = matches!(
-            strategy,
-            VersioningStrategy::Calver
-                | VersioningStrategy::CalverShort
-                | VersioningStrategy::CalverSeq
-                | VersioningStrategy::Sequential
-        );
-
-        if bump == BumpType::None && !is_date_or_seq {
-            if !json {
-                println!(
-                    "{} {} — no releasable commits",
                     "○".dimmed(),
                     pkg.name.dimmed()
                 );
@@ -287,22 +293,94 @@ fn run_release_logic(
         };
 
         let current_version = read_version(vf, root)?;
-        let base_version = compute_next_version(&current_version, bump, strategy)?;
 
-        let (new_version, is_prerelease) = if prerelease_ctx.is_prerelease() {
-            let tag_prefix = pkg.tag_prefix(&config.workspace, config.is_monorepo());
-            if let Some(resolved) = prerelease_ctx.compute_identifier(
-                &base_version,
-                &tag_prefix,
-                &all_tags,
-                &short_hash,
-            ) {
-                (format!("{base_version}{}", resolved.full_suffix), true)
+        // Determine new version: forced or computed from commits
+        let (new_version, is_prerelease, commits, bump) = if let Some(fv) = forced_ver_for_pkg {
+            let clean = fv.strip_prefix('v').unwrap_or(fv);
+            let commits = if !prerelease_ctx.is_prerelease() {
+                get_commits_since_last_stable_tag(
+                    &repo,
+                    &tag_search_prefix,
+                    config.workspace.orphaned_tag_strategy,
+                )
+                .unwrap_or_default()
+            } else {
+                get_commits_since_last_tag(
+                    &repo,
+                    &tag_search_prefix,
+                    config.workspace.orphaned_tag_strategy,
+                )
+                .unwrap_or_default()
+            };
+            (clean.to_string(), false, commits, BumpType::None)
+        } else {
+            let commits = if !prerelease_ctx.is_prerelease() {
+                get_commits_since_last_stable_tag(
+                    &repo,
+                    &tag_search_prefix,
+                    config.workspace.orphaned_tag_strategy,
+                )?
+            } else {
+                get_commits_since_last_tag(
+                    &repo,
+                    &tag_search_prefix,
+                    config.workspace.orphaned_tag_strategy,
+                )?
+            };
+
+            if commits.is_empty() {
+                if verbose && !json {
+                    println!("{} {} — no new commits", "○".dimmed(), pkg.name.dimmed());
+                }
+                continue;
+            }
+
+            let strategy = pkg.effective_versioning(&config.workspace);
+
+            let bump = commits
+                .iter()
+                .map(|c| determine_bump(&c.message))
+                .max()
+                .unwrap_or(BumpType::None);
+
+            let is_date_or_seq = matches!(
+                strategy,
+                VersioningStrategy::Calver
+                    | VersioningStrategy::CalverShort
+                    | VersioningStrategy::CalverSeq
+                    | VersioningStrategy::Sequential
+            );
+
+            if bump == BumpType::None && !is_date_or_seq {
+                if !json {
+                    println!(
+                        "{} {} — no releasable commits",
+                        "○".dimmed(),
+                        pkg.name.dimmed()
+                    );
+                }
+                continue;
+            }
+
+            let base_version = compute_next_version(&current_version, bump, strategy)?;
+
+            let (new_version, is_prerelease) = if prerelease_ctx.is_prerelease() {
+                let tag_prefix = pkg.tag_prefix(&config.workspace, config.is_monorepo());
+                if let Some(resolved) = prerelease_ctx.compute_identifier(
+                    &base_version,
+                    &tag_prefix,
+                    &all_tags,
+                    &short_hash,
+                ) {
+                    (format!("{base_version}{}", resolved.full_suffix), true)
+                } else {
+                    (base_version, false)
+                }
             } else {
                 (base_version, false)
-            }
-        } else {
-            (base_version, false)
+            };
+
+            (new_version, is_prerelease, commits, bump)
         };
 
         if current_version == new_version {
@@ -312,10 +390,22 @@ fn run_release_logic(
             continue;
         }
 
-        let strategy_label = if is_date_or_seq {
-            format!("{strategy:?}").to_lowercase()
+        let strategy_label = if forced_ver_for_pkg.is_some() {
+            "forced".to_string()
         } else {
-            bump.to_string()
+            let strategy = pkg.effective_versioning(&config.workspace);
+            let is_date_or_seq = matches!(
+                strategy,
+                VersioningStrategy::Calver
+                    | VersioningStrategy::CalverShort
+                    | VersioningStrategy::CalverSeq
+                    | VersioningStrategy::Sequential
+            );
+            if is_date_or_seq {
+                format!("{strategy:?}").to_lowercase()
+            } else {
+                bump.to_string()
+            }
         };
 
         let tag = pkg.tag_for_version(&config.workspace, config.is_monorepo(), &new_version);
@@ -1311,5 +1401,45 @@ mod tests {
         let files: Vec<String> = vec![];
         // Even single-package mode returns true regardless of changed files
         assert!(is_package_touched(&pkg, &files, false));
+    }
+
+    #[test]
+    fn parse_force_version_single_repo() {
+        let fv = "1.2.3";
+        let result: Option<(Option<&str>, &str)> = if let Some(at_pos) = fv.find('@') {
+            let name = &fv[..at_pos];
+            let version = &fv[at_pos + 1..];
+            Some((Some(name), version))
+        } else {
+            Some((None, fv))
+        };
+        assert_eq!(result, Some((None, "1.2.3")));
+    }
+
+    #[test]
+    fn parse_force_version_monorepo() {
+        let fv = "api@2.0.0";
+        let result: Option<(Option<&str>, &str)> = if let Some(at_pos) = fv.find('@') {
+            let name = &fv[..at_pos];
+            let version = &fv[at_pos + 1..];
+            Some((Some(name), version))
+        } else {
+            Some((None, fv))
+        };
+        assert_eq!(result, Some((Some("api"), "2.0.0")));
+    }
+
+    #[test]
+    fn parse_force_version_with_v_prefix() {
+        let fv = "v3.0.0";
+        let clean = fv.strip_prefix('v').unwrap_or(fv);
+        assert!(semver::Version::parse(clean).is_ok());
+    }
+
+    #[test]
+    fn parse_force_version_invalid_semver() {
+        let fv = "not-a-version";
+        let clean = fv.strip_prefix('v').unwrap_or(fv);
+        assert!(semver::Version::parse(clean).is_err());
     }
 }
