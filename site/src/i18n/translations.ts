@@ -40,7 +40,7 @@ const ui = {
 
     // Metrics
     'metrics.title': 'Trusted in production',
-    'metrics.subtitle': 'Real numbers from real teams shipping with FerrFlow.',
+    'metrics.subtitle': 'Last 30 days — real numbers from real teams shipping with FerrFlow.',
     'metrics.releases': 'Releases shipped',
     'metrics.repos': 'Repos tracked',
     'metrics.commits': 'Commits analyzed',
@@ -102,7 +102,7 @@ const ui = {
 
     // Metrics
     'metrics.title': 'Utilis\u00e9 en production',
-    'metrics.subtitle': "Des chiffres concrets d'\u00e9quipes qui publient avec FerrFlow.",
+    'metrics.subtitle': "30 derniers jours \u2014 des chiffres concrets d'\u00e9quipes qui publient avec FerrFlow.",
     'metrics.releases': 'Releases publi\u00e9es',
     'metrics.repos': 'Repos suivis',
     'metrics.commits': 'Commits analys\u00e9s',

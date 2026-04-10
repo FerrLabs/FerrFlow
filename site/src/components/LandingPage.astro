@@ -145,11 +145,37 @@ const docsPath = getLocalizedPath('/docs/introduction', lang);
 
 <script>
   const API_URL = 'https://api.ferrflow.com';
+  const ANIMATION_DURATION = 800;
+  const activeAnimations = new Map<string, number>();
+
+  function animateValue(el: Element, from: number, to: number) {
+    const key = el.getAttribute('data-stat') ?? '';
+    const prev = activeAnimations.get(key);
+    if (prev) cancelAnimationFrame(prev);
+
+    const start = performance.now();
+    const step = (now: number) => {
+      const t = Math.min((now - start) / ANIMATION_DURATION, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      const current = Math.round(from + (to - from) * eased);
+      el.textContent = current.toLocaleString();
+      if (t < 1) {
+        activeAnimations.set(key, requestAnimationFrame(step));
+      } else {
+        activeAnimations.delete(key);
+      }
+    };
+    activeAnimations.set(key, requestAnimationFrame(step));
+  }
 
   function updateStats(data: Record<string, unknown>) {
     for (const [key, value] of Object.entries(data)) {
       const el = document.querySelector(`[data-stat="${key}"]`);
-      if (el) el.textContent = Number(value).toLocaleString();
+      if (!el) continue;
+      const to = Number(value);
+      const from = Number(el.textContent?.replace(/\D/g, '') || '0');
+      if (from === to) continue;
+      animateValue(el, from, to);
     }
   }
 
@@ -164,7 +190,7 @@ const docsPath = getLocalizedPath('/docs/introduction', lang);
   }
 
   function connectStatsStream() {
-    const source = new EventSource(`${API_URL}/stats/stream?interval=30`);
+    const source = new EventSource(`${API_URL}/stats/stream?interval=5`);
 
     source.addEventListener('stats', (e) => {
       try {
