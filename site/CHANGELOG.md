@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.14.0] - 2026-04-11
+
+### Features
+
+- feat(site): document pipeline trigger types with examples (#210)
+
 ## [1.13.0] - 2026-04-10
 
 ### Features
