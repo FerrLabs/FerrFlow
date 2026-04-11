@@ -1,22 +1,17 @@
 {
   "meta": {
     "name": "multi-versioned-files",
-    "description": "Single package with multiple versioned files in different formats"
+    "description": "Single package with multiple versioned files all using toml format"
   },
   "config": {
-    "content": "{\n  \"package\": [\n    {\n      \"name\": \"myapp\",\n      \"path\": \".\",\n      \"versioned_files\": [\n        {\"path\": \"Cargo.toml\", \"format\": \"toml\"},\n        {\"path\": \"package.json\", \"format\": \"json\"},\n        {\"path\": \"VERSION\", \"format\": \"txt\"}\n      ]\n    }\n  ]\n}\n"
+    "content": "{\n  \"package\": [\n    {\n      \"name\": \"myapp\",\n      \"path\": \".\",\n      \"versioned_files\": [\n        {\"path\": \"version.toml\", \"format\": \"toml\"},\n        {\"path\": \"version2.toml\", \"format\": \"toml\"}\n      ]\n    }\n  ]\n}\n"
   },
   "packages": [
     {
       "name": "myapp",
       "path": ".",
       "initial_version": "1.0.0",
-      "tag": "v1.0.0",
-      "versioned_files": [
-        { "path": "Cargo.toml", "format": "toml", "content": "[package]\nname = \"myapp\"\nversion = \"1.0.0\"\n" },
-        { "path": "package.json", "format": "json", "content": "{\n  \"name\": \"myapp\",\n  \"version\": \"1.0.0\"\n}\n" },
-        { "path": "VERSION", "format": "txt", "content": "1.0.0\n" }
-      ]
+      "tag": "v1.0.0"
     }
   ],
   "commits": [

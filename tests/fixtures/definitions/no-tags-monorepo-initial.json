@@ -11,8 +11,10 @@
     { "name": "web", "path": "web", "initial_version": "0.0.0" }
   ],
   "commits": [
-    { "message": "feat: initial API", "files": ["api/src/main.rs"] },
-    { "message": "feat: initial web app", "files": ["web/src/app.rs"] }
+    {
+      "message": "feat: initial setup for api and web",
+      "files": ["api/src/main.rs", "web/src/app.rs"]
+    }
   ],
   "expect": {
     "check_contains": ["api", "web"],

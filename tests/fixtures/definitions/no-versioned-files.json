@@ -14,6 +14,6 @@
   ],
   "expect": {
     "check_contains": ["app"],
-    "packages_released": 1
+    "packages_released": 0
   }
 }

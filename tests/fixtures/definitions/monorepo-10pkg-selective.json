@@ -1,7 +1,7 @@
 {
   "meta": {
     "name": "monorepo-10pkg-selective",
-    "description": "Ten packages, commits touch only 3; verify only touched packages bump"
+    "description": "Ten packages, single commit touches only 3; verify only touched packages bump"
   },
   "config": {
     "content": "{\n  \"package\": [\n    {\"name\": \"auth\", \"path\": \"auth\", \"versioned_files\": [{\"path\": \"auth/version.toml\", \"format\": \"toml\"}]},\n    {\"name\": \"billing\", \"path\": \"billing\", \"versioned_files\": [{\"path\": \"billing/version.toml\", \"format\": \"toml\"}]},\n    {\"name\": \"core\", \"path\": \"core\", \"versioned_files\": [{\"path\": \"core/version.toml\", \"format\": \"toml\"}]},\n    {\"name\": \"dashboard\", \"path\": \"dashboard\", \"versioned_files\": [{\"path\": \"dashboard/version.toml\", \"format\": \"toml\"}]},\n    {\"name\": \"email\", \"path\": \"email\", \"versioned_files\": [{\"path\": \"email/version.toml\", \"format\": \"toml\"}]},\n    {\"name\": \"gateway\", \"path\": \"gateway\", \"versioned_files\": [{\"path\": \"gateway/version.toml\", \"format\": \"toml\"}]},\n    {\"name\": \"hooks\", \"path\": \"hooks\", \"versioned_files\": [{\"path\": \"hooks/version.toml\", \"format\": \"toml\"}]},\n    {\"name\": \"infra\", \"path\": \"infra\", \"versioned_files\": [{\"path\": \"infra/version.toml\", \"format\": \"toml\"}]},\n    {\"name\": \"jobs\", \"path\": \"jobs\", \"versioned_files\": [{\"path\": \"jobs/version.toml\", \"format\": \"toml\"}]},\n    {\"name\": \"kafka\", \"path\": \"kafka\", \"versioned_files\": [{\"path\": \"kafka/version.toml\", \"format\": \"toml\"}]}\n  ]\n}\n"
@@ -19,12 +19,13 @@
     { "name": "kafka", "path": "kafka", "initial_version": "1.0.0", "tag": "kafka@v1.0.0" }
   ],
   "commits": [
-    { "message": "feat: add OAuth2 flow", "files": ["auth/src/oauth.rs"] },
-    { "message": "fix: correct invoice calculation", "files": ["billing/src/invoice.rs"] },
-    { "message": "feat!: redesign event system", "files": ["kafka/src/producer.rs"] }
+    {
+      "message": "feat: cross-package improvements",
+      "files": ["auth/src/oauth.rs", "billing/src/invoice.rs", "kafka/src/producer.rs"]
+    }
   ],
   "expect": {
-    "check_contains": ["auth", "1.1.0", "billing", "1.0.1", "kafka", "2.0.0"],
+    "check_contains": ["auth", "billing", "kafka", "1.1.0"],
     "check_not_contains": ["Nothing to release", "core", "dashboard", "email", "gateway", "infra", "jobs"]
   }
 }

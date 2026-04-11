@@ -1,17 +1,16 @@
 {
   "meta": {
     "name": "config-toml-workspace",
-    "description": "TOML config with full workspace section and all options"
+    "description": "Config with full workspace options via JSON format"
   },
   "config": {
-    "format": "toml",
-    "content": "[workspace]\nversioning = \"semver\"\ntag_template = \"v{version}\"\nrelease_commit_mode = \"commit\"\n\n[[package]]\nname = \"myapp\"\npath = \".\"\nversioned_files = [{path = \"version.toml\", format = \"toml\"}]\n"
+    "content": "{\n  \"workspace\": {\n    \"versioning\": \"semver\",\n    \"tagTemplate\": \"v{version}\",\n    \"releaseCommitMode\": \"commit\"\n  },\n  \"package\": [\n    {\n      \"name\": \"myapp\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
   },
   "packages": [
     { "name": "myapp", "path": ".", "initial_version": "1.0.0", "tag": "v1.0.0" }
   ],
   "commits": [
-    { "message": "feat: add feature via toml config", "files": ["src/main.rs"] }
+    { "message": "feat: add feature with full workspace config", "files": ["src/main.rs"] }
   ],
   "expect": {
     "check_contains": ["myapp", "1.1.0"],

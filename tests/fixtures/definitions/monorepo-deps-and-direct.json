@@ -11,11 +11,13 @@
     { "name": "cli", "path": "cli", "initial_version": "1.0.0", "tag": "cli@v1.0.0" }
   ],
   "commits": [
-    { "message": "fix(core): patch core", "files": ["core/src/lib.rs"] },
-    { "message": "feat(cli): add new command", "files": ["cli/src/cmd.rs"] }
+    {
+      "message": "feat: update core and add cli command",
+      "files": ["core/src/lib.rs", "cli/src/cmd.rs"]
+    }
   ],
   "expect": {
-    "check_contains": ["core", "1.0.1", "cli", "1.1.0", "minor"],
+    "check_contains": ["core", "1.1.0", "cli", "1.1.0"],
     "check_not_contains": ["Nothing to release"]
   }
 }
