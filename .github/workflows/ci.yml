@@ -51,7 +51,7 @@ jobs:
         env:
           FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
       - name: Upload binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ferrflow-binary
           path: target/release/ferrflow
@@ -114,7 +114,7 @@ jobs:
           fi
 
       - name: Upload generated fixtures
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fixtures-generated
           path: fixtures-generated/
@@ -128,11 +128,11 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: ferrflow-binary
           path: bin/
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: fixtures-generated
           path: fixtures-generated/
@@ -164,11 +164,11 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: ferrflow-binary
           path: bin/
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: fixtures-generated
           path: fixtures-generated/
@@ -186,7 +186,7 @@ jobs:
 
       - name: Upload snapshot diffs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fixture-diffs-single
           path: fixture-diffs/
@@ -200,11 +200,11 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: ferrflow-binary
           path: bin/
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: fixtures-generated
           path: fixtures-generated/
@@ -222,7 +222,7 @@ jobs:
 
       - name: Upload snapshot diffs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fixture-diffs-config
           path: fixture-diffs/
@@ -236,11 +236,11 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: ferrflow-binary
           path: bin/
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: fixtures-generated
           path: fixtures-generated/
@@ -262,7 +262,7 @@ jobs:
 
       - name: Upload snapshot diffs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fixture-diffs-advanced
           path: fixture-diffs/
