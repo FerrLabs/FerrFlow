@@ -115,7 +115,7 @@ Global settings that apply to all packages.
 | `recoverMissedReleases` | boolean | `false` | When enabled, if FerrFlow finds unreleased commits spanning multiple version bumps, it creates all intermediate releases instead of jumping to the latest version |
 | `floatingTags` | array | `[]` | Floating tag levels to create on each release: `"major"`, `"minor"`. For example, `["major"]` creates a `v1` tag that always points to the latest `v1.x.y` release. |
 | `orphanedTagStrategy` | string | `"warn"` | How to handle tags pointing to orphaned commits after rebase + force-push: `"warn"`, `"treeHash"`, or `"message"` |
-| `anonymous_telemetry` | boolean | `true` | Send anonymous usage telemetry ([details](/docs/legal/telemetry)) |
+| `telemetry` | boolean | `true` | Send anonymous usage telemetry ([details](/docs/legal/telemetry)) |
 
 ### Tag template
 
