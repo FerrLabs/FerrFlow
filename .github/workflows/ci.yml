@@ -37,6 +37,26 @@ jobs:
         env:
           FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
 
+  build:
+    name: Build Release Binary
+    needs: test
+    if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: Swatinem/rust-cache@v2
+      - name: Build ferrflow
+        run: cargo build --release
+        env:
+          FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: ferrflow-binary
+          path: target/release/ferrflow
+          retention-days: 1
+
   coverage:
     name: Coverage
     if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):')
@@ -57,54 +77,194 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
 
-  fixture-tests:
-    name: Fixture Tests
+  fixture-generate:
+    name: Generate Fixtures
     needs: test
+    if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):')
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@nightly
-      - uses: Swatinem/rust-cache@v2
 
-      - name: Cache fixture definitions
+      - name: Cache generated fixtures
         id: fixture-cache
         uses: actions/cache@v5
         with:
           path: fixtures-generated
           key: fixtures-${{ hashFiles('tests/fixtures/definitions/**') }}
 
-      - name: Build ferrflow
-        run: cargo build --release
-        env:
-          FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
-
       - name: Generate fixtures
         if: steps.fixture-cache.outputs.cache-hit != 'true'
-        id: fixtures
         uses: FerrFlow-Org/Fixtures@v0
         with:
           definitions: tests/fixtures/definitions
-          output: fixtures-generated
 
-      - name: Run fixture tests
+      - name: Resolve generated path
+        id: path
+        run: |
+          if [ -d "fixtures-generated" ]; then
+            echo "dir=fixtures-generated" >> "$GITHUB_OUTPUT"
+          else
+            for d in /tmp/tmp.*/generated; do
+              if [ -d "$d" ]; then
+                cp -r "$d" fixtures-generated
+                echo "dir=fixtures-generated" >> "$GITHUB_OUTPUT"
+                break
+              fi
+            done
+          fi
+
+      - name: Upload generated fixtures
+        uses: actions/upload-artifact@v4
+        with:
+          name: fixtures-generated
+          path: fixtures-generated/
+          include-hidden-files: true
+          retention-days: 1
+
+  fixture-monorepo:
+    name: Fixtures — Monorepo
+    needs: [build, fixture-generate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v4
+        with:
+          name: ferrflow-binary
+          path: bin/
+      - uses: actions/download-artifact@v4
+        with:
+          name: fixtures-generated
+          path: fixtures-generated/
+      - name: Run monorepo fixture tests
         env:
-          FERRFLOW_BIN: ./target/release/ferrflow
+          FERRFLOW_BIN: ./bin/ferrflow
           DIFF_DIR: fixture-diffs
         run: |
-          start=$(date +%s)
-          bash tests/fixtures/run-tests.sh ${{ steps.fixtures.outputs.generated-path || 'fixtures-generated' }}
-          elapsed=$(( $(date +%s) - start ))
-          echo "Fixture tests completed in ${elapsed}s"
-          if [ "$elapsed" -gt 120 ]; then
-            echo "::warning::Fixture tests took ${elapsed}s (target: <120s)"
-          fi
+          chmod +x ./bin/ferrflow
+          mkdir -p filtered-fixtures
+          for d in fixtures-generated/monorepo-*; do
+            [ -d "$d" ] && cp -r "$d" filtered-fixtures/
+          done
+          bash tests/fixtures/run-tests.sh filtered-fixtures
 
       - name: Upload snapshot diffs
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: fixture-diffs
+          name: fixture-diffs-monorepo
+          path: fixture-diffs/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  fixture-single:
+    name: Fixtures — Single Package
+    needs: [build, fixture-generate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v4
+        with:
+          name: ferrflow-binary
+          path: bin/
+      - uses: actions/download-artifact@v4
+        with:
+          name: fixtures-generated
+          path: fixtures-generated/
+      - name: Run single-package fixture tests
+        env:
+          FERRFLOW_BIN: ./bin/ferrflow
+          DIFF_DIR: fixture-diffs
+        run: |
+          chmod +x ./bin/ferrflow
+          mkdir -p filtered-fixtures
+          for d in fixtures-generated/single-* fixtures-generated/multiple-* fixtures-generated/no-tags-initial-* fixtures-generated/no-versioned-* fixtures-generated/version-*; do
+            [ -d "$d" ] && cp -r "$d" filtered-fixtures/
+          done
+          bash tests/fixtures/run-tests.sh filtered-fixtures
+
+      - name: Upload snapshot diffs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fixture-diffs-single
+          path: fixture-diffs/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  fixture-config:
+    name: Fixtures — Config & Formats
+    needs: [build, fixture-generate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v4
+        with:
+          name: ferrflow-binary
+          path: bin/
+      - uses: actions/download-artifact@v4
+        with:
+          name: fixtures-generated
+          path: fixtures-generated/
+      - name: Run config fixture tests
+        env:
+          FERRFLOW_BIN: ./bin/ferrflow
+          DIFF_DIR: fixture-diffs
+        run: |
+          chmod +x ./bin/ferrflow
+          mkdir -p filtered-fixtures
+          for d in fixtures-generated/config-* fixtures-generated/format-* fixtures-generated/multi-versioned-*; do
+            [ -d "$d" ] && cp -r "$d" filtered-fixtures/
+          done
+          bash tests/fixtures/run-tests.sh filtered-fixtures
+
+      - name: Upload snapshot diffs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fixture-diffs-config
+          path: fixture-diffs/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  fixture-advanced:
+    name: Fixtures — Advanced Features
+    needs: [build, fixture-generate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v4
+        with:
+          name: ferrflow-binary
+          path: bin/
+      - uses: actions/download-artifact@v4
+        with:
+          name: fixtures-generated
+          path: fixtures-generated/
+      - name: Run advanced fixture tests
+        env:
+          FERRFLOW_BIN: ./bin/ferrflow
+          DIFF_DIR: fixture-diffs
+        run: |
+          chmod +x ./bin/ferrflow
+          mkdir -p filtered-fixtures
+          for d in fixtures-generated/prerelease-* fixtures-generated/hooks-* fixtures-generated/floating-* \
+                   fixtures-generated/tag-* fixtures-generated/changelog-* fixtures-generated/versioning-* \
+                   fixtures-generated/orphaned-* fixtures-generated/recover-* fixtures-generated/release-* \
+                   fixtures-generated/head-* fixtures-generated/merge-* fixtures-generated/commit-* \
+                   fixtures-generated/skip-* fixtures-generated/no-tags-monorepo-*; do
+            [ -d "$d" ] && cp -r "$d" filtered-fixtures/
+          done
+          bash tests/fixtures/run-tests.sh filtered-fixtures
+
+      - name: Upload snapshot diffs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fixture-diffs-advanced
           path: fixture-diffs/
           retention-days: 7
           if-no-files-found: ignore
@@ -149,7 +309,7 @@ jobs:
 
   release:
     name: Release
-    needs: [test, fixture-tests, benchmark]
+    needs: [test, fixture-monorepo, fixture-single, fixture-config, fixture-advanced, benchmark]
     runs-on: ubuntu-latest
     concurrency:
       group: release-${{ github.workflow }}-${{ github.ref }}
@@ -157,7 +317,10 @@ jobs:
     if: |
       always() &&
       needs.test.result == 'success' &&
-      needs.fixture-tests.result == 'success' &&
+      needs.fixture-monorepo.result == 'success' &&
+      needs.fixture-single.result == 'success' &&
+      needs.fixture-config.result == 'success' &&
+      needs.fixture-advanced.result == 'success' &&
       (needs.benchmark.result == 'success' || needs.benchmark.result == 'skipped') &&
       (
         (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
