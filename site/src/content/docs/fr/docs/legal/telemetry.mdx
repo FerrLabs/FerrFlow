@@ -1,0 +1,77 @@
+---
+title: Telemetrie
+description: Ce que FerrFlow collecte, comment les donnees sont anonymisees, et comment desactiver la telemetrie.
+---
+
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+FerrFlow collecte des donnees de telemetrie anonymes pour ameliorer l'outil. Cette page explique exactement ce qui est envoye, comment les donnees sont anonymisees, et comment desactiver la telemetrie.
+
+## Ce qui est collecte
+
+A chaque execution d'une commande, FerrFlow peut envoyer un evenement contenant :
+
+| Champ | Description |
+|-------|-------------|
+| `event_type` | L'action effectuee : `check`, `release`, `version_bump` ou `init` |
+| `commits_count` | Nombre de commits depuis la derniere release |
+| `repo_hash` | Un hash SHA-256 de l'URL du remote git (voir ci-dessous) |
+
+Seuls les champs pertinents sont inclus. Les champs vides sont omis.
+
+## Comment les donnees sont anonymisees
+
+L'URL de votre depot n'est **jamais envoyee en clair**. FerrFlow calcule un hash SHA-256 de l'URL du remote git et envoie uniquement le digest hexadecimal. Cela permet de compter les depots uniques sans savoir lesquels ils sont.
+
+Aucun code source, nom de fichier, message de commit, nom de branche, nom de package, numero de version, adresse IP ou information personnelle n'est collecte ou stocke.
+
+## Ou les donnees sont envoyees
+
+Les evenements sont envoyes via une requete POST a `https://api.ferrflow.com/events`. La requete est asynchrone et non-bloquante — elle ne ralentit jamais votre workflow. Si la requete echoue, elle est silencieusement ignoree.
+
+## Comment desactiver
+
+Vous pouvez desactiver completement la telemetrie via une variable d'environnement ou votre fichier de configuration.
+
+### Variable d'environnement
+
+<Tabs>
+  <TabItem label="Linux / macOS">
+    ```bash
+    export FERRFLOW_ANONYMOUS_TELEMETRY=false
+    ```
+  </TabItem>
+  <TabItem label="Windows">
+    ```powershell
+    $env:FERRFLOW_ANONYMOUS_TELEMETRY = "false"
+    ```
+  </TabItem>
+</Tabs>
+
+Valeurs acceptees pour desactiver : `false`, `0`, `off`, `no` (insensible a la casse).
+
+<Aside type="tip">
+`FERRFLOW_TELEMETRY=false` fonctionne aussi comme alternative.
+</Aside>
+
+### Fichier de configuration
+
+<Tabs>
+  <TabItem label="JSON">
+    ```json
+    {
+      "workspace": {
+        "anonymous_telemetry": false
+      }
+    }
+    ```
+  </TabItem>
+  <TabItem label="TOML">
+    ```toml
+    [workspace]
+    anonymous_telemetry = false
+    ```
+  </TabItem>
+</Tabs>
+
+L'une ou l'autre methode suffit pour desactiver la telemetrie.
