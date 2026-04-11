@@ -118,6 +118,7 @@ jobs:
         with:
           name: fixtures-generated
           path: fixtures-generated/
+          include-hidden-files: true
           retention-days: 1
 
   fixture-monorepo:
