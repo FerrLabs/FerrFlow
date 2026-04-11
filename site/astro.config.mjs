@@ -75,6 +75,7 @@ export default defineConfig({
         {
           label: 'CI / CD',
           items: [
+            { label: 'Pipeline Triggers', slug: 'docs/ci/pipeline-triggers' },
             { label: 'GitHub Actions', slug: 'docs/ci/github-actions' },
             { label: 'GitLab CI', slug: 'docs/ci/gitlab-ci' },
           ],
