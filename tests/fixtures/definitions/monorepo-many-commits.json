@@ -1,0 +1,24 @@
+{
+  "meta": {
+    "name": "monorepo-many-commits",
+    "description": "Single commit touches all three packages with different bump types"
+  },
+  "config": {
+    "content": "{\n  \"package\": [\n    {\n      \"name\": \"api\",\n      \"path\": \"api\",\n      \"versioned_files\": [{\"path\": \"api/version.toml\", \"format\": \"toml\"}]\n    },\n    {\n      \"name\": \"web\",\n      \"path\": \"web\",\n      \"versioned_files\": [{\"path\": \"web/version.toml\", \"format\": \"toml\"}]\n    },\n    {\n      \"name\": \"shared\",\n      \"path\": \"shared\",\n      \"versioned_files\": [{\"path\": \"shared/version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "api", "path": "api", "initial_version": "1.0.0", "tag": "api@v1.0.0" },
+    { "name": "web", "path": "web", "initial_version": "1.0.0", "tag": "web@v1.0.0" },
+    { "name": "shared", "path": "shared", "initial_version": "1.0.0", "tag": "shared@v1.0.0" }
+  ],
+  "commits": [
+    {
+      "message": "feat!: breaking cross-package refactor",
+      "files": ["api/src/handler.rs", "web/src/theme.rs", "shared/src/lib.rs"]
+    }
+  ],
+  "expect": {
+    "check_contains": ["api", "web", "shared", "2.0.0"],
+    "check_not_contains": ["Nothing to release"]
+  }
+}

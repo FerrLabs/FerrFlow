@@ -1,0 +1,22 @@
+{
+  "meta": {
+    "name": "commit-mixed-conventional-non",
+    "description": "Mix of conventional and non-conventional commits; only conventional ones count"
+  },
+  "config": {
+    "content": "{\n  \"package\": [\n    {\n      \"name\": \"myapp\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "myapp", "path": ".", "initial_version": "1.0.0", "tag": "v1.0.0" }
+  ],
+  "commits": [
+    { "message": "random commit message", "files": ["src/one.rs"] },
+    { "message": "fix: handle edge case", "files": ["src/two.rs"] },
+    { "message": "just a note", "files": ["docs/note.md"] },
+    { "message": "chore: update deps", "files": ["Cargo.lock"] }
+  ],
+  "expect": {
+    "check_contains": ["myapp", "1.0.1", "patch"],
+    "check_not_contains": ["Nothing to release"]
+  }
+}

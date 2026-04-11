@@ -1,0 +1,23 @@
+{
+  "meta": {
+    "name": "no-tags-monorepo-initial",
+    "description": "Monorepo with no existing tags; initial release for all packages"
+  },
+  "config": {
+    "content": "{\n  \"package\": [\n    {\n      \"name\": \"api\",\n      \"path\": \"api\",\n      \"versioned_files\": [{\"path\": \"api/version.toml\", \"format\": \"toml\"}]\n    },\n    {\n      \"name\": \"web\",\n      \"path\": \"web\",\n      \"versioned_files\": [{\"path\": \"web/version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "api", "path": "api", "initial_version": "0.0.0" },
+    { "name": "web", "path": "web", "initial_version": "0.0.0" }
+  ],
+  "commits": [
+    {
+      "message": "feat: initial setup for api and web",
+      "files": ["api/src/main.rs", "web/src/app.rs"]
+    }
+  ],
+  "expect": {
+    "check_contains": ["api", "web"],
+    "check_not_contains": ["Nothing to release"]
+  }
+}

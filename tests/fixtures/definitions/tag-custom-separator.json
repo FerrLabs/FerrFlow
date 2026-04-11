@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "name": "tag-custom-separator",
+    "description": "Custom tag template with slash separator: {name}/v{version}"
+  },
+  "config": {
+    "content": "{\n  \"workspace\": {\n    \"tagTemplate\": \"{name}/v{version}\"\n  },\n  \"package\": [\n    {\n      \"name\": \"core\",\n      \"path\": \"core\",\n      \"versioned_files\": [{\"path\": \"core/version.toml\", \"format\": \"toml\"}]\n    },\n    {\n      \"name\": \"web\",\n      \"path\": \"web\",\n      \"versioned_files\": [{\"path\": \"web/version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "core", "path": "core", "initial_version": "1.0.0", "tag": "core/v1.0.0" },
+    { "name": "web", "path": "web", "initial_version": "2.0.0", "tag": "web/v2.0.0" }
+  ],
+  "commits": [
+    { "message": "feat: improve core", "files": ["core/src/lib.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["core", "1.1.0"],
+    "check_not_contains": ["Nothing to release"]
+  }
+}

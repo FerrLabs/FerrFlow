@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "name": "commit-scoped-mismatch",
+    "description": "Scoped commit with scope not matching any package name; bump based on file paths"
+  },
+  "config": {
+    "content": "{\n  \"package\": [\n    {\n      \"name\": \"api\",\n      \"path\": \"api\",\n      \"versioned_files\": [{\"path\": \"api/version.toml\", \"format\": \"toml\"}]\n    },\n    {\n      \"name\": \"web\",\n      \"path\": \"web\",\n      \"versioned_files\": [{\"path\": \"web/version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "api", "path": "api", "initial_version": "1.0.0", "tag": "api@v1.0.0" },
+    { "name": "web", "path": "web", "initial_version": "1.0.0", "tag": "web@v1.0.0" }
+  ],
+  "commits": [
+    { "message": "feat(database): add migration", "files": ["api/src/migrate.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["api", "1.1.0"],
+    "check_not_contains": ["Nothing to release"]
+  }
+}

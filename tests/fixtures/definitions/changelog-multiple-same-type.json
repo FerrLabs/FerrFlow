@@ -1,0 +1,23 @@
+{
+  "meta": {
+    "name": "changelog-multiple-same-type",
+    "description": "Multiple commits of the same type grouped together in changelog"
+  },
+  "config": {
+    "content": "{\n  \"package\": [\n    {\"name\": \"app\", \"path\": \".\", \"changelog\": \"CHANGELOG.md\", \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]}\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "app", "path": ".", "initial_version": "1.0.0", "tag": "v1.0.0" }
+  ],
+  "commits": [
+    { "message": "feat: add search", "files": ["src/search.rs"] },
+    { "message": "feat: add filtering", "files": ["src/filter.rs"] },
+    { "message": "feat: add sorting", "files": ["src/sort.rs"] },
+    { "message": "fix: correct pagination", "files": ["src/page.rs"] },
+    { "message": "fix: handle empty results", "files": ["src/empty.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["app", "1.1.0", "minor"],
+    "check_not_contains": ["Nothing to release"]
+  }
+}

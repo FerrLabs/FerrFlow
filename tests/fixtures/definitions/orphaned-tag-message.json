@@ -1,0 +1,19 @@
+{
+  "meta": {
+    "name": "orphaned-tag-message",
+    "description": "Orphaned tag with message strategy recovers via commit message matching"
+  },
+  "config": {
+    "content": "{\n  \"workspace\": {\n    \"orphanedTagStrategy\": \"message\"\n  },\n  \"package\": [\n    {\n      \"name\": \"myapp\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "myapp", "path": ".", "initial_version": "1.0.0", "tag": "v1.0.0" }
+  ],
+  "commits": [
+    { "message": "feat: add dashboard", "files": ["src/dashboard.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["myapp", "1.1.0"],
+    "check_not_contains": ["Nothing to release"]
+  }
+}

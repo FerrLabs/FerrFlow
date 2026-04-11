@@ -1,0 +1,24 @@
+{
+  "meta": {
+    "name": "versioning-zerover-breaking",
+    "description": "Zerover keeps major at 0; breaking change bumps minor instead of major"
+  },
+  "config": {
+    "content": "{\n  \"workspace\": {\n    \"versioning\": \"zerover\"\n  },\n  \"package\": [\n    {\n      \"name\": \"mylib\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    {
+      "name": "mylib",
+      "path": ".",
+      "initial_version": "0.3.2",
+      "tag": "v0.3.2"
+    }
+  ],
+  "commits": [
+    { "message": "feat!: redesign public API", "files": ["src/api.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["mylib", "0.4.0"],
+    "check_not_contains": ["Nothing to release", "1.0.0"]
+  }
+}

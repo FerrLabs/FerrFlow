@@ -1,0 +1,19 @@
+{
+  "meta": {
+    "name": "floating-tags-minor",
+    "description": "Floating tags at both major and minor levels"
+  },
+  "config": {
+    "content": "{\n  \"workspace\": {\n    \"floatingTags\": [\"major\", \"minor\"]\n  },\n  \"package\": [\n    {\n      \"name\": \"myapp\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "myapp", "path": ".", "initial_version": "2.3.0", "tag": "v2.3.0" }
+  ],
+  "commits": [
+    { "message": "fix: resolve race condition", "files": ["src/sync.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["myapp", "2.3.1", "patch", "floating tag"],
+    "check_not_contains": ["Nothing to release"]
+  }
+}

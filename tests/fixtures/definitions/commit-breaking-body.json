@@ -1,0 +1,22 @@
+{
+  "meta": {
+    "name": "commit-breaking-body",
+    "description": "BREAKING CHANGE in commit body triggers major bump even without ! in subject"
+  },
+  "config": {
+    "content": "{\n  \"package\": [\n    {\n      \"name\": \"myapp\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "myapp", "path": ".", "initial_version": "1.0.0", "tag": "v1.0.0" }
+  ],
+  "commits": [
+    {
+      "message": "feat: redesign config loading\n\nBREAKING CHANGE: config format changed from YAML to TOML",
+      "files": ["src/config.rs"]
+    }
+  ],
+  "expect": {
+    "check_contains": ["myapp", "2.0.0", "major"],
+    "check_not_contains": ["Nothing to release"]
+  }
+}

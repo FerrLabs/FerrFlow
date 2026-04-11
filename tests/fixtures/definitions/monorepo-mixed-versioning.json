@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "name": "monorepo-mixed-versioning",
+    "description": "Monorepo with different versioning strategies per package"
+  },
+  "config": {
+    "content": "{\n  \"workspace\": {\n    \"versioning\": \"semver\"\n  },\n  \"package\": [\n    {\n      \"name\": \"api\",\n      \"path\": \"api\",\n      \"versioning\": \"semver\",\n      \"versioned_files\": [{\"path\": \"api/version.toml\", \"format\": \"toml\"}]\n    },\n    {\n      \"name\": \"sdk\",\n      \"path\": \"sdk\",\n      \"versioning\": \"zerover\",\n      \"versioned_files\": [{\"path\": \"sdk/version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "api", "path": "api", "initial_version": "2.0.0", "tag": "api@v2.0.0" },
+    { "name": "sdk", "path": "sdk", "initial_version": "0.8.0", "tag": "sdk@v0.8.0" }
+  ],
+  "commits": [
+    { "message": "feat!: new auth system", "files": ["api/src/auth.rs", "sdk/src/client.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["api", "3.0.0", "sdk", "0.9.0"],
+    "check_not_contains": ["Nothing to release"]
+  }
+}

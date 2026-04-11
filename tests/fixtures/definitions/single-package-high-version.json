@@ -1,0 +1,19 @@
+{
+  "meta": {
+    "name": "single-package-high-version",
+    "description": "High version numbers handle correctly (no overflow or formatting issues)"
+  },
+  "config": {
+    "content": "{\n  \"package\": [\n    {\n      \"name\": \"myapp\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "myapp", "path": ".", "initial_version": "99.99.99", "tag": "v99.99.99" }
+  ],
+  "commits": [
+    { "message": "fix: edge case in version handling", "files": ["src/main.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["myapp", "99.99.100", "patch"],
+    "check_not_contains": ["Nothing to release"]
+  }
+}

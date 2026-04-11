@@ -1,0 +1,22 @@
+{
+  "meta": {
+    "name": "recover-missed-multi-bump",
+    "description": "Recover missed releases with feat then breaking: produces intermediate versions"
+  },
+  "config": {
+    "content": "{\n  \"workspace\": {\n    \"recoverMissedReleases\": true\n  },\n  \"package\": [\n    {\n      \"name\": \"myapp\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "myapp", "path": ".", "initial_version": "1.0.0", "tag": "v1.0.0" }
+  ],
+  "commits": [
+    { "message": "fix: first fix", "files": ["src/a.rs"] },
+    { "message": "feat: first feature", "files": ["src/b.rs"] },
+    { "message": "fix: second fix", "files": ["src/c.rs"] },
+    { "message": "feat!: breaking change", "files": ["src/d.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["myapp"],
+    "check_not_contains": ["Nothing to release"]
+  }
+}

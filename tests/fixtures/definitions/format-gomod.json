@@ -1,0 +1,31 @@
+{
+  "meta": {
+    "name": "format-gomod",
+    "description": "Version bump with go.mod format versioned file"
+  },
+  "config": {
+    "content": "{\n  \"package\": [\n    {\n      \"name\": \"mymod\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"go.mod\", \"format\": \"gomod\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    {
+      "name": "mymod",
+      "path": ".",
+      "initial_version": "1.0.0",
+      "tag": "v1.0.0",
+      "versioned_files": [
+        {
+          "path": "go.mod",
+          "format": "gomod",
+          "content": "module github.com/example/mymod\n\ngo 1.21\n"
+        }
+      ]
+    }
+  ],
+  "commits": [
+    { "message": "fix: handle nil pointer", "files": ["handler.go"] }
+  ],
+  "expect": {
+    "check_contains": ["mymod", "1.0.1", "patch"],
+    "check_not_contains": ["Nothing to release"]
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "meta": {
+    "name": "single-package-refactor-bump",
+    "description": "refactor: commit triggers a patch bump"
+  },
+  "config": {
+    "content": "{\n  \"package\": [\n    {\n      \"name\": \"myapp\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "myapp", "path": ".", "initial_version": "1.0.0", "tag": "v1.0.0" }
+  ],
+  "commits": [
+    { "message": "refactor: extract parser module", "files": ["src/parser.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["myapp", "1.0.1", "patch"],
+    "check_not_contains": ["Nothing to release"]
+  }
+}

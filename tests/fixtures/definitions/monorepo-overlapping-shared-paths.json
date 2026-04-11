@@ -1,0 +1,21 @@
+{
+  "meta": {
+    "name": "monorepo-overlapping-shared-paths",
+    "description": "Multiple packages share overlapping paths; change in shared triggers correct packages"
+  },
+  "config": {
+    "content": "{\n  \"package\": [\n    {\n      \"name\": \"api\",\n      \"path\": \"api\",\n      \"sharedPaths\": [\"shared/\", \"proto/\"],\n      \"versioned_files\": [{\"path\": \"api/version.toml\", \"format\": \"toml\"}]\n    },\n    {\n      \"name\": \"worker\",\n      \"path\": \"worker\",\n      \"sharedPaths\": [\"shared/\"],\n      \"versioned_files\": [{\"path\": \"worker/version.toml\", \"format\": \"toml\"}]\n    },\n    {\n      \"name\": \"gateway\",\n      \"path\": \"gateway\",\n      \"sharedPaths\": [\"proto/\"],\n      \"versioned_files\": [{\"path\": \"gateway/version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "api", "path": "api", "initial_version": "1.0.0", "tag": "api@v1.0.0" },
+    { "name": "worker", "path": "worker", "initial_version": "1.0.0", "tag": "worker@v1.0.0" },
+    { "name": "gateway", "path": "gateway", "initial_version": "1.0.0", "tag": "gateway@v1.0.0" }
+  ],
+  "commits": [
+    { "message": "feat: update protobuf definitions", "files": ["proto/service.proto"] }
+  ],
+  "expect": {
+    "check_contains": ["api", "1.1.0", "gateway", "1.1.0"],
+    "check_not_contains": ["Nothing to release", "worker"]
+  }
+}

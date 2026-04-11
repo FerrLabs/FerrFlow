@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "name": "tag-per-package-override",
+    "description": "Package-level tagTemplate overrides workspace-level"
+  },
+  "config": {
+    "content": "{\n  \"workspace\": {\n    \"tagTemplate\": \"{name}@v{version}\"\n  },\n  \"package\": [\n    {\n      \"name\": \"core\",\n      \"path\": \"core\",\n      \"versioned_files\": [{\"path\": \"core/version.toml\", \"format\": \"toml\"}]\n    },\n    {\n      \"name\": \"legacy\",\n      \"path\": \"legacy\",\n      \"tagTemplate\": \"legacy-v{version}\",\n      \"versioned_files\": [{\"path\": \"legacy/version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "core", "path": "core", "initial_version": "1.0.0", "tag": "core@v1.0.0" },
+    { "name": "legacy", "path": "legacy", "initial_version": "5.0.0", "tag": "legacy-v5.0.0" }
+  ],
+  "commits": [
+    { "message": "feat: update both", "files": ["core/src/lib.rs", "legacy/src/main.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["core", "1.1.0", "legacy", "5.1.0"],
+    "check_not_contains": ["Nothing to release"]
+  }
+}

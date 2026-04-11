@@ -1,0 +1,22 @@
+{
+  "meta": {
+    "name": "commit-multiple-types",
+    "description": "Multiple commits of different types; highest bump wins (feat > fix)"
+  },
+  "config": {
+    "content": "{\n  \"package\": [\n    {\n      \"name\": \"myapp\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "myapp", "path": ".", "initial_version": "1.0.0", "tag": "v1.0.0" }
+  ],
+  "commits": [
+    { "message": "fix: handle timeout", "files": ["src/net.rs"] },
+    { "message": "perf: optimize query", "files": ["src/db.rs"] },
+    { "message": "feat: add retry logic", "files": ["src/retry.rs"] },
+    { "message": "fix: correct error message", "files": ["src/error.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["myapp", "1.1.0", "minor"],
+    "check_not_contains": ["Nothing to release"]
+  }
+}

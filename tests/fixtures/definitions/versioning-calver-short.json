@@ -1,0 +1,24 @@
+{
+  "meta": {
+    "name": "versioning-calver-short",
+    "description": "Short CalVer versioning uses YY.MM.PATCH format"
+  },
+  "config": {
+    "content": "{\n  \"workspace\": {\n    \"versioning\": \"calver-short\"\n  },\n  \"package\": [\n    {\n      \"name\": \"myapp\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    {
+      "name": "myapp",
+      "path": ".",
+      "initial_version": "25.03.0",
+      "tag": "v25.03.0"
+    }
+  ],
+  "commits": [
+    { "message": "fix: correct date parsing", "files": ["src/date.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["myapp"],
+    "check_not_contains": ["Nothing to release"]
+  }
+}

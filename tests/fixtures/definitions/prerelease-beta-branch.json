@@ -1,0 +1,27 @@
+{
+  "meta": {
+    "name": "prerelease-beta-branch",
+    "description": "Beta channel on develop branch with increment identifier"
+  },
+  "config": {
+    "content": "{\n  \"workspace\": {\n    \"branches\": [\n      {\n        \"name\": \"develop\",\n        \"channel\": \"beta\",\n        \"prereleaseIdentifier\": \"increment\"\n      }\n    ]\n  },\n  \"package\": [\n    {\n      \"name\": \"mylib\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "branch": "develop",
+  "packages": [
+    {
+      "name": "mylib",
+      "path": ".",
+      "initial_version": "3.0.0"
+    }
+  ],
+  "tags": [
+    { "name": "v3.0.0", "at_commit": -1 }
+  ],
+  "commits": [
+    { "message": "feat: experimental feature", "files": ["src/exp.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["mylib"],
+    "check_not_contains": ["Nothing to release"]
+  }
+}

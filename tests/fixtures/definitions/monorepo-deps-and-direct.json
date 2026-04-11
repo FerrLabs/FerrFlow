@@ -1,0 +1,23 @@
+{
+  "meta": {
+    "name": "monorepo-deps-and-direct",
+    "description": "Package gets both direct commit AND dependency bump; direct commit wins"
+  },
+  "config": {
+    "content": "{\n  \"package\": [\n    {\n      \"name\": \"core\",\n      \"path\": \"core\",\n      \"versioned_files\": [{\"path\": \"core/version.toml\", \"format\": \"toml\"}]\n    },\n    {\n      \"name\": \"cli\",\n      \"path\": \"cli\",\n      \"dependsOn\": [\"core\"],\n      \"versioned_files\": [{\"path\": \"cli/version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "core", "path": "core", "initial_version": "1.0.0", "tag": "core@v1.0.0" },
+    { "name": "cli", "path": "cli", "initial_version": "1.0.0", "tag": "cli@v1.0.0" }
+  ],
+  "commits": [
+    {
+      "message": "feat: update core and add cli command",
+      "files": ["core/src/lib.rs", "cli/src/cmd.rs"]
+    }
+  ],
+  "expect": {
+    "check_contains": ["core", "1.1.0", "cli", "1.1.0"],
+    "check_not_contains": ["Nothing to release"]
+  }
+}

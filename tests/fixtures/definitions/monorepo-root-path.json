@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "name": "monorepo-root-path",
+    "description": "Monorepo with one package at root (path=.) and others in subdirs"
+  },
+  "config": {
+    "content": "{\n  \"package\": [\n    {\n      \"name\": \"root\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]\n    },\n    {\n      \"name\": \"plugin\",\n      \"path\": \"plugin\",\n      \"versioned_files\": [{\"path\": \"plugin/version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "root", "path": ".", "initial_version": "1.0.0", "tag": "root@v1.0.0" },
+    { "name": "plugin", "path": "plugin", "initial_version": "1.0.0", "tag": "plugin@v1.0.0" }
+  ],
+  "commits": [
+    { "message": "fix: root-level fix", "files": ["src/main.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["root", "1.0.1"],
+    "check_not_contains": ["Nothing to release"]
+  }
+}

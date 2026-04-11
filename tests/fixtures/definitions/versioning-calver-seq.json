@@ -1,0 +1,24 @@
+{
+  "meta": {
+    "name": "versioning-calver-seq",
+    "description": "CalVer sequential versioning uses YYYY.MM.SEQ format"
+  },
+  "config": {
+    "content": "{\n  \"workspace\": {\n    \"versioning\": \"calver-seq\"\n  },\n  \"package\": [\n    {\n      \"name\": \"myapp\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    {
+      "name": "myapp",
+      "path": ".",
+      "initial_version": "2025.03.1",
+      "tag": "v2025.03.1"
+    }
+  ],
+  "commits": [
+    { "message": "feat: add dashboard", "files": ["src/dashboard.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["myapp"],
+    "check_not_contains": ["Nothing to release"]
+  }
+}

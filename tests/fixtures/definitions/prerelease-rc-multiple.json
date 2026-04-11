@@ -1,0 +1,28 @@
+{
+  "meta": {
+    "name": "prerelease-rc-multiple",
+    "description": "Multiple commits on RC branch produce incremented pre-release versions"
+  },
+  "config": {
+    "content": "{\n  \"workspace\": {\n    \"branches\": [\n      {\n        \"name\": \"release/*\",\n        \"channel\": \"rc\",\n        \"prereleaseIdentifier\": \"increment\"\n      }\n    ]\n  },\n  \"package\": [\n    {\n      \"name\": \"myapp\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "branch": "release/2.0",
+  "packages": [
+    {
+      "name": "myapp",
+      "path": ".",
+      "initial_version": "1.5.0"
+    }
+  ],
+  "tags": [
+    { "name": "v1.5.0", "at_commit": -1 }
+  ],
+  "commits": [
+    { "message": "feat: first RC feature", "files": ["src/one.rs"] },
+    { "message": "fix: RC bugfix", "files": ["src/two.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["myapp"],
+    "check_not_contains": ["Nothing to release"]
+  }
+}

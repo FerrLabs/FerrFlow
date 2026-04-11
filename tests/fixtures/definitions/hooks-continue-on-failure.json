@@ -1,0 +1,19 @@
+{
+  "meta": {
+    "name": "hooks-continue-on-failure",
+    "description": "Hook with onFailure: continue does not abort the release"
+  },
+  "config": {
+    "content": "{\n  \"workspace\": {\n    \"hooks\": {\n      \"preBump\": \"exit 1\",\n      \"onFailure\": \"continue\"\n    }\n  },\n  \"package\": [\n    {\"name\": \"app\", \"path\": \".\", \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]}\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "app", "path": ".", "initial_version": "1.0.0", "tag": "v1.0.0" }
+  ],
+  "commits": [
+    { "message": "feat: add feature", "files": ["src/main.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["app", "1.1.0"],
+    "check_not_contains": ["Nothing to release"]
+  }
+}

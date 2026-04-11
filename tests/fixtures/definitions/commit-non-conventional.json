@@ -1,0 +1,21 @@
+{
+  "meta": {
+    "name": "commit-non-conventional",
+    "description": "Non-conventional commit messages are ignored; no release triggered"
+  },
+  "config": {
+    "content": "{\n  \"package\": [\n    {\n      \"name\": \"myapp\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "myapp", "path": ".", "initial_version": "1.0.0", "tag": "v1.0.0" }
+  ],
+  "commits": [
+    { "message": "updated readme", "files": ["README.md"] },
+    { "message": "WIP: experimenting", "files": ["src/wip.rs"] },
+    { "message": "Merge branch 'feature' into main", "files": ["src/main.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["Nothing to release"],
+    "check_not_contains": ["1.1.0", "1.0.1"]
+  }
+}

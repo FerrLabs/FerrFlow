@@ -61,23 +61,53 @@ jobs:
     name: Fixture Tests
     needs: test
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@nightly
       - uses: Swatinem/rust-cache@v2
+
+      - name: Cache fixture definitions
+        id: fixture-cache
+        uses: actions/cache@v4
+        with:
+          path: fixtures-generated
+          key: fixtures-${{ hashFiles('tests/fixtures/definitions/**') }}
+
       - name: Build ferrflow
         run: cargo build --release
         env:
           FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
+
       - name: Generate fixtures
+        if: steps.fixture-cache.outputs.cache-hit != 'true'
         id: fixtures
         uses: FerrFlow-Org/Fixtures@v0
         with:
           definitions: tests/fixtures/definitions
+          output: fixtures-generated
+
       - name: Run fixture tests
         env:
           FERRFLOW_BIN: ./target/release/ferrflow
-        run: bash tests/fixtures/run-tests.sh ${{ steps.fixtures.outputs.generated-path }}
+          DIFF_DIR: fixture-diffs
+        run: |
+          start=$(date +%s)
+          bash tests/fixtures/run-tests.sh ${{ steps.fixtures.outputs.generated-path || 'fixtures-generated' }}
+          elapsed=$(( $(date +%s) - start ))
+          echo "Fixture tests completed in ${elapsed}s"
+          if [ "$elapsed" -gt 120 ]; then
+            echo "::warning::Fixture tests took ${elapsed}s (target: <120s)"
+          fi
+
+      - name: Upload snapshot diffs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fixture-diffs
+          path: fixture-diffs/
+          retention-days: 7
+          if-no-files-found: ignore
 
   micro-bench:
     name: Micro Benchmarks
