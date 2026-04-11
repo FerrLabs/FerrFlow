@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.15.0] - 2026-04-11
+
+### Features
+
+- feat(site): add telemetry page to v0 versioned docs (#213)
+
+### Bug Fixes
+
+- fix: migrate renovate config to matchCategories syntax (#212)
+- fix(playground): always resolve {name} placeholder in tag template (#211)
+
 ## [1.14.0] - 2026-04-11
 
 ### Features
