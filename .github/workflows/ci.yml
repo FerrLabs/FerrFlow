@@ -69,7 +69,7 @@ jobs:
 
       - name: Cache fixture definitions
         id: fixture-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: fixtures-generated
           key: fixtures-${{ hashFiles('tests/fixtures/definitions/**') }}
@@ -102,7 +102,7 @@ jobs:
 
       - name: Upload snapshot diffs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fixture-diffs
           path: fixture-diffs/
