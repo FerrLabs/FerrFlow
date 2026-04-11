@@ -1,0 +1,22 @@
+{
+  "meta": {
+    "name": "monorepo-one-touched-others-not",
+    "description": "Only the package with changed files gets bumped, others stay unchanged"
+  },
+  "config": {
+    "content": "{\n  \"package\": [\n    {\"name\": \"api\", \"path\": \"api\", \"versioned_files\": [{\"path\": \"api/version.toml\", \"format\": \"toml\"}]},\n    {\"name\": \"web\", \"path\": \"web\", \"versioned_files\": [{\"path\": \"web/version.toml\", \"format\": \"toml\"}]},\n    {\"name\": \"worker\", \"path\": \"worker\", \"versioned_files\": [{\"path\": \"worker/version.toml\", \"format\": \"toml\"}]}\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "api", "path": "api", "initial_version": "2.0.0", "tag": "api@v2.0.0" },
+    { "name": "web", "path": "web", "initial_version": "1.5.0", "tag": "web@v1.5.0" },
+    { "name": "worker", "path": "worker", "initial_version": "3.1.0", "tag": "worker@v3.1.0" }
+  ],
+  "commits": [
+    { "message": "feat(web): add new page", "files": ["web/src/page.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["web", "1.6.0"],
+    "json_not_contains": ["\"api\"", "\"worker\""],
+    "packages_released": 1
+  }
+}

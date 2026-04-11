@@ -1,0 +1,22 @@
+{
+  "meta": {
+    "name": "recover-missed-releases-off",
+    "description": "With recoverMissedReleases disabled, only latest bump type applies"
+  },
+  "config": {
+    "content": "{\n  \"workspace\": {\n    \"recoverMissedReleases\": false\n  },\n  \"package\": [\n    {\n      \"name\": \"myapp\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "myapp", "path": ".", "initial_version": "1.0.0", "tag": "v1.0.0" }
+  ],
+  "commits": [
+    { "message": "fix: first fix", "files": ["src/a.rs"] },
+    { "message": "feat: big feature", "files": ["src/b.rs"] },
+    { "message": "fix: another fix", "files": ["src/c.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["myapp", "1.1.0"],
+    "check_not_contains": ["Nothing to release"],
+    "packages_released": 1
+  }
+}

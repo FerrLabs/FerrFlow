@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "name": "single-package-v0-initial",
+    "description": "Package starting at 0.x still gets normal semver bumps"
+  },
+  "config": {
+    "content": "{\n  \"package\": [\n    {\n      \"name\": \"starter\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "starter", "path": ".", "initial_version": "0.0.1", "tag": "v0.0.1" }
+  ],
+  "commits": [
+    { "message": "feat: first real feature", "files": ["src/main.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["starter", "0.1.0", "minor"],
+    "check_not_contains": ["Nothing to release"],
+    "packages_released": 1
+  }
+}

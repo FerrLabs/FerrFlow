@@ -1,0 +1,22 @@
+{
+  "meta": {
+    "name": "single-package-multiple-feat",
+    "description": "Multiple feat commits still result in a single minor bump"
+  },
+  "config": {
+    "content": "{\n  \"package\": [\n    {\n      \"name\": \"myapp\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "myapp", "path": ".", "initial_version": "1.0.0", "tag": "v1.0.0" }
+  ],
+  "commits": [
+    { "message": "feat: add login", "files": ["src/login.rs"] },
+    { "message": "feat: add signup", "files": ["src/signup.rs"] },
+    { "message": "feat: add dashboard", "files": ["src/dashboard.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["myapp", "1.1.0", "minor"],
+    "check_not_contains": ["1.2.0", "1.3.0", "Nothing to release"],
+    "packages_released": 1
+  }
+}

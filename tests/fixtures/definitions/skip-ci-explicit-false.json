@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "name": "skip-ci-explicit-false",
+    "description": "skipCi explicitly set to false disables skip-ci even with commit mode"
+  },
+  "config": {
+    "content": "{\n  \"workspace\": {\n    \"releaseCommitMode\": \"commit\",\n    \"skipCi\": false\n  },\n  \"package\": [\n    {\n      \"name\": \"myapp\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "myapp", "path": ".", "initial_version": "1.0.0", "tag": "v1.0.0" }
+  ],
+  "commits": [
+    { "message": "fix: important bugfix", "files": ["src/main.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["myapp", "1.0.1"],
+    "check_not_contains": ["Nothing to release"],
+    "packages_released": 1
+  }
+}

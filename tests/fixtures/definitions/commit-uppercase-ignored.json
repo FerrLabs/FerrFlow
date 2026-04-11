@@ -1,0 +1,21 @@
+{
+  "meta": {
+    "name": "commit-uppercase-ignored",
+    "description": "Uppercase commit types like FEAT are not treated as conventional commits"
+  },
+  "config": {
+    "content": "{\n  \"package\": [\n    {\n      \"name\": \"myapp\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "myapp", "path": ".", "initial_version": "1.0.0", "tag": "v1.0.0" }
+  ],
+  "commits": [
+    { "message": "FEAT: this should not trigger a bump", "files": ["src/main.rs"] },
+    { "message": "FIX: neither should this", "files": ["src/lib.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["Nothing to release"],
+    "check_not_contains": ["1.1.0", "1.0.1"],
+    "packages_released": 0
+  }
+}

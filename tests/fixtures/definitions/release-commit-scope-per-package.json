@@ -1,0 +1,21 @@
+{
+  "meta": {
+    "name": "release-commit-scope-per-package",
+    "description": "Per-package release commit scope creates separate commits per package"
+  },
+  "config": {
+    "content": "{\n  \"workspace\": {\n    \"releaseCommitMode\": \"commit\",\n    \"releaseCommitScope\": \"per-package\"\n  },\n  \"package\": [\n    {\"name\": \"core\", \"path\": \"core\", \"versioned_files\": [{\"path\": \"core/version.toml\", \"format\": \"toml\"}]},\n    {\"name\": \"cli\", \"path\": \"cli\", \"versioned_files\": [{\"path\": \"cli/version.toml\", \"format\": \"toml\"}]}\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "core", "path": "core", "initial_version": "1.0.0", "tag": "core@v1.0.0" },
+    { "name": "cli", "path": "cli", "initial_version": "2.0.0", "tag": "cli@v2.0.0" }
+  ],
+  "commits": [
+    { "message": "feat: update both packages", "files": ["core/src/parser.rs", "cli/src/main.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["core", "1.1.0", "cli", "2.1.0"],
+    "check_not_contains": ["Nothing to release"],
+    "packages_released": 2
+  }
+}

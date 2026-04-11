@@ -1,0 +1,22 @@
+{
+  "meta": {
+    "name": "single-package-breaking-feat",
+    "description": "Breaking feat! commit triggers major bump regardless of other commits"
+  },
+  "config": {
+    "content": "{\n  \"package\": [\n    {\n      \"name\": \"myapp\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "myapp", "path": ".", "initial_version": "2.1.0", "tag": "v2.1.0" }
+  ],
+  "commits": [
+    { "message": "fix: small fix", "files": ["src/a.rs"] },
+    { "message": "feat!: breaking api change", "files": ["src/b.rs"] },
+    { "message": "feat: another feature", "files": ["src/c.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["myapp", "3.0.0", "major"],
+    "check_not_contains": ["2.2.0", "2.1.1", "Nothing to release"],
+    "packages_released": 1
+  }
+}

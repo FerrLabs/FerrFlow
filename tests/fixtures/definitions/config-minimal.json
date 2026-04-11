@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "name": "config-minimal",
+    "description": "Minimal config with just one package, no workspace block"
+  },
+  "config": {
+    "content": "{\n  \"package\": [\n    {\n      \"name\": \"minimal\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "minimal", "path": ".", "initial_version": "0.1.0", "tag": "v0.1.0" }
+  ],
+  "commits": [
+    { "message": "feat: first feature", "files": ["src/main.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["minimal", "0.2.0"],
+    "check_not_contains": ["Nothing to release"],
+    "packages_released": 1
+  }
+}

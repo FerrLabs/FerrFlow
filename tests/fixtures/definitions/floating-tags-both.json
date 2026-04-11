@@ -1,0 +1,19 @@
+{
+  "meta": {
+    "name": "floating-tags-both",
+    "description": "Both major and minor floating tags are reported"
+  },
+  "config": {
+    "content": "{\n  \"workspace\": {\n    \"floatingTags\": [\"major\", \"minor\"]\n  },\n  \"package\": [\n    {\n      \"name\": \"myapp\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "myapp", "path": ".", "initial_version": "2.3.0", "tag": "v2.3.0" }
+  ],
+  "commits": [
+    { "message": "feat: new feature", "files": ["src/main.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["myapp", "2.4.0", "floating tag"],
+    "check_not_contains": ["Nothing to release"]
+  }
+}

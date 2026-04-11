@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "name": "commit-breaking-footer",
+    "description": "BREAKING CHANGE in commit body triggers major bump"
+  },
+  "config": {
+    "content": "{\n  \"package\": [\n    {\n      \"name\": \"myapp\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "myapp", "path": ".", "initial_version": "1.5.0", "tag": "v1.5.0" }
+  ],
+  "commits": [
+    { "message": "fix: update api\n\nBREAKING CHANGE: removed deprecated endpoint", "files": ["src/api.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["myapp", "2.0.0", "major"],
+    "check_not_contains": ["1.5.1", "Nothing to release"],
+    "packages_released": 1
+  }
+}

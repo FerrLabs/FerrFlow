@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "name": "config-all-options",
+    "description": "Config with every workspace option set explicitly"
+  },
+  "config": {
+    "content": "{\n  \"workspace\": {\n    \"remote\": \"origin\",\n    \"branch\": \"main\",\n    \"versioning\": \"semver\",\n    \"tagTemplate\": \"v{version}\",\n    \"recoverMissedReleases\": false,\n    \"releaseCommitMode\": \"commit\",\n    \"releaseCommitScope\": \"grouped\",\n    \"autoMergeReleases\": true,\n    \"skipCi\": true,\n    \"floatingTags\": [\"major\"],\n    \"orphanedTagStrategy\": \"warn\",\n    \"forge\": \"github\"\n  },\n  \"package\": [\n    {\n      \"name\": \"full-config\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "full-config", "path": ".", "initial_version": "3.0.0", "tag": "v3.0.0" }
+  ],
+  "commits": [
+    { "message": "fix: patch something", "files": ["src/main.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["full-config", "3.0.1", "patch"],
+    "check_not_contains": ["Nothing to release"],
+    "packages_released": 1
+  }
+}

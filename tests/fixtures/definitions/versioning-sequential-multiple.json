@@ -1,0 +1,21 @@
+{
+  "meta": {
+    "name": "versioning-sequential-multiple",
+    "description": "Sequential versioning bumps from current number regardless of commit type"
+  },
+  "config": {
+    "content": "{\n  \"workspace\": {\n    \"versioning\": \"sequential\"\n  },\n  \"package\": [\n    {\n      \"name\": \"myapp\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "myapp", "path": ".", "initial_version": "42", "tag": "v42" }
+  ],
+  "commits": [
+    { "message": "feat: big feature", "files": ["src/main.rs"] },
+    { "message": "fix: small fix", "files": ["src/lib.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["myapp", "43"],
+    "check_not_contains": ["Nothing to release"],
+    "packages_released": 1
+  }
+}

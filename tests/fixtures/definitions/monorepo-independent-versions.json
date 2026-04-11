@@ -1,0 +1,21 @@
+{
+  "meta": {
+    "name": "monorepo-independent-versions",
+    "description": "Packages at very different version numbers bump independently"
+  },
+  "config": {
+    "content": "{\n  \"package\": [\n    {\"name\": \"legacy\", \"path\": \"legacy\", \"versioned_files\": [{\"path\": \"legacy/version.toml\", \"format\": \"toml\"}]},\n    {\"name\": \"fresh\", \"path\": \"fresh\", \"versioned_files\": [{\"path\": \"fresh/version.toml\", \"format\": \"toml\"}]}\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "legacy", "path": "legacy", "initial_version": "14.2.7", "tag": "legacy@v14.2.7" },
+    { "name": "fresh", "path": "fresh", "initial_version": "0.1.0", "tag": "fresh@v0.1.0" }
+  ],
+  "commits": [
+    { "message": "feat: update both packages", "files": ["legacy/src/main.rs", "fresh/src/lib.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["legacy", "14.3.0", "fresh", "0.2.0"],
+    "check_not_contains": ["Nothing to release"],
+    "packages_released": 2
+  }
+}

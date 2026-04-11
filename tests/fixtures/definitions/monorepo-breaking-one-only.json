@@ -1,0 +1,21 @@
+{
+  "meta": {
+    "name": "monorepo-breaking-one-only",
+    "description": "Breaking change scoped to one package, both packages touched in same commit"
+  },
+  "config": {
+    "content": "{\n  \"package\": [\n    {\"name\": \"api\", \"path\": \"api\", \"versioned_files\": [{\"path\": \"api/version.toml\", \"format\": \"toml\"}]},\n    {\"name\": \"web\", \"path\": \"web\", \"versioned_files\": [{\"path\": \"web/version.toml\", \"format\": \"toml\"}]}\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "api", "path": "api", "initial_version": "1.0.0", "tag": "api@v1.0.0" },
+    { "name": "web", "path": "web", "initial_version": "1.0.0", "tag": "web@v1.0.0" }
+  ],
+  "commits": [
+    { "message": "feat(api)!: breaking api change", "files": ["api/src/handler.rs", "web/src/page.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["api", "2.0.0", "web"],
+    "check_not_contains": ["Nothing to release"],
+    "packages_released": 2
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "meta": {
+    "name": "commit-empty-scope",
+    "description": "Empty parentheses scope feat() is not treated as a valid conventional commit"
+  },
+  "config": {
+    "content": "{\n  \"package\": [\n    {\n      \"name\": \"myapp\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "myapp", "path": ".", "initial_version": "1.0.0", "tag": "v1.0.0" }
+  ],
+  "commits": [
+    { "message": "feat(): add something", "files": ["src/main.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["Nothing to release"],
+    "packages_released": 0
+  }
+}

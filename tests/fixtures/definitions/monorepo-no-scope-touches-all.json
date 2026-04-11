@@ -1,0 +1,21 @@
+{
+  "meta": {
+    "name": "monorepo-no-scope-touches-all",
+    "description": "Unscoped feat commit with files in multiple packages bumps all touched packages"
+  },
+  "config": {
+    "content": "{\n  \"package\": [\n    {\"name\": \"api\", \"path\": \"api\", \"versioned_files\": [{\"path\": \"api/version.toml\", \"format\": \"toml\"}]},\n    {\"name\": \"web\", \"path\": \"web\", \"versioned_files\": [{\"path\": \"web/version.toml\", \"format\": \"toml\"}]},\n    {\"name\": \"shared\", \"path\": \"shared\", \"versioned_files\": [{\"path\": \"shared/version.toml\", \"format\": \"toml\"}]}\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "api", "path": "api", "initial_version": "1.0.0", "tag": "api@v1.0.0" },
+    { "name": "web", "path": "web", "initial_version": "1.0.0", "tag": "web@v1.0.0" },
+    { "name": "shared", "path": "shared", "initial_version": "1.0.0", "tag": "shared@v1.0.0" }
+  ],
+  "commits": [
+    { "message": "feat: cross-cutting feature", "files": ["api/src/handler.rs", "web/src/page.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["api", "web"],
+    "check_not_contains": ["Nothing to release"]
+  }
+}

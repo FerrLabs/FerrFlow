@@ -1,0 +1,23 @@
+{
+  "meta": {
+    "name": "single-package-fix-then-feat",
+    "description": "Mixed fix and feat commits result in minor bump (highest wins)"
+  },
+  "config": {
+    "content": "{\n  \"package\": [\n    {\n      \"name\": \"myapp\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "myapp", "path": ".", "initial_version": "1.2.3", "tag": "v1.2.3" }
+  ],
+  "commits": [
+    { "message": "fix: bugfix one", "files": ["src/a.rs"] },
+    { "message": "fix: bugfix two", "files": ["src/b.rs"] },
+    { "message": "feat: new feature", "files": ["src/c.rs"] },
+    { "message": "fix: bugfix three", "files": ["src/d.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["myapp", "1.3.0", "minor"],
+    "check_not_contains": ["1.2.4", "Nothing to release"],
+    "packages_released": 1
+  }
+}

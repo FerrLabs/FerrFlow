@@ -1,0 +1,21 @@
+{
+  "meta": {
+    "name": "commit-only-whitespace",
+    "description": "Commit messages that are just whitespace or gibberish don't trigger releases"
+  },
+  "config": {
+    "content": "{\n  \"package\": [\n    {\n      \"name\": \"myapp\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "myapp", "path": ".", "initial_version": "1.0.0", "tag": "v1.0.0" }
+  ],
+  "commits": [
+    { "message": "random commit message", "files": ["src/main.rs"] },
+    { "message": "WIP", "files": ["src/lib.rs"] },
+    { "message": "Merge branch main into feature", "files": ["src/util.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["Nothing to release"],
+    "packages_released": 0
+  }
+}
