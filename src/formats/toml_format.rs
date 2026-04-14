@@ -1,4 +1,5 @@
 use super::VersionFile;
+use crate::error_code::{self, ErrorCodeExt};
 use anyhow::{Context, Result};
 use std::path::Path;
 
@@ -68,10 +69,12 @@ mod tests {
 impl VersionFile for TomlVersionFile {
     fn read_version(&self, file_path: &Path) -> Result<String> {
         let content = std::fs::read_to_string(file_path)
-            .with_context(|| format!("Cannot read {}", file_path.display()))?;
+            .with_context(|| format!("Cannot read {}", file_path.display()))
+            .error_code(error_code::TOML_READ)?;
         let doc: toml_edit::DocumentMut = content
             .parse()
-            .with_context(|| format!("Invalid TOML in {}", file_path.display()))?;
+            .with_context(|| format!("Invalid TOML in {}", file_path.display()))
+            .error_code(error_code::TOML_PARSE)?;
 
         if let Some(v) = doc
             .get("package")
@@ -98,13 +101,21 @@ impl VersionFile for TomlVersionFile {
             return Ok(v.to_string());
         }
 
-        anyhow::bail!("No version found in {}", file_path.display())
+        Err(anyhow::anyhow!(
+            "No version found in {}",
+            file_path.display()
+        ))
+        .error_code(error_code::TOML_VERSION_NOT_FOUND)?
     }
 
     fn write_version(&self, file_path: &Path, version: &str) -> Result<()> {
         let content = std::fs::read_to_string(file_path)
-            .with_context(|| format!("Cannot read {}", file_path.display()))?;
-        let mut doc: toml_edit::DocumentMut = content.parse()?;
+            .with_context(|| format!("Cannot read {}", file_path.display()))
+            .error_code(error_code::TOML_READ)?;
+        let mut doc: toml_edit::DocumentMut = content
+            .parse()
+            .with_context(|| format!("Invalid TOML in {}", file_path.display()))
+            .error_code(error_code::TOML_PARSE)?;
 
         let mut written = false;
 
@@ -134,22 +145,27 @@ impl VersionFile for TomlVersionFile {
         }
 
         if !written {
-            anyhow::bail!(
+            Err(anyhow::anyhow!(
                 "Could not find version field to update in {}",
                 file_path.display()
-            );
+            ))
+            .error_code(error_code::TOML_VERSION_NOT_FOUND)?;
         }
 
-        std::fs::write(file_path, doc.to_string())?;
+        std::fs::write(file_path, doc.to_string())
+            .with_context(|| format!("Cannot write {}", file_path.display()))
+            .error_code(error_code::TOML_WRITE)?;
         Ok(())
     }
 
     fn read_version_from_bytes(&self, content: &[u8], filename: &str) -> Result<String> {
-        let text =
-            std::str::from_utf8(content).with_context(|| format!("Invalid UTF-8 in {filename}"))?;
+        let text = std::str::from_utf8(content)
+            .with_context(|| format!("Invalid UTF-8 in {filename}"))
+            .error_code(error_code::TOML_INVALID_UTF8)?;
         let doc: toml_edit::DocumentMut = text
             .parse()
-            .with_context(|| format!("Invalid TOML in {filename}"))?;
+            .with_context(|| format!("Invalid TOML in {filename}"))
+            .error_code(error_code::TOML_PARSE)?;
         if let Some(v) = doc
             .get("package")
             .and_then(|p| p.get("version"))
@@ -172,6 +188,7 @@ impl VersionFile for TomlVersionFile {
         {
             return Ok(v.to_string());
         }
-        anyhow::bail!("No version found in {filename}")
+        Err(anyhow::anyhow!("No version found in {filename}"))
+            .error_code(error_code::TOML_VERSION_NOT_FOUND)?
     }
 }

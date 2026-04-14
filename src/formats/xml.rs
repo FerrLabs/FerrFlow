@@ -1,4 +1,5 @@
 use super::VersionFile;
+use crate::error_code::{self, ErrorCodeExt};
 use anyhow::{Context, Result};
 use regex::Regex;
 use std::path::Path;
@@ -65,17 +66,20 @@ fn version_re() -> &'static Regex {
 impl VersionFile for XmlVersionFile {
     fn read_version(&self, file_path: &Path) -> Result<String> {
         let content = std::fs::read_to_string(file_path)
-            .with_context(|| format!("Cannot read {}", file_path.display()))?;
+            .with_context(|| format!("Cannot read {}", file_path.display()))
+            .error_code(error_code::XML_READ)?;
 
         version_re()
             .captures(&content)
             .map(|c| c[1].trim().to_string())
             .ok_or_else(|| anyhow::anyhow!("No <version> tag found in {}", file_path.display()))
+            .error_code(error_code::XML_VERSION_NOT_FOUND)
     }
 
     fn write_version(&self, file_path: &Path, version: &str) -> Result<()> {
         let content = std::fs::read_to_string(file_path)
-            .with_context(|| format!("Cannot read {}", file_path.display()))?;
+            .with_context(|| format!("Cannot read {}", file_path.display()))
+            .error_code(error_code::XML_READ)?;
 
         let mut count = 0;
         let new_content = version_re().replace(&content, |_: &regex::Captures| {
@@ -84,22 +88,27 @@ impl VersionFile for XmlVersionFile {
         });
 
         if count == 0 {
-            anyhow::bail!(
+            Err(anyhow::anyhow!(
                 "No <version> tag found to update in {}",
                 file_path.display()
-            );
+            ))
+            .error_code(error_code::XML_VERSION_NOT_FOUND)?;
         }
 
-        std::fs::write(file_path, new_content.as_ref())?;
+        std::fs::write(file_path, new_content.as_ref())
+            .with_context(|| format!("Cannot write {}", file_path.display()))
+            .error_code(error_code::XML_WRITE)?;
         Ok(())
     }
 
     fn read_version_from_bytes(&self, content: &[u8], filename: &str) -> Result<String> {
-        let text =
-            std::str::from_utf8(content).with_context(|| format!("Invalid UTF-8 in {filename}"))?;
+        let text = std::str::from_utf8(content)
+            .with_context(|| format!("Invalid UTF-8 in {filename}"))
+            .error_code(error_code::XML_INVALID_UTF8)?;
         version_re()
             .captures(text)
             .map(|c| c[1].trim().to_string())
             .ok_or_else(|| anyhow::anyhow!("No <version> tag found in {filename}"))
+            .error_code(error_code::XML_VERSION_NOT_FOUND)
     }
 }

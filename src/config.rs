@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
+use crate::error_code::{self, ErrorCodeExt};
 #[cfg(feature = "cli")]
 use crate::telemetry;
 
@@ -395,7 +396,9 @@ impl ConfigFormatHandler for JsonFormat {
         "ferrflow.json"
     }
     fn parse(&self, content: &str) -> Result<Config> {
-        serde_json::from_str(content).with_context(|| "Failed to parse ferrflow.json")
+        serde_json::from_str(content)
+            .with_context(|| "Failed to parse ferrflow.json")
+            .error_code(error_code::CONFIG_PARSE_JSON)
     }
     fn serialize(&self, config: &Config) -> Result<String> {
         let value = serde_json::to_value(config)?;
@@ -411,7 +414,9 @@ impl ConfigFormatHandler for Json5Format {
         "ferrflow.json5"
     }
     fn parse(&self, content: &str) -> Result<Config> {
-        json5::from_str(content).with_context(|| "Failed to parse ferrflow.json5")
+        json5::from_str(content)
+            .with_context(|| "Failed to parse ferrflow.json5")
+            .error_code(error_code::CONFIG_PARSE_JSON5)
     }
     fn serialize(&self, config: &Config) -> Result<String> {
         // json5 crate has no serializer; valid JSON is valid JSON5
@@ -428,10 +433,14 @@ impl ConfigFormatHandler for TomlFormat {
         "ferrflow.toml"
     }
     fn parse(&self, content: &str) -> Result<Config> {
-        toml_edit::de::from_str(content).with_context(|| "Failed to parse ferrflow.toml")
+        toml_edit::de::from_str(content)
+            .with_context(|| "Failed to parse ferrflow.toml")
+            .error_code(error_code::CONFIG_PARSE_TOML)
     }
     fn serialize(&self, config: &Config) -> Result<String> {
-        toml_edit::ser::to_string_pretty(config).with_context(|| "Failed to serialize to TOML")
+        toml_edit::ser::to_string_pretty(config)
+            .with_context(|| "Failed to serialize to TOML")
+            .error_code(error_code::CONFIG_SERIALIZE_TOML)
     }
 }
 
@@ -442,10 +451,12 @@ impl ConfigFormatHandler for DotfileFormat {
     fn parse(&self, content: &str) -> Result<Config> {
         ConfigFormatHandler::parse(&JsonFormat, content)
             .with_context(|| "Failed to parse .ferrflow")
+            .error_code(error_code::CONFIG_PARSE_DOTFILE)
     }
     fn serialize(&self, config: &Config) -> Result<String> {
         ConfigFormatHandler::serialize(&JsonFormat, config)
             .with_context(|| "Failed to serialize .ferrflow")
+            .error_code(error_code::CONFIG_SERIALIZE_DOTFILE)
     }
 }
 
@@ -475,7 +486,8 @@ const TS_CONFIG_FILENAME: &str = "ferrflow.ts";
 fn path_to_file_url(path: &Path) -> Result<String> {
     let canonical = path
         .canonicalize()
-        .with_context(|| format!("Failed to resolve path: {}", path.display()))?;
+        .with_context(|| format!("Failed to resolve path: {}", path.display()))
+        .error_code(error_code::CONFIG_RESOLVE_PATH)?;
 
     let path_str = canonical.to_string_lossy().to_string();
 
@@ -556,7 +568,8 @@ fn load_js_ts_config(path: &Path) -> Result<Config> {
 
         let script = loader_body(&file_url, runtime);
         std::fs::write(&wrapper_path, &script)
-            .with_context(|| "Failed to write temporary loader file")?;
+            .with_context(|| "Failed to write temporary loader file")
+            .error_code(error_code::CONFIG_WRITE_LOADER)?;
 
         let result = Command::new("tsx")
             .arg(&wrapper_path)
@@ -580,7 +593,8 @@ fn load_js_ts_config(path: &Path) -> Result<Config> {
                 } else {
                     anyhow::anyhow!("Failed to execute tsx: {e}")
                 }
-            });
+            })
+            .error_code(error_code::CONFIG_EVAL_TS);
 
         let _ = std::fs::remove_file(&wrapper_path);
         result?
@@ -600,19 +614,23 @@ fn load_js_ts_config(path: &Path) -> Result<Config> {
                 } else {
                     anyhow::anyhow!("Failed to execute node: {e}")
                 }
-            })?
+            })
+            .error_code(error_code::CONFIG_EVAL_NODE)?
     };
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        anyhow::bail!("Failed to evaluate {filename}:\n{stderr}");
+        Err(anyhow::anyhow!("Failed to evaluate {filename}:\n{stderr}"))
+            .error_code(error_code::CONFIG_EVAL_FAILED)?;
     }
 
     let stdout = String::from_utf8(output.stdout)
-        .with_context(|| format!("{filename} produced invalid UTF-8 output"))?;
+        .with_context(|| format!("{filename} produced invalid UTF-8 output"))
+        .error_code(error_code::CONFIG_INVALID_OUTPUT)?;
 
     serde_json::from_str::<Config>(&stdout)
         .with_context(|| format!("{filename} did not produce valid JSON config"))
+        .error_code(error_code::CONFIG_INVALID_JSON)
 }
 
 // ---------------------------------------------------------------------------
@@ -658,10 +676,11 @@ impl Config {
                 .iter()
                 .filter_map(|p| p.file_name().map(|n| n.to_string_lossy().to_string()))
                 .collect();
-            anyhow::bail!(
+            Err(anyhow::anyhow!(
                 "multiple config files found: {}\nUse --config <path> to specify which one to use.",
                 names.join(", ")
-            );
+            ))
+            .error_code(error_code::CONFIG_MULTIPLE_FILES)?;
         }
 
         Self::load_from_path(&found[0])
@@ -676,7 +695,8 @@ impl Config {
         }
 
         let content = std::fs::read_to_string(path)
-            .with_context(|| format!("Failed to read {}", path.display()))?;
+            .with_context(|| format!("Failed to read {}", path.display()))
+            .error_code(error_code::CONFIG_READ_FAILED)?;
 
         let filename = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
         let handler: &dyn ConfigFormatHandler = match ext {
@@ -692,7 +712,8 @@ impl Config {
 
     fn load_explicit(path: &Path) -> Result<Self> {
         if !path.exists() {
-            anyhow::bail!("Config file not found: {}", path.display());
+            Err(anyhow::anyhow!("Config file not found: {}", path.display()))
+                .error_code(error_code::CONFIG_NOT_FOUND)?;
         }
         Self::load_from_path(path)
     }
@@ -973,13 +994,15 @@ pub fn init(format: Option<ConfigFileFormat>) -> Result<()> {
     for handler in CONFIG_FORMATS {
         let path = PathBuf::from(handler.filename());
         if path.exists() {
-            anyhow::bail!("{} already exists", handler.filename());
+            Err(anyhow::anyhow!("{} already exists", handler.filename()))
+                .error_code(error_code::CONFIG_ALREADY_EXISTS)?;
         }
     }
     for filename in [TS_CONFIG_FILENAME, JS_CONFIG_FILENAME] {
         let path = PathBuf::from(filename);
         if path.exists() {
-            anyhow::bail!("{filename} already exists");
+            Err(anyhow::anyhow!("{filename} already exists"))
+                .error_code(error_code::CONFIG_ALREADY_EXISTS)?;
         }
     }
 
@@ -1604,7 +1627,7 @@ format = "toml"
         .unwrap();
         let result = Config::load(dir.path(), None);
         assert!(result.is_err());
-        let err = result.unwrap_err().to_string();
+        let err = format!("{:?}", result.unwrap_err());
         assert!(err.contains("multiple config files"));
     }
 
@@ -1964,7 +1987,7 @@ format = "toml"
     fn load_explicit_nonexistent_file() {
         let result = Config::load_explicit(std::path::Path::new("/nonexistent/ferrflow.json"));
         assert!(result.is_err());
-        let err = result.unwrap_err().to_string();
+        let err = format!("{:?}", result.unwrap_err());
         assert!(err.contains("not found") || err.contains("No such file"));
     }
 
@@ -2317,12 +2340,7 @@ format = "toml"
         .unwrap();
         let result = Config::load(dir.path(), None);
         assert!(result.is_err());
-        assert!(
-            result
-                .unwrap_err()
-                .to_string()
-                .contains("multiple config files")
-        );
+        assert!(format!("{:?}", result.unwrap_err()).contains("multiple config files"));
     }
 
     #[test]

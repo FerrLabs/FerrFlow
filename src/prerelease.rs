@@ -1,5 +1,6 @@
 use crate::config::{BranchChannelConfig, ChannelValue, PrereleaseIdentifier};
-use anyhow::{Result, bail};
+use crate::error_code::{self, ErrorCodeExt};
+use anyhow::Result;
 use chrono::Utc;
 
 pub struct PrereleaseContext {
@@ -128,13 +129,15 @@ fn find_max_prerelease_number(search_prefix: &str, tags: &[String]) -> u64 {
 /// Must be non-empty, alphanumeric + hyphens only.
 pub fn validate_channel_name(name: &str) -> Result<()> {
     if name.is_empty() {
-        bail!("Pre-release channel name cannot be empty");
+        Err(anyhow::anyhow!("Pre-release channel name cannot be empty"))
+            .error_code(error_code::PRERELEASE_EMPTY_CHANNEL)?;
     }
     if !name.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') {
-        bail!(
+        Err(anyhow::anyhow!(
             "Invalid channel name '{}': must contain only alphanumeric characters and hyphens",
             name
-        );
+        ))
+        .error_code(error_code::PRERELEASE_INVALID_CHANNEL)?;
     }
     Ok(())
 }

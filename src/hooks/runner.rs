@@ -1,5 +1,6 @@
 use crate::config::OnFailure;
-use anyhow::{Result, bail};
+use crate::error_code::{self, ErrorCodeExt};
+use anyhow::Result;
 use colored::Colorize;
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -97,14 +98,13 @@ fn handle_failure(
         .unwrap_or_else(|| "signal".to_string());
 
     match on_failure {
-        OnFailure::Abort => {
-            bail!(
-                "hook [{}] failed (exit {}): {}",
-                point.label(),
-                code_str,
-                command
-            );
-        }
+        OnFailure::Abort => Err(anyhow::anyhow!(
+            "hook [{}] failed (exit {}): {}",
+            point.label(),
+            code_str,
+            command
+        ))
+        .error_code(error_code::HOOK_FAILED)?,
         OnFailure::Continue => {
             eprintln!(
                 "{}",
@@ -129,7 +129,7 @@ mod tests {
     fn handle_failure_abort_returns_error() {
         let result = handle_failure(HookPoint::PreBump, "echo fail", Some(1), OnFailure::Abort);
         assert!(result.is_err());
-        let msg = result.unwrap_err().to_string();
+        let msg = format!("{:?}", result.unwrap_err());
         assert!(msg.contains("pre_bump"));
         assert!(msg.contains("exit 1"));
         assert!(msg.contains("echo fail"));
@@ -150,6 +150,6 @@ mod tests {
     fn handle_failure_signal_no_exit_code() {
         let result = handle_failure(HookPoint::PreCommit, "killed", None, OnFailure::Abort);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("signal"));
+        assert!(format!("{:?}", result.unwrap_err()).contains("signal"));
     }
 }

@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 use colored::Colorize;
 
 use super::{Forge, MergeRequestResult};
+use crate::error_code::{self, ErrorCodeExt};
 
 pub struct GitLabForge {
     pub token: String,
@@ -40,7 +41,8 @@ impl Forge for GitLabForge {
             .header("PRIVATE-TOKEN", &self.token)
             .header("User-Agent", "ferrflow")
             .send_json(payload)
-            .with_context(|| format!("Failed to create GitLab release for {tag}"))?;
+            .with_context(|| format!("Failed to create GitLab release for {tag}"))
+            .error_code(error_code::GITLAB_CREATE_RELEASE)?;
 
         Ok(())
     }
@@ -74,14 +76,17 @@ impl Forge for GitLabForge {
             .header("PRIVATE-TOKEN", &self.token)
             .header("User-Agent", "ferrflow")
             .send_json(payload)
-            .with_context(|| format!("Failed to create MR from {head} to {base}"))?
+            .with_context(|| format!("Failed to create MR from {head} to {base}"))
+            .error_code(error_code::GITLAB_CREATE_MR)?
             .body_mut()
             .read_json()
-            .with_context(|| "Failed to parse MR response")?;
+            .with_context(|| "Failed to parse MR response")
+            .error_code(error_code::GITLAB_PARSE_MR)?;
 
         let iid = response["iid"]
             .as_u64()
-            .ok_or_else(|| anyhow::anyhow!("MR response missing iid field"))?;
+            .ok_or_else(|| anyhow::anyhow!("MR response missing iid field"))
+            .error_code(error_code::GITLAB_MR_MISSING_FIELD)?;
 
         Ok(MergeRequestResult {
             id: iid,
@@ -121,7 +126,8 @@ impl Forge for GitLabForge {
             .header("PRIVATE-TOKEN", &self.token)
             .header("User-Agent", "ferrflow")
             .send_json(payload)
-            .with_context(|| format!("Failed to merge MR !{}", mr.id))?;
+            .with_context(|| format!("Failed to merge MR !{}", mr.id))
+            .error_code(error_code::GITLAB_MERGE_MR)?;
 
         Ok(())
     }

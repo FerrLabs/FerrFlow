@@ -1,5 +1,6 @@
 use crate::config::{FloatingTagLevel, VersioningStrategy};
 use crate::conventional_commits::BumpType;
+use crate::error_code::{self, ErrorCodeExt};
 use anyhow::Result;
 use chrono::Utc;
 use semver::Version;
@@ -21,7 +22,8 @@ pub fn compute_next_version(
 
 fn bump_semver(current: &str, bump: BumpType) -> Result<String> {
     let mut v = Version::parse(current.trim_start_matches('v'))
-        .map_err(|e| anyhow::anyhow!("Invalid semver '{}': {}", current, e))?;
+        .map_err(|e| anyhow::anyhow!("Invalid semver '{}': {}", current, e))
+        .error_code(error_code::VERSIONING_INVALID_SEMVER)?;
 
     // Strip any existing pre-release/build metadata so the base version is clean.
     // Pre-release suffixes are re-applied later by compute_identifier if needed.
@@ -93,7 +95,8 @@ fn bump_sequential(current: &str) -> Result<String> {
 
 fn bump_zerover(current: &str, bump: BumpType) -> Result<String> {
     let mut v = Version::parse(current.trim_start_matches('v'))
-        .map_err(|e| anyhow::anyhow!("Invalid semver '{}': {}", current, e))?;
+        .map_err(|e| anyhow::anyhow!("Invalid semver '{}': {}", current, e))
+        .error_code(error_code::VERSIONING_INVALID_SEMVER)?;
 
     match bump {
         // Major bump becomes minor in zerover

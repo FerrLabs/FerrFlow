@@ -1,4 +1,5 @@
 use super::VersionFile;
+use crate::error_code::{self, ErrorCodeExt};
 use anyhow::{Context, Result};
 use std::path::Path;
 
@@ -17,13 +18,15 @@ impl VersionFile for GoModVersionFile {
                 "--abbrev=0",
             ])
             .output()
-            .context("Failed to run git describe")?;
+            .context("Failed to run git describe")
+            .error_code(error_code::GOMOD_GIT_DESCRIBE)?;
 
         if !output.status.success() {
-            anyhow::bail!(
+            Err(anyhow::anyhow!(
                 "No git tag matching '*@v*' or 'v*' found. \
                 Create an initial tag first (e.g. git tag mymodule@v0.1.0 or git tag v0.1.0)."
-            );
+            ))
+            .error_code(error_code::GOMOD_NO_TAG)?;
         }
 
         let tag = String::from_utf8_lossy(&output.stdout);
@@ -51,9 +54,10 @@ impl VersionFile for GoModVersionFile {
     }
 
     fn read_version_from_bytes(&self, _content: &[u8], filename: &str) -> Result<String> {
-        anyhow::bail!(
+        Err(anyhow::anyhow!(
             "go.mod version is derived from git tags, cannot parse version from file content ({filename})"
-        )
+        ))
+        .error_code(error_code::GOMOD_UNSUPPORTED)?
     }
 }
 

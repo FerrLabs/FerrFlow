@@ -6,6 +6,7 @@ use colored::Colorize;
 use serde::Serialize;
 
 use crate::config::{Config, FileFormat};
+use crate::error_code::{self, ErrorCodeExt};
 use crate::formats::get_handler;
 use crate::git::{get_repo_root, open_repo};
 
@@ -67,7 +68,10 @@ pub fn parse_repo_spec(spec: &str) -> Result<(RemoteProvider, String, String)> {
             };
             Ok((provider, parts[1].to_string(), parts[2].to_string()))
         }
-        _ => anyhow::bail!("Invalid repo spec: {spec}. Expected owner/repo or host/owner/repo"),
+        _ => Err(anyhow::anyhow!(
+            "Invalid repo spec: {spec}. Expected owner/repo or host/owner/repo"
+        ))
+        .error_code(error_code::VALIDATE_INVALID_REPO_SPEC)?,
     }
 }
 
@@ -98,7 +102,8 @@ impl FileSource for GitHubSource {
                 Ok(Some(body))
             }
             Err(ureq::Error::StatusCode(404)) => Ok(None),
-            Err(e) => Err(anyhow::anyhow!("GitHub API error for {path}: {e}")),
+            Err(e) => Err(anyhow::anyhow!("GitHub API error for {path}: {e}"))
+                .error_code(error_code::VALIDATE_GITHUB_API),
         }
     }
 
@@ -138,7 +143,8 @@ impl FileSource for GitLabSource {
                 Ok(Some(body))
             }
             Err(ureq::Error::StatusCode(404)) => Ok(None),
-            Err(e) => Err(anyhow::anyhow!("GitLab API error for {path}: {e}")),
+            Err(e) => Err(anyhow::anyhow!("GitLab API error for {path}: {e}"))
+                .error_code(error_code::VALIDATE_GITLAB_API),
         }
     }
 
@@ -159,16 +165,19 @@ const CONFIG_FILENAMES: &[&str] = &[
 ];
 
 fn parse_config_content(content: &[u8], filename: &str) -> Result<Config> {
-    let text =
-        std::str::from_utf8(content).with_context(|| format!("Invalid UTF-8 in {filename}"))?;
+    let text = std::str::from_utf8(content)
+        .with_context(|| format!("Invalid UTF-8 in {filename}"))
+        .error_code(error_code::VALIDATE_INVALID_UTF8)?;
     match filename {
-        f if f.ends_with(".toml") => {
-            toml_edit::de::from_str(text).with_context(|| format!("Failed to parse {filename}"))
-        }
-        f if f.ends_with(".json5") => {
-            json5::from_str(text).with_context(|| format!("Failed to parse {filename}"))
-        }
-        _ => serde_json::from_str(text).with_context(|| format!("Failed to parse {filename}")),
+        f if f.ends_with(".toml") => toml_edit::de::from_str(text)
+            .with_context(|| format!("Failed to parse {filename}"))
+            .error_code(error_code::VALIDATE_PARSE_FAILED),
+        f if f.ends_with(".json5") => json5::from_str(text)
+            .with_context(|| format!("Failed to parse {filename}"))
+            .error_code(error_code::VALIDATE_PARSE_FAILED),
+        _ => serde_json::from_str(text)
+            .with_context(|| format!("Failed to parse {filename}"))
+            .error_code(error_code::VALIDATE_PARSE_FAILED),
     }
 }
 
@@ -179,7 +188,8 @@ pub fn load_config_from_source(
     if let Some(path) = explicit_path {
         let content = source
             .read_file(path)?
-            .ok_or_else(|| anyhow::anyhow!("Config file not found: {path}"))?;
+            .ok_or_else(|| anyhow::anyhow!("Config file not found: {path}"))
+            .error_code(error_code::VALIDATE_FILE_NOT_FOUND)?;
         let config = parse_config_content(&content, path)?;
         return Ok((config, path.to_string()));
     }
@@ -189,10 +199,11 @@ pub fn load_config_from_source(
             return Ok((config, filename.to_string()));
         }
     }
-    anyhow::bail!(
+    Err(anyhow::anyhow!(
         "No FerrFlow configuration file found. Looked for: {}",
         CONFIG_FILENAMES.join(", ")
-    )
+    ))
+    .error_code(error_code::VALIDATE_NO_CONFIG)?
 }
 
 // ---------------------------------------------------------------------------
@@ -603,7 +614,8 @@ pub fn run(
     git_ref: Option<&str>,
 ) -> Result<()> {
     if git_ref.is_some() && repo.is_none() {
-        anyhow::bail!("--ref requires --repo");
+        Err(anyhow::anyhow!("--ref requires --repo"))
+            .error_code(error_code::VALIDATE_REF_REQUIRES_REPO)?;
     }
 
     let source: Box<dyn FileSource> = if let Some(repo_spec) = repo {
@@ -992,6 +1004,6 @@ mod tests {
     fn run_ref_without_repo_errors() {
         let result = run(None, false, None, Some("main"));
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("--ref"));
+        assert!(format!("{:?}", result.unwrap_err()).contains("--ref"));
     }
 }

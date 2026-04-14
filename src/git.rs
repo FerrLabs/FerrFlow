@@ -7,15 +7,19 @@ use std::path::{Path, PathBuf};
 
 pub use crate::changelog::GitLog;
 use crate::config::OrphanedTagStrategy;
+use crate::error_code::{self, ErrorCodeExt};
 
 pub fn open_repo(path: &Path) -> Result<Repository> {
-    Repository::discover(path).with_context(|| format!("Not a git repository: {}", path.display()))
+    Repository::discover(path)
+        .with_context(|| format!("Not a git repository: {}", path.display()))
+        .error_code(error_code::GIT_NOT_A_REPO)
 }
 
 pub fn get_repo_root(repo: &Repository) -> Result<PathBuf> {
     repo.workdir()
         .map(|p| p.to_path_buf())
         .ok_or_else(|| anyhow::anyhow!("Bare repositories are not supported"))
+        .error_code(error_code::GIT_BARE_REPO)
 }
 
 /// Resolve the current branch name from HEAD, falling back to CI environment
@@ -524,7 +528,8 @@ pub fn tag_exists(repo: &Repository, tag_name: &str) -> bool {
 
 pub fn create_tag(repo: &Repository, tag_name: &str, message: &str) -> Result<()> {
     if tag_exists(repo, tag_name) {
-        anyhow::bail!("tag {tag_name} already exists");
+        Err(anyhow::anyhow!("tag {tag_name} already exists"))
+            .error_code(error_code::GIT_TAG_EXISTS)?;
     }
     let head = repo.head()?.peel_to_commit()?;
     let sig = signature(repo)?;
@@ -560,8 +565,11 @@ pub fn force_push_tags(repo: &Repository, remote_name: &str, tags: &[&str]) -> R
     let refspec_refs: Vec<&str> = refspecs.iter().map(String::as_str).collect();
     remote
         .push(&refspec_refs, Some(&mut push_options))
-        .with_context(|| "Failed to force-push floating tags")?;
-    check_push_errors(&push_errors).with_context(|| "Floating tag push rejected")?;
+        .with_context(|| "Failed to force-push floating tags")
+        .error_code(error_code::GIT_FLOATING_TAGS)?;
+    check_push_errors(&push_errors)
+        .with_context(|| "Floating tag push rejected")
+        .error_code(error_code::GIT_FLOATING_TAGS)?;
     Ok(())
 }
 
@@ -668,7 +676,8 @@ fn get_authenticated_remote<'a>(
 ) -> Result<git2::Remote<'a>> {
     let remote = repo
         .find_remote(remote_name)
-        .with_context(|| format!("Remote '{}' not found", remote_name))?;
+        .with_context(|| format!("Remote '{}' not found", remote_name))
+        .error_code(error_code::GIT_REMOTE_NOT_FOUND)?;
     if let Some(url) = remote.url()
         && let Some(authed_url) = authenticated_remote_url(url)
     {
@@ -699,7 +708,9 @@ fn check_push_errors(errors: &RefCell<Vec<String>>) -> Result<()> {
         return Ok(());
     }
     let joined = errs.join("; ");
-    anyhow::bail!("Push rejected by remote: {joined}");
+    Err(anyhow::anyhow!("Push rejected by remote: {joined}"))
+        .error_code(error_code::GIT_PUSH_REJECTED)?;
+    Ok(())
 }
 
 pub fn verify_remote_branch(
@@ -721,15 +732,21 @@ pub fn verify_remote_branch(
             if head.oid() == expected_oid {
                 return Ok(());
             }
-            anyhow::bail!(
+            Err(anyhow::anyhow!(
                 "Remote branch '{}' points to {} but expected {}",
                 branch,
                 head.oid(),
                 expected_oid,
-            );
+            ))
+            .error_code(error_code::GIT_PUSH_VERIFY_FAILED)?;
         }
     }
-    anyhow::bail!("Remote branch '{}' not found after push", branch);
+    Err(anyhow::anyhow!(
+        "Remote branch '{}' not found after push",
+        branch
+    ))
+    .error_code(error_code::GIT_REMOTE_BRANCH_NOT_FOUND)?;
+    Ok(())
 }
 
 /// Resolve the local refspec source for a branch push.
@@ -764,8 +781,11 @@ pub fn push_tags(repo: &Repository, remote_name: &str, tags: &[&str]) -> Result<
     let tag_refs: Vec<&str> = tag_refspecs.iter().map(String::as_str).collect();
     remote
         .push(&tag_refs, Some(&mut opts))
-        .with_context(|| "Failed to push tags")?;
-    check_push_errors(&push_errors).with_context(|| "Tag push rejected")?;
+        .with_context(|| "Failed to push tags")
+        .error_code(error_code::GIT_PUSH_TAGS)?;
+    check_push_errors(&push_errors)
+        .with_context(|| "Tag push rejected")
+        .error_code(error_code::GIT_PUSH_TAGS)?;
     Ok(())
 }
 
@@ -777,9 +797,11 @@ fn try_push_branch(repo: &Repository, remote_name: &str, branch: &str) -> Result
     let branch_refspec = format!("{source}:refs/heads/{branch}");
     remote
         .push(&[&branch_refspec], Some(&mut opts))
-        .with_context(|| format!("Failed to push branch '{branch}'"))?;
+        .with_context(|| format!("Failed to push branch '{branch}'"))
+        .error_code(error_code::GIT_PUSH_BRANCH)?;
     check_push_errors(&push_errors)
-        .with_context(|| format!("Branch push rejected for '{branch}'"))?;
+        .with_context(|| format!("Branch push rejected for '{branch}'"))
+        .error_code(error_code::GIT_PUSH_REJECTED)?;
     Ok(())
 }
 
@@ -893,9 +915,11 @@ pub fn push(repo: &Repository, remote_name: &str, branch: &str, tags: &[&str]) -
                 });
 
                 if !is_non_ff || attempt == MAX_PUSH_RETRIES {
-                    return Err(e).with_context(|| {
-                        format!("Failed to push branch '{branch}' after {attempt} attempt(s)")
-                    });
+                    return Err(e)
+                        .with_context(|| {
+                            format!("Failed to push branch '{branch}' after {attempt} attempt(s)")
+                        })
+                        .error_code(error_code::GIT_PUSH_BRANCH);
                 }
 
                 eprintln!(
@@ -909,7 +933,8 @@ pub fn push(repo: &Repository, remote_name: &str, branch: &str, tags: &[&str]) -
     // Verify branch landed on remote
     let head_oid = repo.head()?.peel_to_commit()?.id();
     verify_remote_branch(repo, remote_name, branch, head_oid)
-        .with_context(|| "Post-push verification failed: release commit not on remote branch")?;
+        .with_context(|| "Post-push verification failed: release commit not on remote branch")
+        .error_code(error_code::GIT_PUSH_VERIFY_FAILED)?;
 
     // Push tags separately
     push_tags(repo, remote_name, tags)?;

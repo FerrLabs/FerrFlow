@@ -1,7 +1,8 @@
 use crate::config::Config;
+use crate::error_code::{self, ErrorCodeExt};
 use crate::formats::read_version;
 use crate::git::{find_last_tag_name, get_repo_root, open_repo};
-use anyhow::{Result, bail};
+use anyhow::Result;
 use serde::Serialize;
 
 #[derive(Serialize)]
@@ -26,7 +27,10 @@ pub fn version(
     let config = Config::load(&root, config_path)?;
 
     if config.packages.is_empty() {
-        bail!("No packages configured. Run `ferrflow init` to create a config.");
+        Err(anyhow::anyhow!(
+            "No packages configured. Run `ferrflow init` to create a config."
+        ))
+        .error_code(error_code::QUERY_NO_PACKAGES)?;
     }
 
     if let Some(name) = package {
@@ -34,7 +38,8 @@ pub fn version(
             .packages
             .iter()
             .find(|p| p.name == name)
-            .ok_or_else(|| anyhow::anyhow!("package '{}' not found", name))?;
+            .ok_or_else(|| anyhow::anyhow!("package '{}' not found", name))
+            .error_code(error_code::QUERY_PACKAGE_NOT_FOUND)?;
 
         let version = pkg
             .versioned_files
@@ -113,7 +118,10 @@ pub fn tag(config_path: Option<&std::path::Path>, package: Option<&str>, json: b
     let config = Config::load(&root, config_path)?;
 
     if config.packages.is_empty() {
-        bail!("No packages configured. Run `ferrflow init` to create a config.");
+        Err(anyhow::anyhow!(
+            "No packages configured. Run `ferrflow init` to create a config."
+        ))
+        .error_code(error_code::QUERY_NO_PACKAGES)?;
     }
 
     if let Some(name) = package {
@@ -121,7 +129,8 @@ pub fn tag(config_path: Option<&std::path::Path>, package: Option<&str>, json: b
             .packages
             .iter()
             .find(|p| p.name == name)
-            .ok_or_else(|| anyhow::anyhow!("package '{}' not found", name))?;
+            .ok_or_else(|| anyhow::anyhow!("package '{}' not found", name))
+            .error_code(error_code::QUERY_PACKAGE_NOT_FOUND)?;
 
         let prefix = pkg.tag_prefix(&config.workspace, config.is_monorepo());
         let last_tag = find_last_tag_name(&repo, &prefix, config.workspace.orphaned_tag_strategy)?;
@@ -311,7 +320,7 @@ mod tests {
             version(Some(&config_path), Some("nonexistent"), false)
         });
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("not found"));
+        assert!(format!("{:?}", result.unwrap_err()).contains("not found"));
     }
 
     #[test]
@@ -340,7 +349,7 @@ mod tests {
         let config_path = dir.path().join(".ferrflow");
         let result = with_cwd(dir.path(), || version(Some(&config_path), None, false));
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("No packages"));
+        assert!(format!("{:?}", result.unwrap_err()).contains("No packages"));
     }
 
     // -----------------------------------------------------------------------

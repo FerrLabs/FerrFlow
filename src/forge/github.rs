@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 
 use super::{Forge, MergeRequestResult};
+use crate::error_code::{self, ErrorCodeExt};
 
 pub struct GitHubForge {
     pub token: String,
@@ -26,7 +27,8 @@ impl Forge for GitHubForge {
             .header("X-GitHub-Api-Version", "2022-11-28")
             .header("User-Agent", "ferrflow")
             .send_json(payload)
-            .with_context(|| format!("Failed to create GitHub release for {tag}"))?;
+            .with_context(|| format!("Failed to create GitHub release for {tag}"))
+            .error_code(error_code::GITHUB_CREATE_RELEASE)?;
 
         Ok(())
     }
@@ -40,10 +42,12 @@ impl Forge for GitHubForge {
             .header("X-GitHub-Api-Version", "2022-11-28")
             .header("User-Agent", "ferrflow")
             .call()
-            .with_context(|| "Failed to list GitHub releases")?
+            .with_context(|| "Failed to list GitHub releases")
+            .error_code(error_code::GITHUB_LIST_RELEASES)?
             .body_mut()
             .read_json()
-            .with_context(|| "Failed to parse releases response")?;
+            .with_context(|| "Failed to parse releases response")
+            .error_code(error_code::GITHUB_PARSE_RELEASES)?;
 
         let empty = vec![];
         let releases = response.as_array().unwrap_or(&empty);
@@ -75,7 +79,8 @@ impl Forge for GitHubForge {
             .header("X-GitHub-Api-Version", "2022-11-28")
             .header("User-Agent", "ferrflow")
             .send_json(payload)
-            .with_context(|| format!("Failed to publish GitHub release {release_id}"))?;
+            .with_context(|| format!("Failed to publish GitHub release {release_id}"))
+            .error_code(error_code::GITHUB_PUBLISH_RELEASE)?;
 
         Ok(())
     }
@@ -102,18 +107,22 @@ impl Forge for GitHubForge {
             .header("X-GitHub-Api-Version", "2022-11-28")
             .header("User-Agent", "ferrflow")
             .send_json(payload)
-            .with_context(|| format!("Failed to create PR from {head} to {base}"))?
+            .with_context(|| format!("Failed to create PR from {head} to {base}"))
+            .error_code(error_code::GITHUB_CREATE_PR)?
             .body_mut()
             .read_json()
-            .with_context(|| "Failed to parse PR response")?;
+            .with_context(|| "Failed to parse PR response")
+            .error_code(error_code::GITHUB_PARSE_PR)?;
 
         let number = response["number"]
             .as_u64()
-            .ok_or_else(|| anyhow::anyhow!("PR response missing number field"))?;
+            .ok_or_else(|| anyhow::anyhow!("PR response missing number field"))
+            .error_code(error_code::GITHUB_PR_MISSING_FIELD)?;
 
         let node_id = response["node_id"]
             .as_str()
-            .ok_or_else(|| anyhow::anyhow!("PR response missing node_id field"))?
+            .ok_or_else(|| anyhow::anyhow!("PR response missing node_id field"))
+            .error_code(error_code::GITHUB_PR_MISSING_FIELD)?
             .to_string();
 
         Ok(MergeRequestResult {
@@ -133,16 +142,19 @@ impl Forge for GitHubForge {
             .header("Authorization", &format!("Bearer {}", self.token))
             .header("User-Agent", "ferrflow")
             .send_json(query)
-            .with_context(|| format!("Failed to enable auto-merge on PR #{}", mr.id))?
+            .with_context(|| format!("Failed to enable auto-merge on PR #{}", mr.id))
+            .error_code(error_code::GITHUB_AUTO_MERGE)?
             .body_mut()
             .read_json()
-            .with_context(|| "Failed to parse GraphQL response")?;
+            .with_context(|| "Failed to parse GraphQL response")
+            .error_code(error_code::GITHUB_GRAPHQL_PARSE)?;
 
         if let Some(errors) = response.get("errors") {
             let msg = errors[0]["message"]
                 .as_str()
                 .unwrap_or("unknown GraphQL error");
-            anyhow::bail!("Auto-merge failed on PR #{}: {msg}", mr.id);
+            return Err(anyhow::anyhow!("Auto-merge failed on PR #{}: {msg}", mr.id))
+                .error_code(error_code::GITHUB_AUTO_MERGE_FAILED);
         }
 
         Ok(())

@@ -3,6 +3,7 @@ use crate::config::ReleaseCommitMode;
 use crate::config::ReleaseCommitScope;
 use crate::config::{Config, PackageConfig, VersioningStrategy};
 use crate::conventional_commits::{BumpType, determine_bump};
+use crate::error_code::{self, ErrorCodeExt};
 use crate::forge::{self, ForgeKind};
 use crate::formats::{get_handler, read_version, write_version};
 use crate::git::{
@@ -906,7 +907,8 @@ fn run_release_logic(
                     .packages
                     .iter()
                     .find(|p| &p.name == pkg_name)
-                    .ok_or_else(|| anyhow::anyhow!("package '{pkg_name}' not found in config"))?;
+                    .ok_or_else(|| anyhow::anyhow!("package '{pkg_name}' not found in config"))
+                    .error_code(error_code::MONOREPO_PACKAGE_NOT_FOUND)?;
                 let levels = pkg.effective_floating_tags(&config.workspace);
                 for level in levels {
                     if let Some(truncated) = truncate_version(new_version, *level) {
@@ -929,12 +931,13 @@ fn run_release_logic(
                                 .is_some_and(|(old, new)| new < old)
                         {
                             if !force {
-                                anyhow::bail!(
+                                Err(anyhow::anyhow!(
                                     "Floating tag {} would move backward ({} → {}). Use --force to override.",
                                     float_tag,
                                     old_ver,
                                     new_version,
-                                );
+                                ))
+                                .error_code(error_code::MONOREPO_PUSH_FAILED)?;
                             }
                             eprintln!(
                                 "{}",
