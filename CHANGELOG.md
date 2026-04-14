@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.25.0] - 2026-04-14
+
+### Features
+
+- feat(cli): assign error codes to all error sites (#342)
+
 ## [2.24.0] - 2026-04-14
 
 ### Features
