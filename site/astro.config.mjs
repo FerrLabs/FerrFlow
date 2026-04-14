@@ -85,6 +85,7 @@ export default defineConfig({
           items: [
             { label: 'CLI commands', slug: 'docs/reference/cli' },
             { label: 'Conventional Commits', slug: 'docs/reference/conventional-commits' },
+            { label: 'Error codes', slug: 'docs/reference/errors' },
           ],
         },
         {
