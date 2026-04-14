@@ -1,6 +1,7 @@
 pub mod changelog;
 pub mod config;
 pub mod conventional_commits;
+pub mod error_code;
 pub mod formats;
 pub mod prerelease;
 pub mod versioning;
