@@ -20,11 +20,27 @@ use cli::Cli;
 
 fn main() {
     let cli = Cli::parse();
+    let command_name = cli.command.name();
     let result = cli.run();
-    telemetry::flush();
 
     if let Err(err) = result {
         let code = err.downcast_ref::<error_code::ErrorCode>().copied();
+
+        let error_code_str = code.map(|c| c.to_string());
+        let mut metadata = serde_json::Map::new();
+        metadata.insert("command".into(), command_name.into());
+        if let Some(ref code_str) = error_code_str {
+            metadata.insert("error_code".into(), code_str.clone().into());
+        }
+        telemetry::send_event(
+            telemetry::EventType::Error,
+            Some(serde_json::Value::Object(metadata)),
+            None,
+            None,
+            None,
+        );
+
+        telemetry::flush();
 
         if let Some(code) = code {
             let msgs: Vec<String> = err
@@ -45,6 +61,8 @@ fn main() {
 
         std::process::exit(1);
     }
+
+    telemetry::flush();
 }
 
 #[cfg(test)]

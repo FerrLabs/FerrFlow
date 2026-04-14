@@ -105,6 +105,22 @@ pub enum Commands {
     },
 }
 
+impl Commands {
+    pub fn name(&self) -> &'static str {
+        match self {
+            Commands::Check { .. } => "check",
+            Commands::Release { .. } => "release",
+            Commands::Changelog => "changelog",
+            Commands::Init { .. } => "init",
+            Commands::Status { .. } => "status",
+            Commands::Version { .. } => "version",
+            Commands::Tag { .. } => "tag",
+            Commands::Validate { .. } => "validate",
+            Commands::Completions { .. } => "completions",
+        }
+    }
+}
+
 impl Cli {
     pub fn run(self) -> Result<()> {
         match self.command {
@@ -406,5 +422,20 @@ mod tests {
     #[test]
     fn missing_subcommand_fails() {
         assert!(Cli::try_parse_from(["ferrflow"]).is_err());
+    }
+
+    #[test]
+    fn command_names() {
+        assert_eq!(parse(&["ferrflow", "check"]).command.name(), "check");
+        assert_eq!(parse(&["ferrflow", "release"]).command.name(), "release");
+        assert_eq!(
+            parse(&["ferrflow", "changelog"]).command.name(),
+            "changelog"
+        );
+        assert_eq!(parse(&["ferrflow", "init"]).command.name(), "init");
+        assert_eq!(parse(&["ferrflow", "status"]).command.name(), "status");
+        assert_eq!(parse(&["ferrflow", "version"]).command.name(), "version");
+        assert_eq!(parse(&["ferrflow", "tag"]).command.name(), "tag");
+        assert_eq!(parse(&["ferrflow", "validate"]).command.name(), "validate");
     }
 }
