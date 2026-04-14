@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.24.0] - 2026-04-14
+
+### Features
+
+- feat(cli): add ErrorCode infrastructure for structured error output (#341)
+
 ## [2.23.0] - 2026-04-11
 
 ### Features
