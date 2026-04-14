@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.16.0] - 2026-04-14
+
+### Features
+
+- feat(site): add error codes reference page (#223)
+- feat(site): persist user-selected format preference across pages (#221)
+- feat(site): add French translation for telemetry page (#216)
+- feat(site): add telemetry page to v0 versioned docs (#213)
+
+### Bug Fixes
+
+- fix(site): update docs to reference anonymous_telemetry instead of deprecated telemetry (#220)
+- fix(api): add input validation for commits_count and repo_hash (#219)
+- fix: remove dead package scripts and unused concurrently dependency (#218)
+- fix(playground): rename telemetry to anonymous_telemetry in config types (#217)
+- fix: migrate renovate config to matchCategories syntax (#212)
+- fix(playground): always resolve {name} placeholder in tag template (#211)
+
 ## [1.15.0] - 2026-04-11
 
 ### Features
