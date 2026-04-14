@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.26.0] - 2026-04-14
+
+### Features
+
+- feat(cli): send error telemetry with command name and error code (#343)
+
 ## [2.25.0] - 2026-04-14
 
 ### Features
