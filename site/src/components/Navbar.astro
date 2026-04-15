@@ -5,54 +5,99 @@ import { t, getLocalizedPath } from '../i18n/translations';
 interface Props {
   lang: Lang;
   activePage?: 'home' | 'docs' | 'playground';
+  accent?: string; // CSS color for "Flow" text and logo tint
 }
 
-const { lang, activePage = 'home' } = Astro.props;
+const { lang, activePage = 'home', accent } = Astro.props;
 
 const docsPath = getLocalizedPath('/docs/introduction', lang);
-const homePath = lang === 'en' ? '/' : '/fr/';
+const accentColor = accent || '#e8733a';
 const altLang = lang === 'en' ? 'fr' : 'en';
-const altPath = activePage === 'docs'
-  ? (altLang === 'en' ? '/docs/introduction' : '/fr/docs/introduction')
-  : (altLang === 'en' ? '/' : '/fr/');
+const altPath = altLang === 'en' ? '/' : '/fr/';
 ---
 
 <div class="navbar">
-  <a href={homePath} class="navbar-logo">
-    <img src="/favicon.svg" alt="FerrFlow Logo" class="navbar-logo-img" />
-    <span class="navbar-logo-text">
-      Ferr<span class="navbar-logo-highlight">Flow</span>
-    </span>
+  <div class="navbar-left">
+    <a href={lang === 'en' ? '/' : '/fr/'} class="navbar-logo">
+      <img src="/favicon.svg" alt="FerrFlow Logo" class="navbar-logo-img" style={accent === '#6366F1' ? 'filter: hue-rotate(230deg) saturate(1.5);' : accent === '#10B981' ? 'filter: hue-rotate(140deg) saturate(1.2);' : ''} />
+      <span class="navbar-logo-text">
+        Ferr<span class="navbar-logo-highlight" style={`color: ${accentColor};`}>Flow</span>
+      </span>
+    </a>
+
+    <nav class="navbar-links">
+      <div class="navbar-dropdown" id="products-dropdown">
+        <button class="navbar-dropdown-btn" id="products-btn">
+          Products
+          <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 5l3 2.5L9 5"/></svg>
+        </button>
+        <div class="navbar-dropdown-menu" id="products-menu">
+          <a href="/cli" class="navbar-dropdown-item navbar-dropdown-item--orange">
+            <div class="navbar-dropdown-icon" style="background:#FFE8D2;">
+              <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="#E8733A" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z" /></svg>
+            </div>
+            <div>
+              <div class="navbar-dropdown-name" style="color:#2D1B0E;">CLI</div>
+              <div class="navbar-dropdown-desc" style="color:#9E3F1A;">{t(lang, 'nav.products.cli.desc')}</div>
+            </div>
+          </a>
+          <a href="/issues" class="navbar-dropdown-item navbar-dropdown-item--indigo">
+            <div class="navbar-dropdown-icon" style="background:#E0E7FF;">
+              <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="#6366F1" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+            </div>
+            <div>
+              <div class="navbar-dropdown-name" style="color:#1E1B4B;">Issues</div>
+              <div class="navbar-dropdown-desc" style="color:#4338CA;">{t(lang, 'nav.products.issues.desc')}</div>
+            </div>
+          </a>
+          <a href="/secrets" class="navbar-dropdown-item navbar-dropdown-item--emerald">
+            <div class="navbar-dropdown-icon" style="background:#D1FAE5;">
+              <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="#10B981" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+            </div>
+            <div>
+              <div class="navbar-dropdown-name" style="color:#064E3B;">Secrets</div>
+              <div class="navbar-dropdown-desc" style="color:#065F46;">{t(lang, 'nav.products.secrets.desc')}</div>
+            </div>
+          </a>
+        </div>
+      </div>
+
+      <a href="/pricing" class="navbar-link">Pricing</a>
+      {activePage !== 'docs' && (
+        <a href={docsPath} class="navbar-link">{t(lang, 'nav.docs')}</a>
+      )}
+    </nav>
+  </div>
+
+  <div class="navbar-right">
+  <a href={altPath} class="navbar-lang" title={altLang === 'en' ? 'English' : 'Français'}>
+    {altLang === 'en' ? 'EN' : 'FR'}
   </a>
-  <nav class="navbar-nav">
-    {activePage !== 'docs' && (
-      <a href={docsPath} class="navbar-link">
-        {t(lang, 'nav.docs')}
-      </a>
-    )}
-    <slot />
-    {activePage !== 'playground' && (
-      <a href="https://play.ferrflow.com" class="navbar-playground">
-        {t(lang, 'nav.playground')}
-      </a>
-    )}
-    <a href={altPath} class="navbar-link navbar-lang" title={altLang === 'en' ? 'English' : 'Français'}>
-      {altLang === 'en' ? 'EN' : 'FR'}
-    </a>
-    <a
-      href="https://github.com/FerrFlow-Org/FerrFlow"
-      class="navbar-github"
-      aria-label="GitHub"
-    >
-      <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
-        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
-      </svg>
-    </a>
-    <a href="https://app.ferrflow.com/login" class="navbar-login">
-      {t(lang, 'nav.login')}
-    </a>
-  </nav>
+  <a
+    href="https://github.com/FerrFlow-Org/FerrFlow"
+    class="navbar-github"
+    aria-label="GitHub"
+  >
+    <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+    </svg>
+  </a>
+  </div>
 </div>
+
+<script>
+  const wrap = document.getElementById('products-dropdown');
+  const menu = document.getElementById('products-menu');
+  if (wrap && menu) {
+    wrap.addEventListener('mouseenter', () => menu.classList.add('open'));
+    wrap.addEventListener('mouseleave', () => menu.classList.remove('open'));
+    wrap.querySelector('button')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      menu.classList.toggle('open');
+    });
+    document.addEventListener('click', () => menu.classList.remove('open'));
+  }
+</script>
 
 <style>
   .navbar {
@@ -63,6 +108,12 @@ const altPath = activePage === 'docs'
     height: 100%;
   }
 
+  .navbar-left {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+  }
+
   .navbar-logo {
     display: flex;
     align-items: center;
@@ -71,35 +122,27 @@ const altPath = activePage === 'docs'
     flex-shrink: 0;
   }
 
-  .navbar-logo-img {
-    width: 2rem;
-    height: 2rem;
-  }
+  .navbar-logo-img { width: 1.75rem; height: 1.75rem; }
 
   .navbar-logo-text {
-    font-size: 1.25rem;
+    font-size: 1.15rem;
     font-weight: 900;
     color: #2d1b0e;
     letter-spacing: -0.025em;
     line-height: 1;
   }
 
-  .navbar-logo-highlight {
-    color: #e8733a;
-  }
+  .navbar-logo-highlight { color: #e8733a; }
 
-  .navbar-nav {
+  .navbar-links {
     display: none;
     align-items: center;
-    gap: 1rem;
-    font-size: 0.875rem;
-    color: #6b270e;
+    gap: 1.75rem;
+    font-size: 0.85rem;
   }
 
   @media (min-width: 640px) {
-    .navbar-nav {
-      display: flex;
-    }
+    .navbar-links { display: flex; }
   }
 
   .navbar-link {
@@ -108,28 +151,67 @@ const altPath = activePage === 'docs'
     transition: color 0.15s;
   }
 
-  .navbar-link:hover {
-    color: #2d1b0e;
+  .navbar-link:hover { color: #2d1b0e; }
+
+  .navbar-dropdown { position: relative; }
+
+  .navbar-dropdown-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: #6b270e;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-family: inherit;
+    padding: 0.25rem 0;
   }
 
-  .navbar-lang {
-    font-weight: 500;
+  .navbar-dropdown-btn:hover { color: #2d1b0e; }
+
+  .navbar-dropdown-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 0.75rem);
+    left: -0.5rem;
+    width: 320px;
+    background: white;
+    border: 1px solid #f0e0d0;
+    border-radius: 0.875rem;
+    box-shadow: 0 16px 48px rgba(45, 27, 14, 0.1), 0 2px 8px rgba(45, 27, 14, 0.06);
+    padding: 0.375rem;
+    z-index: 100;
   }
 
-  .navbar-playground {
-    padding: 0.375rem 1rem;
-    border-radius: 9999px;
-    background: #2d1b0e;
-    color: #fff8f2;
-    font-size: 0.875rem;
-    font-weight: 500;
+  .navbar-dropdown-menu.open { display: block; }
+
+  .navbar-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    padding: 0.75rem 0.875rem;
+    border-radius: 0.625rem;
     text-decoration: none;
-    transition: background-color 0.15s;
+    transition: background 0.15s;
   }
 
-  .navbar-playground:hover {
-    background: #4a2a14;
+  .navbar-dropdown-item--orange:hover { background: #FFF8F2; }
+  .navbar-dropdown-item--indigo:hover { background: #EEF2FF; }
+  .navbar-dropdown-item--emerald:hover { background: #ECFDF5; }
+
+  .navbar-dropdown-icon {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.625rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
   }
+
+  .navbar-dropdown-name { font-weight: 700; font-size: 0.85rem; line-height: 1.2; }
+  .navbar-dropdown-desc { font-size: 0.7rem; margin-top: 0.15rem; line-height: 1.3; }
 
   .navbar-github {
     color: #2d1b0e;
@@ -139,23 +221,21 @@ const altPath = activePage === 'docs'
     align-items: center;
   }
 
-  .navbar-github:hover {
-    color: #9e3f1a;
+  .navbar-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
   }
 
-  .navbar-login {
-    padding: 0.375rem 1rem;
-    border-radius: 9999px;
-    border: 1px solid #ffcba4;
-    color: #9e3f1a;
-    font-size: 0.875rem;
-    font-weight: 500;
+  .navbar-lang {
+    color: #6b270e;
     text-decoration: none;
-    transition: all 0.15s;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: color 0.15s;
   }
 
-  .navbar-login:hover {
-    background: #ffe8d2;
-    border-color: #ffb07a;
-  }
+  .navbar-lang:hover { color: #2d1b0e; }
+
+  .navbar-github:hover { color: #9e3f1a; }
 </style>

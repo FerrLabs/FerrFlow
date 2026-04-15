@@ -47,8 +47,8 @@ const docsPath = getLocalizedPath('/docs/introduction', lang);
   ></div>
 
   <div
-    class="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[600px] rounded-full opacity-40"
-    style="background: radial-gradient(ellipse, #FFCBA4 0%, #E0E7FF 40%, transparent 70%);"
+    class="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[600px] rounded-full opacity-40"
+    style="background: radial-gradient(ellipse, #FFCBA4 0%, #FFE8D2 40%, transparent 70%);"
   ></div>
 
   <div class="relative max-w-6xl mx-auto px-6 pt-24 pb-20">
@@ -86,13 +86,13 @@ const docsPath = getLocalizedPath('/docs/introduction', lang);
       <p class="mt-4 text-lg text-primary-700 font-normal max-w-xl mx-auto">{t(lang, 'products.subtitle')}</p>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-      <!-- Versioning card -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <!-- CLI card -->
       <div class="group relative flex flex-col rounded-3xl border-2 border-primary-200 bg-white p-8 hover:border-primary-400 transition-all duration-300 opacity-0 animate-fade-up" style="animation-delay: 0ms; box-shadow: 0 8px 40px rgba(232,115,58,0.08);">
         <div class="flex items-center gap-3 mb-4">
           <div class="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center">
             <svg class="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z" />
             </svg>
           </div>
           <h3 class="text-2xl font-black text-primary-950 tracking-tight">{t(lang, 'products.versioning.name')}</h3>
@@ -114,7 +114,7 @@ const docsPath = getLocalizedPath('/docs/introduction', lang);
           </div>
         </div>
 
-        <a href={docsPath} class="inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:text-primary-800 transition-colors">
+        <a href="/cli" class="inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:text-primary-800 transition-colors">
           {t(lang, 'products.versioning.cta')}
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
         </a>
@@ -129,28 +129,27 @@ const docsPath = getLocalizedPath('/docs/introduction', lang);
             </svg>
           </div>
           <h3 class="text-2xl font-black text-indigo-950 tracking-tight">{t(lang, 'products.issues.name')}</h3>
-          <span class="ml-auto text-xs font-medium text-indigo-600 bg-indigo-100 px-2.5 py-1 rounded-full">{t(lang, 'products.issues.badge')}</span>
         </div>
         <p class="text-indigo-800 font-normal text-sm leading-relaxed mb-6">{t(lang, 'products.issues.desc')}</p>
 
-        <div class="mt-auto rounded-xl overflow-hidden border border-indigo-200 mb-6">
-          <div class="bg-indigo-950 px-4 py-2.5 flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-red-400/70"></span>
-            <span class="w-2.5 h-2.5 rounded-full bg-yellow-400/70"></span>
-            <span class="w-2.5 h-2.5 rounded-full bg-green-400/70"></span>
-            <span class="ml-2 text-xs text-indigo-400 font-mono">ferrflow issues</span>
+        <div class="mt-auto relative rounded-xl overflow-hidden border border-indigo-200 mb-6">
+          <div class="bg-indigo-100 px-4 py-8 text-center" style="filter: blur(1px);">
+            <div class="space-y-2 opacity-40">
+              <div class="h-3 bg-indigo-300 rounded w-3/4 mx-auto"></div>
+              <div class="h-3 bg-indigo-200 rounded w-1/2 mx-auto"></div>
+              <div class="h-3 bg-indigo-300 rounded w-2/3 mx-auto"></div>
+              <div class="h-3 bg-indigo-200 rounded w-1/3 mx-auto"></div>
+            </div>
           </div>
-          <div class="bg-indigo-950 px-4 py-4 font-mono text-xs leading-6">
-            <p><span class="text-indigo-400">$ </span><span class="text-indigo-100">ferrflow issues list</span></p>
-            <p><span class="text-indigo-500">#12 </span><span class="text-green-400">open  </span><span class="text-indigo-200">Add dark mode support</span></p>
-            <p><span class="text-indigo-500">#11 </span><span class="text-red-400">closed</span><span class="text-indigo-300"> Fix login redirect loop</span></p>
-            <p><span class="text-indigo-500">#10 </span><span class="text-green-400">open  </span><span class="text-indigo-200">API rate limiting</span></p>
+          <div class="absolute inset-0 flex items-center justify-center bg-indigo-950/10 backdrop-blur-[2px]">
+            <span class="px-4 py-2 bg-white/90 rounded-lg text-sm font-medium text-indigo-700 shadow-sm">{t(lang, 'products.issues.badge')}</span>
           </div>
         </div>
 
-        <span class="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-400 cursor-default">
+        <a href="/issues" class="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors no-underline">
           {t(lang, 'products.issues.cta')}
-        </span>
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+        </a>
       </div>
 
       <!-- Secrets card -->
@@ -162,62 +161,28 @@ const docsPath = getLocalizedPath('/docs/introduction', lang);
             </svg>
           </div>
           <h3 class="text-2xl font-black text-emerald-950 tracking-tight">{t(lang, 'products.secrets.name')}</h3>
-          <span class="ml-auto text-xs font-medium text-emerald-600 bg-emerald-100 px-2.5 py-1 rounded-full">{t(lang, 'products.secrets.badge')}</span>
         </div>
         <p class="text-emerald-800 font-normal text-sm leading-relaxed mb-6">{t(lang, 'products.secrets.desc')}</p>
 
-        <div class="mt-auto rounded-xl overflow-hidden border border-emerald-200 mb-6">
-          <div class="bg-emerald-950 px-4 py-2.5 flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-red-400/70"></span>
-            <span class="w-2.5 h-2.5 rounded-full bg-yellow-400/70"></span>
-            <span class="w-2.5 h-2.5 rounded-full bg-green-400/70"></span>
-            <span class="ml-2 text-xs text-emerald-400 font-mono">ferrflow secrets</span>
+        <div class="mt-auto relative rounded-xl overflow-hidden border border-emerald-200 mb-6">
+          <div class="bg-emerald-100 px-4 py-8 text-center" style="filter: blur(1px);">
+            <div class="space-y-2 opacity-40">
+              <div class="h-3 bg-emerald-300 rounded w-2/3 mx-auto"></div>
+              <div class="h-3 bg-emerald-200 rounded w-1/2 mx-auto"></div>
+              <div class="h-3 bg-emerald-300 rounded w-3/4 mx-auto"></div>
+            </div>
           </div>
-          <div class="bg-emerald-950 px-4 py-4 font-mono text-xs leading-6">
-            <p><span class="text-emerald-400">$ </span><span class="text-emerald-100">ferrflow secrets set DB_URL=postgres://...</span></p>
-            <p><span class="text-emerald-400">&check; </span><span class="text-emerald-200">Secret DB_URL stored (encrypted)</span></p>
-            <p class="mt-1"><span class="text-emerald-400">$ </span><span class="text-emerald-100">ferrflow secrets inject -- npm test</span></p>
-            <p><span class="text-emerald-500">  Injecting 3 secrets into environment...</span></p>
+          <div class="absolute inset-0 flex items-center justify-center bg-emerald-950/10 backdrop-blur-[2px]">
+            <span class="px-4 py-2 bg-white/90 rounded-lg text-sm font-medium text-emerald-700 shadow-sm">{t(lang, 'products.secrets.badge')}</span>
           </div>
         </div>
 
-        <span class="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-400 cursor-default">
+        <a href="/secrets" class="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 hover:text-emerald-800 transition-colors no-underline">
           {t(lang, 'products.secrets.cta')}
-        </span>
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+        </a>
       </div>
 
-      <!-- Agent card -->
-      <div class="group relative flex flex-col rounded-3xl border-2 border-rose-200 bg-white p-8 hover:border-rose-400 transition-all duration-300 opacity-0 animate-fade-up" style="animation-delay: 300ms; box-shadow: 0 8px 40px rgba(244,63,94,0.08);">
-        <div class="flex items-center gap-3 mb-4">
-          <div class="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center">
-            <svg class="w-5 h-5 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
-            </svg>
-          </div>
-          <h3 class="text-2xl font-black text-rose-950 tracking-tight">{t(lang, 'products.agent.name')}</h3>
-          <span class="ml-auto text-xs font-medium text-rose-500 bg-rose-100 px-2.5 py-1 rounded-full">{t(lang, 'products.agent.badge')}</span>
-        </div>
-        <p class="text-rose-800 font-normal text-sm leading-relaxed mb-6">{t(lang, 'products.agent.desc')}</p>
-
-        <div class="mt-auto rounded-xl overflow-hidden border border-rose-200 mb-6">
-          <div class="bg-rose-950 px-4 py-2.5 flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-red-400/70"></span>
-            <span class="w-2.5 h-2.5 rounded-full bg-yellow-400/70"></span>
-            <span class="w-2.5 h-2.5 rounded-full bg-green-400/70"></span>
-            <span class="ml-2 text-xs text-rose-400 font-mono">ferrflow agent</span>
-          </div>
-          <div class="bg-rose-950 px-4 py-4 font-mono text-xs leading-6">
-            <p><span class="text-rose-400">$ </span><span class="text-rose-100">ferrflow agent "summarize sprint"</span></p>
-            <p><span class="text-rose-500">  Analyzing 14 issues and 23 commits...</span></p>
-            <p><span class="text-rose-400">&star; </span><span class="text-rose-200">3 features shipped, 5 bugs fixed</span></p>
-            <p><span class="text-rose-400">&star; </span><span class="text-rose-200">Velocity: +18% vs last sprint</span></p>
-          </div>
-        </div>
-
-        <span class="inline-flex items-center gap-1.5 text-sm font-medium text-rose-400 cursor-default">
-          {t(lang, 'products.agent.cta')}
-        </span>
-      </div>
     </div>
   </div>
 </section>

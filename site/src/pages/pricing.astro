@@ -1,0 +1,194 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Navbar from '../components/Navbar.astro';
+---
+
+<Layout title="FerrFlow Pricing" description="Free for small teams. Scale with Team and Business plans. Host anywhere." lang="en">
+  <header class="landing-header"><div class="landing-header-inner"><Navbar lang="en" activePage="home" /></div></header>
+
+  <!-- Hero -->
+  <section class="relative overflow-hidden bg-primary-50">
+    <div class="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[600px] rounded-full opacity-40" style="background: radial-gradient(ellipse, #FFCBA4 0%, #FFE8D2 40%, transparent 70%);"></div>
+    <div class="relative max-w-5xl mx-auto px-6 pt-24 pb-20">
+      <h1 class="text-center font-black text-primary-950 tracking-tight leading-[0.95]">
+        <span class="block text-7xl sm:text-8xl md:text-[7rem] lg:text-[8.5rem]">Pay less.</span>
+        <span class="block text-7xl sm:text-8xl md:text-[7rem] lg:text-[8.5rem] italic text-primary-600">Get more.</span>
+      </h1>
+      <p class="mt-8 text-center text-lg sm:text-xl text-primary-700 max-w-2xl mx-auto leading-relaxed">
+        Same plans whether you host on ferrflow.com or on your own infrastructure.
+      </p>
+    </div>
+  </section>
+
+  <!-- Plans -->
+  <section class="py-20 bg-white border-t border-primary-100">
+    <div class="max-w-5xl mx-auto px-6">
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Free -->
+        <div class="rounded-2xl border border-primary-200 bg-white p-8 flex flex-col">
+          <h3 class="text-xl font-bold text-primary-950">Free</h3>
+          <div class="mt-4 mb-6">
+            <span class="text-4xl font-black text-primary-950">$0</span>
+            <span class="text-primary-500 text-sm ml-1">forever</span>
+          </div>
+          <ul class="space-y-2.5 text-sm text-primary-700 mb-8 flex-1">
+            <li class="flex gap-2"><span class="text-primary-600 mt-0.5">&#10003;</span> All CLI versioning features</li>
+            <li class="flex gap-2"><span class="text-primary-600 mt-0.5">&#10003;</span> 1 org, 3 projects, 5 members</li>
+            <li class="flex gap-2"><span class="text-primary-600 mt-0.5">&#10003;</span> 10 secrets per project</li>
+            <li class="flex gap-2"><span class="text-primary-600 mt-0.5">&#10003;</span> 30-day metrics retention</li>
+            <li class="flex gap-2"><span class="text-primary-600 mt-0.5">&#10003;</span> Community support</li>
+          </ul>
+          <a href="https://github.com/FerrFlow-Org/FerrFlow/releases/latest" class="block text-center py-2.5 rounded-lg border border-primary-300 text-primary-800 font-medium text-sm hover:bg-primary-100 transition-colors">Get started</a>
+        </div>
+
+        <!-- Team -->
+        <div class="rounded-2xl border-2 border-primary-400 bg-white p-8 flex flex-col relative">
+          <div class="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-primary-600 text-white text-xs font-medium rounded-full">Popular</div>
+          <h3 class="text-xl font-bold text-primary-950">Team</h3>
+          <div class="mt-4 mb-6">
+            <span class="text-4xl font-black text-primary-950">$19</span>
+            <span class="text-primary-500 text-sm ml-1">/ month</span>
+          </div>
+          <ul class="space-y-2.5 text-sm text-primary-700 mb-8 flex-1">
+            <li class="flex gap-2"><span class="text-primary-600 mt-0.5">&#10003;</span> Everything in Free</li>
+            <li class="flex gap-2"><span class="text-primary-600 mt-0.5">&#10003;</span> 5 orgs, 20 projects, 15 members</li>
+            <li class="flex gap-2"><span class="text-primary-600 mt-0.5">&#10003;</span> Unlimited secrets + rotation</li>
+            <li class="flex gap-2"><span class="text-primary-600 mt-0.5">&#10003;</span> AI agent + webhooks + templates</li>
+            <li class="flex gap-2"><span class="text-primary-600 mt-0.5">&#10003;</span> 1-year metrics retention</li>
+            <li class="flex gap-2"><span class="text-primary-600 mt-0.5">&#10003;</span> Priority support</li>
+          </ul>
+          <a href="https://app.ferrflow.com/signup" class="block text-center py-2.5 rounded-lg bg-primary-600 text-white font-medium text-sm hover:bg-primary-700 transition-colors">Start free trial</a>
+        </div>
+
+        <!-- Business -->
+        <div class="rounded-2xl border border-primary-200 bg-white p-8 flex flex-col">
+          <h3 class="text-xl font-bold text-primary-950">Business</h3>
+          <div class="mt-4 mb-6">
+            <span class="text-4xl font-black text-primary-950">$79</span>
+            <span class="text-primary-500 text-sm ml-1">/ month</span>
+          </div>
+          <ul class="space-y-2.5 text-sm text-primary-700 mb-8 flex-1">
+            <li class="flex gap-2"><span class="text-primary-600 mt-0.5">&#10003;</span> Everything in Team</li>
+            <li class="flex gap-2"><span class="text-primary-600 mt-0.5">&#10003;</span> Unlimited orgs, projects, members</li>
+            <li class="flex gap-2"><span class="text-primary-600 mt-0.5">&#10003;</span> SSO / SAML + IP allowlist</li>
+            <li class="flex gap-2"><span class="text-primary-600 mt-0.5">&#10003;</span> Custom fields + SLA tracking</li>
+            <li class="flex gap-2"><span class="text-primary-600 mt-0.5">&#10003;</span> Unlimited metrics retention</li>
+            <li class="flex gap-2"><span class="text-primary-600 mt-0.5">&#10003;</span> Dedicated support</li>
+          </ul>
+          <a href="https://app.ferrflow.com/signup" class="block text-center py-2.5 rounded-lg border border-primary-300 text-primary-800 font-medium text-sm hover:bg-primary-100 transition-colors">Get started</a>
+        </div>
+      </div>
+
+      <div class="mt-8 p-4 rounded-xl bg-primary-100/50 text-center">
+        <p class="text-sm text-primary-700"><strong>Self-hosted?</strong> Same plans, same pricing, your infrastructure. Deploy with Docker Compose or Helm. <a href="/docs/introduction" class="text-primary-600 underline hover:text-primary-800">Learn more</a></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Compare plans -->
+  <section class="py-20 bg-primary-50 border-t border-primary-100">
+    <div class="max-w-4xl mx-auto px-6">
+      <h2 class="text-3xl sm:text-4xl font-black text-primary-950 text-center tracking-tight mb-12">Compare plans</h2>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-primary-200">
+              <th class="text-left py-3 pr-4 font-medium text-primary-500 w-1/4"></th>
+              <th class="text-center py-3 px-4 font-bold text-primary-950">Free</th>
+              <th class="text-center py-3 px-4 font-bold text-primary-600">Team</th>
+              <th class="text-center py-3 px-4 font-bold text-primary-950">Business</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-b border-primary-100 bg-primary-50/50">
+              <td class="py-3 pr-4 font-bold text-primary-900"><div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-primary-100 flex items-center justify-center shrink-0"><svg class="w-2.5 h-2.5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3" /></svg></div>CLI</div></td>
+              <td></td><td></td><td></td>
+            </tr>
+            <tr class="border-b border-primary-50"><td class="py-2 pr-4 text-primary-700">Versioning &amp; releases</td><td class="text-center text-green-500">&#10003;</td><td class="text-center text-green-500">&#10003;</td><td class="text-center text-green-500">&#10003;</td></tr>
+            <tr class="border-b border-primary-50"><td class="py-2 pr-4 text-primary-700">Monorepo support</td><td class="text-center text-green-500">&#10003;</td><td class="text-center text-green-500">&#10003;</td><td class="text-center text-green-500">&#10003;</td></tr>
+            <tr class="border-b border-primary-50"><td class="py-2 pr-4 text-primary-700">PR preview comments</td><td class="text-center text-green-500">&#10003;</td><td class="text-center text-green-500">&#10003;</td><td class="text-center text-green-500">&#10003;</td></tr>
+            <tr class="border-b border-primary-50"><td class="py-2 pr-4 text-primary-700">Advanced insights</td><td class="text-center text-primary-300">&mdash;</td><td class="text-center text-green-500">&#10003;</td><td class="text-center text-green-500">&#10003;</td></tr>
+            <tr class="border-b border-primary-50"><td class="py-2 pr-4 text-primary-700">Metrics retention</td><td class="text-center text-primary-500">30 days</td><td class="text-center text-primary-500">1 year</td><td class="text-center text-primary-500">Unlimited</td></tr>
+
+            <tr class="border-b border-indigo-200 bg-indigo-50/50">
+              <td class="py-3 pr-4 font-bold text-primary-900"><div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-indigo-100 flex items-center justify-center shrink-0"><svg class="w-2.5 h-2.5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2" /></svg></div>Issues</div></td>
+              <td></td><td></td><td></td>
+            </tr>
+            <tr class="border-b border-primary-50"><td class="py-2 pr-4 text-primary-700">Organizations</td><td class="text-center text-primary-500">1</td><td class="text-center text-primary-500">5</td><td class="text-center text-primary-500">Unlimited</td></tr>
+            <tr class="border-b border-primary-50"><td class="py-2 pr-4 text-primary-700">Projects</td><td class="text-center text-primary-500">3</td><td class="text-center text-primary-500">20</td><td class="text-center text-primary-500">Unlimited</td></tr>
+            <tr class="border-b border-primary-50"><td class="py-2 pr-4 text-primary-700">Members</td><td class="text-center text-primary-500">5</td><td class="text-center text-primary-500">15</td><td class="text-center text-primary-500">Unlimited</td></tr>
+            <tr class="border-b border-primary-50"><td class="py-2 pr-4 text-primary-700">Web dashboard</td><td class="text-center text-green-500">&#10003;</td><td class="text-center text-green-500">&#10003;</td><td class="text-center text-green-500">&#10003;</td></tr>
+            <tr class="border-b border-primary-50"><td class="py-2 pr-4 text-primary-700">Webhooks</td><td class="text-center text-primary-300">&mdash;</td><td class="text-center text-green-500">&#10003;</td><td class="text-center text-green-500">&#10003;</td></tr>
+            <tr class="border-b border-primary-50"><td class="py-2 pr-4 text-primary-700">Issue templates</td><td class="text-center text-primary-300">&mdash;</td><td class="text-center text-green-500">&#10003;</td><td class="text-center text-green-500">&#10003;</td></tr>
+            <tr class="border-b border-primary-50"><td class="py-2 pr-4 text-primary-700">Export CSV / JSON</td><td class="text-center text-primary-300">&mdash;</td><td class="text-center text-green-500">&#10003;</td><td class="text-center text-green-500">&#10003;</td></tr>
+            <tr class="border-b border-primary-50"><td class="py-2 pr-4 text-primary-700">SSO / SAML</td><td class="text-center text-primary-300">&mdash;</td><td class="text-center text-primary-300">&mdash;</td><td class="text-center text-green-500">&#10003;</td></tr>
+            <tr class="border-b border-primary-50"><td class="py-2 pr-4 text-primary-700">Custom fields</td><td class="text-center text-primary-300">&mdash;</td><td class="text-center text-primary-300">&mdash;</td><td class="text-center text-green-500">&#10003;</td></tr>
+
+            <tr class="border-b border-emerald-200 bg-emerald-50/50">
+              <td class="py-3 pr-4 font-bold text-primary-900"><div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-emerald-100 flex items-center justify-center shrink-0"><svg class="w-2.5 h-2.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg></div>Secrets</div></td>
+              <td></td><td></td><td></td>
+            </tr>
+            <tr class="border-b border-primary-50"><td class="py-2 pr-4 text-primary-700">Secrets per project</td><td class="text-center text-primary-500">10</td><td class="text-center text-primary-500">Unlimited</td><td class="text-center text-primary-500">Unlimited</td></tr>
+            <tr class="border-b border-primary-50"><td class="py-2 pr-4 text-primary-700">CI injection</td><td class="text-center text-green-500">&#10003;</td><td class="text-center text-green-500">&#10003;</td><td class="text-center text-green-500">&#10003;</td></tr>
+            <tr class="border-b border-primary-50"><td class="py-2 pr-4 text-primary-700">Rotation with history</td><td class="text-center text-primary-300">&mdash;</td><td class="text-center text-green-500">&#10003;</td><td class="text-center text-green-500">&#10003;</td></tr>
+            <tr class="border-b border-primary-50"><td class="py-2 pr-4 text-primary-700">Cross-project sharing</td><td class="text-center text-primary-300">&mdash;</td><td class="text-center text-primary-300">&mdash;</td><td class="text-center text-green-500">&#10003;</td></tr>
+            <tr class="border-b border-primary-50"><td class="py-2 pr-4 text-primary-700">IP allowlist</td><td class="text-center text-primary-300">&mdash;</td><td class="text-center text-primary-300">&mdash;</td><td class="text-center text-green-500">&#10003;</td></tr>
+            <tr class="border-b border-primary-50"><td class="py-2 pr-4 text-primary-700">Granular role permissions</td><td class="text-center text-primary-300">&mdash;</td><td class="text-center text-primary-300">&mdash;</td><td class="text-center text-green-500">&#10003;</td></tr>
+            <tr class="border-b border-primary-50"><td class="py-2 pr-4 text-primary-700">SLA tracking</td><td class="text-center text-primary-300">&mdash;</td><td class="text-center text-primary-300">&mdash;</td><td class="text-center text-green-500">&#10003;</td></tr>
+            <tr class="border-b border-primary-50"><td class="py-2 pr-4 text-primary-700">Advanced audit log</td><td class="text-center text-primary-300">&mdash;</td><td class="text-center text-primary-300">&mdash;</td><td class="text-center text-green-500">&#10003;</td></tr>
+
+            <tr class="border-b border-rose-200 bg-rose-50/50">
+              <td class="py-3 pr-4 font-bold text-primary-900"><div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-rose-100 flex items-center justify-center shrink-0"><svg class="w-2.5 h-2.5 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg></div>AI Agent</div></td>
+              <td></td><td></td><td></td>
+            </tr>
+            <tr class="border-b border-primary-50"><td class="py-2 pr-4 text-primary-700">Issue classification</td><td class="text-center text-primary-300">&mdash;</td><td class="text-center text-green-500">&#10003;</td><td class="text-center text-green-500">&#10003;</td></tr>
+            <tr class="border-b border-primary-50"><td class="py-2 pr-4 text-primary-700">Sprint summaries</td><td class="text-center text-primary-300">&mdash;</td><td class="text-center text-green-500">&#10003;</td><td class="text-center text-green-500">&#10003;</td></tr>
+            <tr class="border-b border-primary-50"><td class="py-2 pr-4 text-primary-700">Priority suggestions</td><td class="text-center text-primary-300">&mdash;</td><td class="text-center text-green-500">&#10003;</td><td class="text-center text-green-500">&#10003;</td></tr>
+            <tr class="border-b border-primary-50"><td class="py-2 pr-4 text-primary-700">Velocity insights</td><td class="text-center text-primary-300">&mdash;</td><td class="text-center text-green-500">&#10003;</td><td class="text-center text-green-500">&#10003;</td></tr>
+
+            <tr class="border-b border-primary-50"><td class="py-2 pr-4 text-primary-700">API rate limit (per org)</td><td class="text-center text-primary-500">60/min</td><td class="text-center text-primary-500">300/min</td><td class="text-center text-primary-500">600/min</td></tr>
+            <tr class="border-b border-primary-100 bg-primary-50/30">
+              <td class="py-3 pr-4 font-bold text-primary-900"><div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-primary-100 flex items-center justify-center shrink-0"><svg class="w-2.5 h-2.5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" /></svg></div>Support</div></td>
+              <td></td><td></td><td></td>
+            </tr>
+            <tr class="border-b border-primary-50"><td class="py-2 pr-4 text-primary-700">Community support</td><td class="text-center text-green-500">&#10003;</td><td class="text-center text-green-500">&#10003;</td><td class="text-center text-green-500">&#10003;</td></tr>
+            <tr><td class="py-2 pr-4 text-primary-700">Priority support</td><td class="text-center text-primary-300">&mdash;</td><td class="text-center text-green-500">&#10003;</td><td class="text-center text-green-500">&#10003;</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="bg-primary-950">
+    <div class="max-w-4xl mx-auto px-6 py-24 text-center">
+      <h2 class="text-4xl sm:text-5xl font-black text-primary-50 tracking-tight">Still have questions?</h2>
+      <p class="mt-4 text-lg text-primary-400">Start for free, upgrade when you need to. No credit card required.</p>
+      <div class="mt-10 flex gap-4 justify-center">
+        <a href="https://github.com/FerrFlow-Org/FerrFlow/releases/latest" class="px-8 py-4 rounded-full bg-primary-600 text-white font-medium text-lg hover:bg-primary-500 transition-colors shadow-lg shadow-primary-900/50">Get started free</a>
+        <a href="https://github.com/FerrFlow-Org/FerrFlow/discussions" class="px-8 py-4 rounded-full border border-primary-700 text-primary-300 font-medium text-lg hover:border-primary-500 hover:text-primary-100 transition-colors">Talk to us</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="bg-primary-50 border-t border-primary-100">
+    <div class="max-w-6xl mx-auto px-6 py-10 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-primary-500">
+      <span class="font-bold text-primary-800 tracking-tight">Ferr<span class="text-primary-600">Flow</span></span>
+      <span>&copy; 2026 FerrFlow. All rights reserved.</span>
+      <nav class="flex gap-6">
+        <a href="/docs/introduction" class="hover:text-primary-800 transition-colors">Documentation</a>
+        <a href="https://github.com/FerrFlow-Org/FerrFlow" class="hover:text-primary-800 transition-colors">GitHub</a>
+      </nav>
+    </div>
+  </footer>
+</Layout>
+
+<style>
+  .landing-header { position: sticky; top: 0; z-index: 50; background: rgba(255, 248, 242, 0.9); backdrop-filter: blur(4px); border-bottom: 1px solid #ffe8d2; }
+  .landing-header-inner { max-width: 72rem; margin: 0 auto; padding: 0 1.5rem; height: 4rem; display: flex; align-items: center; }
+  details summary::-webkit-details-marker { display: none; }
+  details summary { list-style: none; }
+</style>
