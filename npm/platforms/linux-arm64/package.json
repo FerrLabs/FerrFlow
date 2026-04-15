@@ -3,7 +3,7 @@
     "arm64"
   ],
   "description": "FerrFlow Linux arm64 binary",
-  "license": "MIT",
+  "license": "MPL-2.0",
   "name": "@ferrflow/linux-arm64",
   "os": [
     "linux"
