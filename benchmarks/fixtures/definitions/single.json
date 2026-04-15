@@ -10,13 +10,6 @@
   "tool_configs": {
     "ferrflow": {
       "ferrflow.json": "{\"package\":[{\"name\":\"myapp\",\"path\":\".\",\"changelog\":\"CHANGELOG.md\",\"versioned_files\":[{\"path\":\"package.json\",\"format\":\"json\"}]}]}"
-    },
-    "semantic-release": {
-      ".releaserc.json": "{\"branches\":[\"main\"],\"plugins\":[\"@semantic-release/commit-analyzer\",\"@semantic-release/release-notes-generator\"]}"
-    },
-    "changesets": {
-      ".changeset/config.json": "{\"$schema\":\"https://unpkg.com/@changesets/config@3.1.1/schema.json\",\"changelog\":false,\"commit\":false,\"access\":\"restricted\",\"baseBranch\":\"main\"}",
-      "package.json": "{\"name\":\"benchmark\",\"private\":true,\"version\":\"0.1.0\"}"
     }
   }
 }
