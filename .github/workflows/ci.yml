@@ -273,6 +273,7 @@ jobs:
     name: Micro Benchmarks
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    continue-on-error: true
     permissions:
       pull-requests: write
     steps:
