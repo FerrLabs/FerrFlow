@@ -38,6 +38,9 @@ pub enum Commands {
         /// Pre-release channel override (e.g. beta, rc, dev)
         #[arg(long)]
         channel: Option<String>,
+        /// Post a preview comment on the current PR/MR
+        #[arg(long)]
+        comment: bool,
     },
     /// Bump versions, update changelogs, create tags and push
     Release {
@@ -124,11 +127,16 @@ impl Commands {
 impl Cli {
     pub fn run(self) -> Result<()> {
         match self.command {
-            Commands::Check { json, channel } => crate::monorepo::check(
+            Commands::Check {
+                json,
+                channel,
+                comment,
+            } => crate::monorepo::check(
                 self.config.as_deref(),
                 self.verbose,
                 json,
                 channel.as_deref(),
+                comment,
             ),
             Commands::Release {
                 force,
@@ -194,7 +202,8 @@ mod tests {
             cli.command,
             Commands::Check {
                 json: false,
-                channel: None
+                channel: None,
+                comment: false,
             }
         ));
     }
