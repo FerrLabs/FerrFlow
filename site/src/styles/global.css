@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 @theme {
+  /* Versioning — Orange */
   --color-primary-50: #FFF8F2;
   --color-primary-100: #FFE8D2;
   --color-primary-200: #FFCBA4;
@@ -12,6 +13,19 @@
   --color-primary-800: #9E3F1A;
   --color-primary-900: #6B270E;
   --color-primary-950: #2D1B0E;
+
+  /* Issues — Indigo */
+  --color-indigo-50: #EEF2FF;
+  --color-indigo-100: #E0E7FF;
+  --color-indigo-200: #C7D2FE;
+  --color-indigo-300: #A5B4FC;
+  --color-indigo-400: #818CF8;
+  --color-indigo-500: #6366F1;
+  --color-indigo-600: #4F46E5;
+  --color-indigo-700: #4338CA;
+  --color-indigo-800: #3730A3;
+  --color-indigo-900: #312E81;
+  --color-indigo-950: #1E1B4B;
 
   --font-family-display: 'Fraunces', Georgia, serif;
   --font-family-mono: 'DM Mono', ui-monospace, monospace;

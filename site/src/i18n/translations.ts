@@ -21,19 +21,31 @@ export function getLocalizedPath(path: string, lang: Lang): string {
 const ui = {
   en: {
     // Meta
-    'meta.title': 'FerrFlow — Automated Semantic Versioning',
-    'meta.description': 'Universal semantic versioning for monorepos and classic repos',
+    'meta.title': 'FerrFlow — Developer Platform',
+    'meta.description': 'Versioning, issues, and automation for developer teams.',
 
     // Nav
     'nav.docs': 'Docs',
     'nav.playground': 'Playground',
+    'nav.login': 'Log in',
 
     // Hero
-    'hero.headline1': 'Release.',
-    'hero.headline2': 'Automatically.',
-    'hero.subheading': 'FerrFlow reads your commit history, picks the right version bump, writes your changelog, and publishes a tagged release — for any language, any repo layout.',
+    'hero.headline1': 'Ship faster.',
+    'hero.headline2': 'Stay organized.',
+    'hero.subheading': 'FerrFlow is a developer platform that automates releases, tracks issues, and keeps your workflow in sync — from commit to deployment.',
     'hero.cta.download': 'Download latest release',
     'hero.cta.docs': 'Read the docs',
+
+    // Products
+    'products.title': 'One platform, multiple tools',
+    'products.subtitle': 'Each tool works standalone. Together, they cover your entire release workflow.',
+    'products.versioning.name': 'Versioning',
+    'products.versioning.desc': 'Automated semantic versioning for monorepos and classic repos. Reads your commits, picks the right bump, writes changelogs, and publishes releases.',
+    'products.versioning.cta': 'Get started',
+    'products.issues.name': 'Issues',
+    'products.issues.desc': 'CLI-native issue tracking with a clean web dashboard. Create tickets from your terminal, triage from the browser, automate with AI.',
+    'products.issues.cta': 'Coming soon',
+    'products.issues.badge': 'Coming soon',
 
     // Terminal
     'terminal.scanning': 'Scanning packages/api ...',
@@ -73,7 +85,7 @@ const ui = {
     // CTA
     'cta.title1': 'Ready to ship',
     'cta.title2': 'without the ceremony?',
-    'cta.subtitle': 'Free and open source. Runs in your own CI. No data leaves your infrastructure.',
+    'cta.subtitle': 'Open source. Runs in your own CI. No data leaves your infrastructure.',
     'cta.button': 'View on GitHub',
 
     // Footer
@@ -83,19 +95,31 @@ const ui = {
   },
   fr: {
     // Meta
-    'meta.title': 'FerrFlow — Versionnage s\u00e9mantique automatis\u00e9',
-    'meta.description': 'Versionnage s\u00e9mantique universel pour monorepos et repos classiques',
+    'meta.title': 'FerrFlow — Plateforme D\u00e9veloppeur',
+    'meta.description': 'Versioning, issues et automatisation pour les \u00e9quipes de d\u00e9veloppement.',
 
     // Nav
     'nav.docs': 'Docs',
     'nav.playground': 'Playground',
+    'nav.login': 'Connexion',
 
     // Hero
-    'hero.headline1': 'Publiez.',
-    'hero.headline2': 'Automatiquement.',
-    'hero.subheading': "FerrFlow analyse votre historique de commits, d\u00e9termine le bon incr\u00e9ment de version, g\u00e9n\u00e8re votre changelog et publie une release tagg\u00e9e — quel que soit le langage ou la structure du repo.",
+    'hero.headline1': 'Livrez vite.',
+    'hero.headline2': 'Restez organis\u00e9.',
+    'hero.subheading': "FerrFlow est une plateforme d\u00e9veloppeur qui automatise les releases, suit les issues et synchronise votre workflow — du commit au d\u00e9ploiement.",
     'hero.cta.download': 'T\u00e9l\u00e9charger la derni\u00e8re version',
     'hero.cta.docs': 'Lire la documentation',
+
+    // Products
+    'products.title': 'Une plateforme, plusieurs outils',
+    'products.subtitle': 'Chaque outil fonctionne seul. Ensemble, ils couvrent tout votre workflow de release.',
+    'products.versioning.name': 'Versioning',
+    'products.versioning.desc': 'Versionnage s\u00e9mantique automatis\u00e9 pour monorepos et repos classiques. Analyse vos commits, d\u00e9termine le bon incr\u00e9ment, g\u00e9n\u00e8re les changelogs et publie les releases.',
+    'products.versioning.cta': 'Commencer',
+    'products.issues.name': 'Issues',
+    'products.issues.desc': 'Suivi de tickets natif au CLI avec un dashboard web. Cr\u00e9ez des tickets depuis votre terminal, triez depuis le navigateur, automatisez avec l\'IA.',
+    'products.issues.cta': 'Bient\u00f4t disponible',
+    'products.issues.badge': 'Bient\u00f4t',
 
     // Terminal
     'terminal.scanning': 'Analyse de packages/api ...',
