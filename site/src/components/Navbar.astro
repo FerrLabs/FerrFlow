@@ -21,11 +21,20 @@ const headerBorder = accent === '#6366F1' ? '#E0E7FF'
 const logoFilter = accent === '#6366F1' ? 'hue-rotate(230deg) saturate(1.5)'
                  : accent === '#10B981' ? 'hue-rotate(140deg) saturate(1.2)'
                  :                        'none';
+const navText = accent === '#6366F1' ? '#4338CA'
+              : accent === '#10B981' ? '#065F46'
+              :                        '#6b270e';
+const navTextHover = accent === '#6366F1' ? '#1E1B4B'
+                   : accent === '#10B981' ? '#064E3B'
+                   :                        '#2d1b0e';
+const navFerr = accent === '#6366F1' ? '#1E1B4B'
+              : accent === '#10B981' ? '#064E3B'
+              :                        '#2d1b0e';
 const altLang = lang === 'en' ? 'fr' : 'en';
 const altPath = altLang === 'en' ? '/' : '/fr/';
 ---
 
-<div class="navbar" id="navbar-root" data-accent={accentColor} data-header-bg={headerBg} data-header-border={headerBorder} data-logo-filter={logoFilter}>
+<div class="navbar" id="navbar-root" data-accent={accentColor} data-header-bg={headerBg} data-header-border={headerBorder} data-logo-filter={logoFilter} style={`--nav-text: ${navText}; --nav-text-hover: ${navTextHover}; --nav-ferr: ${navFerr};`}>
   <div class="navbar-left">
     <a href={lang === 'en' ? '/' : '/fr/'} class="navbar-logo">
       <svg class="navbar-logo-img" id="logo-icon" width="28" height="28" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-label="FerrFlow Logo">
@@ -72,11 +81,19 @@ const altPath = altLang === 'en' ? '/' : '/fr/';
           if (same) header.classList.add('no-transition');
         }
 
-        // Logo icon color transition (same principle as Flow text)
+        // Logo icon color transition
         if (icon) {
-          icon.style.setProperty('--prev-accent', prevAccent);
-          icon.style.setProperty('--accent', accent);
-          if (same) icon.classList.add('no-transition');
+          icon.style.setProperty('--icon-color', prevAccent);
+          if (same) {
+            icon.classList.add('no-transition');
+            icon.style.setProperty('--icon-color', accent);
+          } else {
+            requestAnimationFrame(function() {
+              requestAnimationFrame(function() {
+                icon.style.setProperty('--icon-color', accent);
+              });
+            });
+          }
         }
 
         // Save current
@@ -201,31 +218,18 @@ const altPath = altLang === 'en' ? '/' : '/fr/';
   .navbar-logo-img {
     width: 1.75rem;
     height: 1.75rem;
-    --icon-fill: 0%;
-    color: color-mix(in srgb, var(--accent, #e8733a) var(--icon-fill), var(--prev-accent, #e8733a));
-    animation: icon-fill 0.9s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    color: var(--icon-color, #e8733a);
+    transition: color 0.9s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .navbar-logo-img.no-transition {
-    --icon-fill: 100%;
-    animation: none;
-  }
-
-  @keyframes icon-fill {
-    0%   { --icon-fill: 0%; }
-    100% { --icon-fill: 100%; }
-  }
-
-  @property --icon-fill {
-    syntax: '<percentage>';
-    inherits: false;
-    initial-value: 0%;
+    transition: none;
   }
 
   .navbar-logo-text {
     font-size: 1.15rem;
     font-weight: 900;
-    color: #2d1b0e;
+    color: var(--nav-ferr, #2d1b0e);
     letter-spacing: -0.025em;
     line-height: 1;
   }
@@ -267,12 +271,12 @@ const altPath = altLang === 'en' ? '/' : '/fr/';
   }
 
   .navbar-link {
-    color: #6b270e;
+    color: var(--nav-text, #6b270e);
     text-decoration: none;
     transition: color 0.15s;
   }
 
-  .navbar-link:hover { color: #2d1b0e; }
+  .navbar-link:hover { color: var(--nav-text-hover, #2d1b0e); }
 
   .navbar-dropdown { position: relative; }
 
@@ -280,7 +284,7 @@ const altPath = altLang === 'en' ? '/' : '/fr/';
     display: flex;
     align-items: center;
     gap: 0.35rem;
-    color: #6b270e;
+    color: var(--nav-text, #6b270e);
     background: none;
     border: none;
     cursor: pointer;
@@ -289,7 +293,7 @@ const altPath = altLang === 'en' ? '/' : '/fr/';
     padding: 0.25rem 0;
   }
 
-  .navbar-dropdown-btn:hover { color: #2d1b0e; }
+  .navbar-dropdown-btn:hover { color: var(--nav-text-hover, #2d1b0e); }
 
   .navbar-dropdown-menu {
     display: none;
@@ -308,10 +312,10 @@ const altPath = altLang === 'en' ? '/' : '/fr/';
   .navbar-dropdown-menu::before {
     content: '';
     position: absolute;
-    top: -0.75rem;
-    left: 0;
-    width: 100%;
-    height: 0.75rem;
+    top: -1rem;
+    left: -1rem;
+    right: -1rem;
+    height: 1.5rem;
   }
 
   .navbar-dropdown-menu.open { display: block; }
@@ -344,7 +348,7 @@ const altPath = altLang === 'en' ? '/' : '/fr/';
   .navbar-dropdown-desc { font-size: 0.7rem; margin-top: 0.15rem; line-height: 1.3; }
 
   .navbar-github {
-    color: #2d1b0e;
+    color: var(--nav-ferr, #2d1b0e);
     text-decoration: none;
     transition: color 0.15s;
     display: flex;
@@ -358,7 +362,7 @@ const altPath = altLang === 'en' ? '/' : '/fr/';
   }
 
   .navbar-lang {
-    color: #6b270e;
+    color: var(--nav-text, #6b270e);
     text-decoration: none;
     font-size: 0.85rem;
     font-weight: 500;
@@ -370,7 +374,7 @@ const altPath = altLang === 'en' ? '/' : '/fr/';
     padding: 0;
   }
 
-  .navbar-lang:hover { color: #2d1b0e; }
+  .navbar-lang:hover { color: var(--nav-text-hover, #2d1b0e); }
 
-  .navbar-github:hover { color: #9e3f1a; }
+  .navbar-github:hover { color: var(--nav-text, #6b270e); }
 </style>
