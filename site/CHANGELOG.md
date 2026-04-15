@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.17.0] - 2026-04-15
+
+### Features
+
+- feat(site): document ferrflow.ts and ferrflow.js config support (#224)
+
 ## [1.16.0] - 2026-04-14
 
 ### Features
