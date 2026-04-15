@@ -14,14 +14,7 @@ FerrFlow reads your commit history, determines the right version bump, updates y
 
 ## Why FerrFlow?
 
-Most versioning tools are tied to a specific ecosystem (semantic-release for JS, cargo-release for Rust) or require a Node.js runtime. FerrFlow is a single compiled binary with no runtime dependencies.
-
-| Tool | Monorepo | Multi-language | Runtime |
-|------|----------|---------------|---------|
-| semantic-release | plugins | JS only | Node.js |
-| changesets | manual | JS only | Node.js |
-| knope | limited | partial | none |
-| FerrFlow | native | yes | none |
+A single compiled binary with no runtime dependencies. Native monorepo support, multi-language versioning, and works with any repo layout.
 
 ## Supported version files
 
