@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.3.0] - 2026-04-15
+
+### Features
+
+- feat(site): localStorage-based language preference with redirect (#258)
+
 ## [2.2.0] - 2026-04-15
 
 ### Features
