@@ -28,9 +28,9 @@ const ui = {
     'nav.docs': 'Docs',
     // 'nav.playground': 'Playground', // disabled — playground is temporarily unavailable
     'nav.login': 'Log in',
-    'nav.products.cli.desc': 'Versioning, releases, changelogs',
-    'nav.products.issues.desc': 'CLI-native tracking + dashboard',
-    'nav.products.secrets.desc': 'Zero-infra secret management',
+    'nav.products.cli.desc': 'One binary for the entire FerrFlow platform',
+    'nav.products.issues.desc': 'Issue tracking from terminal to dashboard',
+    'nav.products.secrets.desc': 'Project-scoped secret management',
 
     // Hero
     'hero.headline1': 'Ship faster.',
@@ -60,13 +60,6 @@ const ui = {
 
     // Terminal
     'terminal.scanning': 'Scanning packages/api ...',
-
-    // Metrics
-    'metrics.title': 'Trusted in production',
-    'metrics.subtitle': 'Last 30 days — real numbers from real teams shipping with FerrFlow.',
-    'metrics.releases': 'Releases shipped',
-    'metrics.repos': 'Repos tracked',
-    'metrics.commits': 'Commits analyzed',
 
     // Features
     'features.title': 'Why FerrFlow?',
@@ -113,9 +106,9 @@ const ui = {
     'nav.docs': 'Docs',
     // 'nav.playground': 'Playground', // disabled — playground is temporarily unavailable
     'nav.login': 'Connexion',
-    'nav.products.cli.desc': 'Versioning, releases, changelogs',
-    'nav.products.issues.desc': 'Suivi de tickets + dashboard',
-    'nav.products.secrets.desc': 'Gestion de secrets sans infra',
+    'nav.products.cli.desc': 'Un seul binaire pour toute la plateforme FerrFlow',
+    'nav.products.issues.desc': 'Suivi de tickets du terminal au dashboard',
+    'nav.products.secrets.desc': 'Gestion de secrets par projet',
 
     // Hero
     'hero.headline1': 'Livrez vite.',
@@ -145,13 +138,6 @@ const ui = {
 
     // Terminal
     'terminal.scanning': 'Analyse de packages/api ...',
-
-    // Metrics
-    'metrics.title': 'Utilis\u00e9 en production',
-    'metrics.subtitle': "30 derniers jours \u2014 des chiffres concrets d'\u00e9quipes qui publient avec FerrFlow.",
-    'metrics.releases': 'Releases publi\u00e9es',
-    'metrics.repos': 'Repos suivis',
-    'metrics.commits': 'Commits analys\u00e9s',
 
     // Features
     'features.title': 'Pourquoi FerrFlow ?',
