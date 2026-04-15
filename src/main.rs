@@ -1,3 +1,5 @@
+mod agent;
+mod auth;
 mod changelog;
 mod cli;
 mod config;
@@ -7,6 +9,7 @@ mod forge;
 mod formats;
 mod git;
 mod hooks;
+mod issues;
 mod monorepo;
 mod prerelease;
 mod query;
