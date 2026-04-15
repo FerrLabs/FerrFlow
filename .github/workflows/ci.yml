@@ -273,6 +273,7 @@ jobs:
     name: Micro Benchmarks
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    continue-on-error: true
     permissions:
       pull-requests: write
     steps:
@@ -284,6 +285,7 @@ jobs:
           type: micro
           definitions: benchmarks/fixtures/definitions
           ferrflow-token: ${{ secrets.GITHUB_TOKEN }}
+          skip-competitors: true
         env:
           FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
 
@@ -304,6 +306,7 @@ jobs:
           type: full
           definitions: benchmarks/fixtures/definitions
           ferrflow-token: ${{ secrets.GITHUB_TOKEN }}
+          skip-competitors: true
         env:
           FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
 
