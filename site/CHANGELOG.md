@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.1.0] - 2026-04-15
+
+### Features
+
+- feat(site): add Secrets and Agent cards, update features for platform (#245)
+- feat(app): add Dockerfile and Docker CI workflow (#242)
+- feat(app): create dashboard package with auth and issues viewer (#233)
+
+### Bug Fixes
+
+- fix(config): add app package to ferrflow config (#241)
+
 ## [2.0.0] - 2026-04-15
 
 ### Breaking Changes
