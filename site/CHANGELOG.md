@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.2.0] - 2026-04-15
+
+### Features
+
+- feat: site redesign + dashboard neutral shell + product pages + pricing (#256)
+
 ## [2.1.0] - 2026-04-15
 
 ### Features
