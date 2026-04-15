@@ -12,11 +12,11 @@ const { lang } = Astro.props;
 const grainStyle = `background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E"); background-repeat: repeat; background-size: 200px;`;
 
 const featureIcons = {
-  monorepo: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z" />`,
-  agnostic: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />`,
-  commits: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />`,
-  changelog: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />`,
-  ci: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />`,
+  monorepo: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z" />`,
+  agnostic: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />`,
+  commits: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />`,
+  changelog: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.25 15a4.5 4.5 0 004.5 4.5H18a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25H6.75A4.5 4.5 0 002.25 10.5v4.5z" />`,
+  ci: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />`,
   private: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />`,
 };
 
@@ -150,6 +150,72 @@ const docsPath = getLocalizedPath('/docs/introduction', lang);
 
         <span class="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-400 cursor-default">
           {t(lang, 'products.issues.cta')}
+        </span>
+      </div>
+
+      <!-- Secrets card -->
+      <div class="group relative flex flex-col rounded-3xl border-2 border-emerald-200 bg-white p-8 hover:border-emerald-400 transition-all duration-300 opacity-0 animate-fade-up" style="animation-delay: 200ms; box-shadow: 0 8px 40px rgba(16,185,129,0.08);">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+            <svg class="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+          <h3 class="text-2xl font-black text-emerald-950 tracking-tight">{t(lang, 'products.secrets.name')}</h3>
+          <span class="ml-auto text-xs font-medium text-emerald-600 bg-emerald-100 px-2.5 py-1 rounded-full">{t(lang, 'products.secrets.badge')}</span>
+        </div>
+        <p class="text-emerald-800 font-normal text-sm leading-relaxed mb-6">{t(lang, 'products.secrets.desc')}</p>
+
+        <div class="mt-auto rounded-xl overflow-hidden border border-emerald-200 mb-6">
+          <div class="bg-emerald-950 px-4 py-2.5 flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-red-400/70"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-yellow-400/70"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-green-400/70"></span>
+            <span class="ml-2 text-xs text-emerald-400 font-mono">ferrflow secrets</span>
+          </div>
+          <div class="bg-emerald-950 px-4 py-4 font-mono text-xs leading-6">
+            <p><span class="text-emerald-400">$ </span><span class="text-emerald-100">ferrflow secrets set DB_URL=postgres://...</span></p>
+            <p><span class="text-emerald-400">&check; </span><span class="text-emerald-200">Secret DB_URL stored (encrypted)</span></p>
+            <p class="mt-1"><span class="text-emerald-400">$ </span><span class="text-emerald-100">ferrflow secrets inject -- npm test</span></p>
+            <p><span class="text-emerald-500">  Injecting 3 secrets into environment...</span></p>
+          </div>
+        </div>
+
+        <span class="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-400 cursor-default">
+          {t(lang, 'products.secrets.cta')}
+        </span>
+      </div>
+
+      <!-- Agent card -->
+      <div class="group relative flex flex-col rounded-3xl border-2 border-rose-200 bg-white p-8 hover:border-rose-400 transition-all duration-300 opacity-0 animate-fade-up" style="animation-delay: 300ms; box-shadow: 0 8px 40px rgba(244,63,94,0.08);">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center">
+            <svg class="w-5 h-5 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+            </svg>
+          </div>
+          <h3 class="text-2xl font-black text-rose-950 tracking-tight">{t(lang, 'products.agent.name')}</h3>
+          <span class="ml-auto text-xs font-medium text-rose-500 bg-rose-100 px-2.5 py-1 rounded-full">{t(lang, 'products.agent.badge')}</span>
+        </div>
+        <p class="text-rose-800 font-normal text-sm leading-relaxed mb-6">{t(lang, 'products.agent.desc')}</p>
+
+        <div class="mt-auto rounded-xl overflow-hidden border border-rose-200 mb-6">
+          <div class="bg-rose-950 px-4 py-2.5 flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-red-400/70"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-yellow-400/70"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-green-400/70"></span>
+            <span class="ml-2 text-xs text-rose-400 font-mono">ferrflow agent</span>
+          </div>
+          <div class="bg-rose-950 px-4 py-4 font-mono text-xs leading-6">
+            <p><span class="text-rose-400">$ </span><span class="text-rose-100">ferrflow agent "summarize sprint"</span></p>
+            <p><span class="text-rose-500">  Analyzing 14 issues and 23 commits...</span></p>
+            <p><span class="text-rose-400">&star; </span><span class="text-rose-200">3 features shipped, 5 bugs fixed</span></p>
+            <p><span class="text-rose-400">&star; </span><span class="text-rose-200">Velocity: +18% vs last sprint</span></p>
+          </div>
+        </div>
+
+        <span class="inline-flex items-center gap-1.5 text-sm font-medium text-rose-400 cursor-default">
+          {t(lang, 'products.agent.cta')}
         </span>
       </div>
     </div>

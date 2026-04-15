@@ -27,6 +27,24 @@
   --color-indigo-900: #312E81;
   --color-indigo-950: #1E1B4B;
 
+  /* Secrets — Emerald */
+  --color-emerald-100: #D1FAE5;
+  --color-emerald-200: #A7F3D0;
+  --color-emerald-400: #34D399;
+  --color-emerald-500: #10B981;
+  --color-emerald-600: #059669;
+  --color-emerald-800: #065F46;
+  --color-emerald-950: #064E3B;
+
+  /* Agent — Rose */
+  --color-rose-100: #FFE4E6;
+  --color-rose-200: #FECDD3;
+  --color-rose-400: #FB7185;
+  --color-rose-500: #F43F5E;
+  --color-rose-600: #E11D48;
+  --color-rose-800: #9F1239;
+  --color-rose-950: #4C0519;
+
   --font-family-display: 'Fraunces', Georgia, serif;
   --font-family-mono: 'DM Mono', ui-monospace, monospace;
 
