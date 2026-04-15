@@ -3,7 +3,7 @@
     "x64"
   ],
   "description": "FerrFlow Windows x64 binary",
-  "license": "MIT",
+  "license": "MPL-2.0",
   "name": "@ferrflow/win32-x64",
   "os": [
     "win32"

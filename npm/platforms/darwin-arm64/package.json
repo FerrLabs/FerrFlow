@@ -3,7 +3,7 @@
     "arm64"
   ],
   "description": "FerrFlow macOS arm64 binary",
-  "license": "MIT",
+  "license": "MPL-2.0",
   "name": "@ferrflow/darwin-arm64",
   "os": [
     "darwin"

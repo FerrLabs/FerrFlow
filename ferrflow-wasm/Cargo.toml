@@ -3,7 +3,7 @@ name = "ferrflow-wasm"
 version = "0.1.0"
 edition = "2024"
 description = "FerrFlow core functions compiled to WebAssembly"
-license = "MIT"
+license = "MPL-2.0"
 
 [lib]
 crate-type = ["cdylib", "rlib"]

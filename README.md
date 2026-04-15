@@ -531,4 +531,4 @@ release:
 
 ## License
 
-MIT
+[MPL-2.0](LICENSE)
