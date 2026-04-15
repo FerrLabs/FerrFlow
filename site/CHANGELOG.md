@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.0.0] - 2026-04-15
+
+### Breaking Changes
+
+- chore!: switch license from MIT to MPL-2.0 (#226)
+
+### Features
+
+- feat(site): redesign landing page as multi-product portal (#232)
+
 ## [1.18.0] - 2026-04-15
 
 ### Features
