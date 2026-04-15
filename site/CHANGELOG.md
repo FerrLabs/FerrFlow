@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.5.0] - 2026-04-15
+
+### Features
+
+- feat(site): theme navbar colors, fix logo on Chrome, widen dropdown bridge (#260)
+
 ## [2.4.0] - 2026-04-15
 
 ### Features
