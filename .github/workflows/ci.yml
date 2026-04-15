@@ -284,6 +284,7 @@ jobs:
           type: micro
           definitions: benchmarks/fixtures/definitions
           ferrflow-token: ${{ secrets.GITHUB_TOKEN }}
+          skip-competitors: true
         env:
           FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
 
@@ -304,6 +305,7 @@ jobs:
           type: full
           definitions: benchmarks/fixtures/definitions
           ferrflow-token: ${{ secrets.GITHUB_TOKEN }}
+          skip-competitors: true
         env:
           FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
 
