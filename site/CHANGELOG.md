@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.4.0] - 2026-04-15
+
+### Features
+
+- feat(site): redesign products section with zigzag column layout (#259)
+
 ## [2.3.0] - 2026-04-15
 
 ### Features
