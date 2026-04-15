@@ -167,6 +167,60 @@ impl Forge for GitHubForge {
     fn release_noun(&self) -> &'static str {
         "GitHub Release"
     }
+
+    fn find_comment(&self, pr_id: u64, marker: &str) -> Result<Option<u64>> {
+        let url = format!(
+            "{}/repos/{}/issues/{}/comments?per_page=100",
+            self.api_base, self.slug, pr_id
+        );
+        let comments: Vec<serde_json::Value> = ureq::get(&url)
+            .header("Authorization", &format!("Bearer {}", self.token))
+            .header("Accept", "application/vnd.github+json")
+            .header("User-Agent", "ferrflow")
+            .call()
+            .with_context(|| "Failed to list PR comments")?
+            .body_mut()
+            .read_json()
+            .with_context(|| "Failed to parse PR comments")?;
+
+        for comment in comments {
+            if let Some(body) = comment["body"].as_str()
+                && body.contains(marker)
+                && let Some(id) = comment["id"].as_u64()
+            {
+                return Ok(Some(id));
+            }
+        }
+        Ok(None)
+    }
+
+    fn create_comment(&self, pr_id: u64, body: &str) -> Result<()> {
+        let url = format!(
+            "{}/repos/{}/issues/{}/comments",
+            self.api_base, self.slug, pr_id
+        );
+        ureq::post(&url)
+            .header("Authorization", &format!("Bearer {}", self.token))
+            .header("Accept", "application/vnd.github+json")
+            .header("User-Agent", "ferrflow")
+            .send_json(serde_json::json!({ "body": body }))
+            .with_context(|| "Failed to create PR comment")?;
+        Ok(())
+    }
+
+    fn update_comment(&self, _pr_id: u64, comment_id: u64, body: &str) -> Result<()> {
+        let url = format!(
+            "{}/repos/{}/issues/comments/{}",
+            self.api_base, self.slug, comment_id
+        );
+        ureq::patch(&url)
+            .header("Authorization", &format!("Bearer {}", self.token))
+            .header("Accept", "application/vnd.github+json")
+            .header("User-Agent", "ferrflow")
+            .send_json(serde_json::json!({ "body": body }))
+            .with_context(|| "Failed to update PR comment")?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]

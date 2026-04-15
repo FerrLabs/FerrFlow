@@ -37,13 +37,13 @@ fn build_forge_instance(repo: &Repository, config: &Config) -> Option<Box<dyn fo
     Some(forge::build_forge(kind, token, slug, host))
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, serde::Deserialize)]
 struct CheckCommit {
     hash: String,
     message: String,
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, serde::Deserialize)]
 struct CheckPackage {
     name: String,
     current_version: String,
@@ -56,7 +56,7 @@ struct CheckPackage {
     commits: Vec<CheckCommit>,
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, serde::Deserialize)]
 struct CheckResult {
     packages: Vec<CheckPackage>,
 }
@@ -66,6 +66,7 @@ pub fn check(
     verbose: bool,
     json: bool,
     channel: Option<&str>,
+    comment: bool,
 ) -> Result<()> {
     let repo = open_repo(&std::env::current_dir()?)?;
     let root = get_repo_root(&repo)?;
@@ -80,11 +81,83 @@ pub fn check(
         &root, &config, true, verbose, json, false, None, channel, false,
     );
 
+    // Post a preview comment on the PR/MR if requested
+    if comment {
+        post_preview_comment(&repo, &config, &root);
+    }
+
     if config.workspace.anonymous_telemetry {
         telemetry::send_event(telemetry::EventType::Check, None, None, None, None);
     }
 
     result
+}
+
+/// Run `check` in JSON mode silently, parse the result, and post a preview comment.
+fn post_preview_comment(repo: &git2::Repository, config: &Config, root: &Path) {
+    let pr_id = match forge::detect_pr_number() {
+        Some(id) => id,
+        None => return, // Not in a PR context, skip silently
+    };
+
+    let forge_instance = match build_forge_instance(repo, config) {
+        Some(f) => f,
+        None => return, // No forge detected or no token, skip silently
+    };
+
+    // Re-run the check logic in JSON mode to capture structured output
+    let json_result = capture_check_json(root);
+    let body = format_preview_comment(&json_result);
+    let marker = "<!-- ferrflow-preview -->";
+
+    let result = (|| -> anyhow::Result<()> {
+        match forge_instance.find_comment(pr_id, marker)? {
+            Some(comment_id) => forge_instance.update_comment(pr_id, comment_id, &body)?,
+            None => forge_instance.create_comment(pr_id, &body)?,
+        }
+        Ok(())
+    })();
+
+    if let Err(e) = result {
+        eprintln!("Warning: failed to post preview comment: {e}");
+    }
+}
+
+fn capture_check_json(root: &Path) -> Vec<CheckPackage> {
+    let exe = std::env::current_exe().unwrap_or_else(|_| "ferrflow".into());
+    let output = std::process::Command::new(exe)
+        .args(["check", "--json"])
+        .current_dir(root)
+        .output();
+
+    match output {
+        Ok(out) if out.status.success() => {
+            let stdout = String::from_utf8_lossy(&out.stdout);
+            serde_json::from_str::<CheckResult>(&stdout)
+                .map(|r| r.packages)
+                .unwrap_or_default()
+        }
+        _ => Vec::new(),
+    }
+}
+
+fn format_preview_comment(packages: &[CheckPackage]) -> String {
+    let mut body = String::from("<!-- ferrflow-preview -->\n**FerrFlow Release Preview**\n\n");
+    if packages.is_empty() {
+        body.push_str("No releasable changes detected.");
+        return body;
+    }
+    body.push_str("| Package | Current | Next | Bump |\n");
+    body.push_str("|---------|---------|------|------|\n");
+    for pkg in packages {
+        body.push_str(&format!(
+            "| {} | `{}` | `{}` | {} |\n",
+            pkg.name, pkg.current_version, pkg.next_version, pkg.bump_type
+        ));
+    }
+    let commit_count: usize = packages.iter().map(|p| p.commits.len()).sum();
+    body.push_str(&format!("\nBased on {} commit(s).", commit_count));
+    body
 }
 
 pub fn release(

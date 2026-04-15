@@ -11,6 +11,10 @@ inputs:
     description: 'FerrFlow version to use (e.g. 1.2.3). Defaults to latest.'
     required: false
     default: 'latest'
+  mode:
+    description: 'Action mode: "release" runs the full release pipeline. "preview" posts a PR comment with version bump preview.'
+    required: false
+    default: 'release'
   dry_run:
     description: 'Run without creating releases or pushing changes'
     required: false
@@ -57,6 +61,12 @@ runs:
         chmod +x "$INSTALL_DIR/ferrflow"
         echo "$INSTALL_DIR" >> "$GITHUB_PATH"
 
+    - name: Preview release
+      if: inputs.mode == 'preview'
+      shell: bash
+      run: ferrflow check --comment
+
     - name: Run FerrFlow release
+      if: inputs.mode == 'release'
       shell: bash
       run: ferrflow ${{ inputs.dry_run == 'true' && '--dry-run' || '' }} release ${{ inputs.force_version != '' && format('--force-version {0}', inputs.force_version) || '' }}

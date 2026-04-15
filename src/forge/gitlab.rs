@@ -139,6 +139,64 @@ impl Forge for GitLabForge {
     fn release_noun(&self) -> &'static str {
         "GitLab Release"
     }
+
+    fn find_comment(&self, mr_id: u64, marker: &str) -> Result<Option<u64>> {
+        let url = format!(
+            "{}/projects/{}/merge_requests/{}/notes?per_page=100",
+            self.api_base,
+            self.encoded_project_id(),
+            mr_id
+        );
+        let notes: Vec<serde_json::Value> = ureq::get(&url)
+            .header("PRIVATE-TOKEN", &self.token)
+            .header("User-Agent", "ferrflow")
+            .call()
+            .with_context(|| "Failed to list MR notes")?
+            .body_mut()
+            .read_json()
+            .with_context(|| "Failed to parse MR notes")?;
+
+        for note in notes {
+            if let Some(body) = note["body"].as_str()
+                && body.contains(marker)
+                && let Some(id) = note["id"].as_u64()
+            {
+                return Ok(Some(id));
+            }
+        }
+        Ok(None)
+    }
+
+    fn create_comment(&self, mr_id: u64, body: &str) -> Result<()> {
+        let url = format!(
+            "{}/projects/{}/merge_requests/{}/notes",
+            self.api_base,
+            self.encoded_project_id(),
+            mr_id
+        );
+        ureq::post(&url)
+            .header("PRIVATE-TOKEN", &self.token)
+            .header("User-Agent", "ferrflow")
+            .send_json(serde_json::json!({ "body": body }))
+            .with_context(|| "Failed to create MR note")?;
+        Ok(())
+    }
+
+    fn update_comment(&self, mr_id: u64, comment_id: u64, body: &str) -> Result<()> {
+        let url = format!(
+            "{}/projects/{}/merge_requests/{}/notes/{}",
+            self.api_base,
+            self.encoded_project_id(),
+            mr_id,
+            comment_id
+        );
+        ureq::put(&url)
+            .header("PRIVATE-TOKEN", &self.token)
+            .header("User-Agent", "ferrflow")
+            .send_json(serde_json::json!({ "body": body }))
+            .with_context(|| "Failed to update MR note")?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
