@@ -66,6 +66,47 @@ The action exposes the new version as an output you can use in downstream steps:
 
 FerrFlow commits version bumps with `[skip ci]` in the message by default to prevent infinite loops. No extra configuration needed.
 
+## PR preview comments
+
+FerrFlow can post a comment on every pull request showing what versions will be bumped when the PR is merged. The comment is automatically updated on each push.
+
+```yaml title=".github/workflows/preview.yml"
+name: FerrFlow Preview
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: FerrFlow-Org/ferrflow@v2
+        with:
+          mode: preview
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+The comment looks like:
+
+> **FerrFlow Release Preview**
+>
+> | Package | Current | Next | Bump |
+> |---------|---------|------|------|
+> | api | `1.5.0` | `1.6.0` | minor |
+> | site | `1.8.0` | `1.8.1` | patch |
+>
+> Based on 3 commit(s).
+
+If no releasable changes are detected, the comment says so.
+
 ## Monorepo example
 
 In a monorepo, FerrFlow releases each changed package in a single run:

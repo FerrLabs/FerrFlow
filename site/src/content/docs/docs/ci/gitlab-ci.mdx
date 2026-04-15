@@ -56,6 +56,39 @@ release:
     - if: $CI_COMMIT_BRANCH == "main"
 ```
 
+## MR preview comments
+
+FerrFlow can post a comment on every merge request showing what versions will be bumped when the MR is merged. The comment is automatically updated on each push.
+
+```yaml title=".gitlab-ci.yml"
+ferrflow-preview:
+  image: ghcr.io/ferrflow-org/ferrflow:latest
+  stage: test
+  variables:
+    GIT_DEPTH: 0
+    GITLAB_TOKEN: $CI_JOB_TOKEN
+  script:
+    - ferrflow check --comment
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+```
+
+The comment looks like:
+
+> **FerrFlow Release Preview**
+>
+> | Package | Current | Next | Bump |
+> |---------|---------|------|------|
+> | api | `1.5.0` | `1.6.0` | minor |
+>
+> Based on 2 commit(s).
+
+If no releasable changes are detected, the comment says so.
+
+<Aside type="note">
+`CI_JOB_TOKEN` has permission to post MR notes by default. If your project restricts this, use a project access token with `api` scope stored as a CI variable.
+</Aside>
+
 ## GitLab Releases
 
 When `GITLAB_TOKEN` is set, FerrFlow creates a GitLab Release with the generated changelog as release notes, matching the behaviour of the GitHub integration.

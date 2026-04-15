@@ -66,13 +66,43 @@ L'action expose la nouvelle version en output que vous pouvez utiliser dans les 
 
 FerrFlow ajoute `[skip ci]` dans le message des commits de version par défaut pour éviter les boucles infinies. Aucune configuration supplémentaire nécessaire.
 
+## Commentaires de preview sur les PR
+
+FerrFlow peut poster un commentaire sur chaque pull request montrant quelles versions seront bump\u00e9es au merge. Le commentaire est mis \u00e0 jour automatiquement \u00e0 chaque push.
+
+```yaml title=".github/workflows/preview.yml"
+name: FerrFlow Preview
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: FerrFlow-Org/ferrflow@v2
+        with:
+          mode: preview
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+Si aucun changement publiable n'est d\u00e9tect\u00e9, le commentaire l'indique.
+
 ## Exemple monorepo
 
-Dans un monorepo, FerrFlow publie chaque package modifié en une seule exécution :
+Dans un monorepo, FerrFlow publie chaque package modifi\u00e9 en une seule ex\u00e9cution :
 
 ```yaml
 - uses: FerrFlow-Org/ferrflow@v2
   env:
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-# Crée api@v1.3.0 et site@v0.5.1 en une seule étape si les deux ont changé
+# Cr\u00e9e api@v1.3.0 et site@v0.5.1 en une seule \u00e9tape si les deux ont chang\u00e9
 ```
