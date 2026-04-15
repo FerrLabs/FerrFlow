@@ -187,7 +187,8 @@ import Navbar from '../components/Navbar.astro';
 </Layout>
 
 <style>
-  .landing-header { position: sticky; top: 0; z-index: 50; background: rgba(255, 248, 242, 0.9); backdrop-filter: blur(4px); border-bottom: 1px solid #ffe8d2; }
+  .landing-header { position: sticky; top: 0; z-index: 50; background: var(--bg, rgba(255,248,242,0.9)); backdrop-filter: blur(4px); border-bottom: 1px solid var(--border, #ffe8d2); }
+  .landing-header:not(.no-transition) { animation: header-fill 0.9s cubic-bezier(0.4,0,0.2,1) forwards; }
   .landing-header-inner { max-width: 72rem; margin: 0 auto; padding: 0 1.5rem; height: 4rem; display: flex; align-items: center; }
   details summary::-webkit-details-marker { display: none; }
   details summary { list-style: none; }

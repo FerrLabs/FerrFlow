@@ -144,9 +144,22 @@ import Navbar from '../components/Navbar.astro';
       <a href="https://github.com/FerrFlow-Org/FerrFlow" class="mt-10 inline-block px-8 py-4 rounded-full bg-primary-600 text-white font-medium text-lg hover:bg-primary-500 transition-colors shadow-lg shadow-primary-900/50">View on GitHub</a>
     </div>
   </section>
+
+  <footer class="bg-primary-50 border-t border-primary-100">
+    <div class="max-w-6xl mx-auto px-6 py-10 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-primary-500">
+      <span class="font-bold text-primary-800 tracking-tight">Ferr<span class="text-primary-600">Flow</span></span>
+      <span>&copy; 2026 FerrFlow. All rights reserved.</span>
+      <nav class="flex gap-6">
+        <a href="/docs/introduction" class="hover:text-primary-800 transition-colors">Documentation</a>
+        <a href="https://github.com/FerrFlow-Org/FerrFlow" class="hover:text-primary-800 transition-colors">GitHub</a>
+        <a href="https://github.com/FerrFlow-Org/FerrFlow/releases" class="hover:text-primary-800 transition-colors">Releases</a>
+      </nav>
+    </div>
+  </footer>
 </Layout>
 
 <style>
-  .landing-header { position: sticky; top: 0; z-index: 50; background: rgba(255, 248, 242, 0.9); backdrop-filter: blur(4px); border-bottom: 1px solid #ffe8d2; }
+  .landing-header { position: sticky; top: 0; z-index: 50; background: var(--bg, rgba(255,248,242,0.9)); backdrop-filter: blur(4px); border-bottom: 1px solid var(--border, #ffe8d2); }
+  .landing-header:not(.no-transition) { animation: header-fill 0.9s cubic-bezier(0.4,0,0.2,1) forwards; }
   .landing-header-inner { max-width: 72rem; margin: 0 auto; padding: 0 1.5rem; height: 4rem; display: flex; align-items: center; }
 </style>

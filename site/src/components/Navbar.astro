@@ -12,18 +12,80 @@ const { lang, activePage = 'home', accent } = Astro.props;
 
 const docsPath = getLocalizedPath('/docs/introduction', lang);
 const accentColor = accent || '#e8733a';
+const headerBg = accent === '#6366F1' ? 'rgba(238,242,255,0.9)'
+              : accent === '#10B981' ? 'rgba(236,253,245,0.9)'
+              :                        'rgba(255,248,242,0.9)';
+const headerBorder = accent === '#6366F1' ? '#E0E7FF'
+                   : accent === '#10B981' ? '#D1FAE5'
+                   :                        '#ffe8d2';
+const logoFilter = accent === '#6366F1' ? 'hue-rotate(230deg) saturate(1.5)'
+                 : accent === '#10B981' ? 'hue-rotate(140deg) saturate(1.2)'
+                 :                        'none';
 const altLang = lang === 'en' ? 'fr' : 'en';
 const altPath = altLang === 'en' ? '/' : '/fr/';
 ---
 
-<div class="navbar">
+<div class="navbar" id="navbar-root" data-accent={accentColor} data-header-bg={headerBg} data-header-border={headerBorder} data-logo-filter={logoFilter}>
   <div class="navbar-left">
     <a href={lang === 'en' ? '/' : '/fr/'} class="navbar-logo">
-      <img src="/favicon.svg" alt="FerrFlow Logo" class="navbar-logo-img" style={accent === '#6366F1' ? 'filter: hue-rotate(230deg) saturate(1.5);' : accent === '#10B981' ? 'filter: hue-rotate(140deg) saturate(1.2);' : ''} />
+      <svg class="navbar-logo-img" id="logo-icon" width="28" height="28" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-label="FerrFlow Logo">
+        <circle cx="16" cy="16" r="4" fill="currentColor"/>
+        <circle cx="16" cy="16" r="8" stroke="currentColor" stroke-width="1.5" fill="none" opacity="0.7"/>
+        <circle cx="16" cy="16" r="12" stroke="currentColor" stroke-width="1" fill="none" opacity="0.4"/>
+      </svg>
       <span class="navbar-logo-text">
-        Ferr<span class="navbar-logo-highlight" style={`color: ${accentColor};`}>Flow</span>
+        Ferr<span class="navbar-logo-highlight" id="logo-flow">Flow</span>
       </span>
     </a>
+    <script is:inline>
+      (function() {
+        var nav = document.getElementById('navbar-root');
+        var flow = document.getElementById('logo-flow');
+        var icon = document.getElementById('logo-icon');
+        if (!nav || !flow) return;
+
+        var accent = nav.dataset.accent || '#e8733a';
+        var headerBg = nav.dataset.headerBg || 'rgba(255,248,242,0.9)';
+        var headerBorder = nav.dataset.headerBorder || '#ffe8d2';
+        var logoFilter = nav.dataset.logoFilter || 'none';
+
+        // Previous values
+        var prevAccent = localStorage.getItem('ferrflow-accent') || '#e8733a';
+        var prevBg = localStorage.getItem('ferrflow-header-bg') || 'rgba(255,248,242,0.9)';
+        var prevBorder = localStorage.getItem('ferrflow-header-border') || '#ffe8d2';
+        var prevFilter = localStorage.getItem('ferrflow-logo-filter') || 'none';
+
+        var same = prevAccent === accent;
+
+        // Flow text transition
+        flow.style.setProperty('--prev-accent', prevAccent);
+        flow.style.setProperty('--accent', accent);
+        if (same) flow.classList.add('no-transition');
+
+        // Header background transition
+        var header = nav.closest('.landing-header');
+        if (header) {
+          header.style.setProperty('--prev-bg', prevBg);
+          header.style.setProperty('--bg', headerBg);
+          header.style.setProperty('--prev-border', prevBorder);
+          header.style.setProperty('--border', headerBorder);
+          if (same) header.classList.add('no-transition');
+        }
+
+        // Logo icon color transition (same principle as Flow text)
+        if (icon) {
+          icon.style.setProperty('--prev-accent', prevAccent);
+          icon.style.setProperty('--accent', accent);
+          if (same) icon.classList.add('no-transition');
+        }
+
+        // Save current
+        localStorage.setItem('ferrflow-accent', accent);
+        localStorage.setItem('ferrflow-header-bg', headerBg);
+        localStorage.setItem('ferrflow-header-border', headerBorder);
+        localStorage.setItem('ferrflow-logo-filter', logoFilter);
+      })();
+    </script>
 
     <nav class="navbar-links">
       <div class="navbar-dropdown" id="products-dropdown">
@@ -110,6 +172,7 @@ const altPath = altLang === 'en' ? '/' : '/fr/';
       (window as any).__setLang(target);
     }
   });
+
 </script>
 
 <style>
@@ -135,7 +198,29 @@ const altPath = altLang === 'en' ? '/' : '/fr/';
     flex-shrink: 0;
   }
 
-  .navbar-logo-img { width: 1.75rem; height: 1.75rem; }
+  .navbar-logo-img {
+    width: 1.75rem;
+    height: 1.75rem;
+    --icon-fill: 0%;
+    color: color-mix(in srgb, var(--accent, #e8733a) var(--icon-fill), var(--prev-accent, #e8733a));
+    animation: icon-fill 0.9s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  .navbar-logo-img.no-transition {
+    --icon-fill: 100%;
+    animation: none;
+  }
+
+  @keyframes icon-fill {
+    0%   { --icon-fill: 0%; }
+    100% { --icon-fill: 100%; }
+  }
+
+  @property --icon-fill {
+    syntax: '<percentage>';
+    inherits: false;
+    initial-value: 0%;
+  }
 
   .navbar-logo-text {
     font-size: 1.15rem;
@@ -145,7 +230,30 @@ const altPath = altLang === 'en' ? '/' : '/fr/';
     line-height: 1;
   }
 
-  .navbar-logo-highlight { color: #e8733a; }
+  .navbar-logo-highlight {
+    --fill: 0%;
+    background: radial-gradient(ellipse at 15% 25%, var(--accent, #e8733a) 0%, var(--accent, #e8733a) var(--fill), var(--prev-accent, #e8733a) var(--fill), var(--prev-accent, #e8733a) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: blob-fill 0.9s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  .navbar-logo-highlight.no-transition {
+    --fill: 100%;
+    animation: none;
+  }
+
+  @keyframes blob-fill {
+    0%   { --fill: 0%; }
+    100% { --fill: 200%; }
+  }
+
+  @property --fill {
+    syntax: '<percentage>';
+    inherits: false;
+    initial-value: 0%;
+  }
 
   .navbar-links {
     display: none;

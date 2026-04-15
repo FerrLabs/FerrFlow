@@ -7,6 +7,7 @@ interface Props {
   description?: string;
   canonical?: string;
   lang?: Lang;
+  accent?: string;
   alternates?: { lang: string; href: string }[];
 }
 
@@ -15,14 +16,19 @@ const {
   description = 'Universal semantic versioning for monorepos and classic repos',
   canonical = Astro.url.href,
   lang = 'en',
+  accent,
   alternates = [],
 } = Astro.props;
+
+const accentRgb = accent === '#6366F1' ? '99 102 241'   // indigo
+                : accent === '#10B981' ? '16 185 129'   // emerald
+                :                        '158 63 26';   // primary (default)
 
 const ogImage = 'https://ferrflow.com/og.png';
 ---
 
 <!doctype html>
-<html lang={lang} translate="no">
+<html lang={lang} translate="no" style={`--scrollbar-accent: ${accentRgb};`}>
   <head>
     <meta charset="UTF-8" />
     <meta name="google" content="notranslate" />
@@ -99,11 +105,11 @@ const ogImage = 'https://ferrflow.com/og.png';
         background: transparent;
       }
       ::-webkit-scrollbar-thumb {
-        background: rgb(158 63 26 / 0.5);
+        background: rgb(var(--scrollbar-accent) / 0.5);
         border-radius: 3px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: rgb(158 63 26 / 0.7);
+        background: rgb(var(--scrollbar-accent) / 0.7);
       }
       ::-webkit-scrollbar-button {
         display: none;
@@ -111,7 +117,7 @@ const ogImage = 'https://ferrflow.com/og.png';
       @supports (scrollbar-color: auto) {
         * {
           scrollbar-width: thin;
-          scrollbar-color: rgb(158 63 26 / 0.5) transparent;
+          scrollbar-color: rgb(var(--scrollbar-accent) / 0.5) transparent;
         }
       }
     </style>

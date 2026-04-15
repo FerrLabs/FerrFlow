@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import Navbar from '../components/Navbar.astro';
 ---
 
-<Layout title="FerrFlow Issues" description="CLI-native issue tracking with a clean web dashboard. Coming soon." lang="en">
+<Layout title="FerrFlow Issues" description="CLI-native issue tracking with a clean web dashboard. Coming soon." lang="en" accent="#6366F1">
   <header class="landing-header"><div class="landing-header-inner"><Navbar lang="en" activePage="home" accent="#6366F1" /></div></header>
 
   <!-- Hero -->
@@ -137,6 +137,7 @@ import Navbar from '../components/Navbar.astro';
 </Layout>
 
 <style>
-  .landing-header { position: sticky; top: 0; z-index: 50; background: rgba(238, 242, 255, 0.9); backdrop-filter: blur(4px); border-bottom: 1px solid #E0E7FF; }
+  .landing-header { position: sticky; top: 0; z-index: 50; background: var(--bg, rgba(238,242,255,0.9)); backdrop-filter: blur(4px); border-bottom: 1px solid var(--border, #E0E7FF); }
+  .landing-header:not(.no-transition) { animation: header-fill 0.9s cubic-bezier(0.4,0,0.2,1) forwards; }
   .landing-header-inner { max-width: 72rem; margin: 0 auto; padding: 0 1.5rem; height: 4rem; display: flex; align-items: center; }
 </style>
