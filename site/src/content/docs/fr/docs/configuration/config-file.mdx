@@ -5,14 +5,16 @@ description: Référence complète du fichier de configuration FerrFlow.
 
 import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
 
-FerrFlow supporte quatre formats de fichier de configuration, recherchés dans cet ordre :
+FerrFlow supporte six formats de fichier de configuration, recherch\u00e9s dans cet ordre :
 
 1. `ferrflow.json`
 2. `ferrflow.json5`
 3. `ferrflow.toml`
-4. `.ferrflow` (JSON)
+4. `ferrflow.ts` (n\u00e9cessite `tsx`)
+5. `ferrflow.js` (n\u00e9cessite `node`)
+6. `.ferrflow` (JSON)
 
-Si aucun fichier de configuration n'est trouvé, FerrFlow détecte automatiquement les fichiers de version courants dans le répertoire actuel.
+Si aucun fichier de configuration n'est trouv\u00e9, FerrFlow d\u00e9tecte automatiquement les fichiers de version courants dans le r\u00e9pertoire actuel.
 
 <Aside type="tip">
 Ajoutez `"$schema": "https://ferrflow.com/schema/ferrflow.json"` à votre configuration JSON pour l'autocomplétion et la validation dans votre éditeur.
@@ -21,6 +23,25 @@ Ajoutez `"$schema": "https://ferrflow.com/schema/ferrflow.json"` à votre config
 ## Formats de configuration
 
 <Tabs syncKey="config-format">
+  <TabItem label="TypeScript">
+    ```ts title="ferrflow.ts"
+    export default {
+      workspace: {
+        tagTemplate: "v{version}",
+      },
+      package: [
+        {
+          name: "my-app",
+          path: ".",
+          changelog: "CHANGELOG.md",
+          versionedFiles: [
+            { path: "Cargo.toml", format: "toml" },
+          ],
+        },
+      ],
+    };
+    ```
+  </TabItem>
   <TabItem label="JSON">
     ```json
     {
@@ -93,11 +114,64 @@ Ajoutez `"$schema": "https://ferrflow.com/schema/ferrflow.json"` à votre config
 </Tabs>
 
 <Aside type="note">
-Les configurations JSON et JSON5 utilisent des clés en **camelCase** (`tagTemplate`, `versionedFiles`).
-La configuration TOML utilise des clés en **snake_case** (`tag_template`, `versioned_files`).
-Les configurations YAML supportent les deux, mais **camelCase** est recommandé pour la cohérence avec JSON.
-Toutes les formes sont équivalentes.
+Les configurations JSON, JSON5, et TypeScript/JavaScript utilisent des cl\u00e9s en **camelCase** (`tagTemplate`, `versionedFiles`).
+La configuration TOML utilise des cl\u00e9s en **snake_case** (`tag_template`, `versioned_files`).
+Les configurations YAML supportent les deux, mais **camelCase** est recommand\u00e9 pour la coh\u00e9rence avec JSON.
+Toutes les formes sont \u00e9quivalentes.
 </Aside>
+
+### Configurations TypeScript et JavaScript
+
+Les fichiers de config TypeScript (`.ts`) et JavaScript (`.js`) utilisent un export ESM par d\u00e9faut. L'export peut \u00eatre un objet ou une fonction asynchrone.
+
+<Aside type="caution">
+Les configs TypeScript n\u00e9cessitent `tsx` (`npm install -g tsx`). Les configs JavaScript n\u00e9cessitent `node` (v18+).
+</Aside>
+
+L'avantage principal des configs TS/JS : les **hooks sous forme de fonctions**. Au lieu de commandes shell, vous pouvez \u00e9crire des hooks natifs avec acc\u00e8s complet au contexte :
+
+```ts title="ferrflow.ts"
+export default {
+  workspace: {
+    tagTemplate: "v{version}",
+    hooks: {
+      postPublish: async (ctx) => {
+        await fetch("https://hooks.slack.com/services/...", {
+          method: "POST",
+          body: JSON.stringify({
+            text: `Released ${ctx.package}@${ctx.newVersion}`,
+          }),
+        });
+      },
+    },
+  },
+  package: [
+    {
+      name: "my-app",
+      path: ".",
+      versionedFiles: [{ path: "package.json", format: "json" }],
+    },
+  ],
+};
+```
+
+#### Objet de contexte des hooks
+
+Les hooks en fonction re\u00e7oivent un objet de contexte avec ces champs :
+
+| Champ | Type | Description |
+|---|---|---|
+| `package` | string | Nom du package |
+| `oldVersion` | string | Version avant le bump (vide pour la premi\u00e8re release) |
+| `newVersion` | string | Version apr\u00e8s le bump |
+| `bumpType` | string | `major`, `minor`, `patch`, ou `none` |
+| `tag` | string | Nom complet du tag git |
+| `dryRun` | boolean | Vrai si `--dry-run` est actif |
+| `packagePath` | string | Chemin absolu vers la racine du package |
+| `channel` | string ou null | Nom du channel de pr\u00e9-release |
+| `isPrerelease` | boolean | Vrai si c'est une pr\u00e9-release |
+
+Les hooks sous forme de commandes shell et de fonctions peuvent \u00eatre m\u00e9lang\u00e9s dans la m\u00eame config.
 
 ## `workspace`
 

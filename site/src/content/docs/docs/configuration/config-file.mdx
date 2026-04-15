@@ -5,12 +5,14 @@ description: Complete reference for the FerrFlow configuration file.
 
 import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
 
-FerrFlow supports four config file formats, searched in this order:
+FerrFlow supports six config file formats, searched in this order:
 
 1. `ferrflow.json`
 2. `ferrflow.json5`
 3. `ferrflow.toml`
-4. `.ferrflow` (JSON)
+4. `ferrflow.ts` (requires `tsx`)
+5. `ferrflow.js` (requires `node`)
+6. `.ferrflow` (JSON)
 
 If no config file is found, FerrFlow auto-detects common version files in the current directory.
 
@@ -21,6 +23,25 @@ Add `"$schema": "https://ferrflow.com/schema/ferrflow.json"` to your JSON config
 ## Config formats
 
 <Tabs syncKey="config-format">
+  <TabItem label="TypeScript">
+    ```ts title="ferrflow.ts"
+    export default {
+      workspace: {
+        tagTemplate: "v{version}",
+      },
+      package: [
+        {
+          name: "my-app",
+          path: ".",
+          changelog: "CHANGELOG.md",
+          versionedFiles: [
+            { path: "Cargo.toml", format: "toml" },
+          ],
+        },
+      ],
+    };
+    ```
+  </TabItem>
   <TabItem label="JSON">
     ```json
     {
@@ -93,11 +114,64 @@ Add `"$schema": "https://ferrflow.com/schema/ferrflow.json"` to your JSON config
 </Tabs>
 
 <Aside type="note">
-JSON and JSON5 configs use **camelCase** keys (`tagTemplate`, `versionedFiles`).
+JSON, JSON5, and TypeScript/JavaScript configs use **camelCase** keys (`tagTemplate`, `versionedFiles`).
 TOML configs use **snake_case** keys (`tag_template`, `versioned_files`).
 YAML configs support both, but **camelCase** is recommended for consistency with JSON.
 All forms are equivalent.
 </Aside>
+
+### TypeScript and JavaScript configs
+
+TypeScript (`.ts`) and JavaScript (`.js`) config files use a default ESM export. The export can be a plain object or an async function.
+
+<Aside type="caution">
+TypeScript configs require `tsx` (`npm install -g tsx`). JavaScript configs require `node` (v18+).
+</Aside>
+
+The main advantage of TS/JS configs is **function hooks**. Instead of shell command strings, you can write hooks as native functions with full access to the hook context:
+
+```ts title="ferrflow.ts"
+export default {
+  workspace: {
+    tagTemplate: "v{version}",
+    hooks: {
+      postPublish: async (ctx) => {
+        await fetch("https://hooks.slack.com/services/...", {
+          method: "POST",
+          body: JSON.stringify({
+            text: `Released ${ctx.package}@${ctx.newVersion}`,
+          }),
+        });
+      },
+    },
+  },
+  package: [
+    {
+      name: "my-app",
+      path: ".",
+      versionedFiles: [{ path: "package.json", format: "json" }],
+    },
+  ],
+};
+```
+
+#### Hook context object
+
+Function hooks receive a context object with these fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `package` | string | Package name |
+| `oldVersion` | string | Version before bump (empty on first release) |
+| `newVersion` | string | Version after bump |
+| `bumpType` | string | `major`, `minor`, `patch`, or `none` |
+| `tag` | string | Full git tag name |
+| `dryRun` | boolean | Whether `--dry-run` is set |
+| `packagePath` | string | Absolute path to package root |
+| `channel` | string or null | Pre-release channel name |
+| `isPrerelease` | boolean | Whether this is a pre-release |
+
+Shell string hooks and function hooks can be mixed in the same config. Shell strings still work in TS/JS configs.
 
 ## `workspace`
 
