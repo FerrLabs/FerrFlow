@@ -106,6 +106,54 @@ pub enum Commands {
         /// Shell to generate completions for
         shell: Shell,
     },
+    /// Manage issues (list, create, show, update, comment)
+    Issues {
+        #[command(subcommand)]
+        action: IssuesAction,
+    },
+    /// Authenticate with the FerrFlow platform
+    Auth {
+        #[command(subcommand)]
+        action: AuthAction,
+    },
+    /// Run an AI agent instruction
+    Agent {
+        /// The instruction to execute
+        instruction: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum IssuesAction {
+    /// List issues
+    List,
+    /// Create a new issue
+    Create,
+    /// Show issue details
+    Show {
+        /// Issue identifier
+        id: String,
+    },
+    /// Update an existing issue
+    Update {
+        /// Issue identifier
+        id: String,
+    },
+    /// Comment on an issue
+    Comment {
+        /// Issue identifier
+        id: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum AuthAction {
+    /// Log in to the FerrFlow platform
+    Login,
+    /// Log out and clear stored credentials
+    Logout,
+    /// Show current authentication status
+    Status,
 }
 
 impl Commands {
@@ -120,6 +168,9 @@ impl Commands {
             Commands::Tag { .. } => "tag",
             Commands::Validate { .. } => "validate",
             Commands::Completions { .. } => "completions",
+            Commands::Issues { .. } => "issues",
+            Commands::Auth { .. } => "auth",
+            Commands::Agent { .. } => "agent",
         }
     }
 }
@@ -182,6 +233,9 @@ impl Cli {
                 );
                 Ok(())
             }
+            Commands::Issues { action } => crate::issues::run(action),
+            Commands::Auth { action } => crate::auth::run(action),
+            Commands::Agent { instruction } => crate::agent::run(&instruction),
         }
     }
 }
@@ -446,5 +500,126 @@ mod tests {
         assert_eq!(parse(&["ferrflow", "version"]).command.name(), "version");
         assert_eq!(parse(&["ferrflow", "tag"]).command.name(), "tag");
         assert_eq!(parse(&["ferrflow", "validate"]).command.name(), "validate");
+        assert_eq!(
+            parse(&["ferrflow", "issues", "list"]).command.name(),
+            "issues"
+        );
+        assert_eq!(parse(&["ferrflow", "auth", "login"]).command.name(), "auth");
+        assert_eq!(
+            parse(&["ferrflow", "agent", "do something"]).command.name(),
+            "agent"
+        );
+    }
+
+    #[test]
+    fn parse_issues_list() {
+        let cli = parse(&["ferrflow", "issues", "list"]);
+        assert!(matches!(
+            cli.command,
+            Commands::Issues {
+                action: IssuesAction::List
+            }
+        ));
+    }
+
+    #[test]
+    fn parse_issues_create() {
+        let cli = parse(&["ferrflow", "issues", "create"]);
+        assert!(matches!(
+            cli.command,
+            Commands::Issues {
+                action: IssuesAction::Create
+            }
+        ));
+    }
+
+    #[test]
+    fn parse_issues_show() {
+        let cli = parse(&["ferrflow", "issues", "show", "123"]);
+        match cli.command {
+            Commands::Issues {
+                action: IssuesAction::Show { id },
+            } => assert_eq!(id, "123"),
+            _ => panic!("expected Issues Show"),
+        }
+    }
+
+    #[test]
+    fn parse_issues_update() {
+        let cli = parse(&["ferrflow", "issues", "update", "456"]);
+        match cli.command {
+            Commands::Issues {
+                action: IssuesAction::Update { id },
+            } => assert_eq!(id, "456"),
+            _ => panic!("expected Issues Update"),
+        }
+    }
+
+    #[test]
+    fn parse_issues_comment() {
+        let cli = parse(&["ferrflow", "issues", "comment", "789"]);
+        match cli.command {
+            Commands::Issues {
+                action: IssuesAction::Comment { id },
+            } => assert_eq!(id, "789"),
+            _ => panic!("expected Issues Comment"),
+        }
+    }
+
+    #[test]
+    fn parse_issues_no_action_fails() {
+        assert!(Cli::try_parse_from(["ferrflow", "issues"]).is_err());
+    }
+
+    #[test]
+    fn parse_auth_login() {
+        let cli = parse(&["ferrflow", "auth", "login"]);
+        assert!(matches!(
+            cli.command,
+            Commands::Auth {
+                action: AuthAction::Login
+            }
+        ));
+    }
+
+    #[test]
+    fn parse_auth_logout() {
+        let cli = parse(&["ferrflow", "auth", "logout"]);
+        assert!(matches!(
+            cli.command,
+            Commands::Auth {
+                action: AuthAction::Logout
+            }
+        ));
+    }
+
+    #[test]
+    fn parse_auth_status() {
+        let cli = parse(&["ferrflow", "auth", "status"]);
+        assert!(matches!(
+            cli.command,
+            Commands::Auth {
+                action: AuthAction::Status
+            }
+        ));
+    }
+
+    #[test]
+    fn parse_auth_no_action_fails() {
+        assert!(Cli::try_parse_from(["ferrflow", "auth"]).is_err());
+    }
+
+    #[test]
+    fn parse_agent() {
+        let cli = parse(&["ferrflow", "agent", "bump all packages"]);
+        match cli.command {
+            Commands::Agent { instruction } => assert_eq!(instruction, "bump all packages"),
+            _ => panic!("expected Agent"),
+        }
+    }
+
+    #[test]
+    fn parse_agent_missing_instruction_fails() {
+        assert!(Cli::try_parse_from(["ferrflow", "agent"]).is_err());
     }
 }
