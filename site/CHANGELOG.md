@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.18.0] - 2026-04-15
+
+### Features
+
+- feat(site): document PR/MR preview comments for GitHub and GitLab (#225)
+
 ## [1.17.0] - 2026-04-15
 
 ### Features
