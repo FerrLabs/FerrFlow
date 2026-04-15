@@ -26,7 +26,7 @@ const ui = {
 
     // Nav
     'nav.docs': 'Docs',
-    'nav.playground': 'Playground',
+    // 'nav.playground': 'Playground', // disabled — playground is temporarily unavailable
     'nav.login': 'Log in',
     'nav.products.cli.desc': 'Versioning, releases, changelogs',
     'nav.products.issues.desc': 'CLI-native tracking + dashboard',
@@ -111,7 +111,7 @@ const ui = {
 
     // Nav
     'nav.docs': 'Docs',
-    'nav.playground': 'Playground',
+    // 'nav.playground': 'Playground', // disabled — playground is temporarily unavailable
     'nav.login': 'Connexion',
     'nav.products.cli.desc': 'Versioning, releases, changelogs',
     'nav.products.issues.desc': 'Suivi de tickets + dashboard',

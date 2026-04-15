@@ -16,7 +16,7 @@ export const ROUTES = {
   DASHBOARD: '/',
   ANALYTICS: '/analytics',
   TOKENS: '/tokens',
-  PLAYGROUND: '/playground',
+  // PLAYGROUND: '/playground', // disabled — playground is temporarily unavailable
   SETTINGS: '/settings',
   SETTINGS_PROFILE: '/settings/profile',
   SETTINGS_SECURITY: '/settings/security',
