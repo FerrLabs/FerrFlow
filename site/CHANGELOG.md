@@ -1,5 +1,11 @@
 # Changelog
 
+## [3.1.0] - 2026-04-16
+
+### Features
+
+- feat(selfhost): add bundled single-image deployment (#267)
+
 ## [3.0.0] - 2026-04-16
 
 ### Breaking Changes
