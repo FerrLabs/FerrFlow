@@ -157,6 +157,9 @@ const altPath = altLang === 'en' ? '/' : '/fr/';
   >
     {altLang === 'en' ? 'EN' : 'FR'}
   </button>
+  <a href="https://app.ferrflow.com" class="navbar-login">
+    {t(lang, 'nav.login')}
+  </a>
   <a
     href="https://github.com/FerrFlow-Org/FerrFlow"
     class="navbar-github"
@@ -377,4 +380,22 @@ const altPath = altLang === 'en' ? '/' : '/fr/';
   .navbar-lang:hover { color: var(--nav-text-hover, #2d1b0e); }
 
   .navbar-github:hover { color: var(--nav-text, #6b270e); }
+
+  .navbar-login {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.4rem 0.9rem;
+    border-radius: 9999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #fff;
+    background: var(--nav-ferr, #2d1b0e);
+    text-decoration: none;
+    transition: background 0.15s, transform 0.15s;
+  }
+
+  .navbar-login:hover {
+    background: var(--nav-text, #6b270e);
+    transform: translateY(-1px);
+  }
 </style>
