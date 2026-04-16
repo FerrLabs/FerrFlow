@@ -1,5 +1,21 @@
 # Changelog
 
+## [3.0.0] - 2026-04-16
+
+### Breaking Changes
+
+- feat(api)!: add email/password auth with session cookies + frontend login/register (#265)
+
+### Features
+
+- feat(site): add login button in navbar linking to app.ferrflow.com (#266)
+- feat(api): add issues, secrets, orgs, projects and JWT auth endpoints (#264)
+- feat(app): sidebar navigation, themed pages, and new screens (#261)
+
+### Bug Fixes
+
+- fix(app): replace missing textLink property with text in useSection theme (#262)
+
 ## [2.5.0] - 2026-04-15
 
 ### Features
