@@ -89,6 +89,12 @@ export default defineConfig({
           ],
         },
         {
+          label: 'Deployment',
+          items: [
+            { label: 'Self-hosting', slug: 'docs/self-hosting' },
+          ],
+        },
+        {
           label: 'Legal',
           items: [
             { label: 'Telemetry', slug: 'docs/legal/telemetry' },
