@@ -149,6 +149,14 @@ const altPath = altLang === 'en' ? '/' : '/fr/';
   </div>
 
   <div class="navbar-right">
+  <!--
+    Slot receives the children passed from `Header.astro` when the navbar is
+    used inside the Starlight docs shell — typically `<VersionSelect />` and
+    `<Search />`. On landing pages no children are passed, so the slot is a
+    no-op. Keep this near the top of `.navbar-right` so the version/search
+    controls sit left of the language/auth/GitHub buttons.
+  -->
+  <slot />
   <button
     id="lang-switcher"
     class="navbar-lang"
