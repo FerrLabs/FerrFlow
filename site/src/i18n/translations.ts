@@ -27,7 +27,8 @@ const ui = {
     // Nav
     'nav.docs': 'Docs',
     // 'nav.playground': 'Playground', // disabled — playground is temporarily unavailable
-    'nav.login': 'Log in',
+    'nav.signin': 'Sign in',
+    'nav.signup': 'Sign up',
     'nav.products.cli.desc': 'One binary for the entire FerrFlow platform',
     'nav.products.issues.desc': 'Issue tracking from terminal to dashboard',
     'nav.products.secrets.desc': 'Project-scoped secret management',
@@ -105,7 +106,8 @@ const ui = {
     // Nav
     'nav.docs': 'Docs',
     // 'nav.playground': 'Playground', // disabled — playground is temporarily unavailable
-    'nav.login': 'Connexion',
+    'nav.signin': 'Connexion',
+    'nav.signup': 'Inscription',
     'nav.products.cli.desc': 'Un seul binaire pour toute la plateforme FerrFlow',
     'nav.products.issues.desc': 'Suivi de tickets du terminal au dashboard',
     'nav.products.secrets.desc': 'Gestion de secrets par projet',

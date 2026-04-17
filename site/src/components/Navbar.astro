@@ -157,8 +157,11 @@ const altPath = altLang === 'en' ? '/' : '/fr/';
   >
     {altLang === 'en' ? 'EN' : 'FR'}
   </button>
-  <a href="https://app.ferrflow.com" class="navbar-login">
-    {t(lang, 'nav.login')}
+  <a href="https://app.ferrflow.com/login" class="navbar-signin">
+    {t(lang, 'nav.signin')}
+  </a>
+  <a href="https://app.ferrflow.com/register" class="navbar-signup">
+    {t(lang, 'nav.signup')}
   </a>
   <a
     href="https://github.com/FerrFlow-Org/FerrFlow"
@@ -381,7 +384,22 @@ const altPath = altLang === 'en' ? '/' : '/fr/';
 
   .navbar-github:hover { color: var(--nav-text, #6b270e); }
 
-  .navbar-login {
+  .navbar-signin {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--nav-text, #6b270e);
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+
+  .navbar-signin:hover {
+    color: var(--nav-text-hover, #2d1b0e);
+  }
+
+  .navbar-signup {
     display: inline-flex;
     align-items: center;
     padding: 0.4rem 0.9rem;
@@ -394,7 +412,7 @@ const altPath = altLang === 'en' ? '/' : '/fr/';
     transition: background 0.15s, transform 0.15s;
   }
 
-  .navbar-login:hover {
+  .navbar-signup:hover {
     background: var(--nav-text, #6b270e);
     transform: translateY(-1px);
   }
