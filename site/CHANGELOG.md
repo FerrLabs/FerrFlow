@@ -1,5 +1,11 @@
 # Changelog
 
+## [4.1.1] - 2026-04-17
+
+### Bug Fixes
+
+- fix(site): restore slot in Navbar so version selector and search render (#281)
+
 ## [4.1.0] - 2026-04-17
 
 ### Features
