@@ -5,6 +5,31 @@ use anyhow::Result;
 use chrono::Utc;
 use semver::Version;
 
+/// Return the baseline version to use when a package has no prior tag *and*
+/// no readable version on disk. Each strategy gets the canonical zero-value
+/// its [`compute_next_version`] bump function expects as input:
+///
+/// | Strategy            | Bootstrap value  |
+/// |---------------------|------------------|
+/// | `Semver`, `Zerover` | `0.0.0`          |
+/// | `Sequential`        | `0`              |
+/// | `CalverSeq`         | `0.0`            |
+/// | `Calver`, `CalverShort` | `0.0.0` (ignored — calver ignores input) |
+///
+/// The release flow then runs the strategy-specific bump on top, so a first
+/// `feat:` commit lands at `0.1.0` / `1` / today's date, and so on.
+pub fn bootstrap_version(strategy: VersioningStrategy) -> String {
+    match strategy {
+        VersioningStrategy::Semver | VersioningStrategy::Zerover => "0.0.0".to_string(),
+        VersioningStrategy::Sequential => "0".to_string(),
+        VersioningStrategy::CalverSeq => "0.0".to_string(),
+        // Calver variants are date-driven and ignore the input entirely, but
+        // we still return a parseable semver string so any intermediate code
+        // that inspects it doesn't crash.
+        VersioningStrategy::Calver | VersioningStrategy::CalverShort => "0.0.0".to_string(),
+    }
+}
+
 pub fn compute_next_version(
     current: &str,
     bump: BumpType,
@@ -142,6 +167,54 @@ pub fn truncate_version(version: &str, level: FloatingTagLevel) -> Option<String
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bootstrap_semver_variants() {
+        assert_eq!(bootstrap_version(VersioningStrategy::Semver), "0.0.0");
+        assert_eq!(bootstrap_version(VersioningStrategy::Zerover), "0.0.0");
+    }
+
+    #[test]
+    fn bootstrap_sequential_is_zero_integer() {
+        assert_eq!(bootstrap_version(VersioningStrategy::Sequential), "0");
+    }
+
+    #[test]
+    fn bootstrap_calverseq_is_dotted_zero() {
+        assert_eq!(bootstrap_version(VersioningStrategy::CalverSeq), "0.0");
+    }
+
+    #[test]
+    fn bootstrap_calver_returns_placeholder() {
+        // Calver ignores the baseline anyway — we just need a non-empty
+        // parseable string for intermediate logging/diffing.
+        assert_eq!(bootstrap_version(VersioningStrategy::Calver), "0.0.0");
+        assert_eq!(bootstrap_version(VersioningStrategy::CalverShort), "0.0.0");
+    }
+
+    #[test]
+    fn bootstrap_values_survive_first_bump_for_every_strategy() {
+        // The whole point of `bootstrap_version` is that feeding it into
+        // `compute_next_version` with any bump type doesn't error — the first
+        // release cuts a valid tag.
+        for strategy in [
+            VersioningStrategy::Semver,
+            VersioningStrategy::Zerover,
+            VersioningStrategy::Sequential,
+            VersioningStrategy::CalverSeq,
+            VersioningStrategy::Calver,
+            VersioningStrategy::CalverShort,
+        ] {
+            let baseline = bootstrap_version(strategy);
+            for bump in [BumpType::Patch, BumpType::Minor, BumpType::Major] {
+                let result = compute_next_version(&baseline, bump, strategy);
+                assert!(
+                    result.is_ok(),
+                    "bootstrap {baseline:?} with {bump:?} on {strategy:?} failed: {result:?}"
+                );
+            }
+        }
+    }
 
     #[test]
     fn test_bump_patch() {

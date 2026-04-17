@@ -386,16 +386,27 @@ fn run_release_logic(
         // If the file happens to be ahead of the tags (human pre-published a
         // version manually before tagging), we honour that by taking the max
         // of the two.
-        let file_version = read_version(vf, root)?;
+        // Pre-compute the package strategy so we can bootstrap a baseline
+        // when neither a git tag nor an on-disk version is available (fresh
+        // go.mod-only package being released for the first time).
+        let pkg_strategy = pkg.effective_versioning(&config.workspace);
+
+        // `read_version` fails for `go.mod` when no matching tag exists yet
+        // — and potentially for other formats in edge cases. Fall back to
+        // the strategy bootstrap further down rather than blocking the whole
+        // release on a zero-tag repo.
+        let file_version = read_version(vf, root).ok();
         let tag_version = crate::git::find_highest_semver_tag(
             &repo,
             &tag_search_prefix,
             config.workspace.orphaned_tag_strategy,
         )?
         .map(|(_tag, version)| version);
-        let current_version = match tag_version {
-            None => file_version,
-            Some(tag) => pick_higher_semver(&file_version, &tag),
+        let current_version = match (tag_version, file_version) {
+            (Some(tag), Some(file)) => pick_higher_semver(&file, &tag),
+            (Some(tag), None) => tag,
+            (None, Some(file)) => file,
+            (None, None) => crate::versioning::bootstrap_version(pkg_strategy),
         };
 
         // Determine new version: forced or computed from commits
