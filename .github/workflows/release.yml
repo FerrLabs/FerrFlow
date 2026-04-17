@@ -105,7 +105,7 @@ jobs:
         uses: actions/attest-build-provenance@v4
         with:
           subject-path: artifacts/*
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ inputs.tag }}
           files: artifacts/*
