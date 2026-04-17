@@ -1,5 +1,16 @@
 # Changelog
 
+## [4.0.0] - 2026-04-17
+
+### Breaking Changes
+
+- feat(api)!: add API tokens with granular scopes (#268)
+
+### Features
+
+- feat(site): split nav CTA into Sign in and Sign up (#273)
+- feat(api): add transactional email service skeleton (#269)
+
 ## [3.1.0] - 2026-04-16
 
 ### Features
