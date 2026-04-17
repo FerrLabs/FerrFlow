@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.1.0] - 2026-04-17
+
+### Features
+
+- feat(site): document FerrFlow v3 release flow and snapshot v2 docs (#279)
+- feat(api): add bulk reveal endpoint for operator integration (#277)
+
 ## [4.0.0] - 2026-04-17
 
 ### Breaking Changes
