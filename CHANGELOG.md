@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [3.0.3] - 2026-04-17
+
+### Bug Fixes
+
+- fix(release): bootstrap first release when no prior tag exists (#359)
+
 ## [3.0.2] - 2026-04-16
 
 ### Bug Fixes
