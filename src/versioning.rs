@@ -148,6 +148,150 @@ pub fn bump_version(current: &str, bump: BumpType) -> Result<String> {
     bump_semver(current, bump)
 }
 
+/// Strip any monorepo prefix like `my-pkg@` and a leading `v`, yielding the
+/// raw version-like tail. Also handles `release/` style prefixes by dropping
+/// any leading non-digit characters up to (but not including) the first
+/// segment that looks like a version.
+fn strip_tag_prefix(tag: &str) -> &str {
+    // First, if there's a `@` in the tag, take the portion after the last `@`.
+    // This covers `pkg@v1.2.3`, `@scope/pkg@v1.2.3`, etc.
+    let after_at = tag.rsplit_once('@').map(|(_, rest)| rest).unwrap_or(tag);
+    // Then drop a `release/`, `rel/`, `refs/tags/` or any other prefix segment
+    // separated by `/` — take the last path component.
+    let after_slash = after_at
+        .rsplit_once('/')
+        .map(|(_, r)| r)
+        .unwrap_or(after_at);
+    // Finally strip a leading `v` or `V`.
+    after_slash
+        .strip_prefix('v')
+        .or_else(|| after_slash.strip_prefix('V'))
+        .unwrap_or(after_slash)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum TagClass {
+    CalverSeq,
+    Calver,
+    CalverShort,
+    Semver,
+    Sequential,
+}
+
+/// Classify a single tag into its most-specific category, if any.
+///
+/// Returns `None` for tags that don't look like any known version shape.
+///
+/// For 4-digit-year `YYYY.M.D` shapes with a third segment ≤ 31 we return
+/// `Calver`; larger third segments indicate an auto-increment counter and
+/// return `CalverSeq`. See module docs for the ambiguity rules.
+fn classify_tag(tag: &str) -> Option<TagClass> {
+    use regex::Regex;
+    use std::sync::OnceLock;
+
+    // Three-segment calver/calver-seq (4-digit year)
+    static CALVER_RE: OnceLock<Regex> = OnceLock::new();
+    // Three-segment calver-short (2-digit year 20..=99)
+    static CALVER_SHORT_RE: OnceLock<Regex> = OnceLock::new();
+    // Three-segment semver-ish
+    static SEMVER_RE: OnceLock<Regex> = OnceLock::new();
+    // Single number sequential
+    static SEQUENTIAL_RE: OnceLock<Regex> = OnceLock::new();
+
+    let calver_re = CALVER_RE.get_or_init(|| Regex::new(r"^(\d{4})\.(\d{1,2})\.(\d+)$").unwrap());
+    let calver_short_re =
+        CALVER_SHORT_RE.get_or_init(|| Regex::new(r"^(\d{2})\.(\d{1,2})\.(\d{1,2})$").unwrap());
+    let semver_re = SEMVER_RE.get_or_init(|| Regex::new(r"^\d+\.\d+\.\d+$").unwrap());
+    let sequential_re = SEQUENTIAL_RE.get_or_init(|| Regex::new(r"^\d+$").unwrap());
+
+    let stripped = strip_tag_prefix(tag);
+
+    if let Some(caps) = calver_re.captures(stripped) {
+        let year: u32 = caps[1].parse().ok()?;
+        let month: u32 = caps[2].parse().ok()?;
+        let third: u32 = caps[3].parse().ok()?;
+        // Require a plausible year and month to avoid misclassifying oddball
+        // semver tags like `1970.13.0` that happen to match the digit shape.
+        if (1970..=9999).contains(&year) && (1..=12).contains(&month) {
+            if third > 31 {
+                return Some(TagClass::CalverSeq);
+            }
+            return Some(TagClass::Calver);
+        }
+    }
+
+    if let Some(caps) = calver_short_re.captures(stripped) {
+        let year: u32 = caps[1].parse().ok()?;
+        let month: u32 = caps[2].parse().ok()?;
+        let day: u32 = caps[3].parse().ok()?;
+        // Plausible short-year range + valid month/day window. Lower bound 20
+        // avoids matching semver tags like `1.2.3` / `10.11.12`.
+        if (20..=99).contains(&year) && (1..=12).contains(&month) && (1..=31).contains(&day) {
+            return Some(TagClass::CalverShort);
+        }
+    }
+
+    if semver_re.is_match(stripped) {
+        return Some(TagClass::Semver);
+    }
+
+    if sequential_re.is_match(stripped) {
+        return Some(TagClass::Sequential);
+    }
+
+    None
+}
+
+/// Infer the versioning strategy from a list of existing git tag names.
+///
+/// Returns `None` when no tags match any known strategy. Callers should fall
+/// back to the explicit default ([`VersioningStrategy::Semver`]) in that case.
+///
+/// When tags match multiple patterns, the most specific one wins:
+/// `calver-seq` > `calver` > `calver-short` > `semver` > `sequential`. That
+/// ordering matters because a `v2024.04.18` tag matches both calver and a
+/// relaxed semver shape — we pick the date-aware one.
+///
+/// Zerover is intentionally excluded: it is ambiguous with semver (both use
+/// `X.Y.Z`), so we fall through to semver and require an explicit opt-in for
+/// zerover.
+pub fn detect_strategy_from_tags(tags: &[&str]) -> Option<VersioningStrategy> {
+    let mut has_calver_seq = false;
+    let mut has_calver = false;
+    let mut has_calver_short = false;
+    let mut has_semver = false;
+    let mut has_sequential = false;
+
+    for tag in tags {
+        match classify_tag(tag) {
+            Some(TagClass::CalverSeq) => has_calver_seq = true,
+            Some(TagClass::Calver) => has_calver = true,
+            Some(TagClass::CalverShort) => has_calver_short = true,
+            Some(TagClass::Semver) => has_semver = true,
+            Some(TagClass::Sequential) => has_sequential = true,
+            None => {}
+        }
+    }
+
+    // Specificity tiers — most specific wins even if less specific has more hits.
+    if has_calver_seq {
+        return Some(VersioningStrategy::CalverSeq);
+    }
+    if has_calver {
+        return Some(VersioningStrategy::Calver);
+    }
+    if has_calver_short {
+        return Some(VersioningStrategy::CalverShort);
+    }
+    if has_semver {
+        return Some(VersioningStrategy::Semver);
+    }
+    if has_sequential {
+        return Some(VersioningStrategy::Sequential);
+    }
+    None
+}
+
 pub fn truncate_version(version: &str, level: FloatingTagLevel) -> Option<String> {
     let v = version.trim_start_matches('v');
     let parts: Vec<&str> = v.split('.').collect();
@@ -580,6 +724,118 @@ mod tests {
     fn bump_semver_none_strips_prerelease() {
         let result = bump_semver("1.1.0-dev.1", BumpType::None).unwrap();
         assert_eq!(result, "1.1.0");
+    }
+
+    #[test]
+    fn detect_returns_none_when_no_tags() {
+        assert_eq!(detect_strategy_from_tags(&[]), None);
+    }
+
+    #[test]
+    fn detect_semver_from_plain_v_tags() {
+        let tags = vec!["v1.2.3", "v1.3.0", "v2.0.0"];
+        assert_eq!(
+            detect_strategy_from_tags(&tags),
+            Some(VersioningStrategy::Semver)
+        );
+    }
+
+    #[test]
+    fn detect_calver() {
+        let tags = vec!["v2024.04.18", "v2024.05.01"];
+        assert_eq!(
+            detect_strategy_from_tags(&tags),
+            Some(VersioningStrategy::Calver)
+        );
+    }
+
+    #[test]
+    fn detect_calver_short() {
+        let tags = vec!["v24.4.18", "v25.1.1"];
+        assert_eq!(
+            detect_strategy_from_tags(&tags),
+            Some(VersioningStrategy::CalverShort)
+        );
+    }
+
+    #[test]
+    fn detect_calver_seq() {
+        let tags = vec!["v2024.04.1", "v2024.04.42", "v2024.04.100"];
+        assert_eq!(
+            detect_strategy_from_tags(&tags),
+            Some(VersioningStrategy::CalverSeq)
+        );
+    }
+
+    #[test]
+    fn detect_sequential() {
+        let tags = vec!["v1", "v2", "v3"];
+        assert_eq!(
+            detect_strategy_from_tags(&tags),
+            Some(VersioningStrategy::Sequential)
+        );
+    }
+
+    #[test]
+    fn detect_ignores_monorepo_prefix() {
+        let tags = vec!["pkg@v1.2.3", "pkg@v1.3.0"];
+        assert_eq!(
+            detect_strategy_from_tags(&tags),
+            Some(VersioningStrategy::Semver)
+        );
+    }
+
+    #[test]
+    fn detect_none_for_gibberish() {
+        let tags = vec!["release-foo", "rc-2024"];
+        assert_eq!(detect_strategy_from_tags(&tags), None);
+    }
+
+    #[test]
+    fn detect_prefers_calver_over_semver() {
+        let tags = vec!["v2024.01.01", "v1.2.3"];
+        assert_eq!(
+            detect_strategy_from_tags(&tags),
+            Some(VersioningStrategy::Calver)
+        );
+    }
+
+    #[test]
+    fn detect_strips_tag_prefixes_like_release_slash() {
+        let tags = vec!["release/v1.2.3"];
+        assert_eq!(
+            detect_strategy_from_tags(&tags),
+            Some(VersioningStrategy::Semver)
+        );
+    }
+
+    #[test]
+    fn detect_sequential_without_v_prefix() {
+        let tags = vec!["1", "2", "3"];
+        assert_eq!(
+            detect_strategy_from_tags(&tags),
+            Some(VersioningStrategy::Sequential)
+        );
+    }
+
+    #[test]
+    fn detect_ignores_non_matching_tags_but_picks_matching() {
+        let tags = vec!["latest", "stable", "v1.2.3", "nightly"];
+        assert_eq!(
+            detect_strategy_from_tags(&tags),
+            Some(VersioningStrategy::Semver)
+        );
+    }
+
+    #[test]
+    fn detect_calver_seq_mixed_with_calver_shape_prefers_seq() {
+        // v2024.04.100 triggers calver-seq (100 > 31), even though
+        // v2024.04.10 would otherwise classify as calver.
+        let tags = vec!["v2024.04.10", "v2024.04.100"];
+        assert_eq!(
+            detect_strategy_from_tags(&tags),
+            Some(VersioningStrategy::CalverSeq)
+        );
     }
 
     #[test]

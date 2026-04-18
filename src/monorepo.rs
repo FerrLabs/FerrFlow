@@ -23,6 +23,17 @@ use git2::Repository;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
+/// Collect the subset of `all_tags` whose names start with the package's
+/// configured tag prefix. Used to feed per-package versioning auto-detection
+/// so that unrelated packages' tags don't pollute the result.
+fn tags_for_package<'a>(all_tags: &'a [String], prefix: &str) -> Vec<&'a str> {
+    all_tags
+        .iter()
+        .filter(|t| t.starts_with(prefix))
+        .map(|t| t.as_str())
+        .collect()
+}
+
 fn build_forge_instance(repo: &Repository, config: &Config) -> Option<Box<dyn forge::Forge>> {
     let remote_url = get_remote_url(repo, &config.workspace.remote)?;
     let slug = forge::extract_repo_slug(&remote_url)?;
@@ -389,7 +400,10 @@ fn run_release_logic(
         // Pre-compute the package strategy so we can bootstrap a baseline
         // when neither a git tag nor an on-disk version is available (fresh
         // go.mod-only package being released for the first time).
-        let pkg_strategy = pkg.effective_versioning(&config.workspace);
+        let pkg_strategy = pkg.effective_versioning(
+            &config.workspace,
+            &tags_for_package(&all_tags, &tag_search_prefix),
+        );
 
         // `read_version` fails for `go.mod` when no matching tag exists yet
         // — and potentially for other formats in edge cases. Fall back to
@@ -450,7 +464,10 @@ fn run_release_logic(
                 continue;
             }
 
-            let strategy = pkg.effective_versioning(&config.workspace);
+            let strategy = pkg.effective_versioning(
+                &config.workspace,
+                &tags_for_package(&all_tags, &tag_search_prefix),
+            );
 
             let bump = commits
                 .iter()
@@ -508,7 +525,10 @@ fn run_release_logic(
         let strategy_label = if forced_ver_for_pkg.is_some() {
             "forced".to_string()
         } else {
-            let strategy = pkg.effective_versioning(&config.workspace);
+            let strategy = pkg.effective_versioning(
+                &config.workspace,
+                &tags_for_package(&all_tags, &tag_search_prefix),
+            );
             let is_date_or_seq = matches!(
                 strategy,
                 VersioningStrategy::Calver
@@ -757,7 +777,11 @@ fn run_release_logic(
                 let Ok(current_version) = read_version(vf, root) else {
                     continue;
                 };
-                let strategy = pkg.effective_versioning(&config.workspace);
+                let pkg_tag_prefix = pkg.tag_prefix(&config.workspace, config.is_monorepo());
+                let strategy = pkg.effective_versioning(
+                    &config.workspace,
+                    &tags_for_package(&all_tags, &pkg_tag_prefix),
+                );
                 let Ok(new_version) =
                     compute_next_version(&current_version, BumpType::Patch, strategy)
                 else {
