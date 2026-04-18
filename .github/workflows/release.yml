@@ -47,9 +47,15 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Install cross
         if: matrix.os == 'ubuntu-latest'
+        # Download via curl with retries — GitHub occasionally serves 504s on
+        # release-asset URLs and we don't want the whole release matrix to fail
+        # for a transient gateway hiccup.
         run: |
-          curl -fsSL https://github.com/cross-rs/cross/releases/latest/download/cross-x86_64-unknown-linux-musl.tar.gz \
-            | tar xz -C "$HOME/.cargo/bin"
+          curl -fsSL --retry 6 --retry-delay 5 --retry-connrefused --retry-all-errors \
+            -o /tmp/cross.tar.gz \
+            https://github.com/cross-rs/cross/releases/latest/download/cross-x86_64-unknown-linux-musl.tar.gz
+          tar xz -C "$HOME/.cargo/bin" -f /tmp/cross.tar.gz
+          rm /tmp/cross.tar.gz
       - name: Build (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: cross build --release --target ${{ matrix.target }}
