@@ -128,7 +128,7 @@ pub struct WorkspaceConfig {
     #[serde(default = "default_telemetry", alias = "telemetry")]
     pub anonymous_telemetry: bool,
     #[serde(default)]
-    pub versioning: VersioningStrategy,
+    pub versioning: Option<VersioningStrategy>,
     #[serde(alias = "tagTemplate")]
     pub tag_template: Option<String>,
     #[serde(default, alias = "recoverMissedReleases")]
@@ -237,8 +237,25 @@ pub enum FloatingTagLevel {
 }
 
 impl PackageConfig {
-    pub fn effective_versioning(&self, workspace: &WorkspaceConfig) -> VersioningStrategy {
-        self.versioning.unwrap_or(workspace.versioning)
+    /// Resolve the effective versioning strategy for this package. Priority:
+    ///   1. package.versioning if explicitly set
+    ///   2. workspace.versioning if explicitly set
+    ///   3. auto-detect from `tags` (filtered to tags relevant to this
+    ///      package — caller's job)
+    ///   4. fallback to [`VersioningStrategy::Semver`]
+    ///
+    /// Note: zerover is intentionally excluded from auto-detection because it
+    /// is ambiguous with semver (both use `X.Y.Z`). Users must opt-in
+    /// explicitly via config.
+    pub fn effective_versioning(
+        &self,
+        workspace: &WorkspaceConfig,
+        tags: &[&str],
+    ) -> VersioningStrategy {
+        self.versioning
+            .or(workspace.versioning)
+            .or_else(|| crate::versioning::detect_strategy_from_tags(tags))
+            .unwrap_or_default()
     }
 
     fn effective_template<'a>(
@@ -1148,12 +1165,24 @@ format = "toml"
             ]
         }"#;
         let config: Config = serde_json::from_str(json).unwrap();
-        assert_eq!(config.workspace.versioning, VersioningStrategy::Calver);
+        assert_eq!(
+            config.workspace.versioning,
+            Some(VersioningStrategy::Calver)
+        );
         assert_eq!(
             config.packages[0].versioning,
             Some(VersioningStrategy::Zerover)
         );
         assert_eq!(config.packages[1].versioning, None);
+    }
+
+    #[test]
+    fn workspace_versioning_defaults_to_none() {
+        // Unset `versioning` in config should deserialize to None so callers
+        // can tell "user said nothing" apart from "user said semver".
+        let json = r#"{ "workspace": {}, "package": [] }"#;
+        let config: Config = serde_json::from_str(json).unwrap();
+        assert_eq!(config.workspace.versioning, None);
     }
 
     #[test]
@@ -1168,7 +1197,11 @@ format = "toml"
         ] {
             let json = format!(r#"{{ "workspace": {{ "versioning": "{s}" }}, "package": [] }}"#);
             let config: Config = serde_json::from_str(&json).unwrap();
-            assert_eq!(config.workspace.versioning, expected, "failed for {s}");
+            assert_eq!(
+                config.workspace.versioning,
+                Some(expected),
+                "failed for {s}"
+            );
         }
     }
 
@@ -1179,7 +1212,7 @@ format = "toml"
     #[test]
     fn effective_versioning_inherits_workspace() {
         let ws = WorkspaceConfig {
-            versioning: VersioningStrategy::Calver,
+            versioning: Some(VersioningStrategy::Calver),
             ..WorkspaceConfig::default()
         };
         let pkg = PackageConfig {
@@ -1194,13 +1227,16 @@ format = "toml"
             hooks: None,
             floating_tags: None,
         };
-        assert_eq!(pkg.effective_versioning(&ws), VersioningStrategy::Calver);
+        assert_eq!(
+            pkg.effective_versioning(&ws, &[]),
+            VersioningStrategy::Calver
+        );
     }
 
     #[test]
     fn effective_versioning_package_overrides() {
         let ws = WorkspaceConfig {
-            versioning: VersioningStrategy::Calver,
+            versioning: Some(VersioningStrategy::Calver),
             ..WorkspaceConfig::default()
         };
         let pkg = PackageConfig {
@@ -1215,7 +1251,53 @@ format = "toml"
             hooks: None,
             floating_tags: None,
         };
-        assert_eq!(pkg.effective_versioning(&ws), VersioningStrategy::Zerover);
+        assert_eq!(
+            pkg.effective_versioning(&ws, &[]),
+            VersioningStrategy::Zerover
+        );
+    }
+
+    #[test]
+    fn effective_versioning_autodetects_from_tags_when_unset() {
+        let ws = WorkspaceConfig::default();
+        let pkg = PackageConfig {
+            name: "a".into(),
+            path: ".".into(),
+            versioned_files: vec![],
+            changelog: None,
+            shared_paths: vec![],
+            depends_on: vec![],
+            versioning: None,
+            tag_template: None,
+            hooks: None,
+            floating_tags: None,
+        };
+        let tags = vec!["v2024.04.18", "v2024.05.01"];
+        assert_eq!(
+            pkg.effective_versioning(&ws, &tags),
+            VersioningStrategy::Calver
+        );
+    }
+
+    #[test]
+    fn effective_versioning_falls_back_to_semver_without_tags() {
+        let ws = WorkspaceConfig::default();
+        let pkg = PackageConfig {
+            name: "a".into(),
+            path: ".".into(),
+            versioned_files: vec![],
+            changelog: None,
+            shared_paths: vec![],
+            depends_on: vec![],
+            versioning: None,
+            tag_template: None,
+            hooks: None,
+            floating_tags: None,
+        };
+        assert_eq!(
+            pkg.effective_versioning(&ws, &[]),
+            VersioningStrategy::Semver
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -2014,7 +2096,7 @@ format = "toml"
     fn default_workspace_config_values() {
         // Default trait gives empty strings; serde defaults give "origin"/"main"
         let ws = WorkspaceConfig::default();
-        assert_eq!(ws.versioning, VersioningStrategy::Semver);
+        assert_eq!(ws.versioning, None);
         assert!(ws.tag_template.is_none());
         assert!(!ws.recover_missed_releases);
         assert_eq!(ws.release_commit_mode, ReleaseCommitMode::Commit);
