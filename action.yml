@@ -35,10 +35,13 @@ runs:
         OS=$(uname -s | tr '[:upper:]' '[:lower:]')
         ARCH=$(uname -m)
 
+        # Git Bash / MSYS / Cygwin on Windows runners all report a compound
+        # kernel name like "mingw64_nt-10.0". Normalise to "windows".
         case "$OS" in
-          linux)  PLATFORM="linux" ;;
-          darwin) PLATFORM="darwin" ;;
-          *)      echo "Unsupported OS: $OS" && exit 1 ;;
+          linux)                  PLATFORM="linux"   ; EXT="tar.gz" ;;
+          darwin)                 PLATFORM="darwin"  ; EXT="tar.gz" ;;
+          mingw*|msys*|cygwin*)   PLATFORM="windows" ; EXT="zip"    ;;
+          *)                      echo "Unsupported OS: $OS" && exit 1 ;;
         esac
 
         case "$ARCH" in
@@ -47,7 +50,7 @@ runs:
           *)             echo "Unsupported architecture: $ARCH" && exit 1 ;;
         esac
 
-        ARCHIVE="ferrflow-${PLATFORM}-${ARCH_NAME}.tar.gz"
+        ARCHIVE="ferrflow-${PLATFORM}-${ARCH_NAME}.${EXT}"
 
         if [ "${{ inputs.version }}" = "latest" ]; then
           URL="https://github.com/FerrFlow-Org/ferrflow/releases/latest/download/${ARCHIVE}"
@@ -57,8 +60,19 @@ runs:
 
         INSTALL_DIR="${RUNNER_TEMP:-$HOME/.local/bin}/ferrflow-bin"
         mkdir -p "$INSTALL_DIR"
-        curl --fail --location --silent --show-error "$URL" | tar -xz -C "$INSTALL_DIR"
-        chmod +x "$INSTALL_DIR/ferrflow"
+
+        if [ "$PLATFORM" = "windows" ]; then
+          # Can't pipe into unzip (needs a seekable file), so download first.
+          TMP_ZIP="${RUNNER_TEMP:-/tmp}/ferrflow.zip"
+          curl --fail --location --silent --show-error --output "$TMP_ZIP" "$URL"
+          unzip -q -o "$TMP_ZIP" -d "$INSTALL_DIR"
+          rm -f "$TMP_ZIP"
+          # No chmod needed on Windows; the .exe is already executable.
+        else
+          curl --fail --location --silent --show-error "$URL" | tar -xz -C "$INSTALL_DIR"
+          chmod +x "$INSTALL_DIR/ferrflow"
+        fi
+
         echo "$INSTALL_DIR" >> "$GITHUB_PATH"
 
     - name: Preview release
