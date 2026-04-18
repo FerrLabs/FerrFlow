@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [3.2.0] - 2026-04-18
+
+### Features
+
+- feat(config): auto-detect versioning strategy from existing tags (#361)
+
 ## [3.1.0] - 2026-04-18
 
 ### Features
