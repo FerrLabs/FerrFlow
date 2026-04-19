@@ -19,6 +19,11 @@ use std::fmt;
 /// - E4500–E4599: Gradle version files
 /// - E4600–E4699: Go mod version files
 /// - E4700–E4799: Text version files
+/// - E4800–E4809: Pubspec.yaml (Dart / Flutter)
+/// - E4810–E4819: mix.exs (Elixir)
+/// - E4820–E4829: Chart.yaml (Helm chart manifest)
+/// - E4830–E4839: *.gemspec (Ruby)
+/// - E4840–E4849: Package.swift (Swift)
 /// - E5000–E5099: Pre-release / channels
 /// - E5010–E5019: Versioning
 /// - E6000–E6099: Hooks
@@ -246,6 +251,56 @@ pub const TXT_VERSION_NOT_FOUND: ErrorCode = ErrorCode(4702);
 pub const TXT_WRITE: ErrorCode = ErrorCode(4703);
 #[allow(dead_code)]
 pub const TXT_INVALID_UTF8: ErrorCode = ErrorCode(4704);
+
+// ── Version files — PubspecYaml (E4800–E4809) ────────────────────────────────
+#[allow(dead_code)]
+pub const PUBSPEC_READ: ErrorCode = ErrorCode(4801);
+#[allow(dead_code)]
+pub const PUBSPEC_VERSION_NOT_FOUND: ErrorCode = ErrorCode(4802);
+#[allow(dead_code)]
+pub const PUBSPEC_WRITE: ErrorCode = ErrorCode(4803);
+#[allow(dead_code)]
+pub const PUBSPEC_INVALID_UTF8: ErrorCode = ErrorCode(4804);
+
+// ── Version files — MixExs (E4810–E4819) ─────────────────────────────────────
+#[allow(dead_code)]
+pub const MIX_EXS_READ: ErrorCode = ErrorCode(4811);
+#[allow(dead_code)]
+pub const MIX_EXS_VERSION_NOT_FOUND: ErrorCode = ErrorCode(4812);
+#[allow(dead_code)]
+pub const MIX_EXS_WRITE: ErrorCode = ErrorCode(4813);
+#[allow(dead_code)]
+pub const MIX_EXS_INVALID_UTF8: ErrorCode = ErrorCode(4814);
+
+// ── Version files — ChartYaml (E4820–E4829) ──────────────────────────────────
+#[allow(dead_code)]
+pub const CHART_YAML_READ: ErrorCode = ErrorCode(4821);
+#[allow(dead_code)]
+pub const CHART_YAML_VERSION_NOT_FOUND: ErrorCode = ErrorCode(4822);
+#[allow(dead_code)]
+pub const CHART_YAML_WRITE: ErrorCode = ErrorCode(4823);
+#[allow(dead_code)]
+pub const CHART_YAML_INVALID_UTF8: ErrorCode = ErrorCode(4824);
+
+// ── Version files — Gemspec (E4830–E4839) ────────────────────────────────────
+#[allow(dead_code)]
+pub const GEMSPEC_READ: ErrorCode = ErrorCode(4831);
+#[allow(dead_code)]
+pub const GEMSPEC_VERSION_NOT_FOUND: ErrorCode = ErrorCode(4832);
+#[allow(dead_code)]
+pub const GEMSPEC_WRITE: ErrorCode = ErrorCode(4833);
+#[allow(dead_code)]
+pub const GEMSPEC_INVALID_UTF8: ErrorCode = ErrorCode(4834);
+
+// ── Version files — PackageSwift (E4840–E4849) ───────────────────────────────
+#[allow(dead_code)]
+pub const PACKAGE_SWIFT_READ: ErrorCode = ErrorCode(4841);
+#[allow(dead_code)]
+pub const PACKAGE_SWIFT_VERSION_NOT_FOUND: ErrorCode = ErrorCode(4842);
+#[allow(dead_code)]
+pub const PACKAGE_SWIFT_WRITE: ErrorCode = ErrorCode(4843);
+#[allow(dead_code)]
+pub const PACKAGE_SWIFT_INVALID_UTF8: ErrorCode = ErrorCode(4844);
 
 // ── Pre-release (E5000–E5099) ────────────────────────────────────────────────
 #[allow(dead_code)]

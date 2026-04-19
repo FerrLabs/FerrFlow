@@ -314,11 +314,27 @@ pub enum FileFormat {
     #[serde(rename = "gomod")]
     GoMod,
     Gradle,
+    /// `values.yaml` templating for Helm charts. For the top-level
+    /// `Chart.yaml` manifest use [`FileFormat::ChartYaml`] instead.
     Helm,
     Json,
     Toml,
     Txt,
     Xml,
+    /// `pubspec.yaml` for Dart / Flutter packages.
+    #[serde(rename = "pubspecyaml")]
+    PubspecYaml,
+    /// `mix.exs` for Elixir / Mix projects.
+    #[serde(rename = "mixexs")]
+    MixExs,
+    /// `Chart.yaml` for Helm chart top-level manifests.
+    #[serde(rename = "chartyaml")]
+    ChartYaml,
+    /// `*.gemspec` for Ruby gems.
+    Gemspec,
+    /// `Package.swift` for Swift packages.
+    #[serde(rename = "packageswift")]
+    PackageSwift,
 }
 
 // ---------------------------------------------------------------------------
