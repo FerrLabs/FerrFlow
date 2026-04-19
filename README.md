@@ -18,17 +18,22 @@ A single compiled binary with no runtime dependencies. Native monorepo support, 
 
 ## Supported version files
 
-| Format | File | Ecosystem |
-|--------|------|-----------|
-| TOML | `Cargo.toml` | Rust |
-| TOML | `pyproject.toml` | Python |
-| JSON | `package.json` | Node.js |
-| XML | `pom.xml` | Java / Maven |
-| CSProj | `*.csproj` | .NET (C#, F#) |
-| Gradle | `build.gradle` | Java / Kotlin |
-| Helm | `Chart.yaml` | Kubernetes / Helm |
-| Go | `go.mod` | Go (tag-only, no file write) |
-| Text | `VERSION`, `VERSION.txt` | Any |
+| Format | File | Ecosystem | Selector |
+|--------|------|-----------|----------|
+| `toml` | `Cargo.toml` | Rust | `package.version` |
+| `toml` | `pyproject.toml` | Python | `project.version` or `tool.poetry.version` |
+| `json` | `package.json` | Node.js | `version` |
+| `json` | `composer.json` | PHP | `version` |
+| `xml` | `pom.xml` | Java / Maven | first `<version>` tag |
+| `csproj` | `*.csproj` | .NET (C#, F#) | `<Version>` in `<PropertyGroup>` |
+| `gradle` | `build.gradle`, `build.gradle.kts` | Java / Kotlin | `version = "…"` |
+| `helm` / `chartyaml` | `Chart.yaml` | Kubernetes / Helm | top-level `version:` |
+| `pubspecyaml` | `pubspec.yaml` | Dart / Flutter | top-level `version:` |
+| `mixexs` | `mix.exs` | Elixir | `version: "…"` in `def project` |
+| `gemspec` | `*.gemspec` | Ruby | `s.version = "…"` |
+| `packageswift` | `Package.swift` | Swift | top-level `let <name>Version = "…"` |
+| `gomod` | `go.mod` | Go | git tag only — no file write |
+| `txt` | `VERSION`, `VERSION.txt` | Any | entire file content |
 
 ## Installation
 
