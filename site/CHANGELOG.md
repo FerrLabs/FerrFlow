@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.2.0] - 2026-04-19
+
+### Features
+
+- feat(site): unify language selector with Starlight style + SEO content pass (#371)
+- feat(api): OIDC workload-identity exchange for cluster tokens (#366) (#367)
+
 ## [5.1.0] - 2026-04-19
 
 ### Features
