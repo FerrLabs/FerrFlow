@@ -1,5 +1,34 @@
 # Changelog
 
+## [4.2.0] - 2026-04-19
+
+### Features
+
+- feat(auth): password strength meter + HIBP breach check + Argon2id tuned params (#341)
+- feat(auth): forgot-password reset flow with email token (#340)
+- feat(auth): user-facing active sessions list with per-device revoke (#339)
+- feat(api): user profile fields (display_name, avatar, timezone, locale, preferences) (#338)
+- feat(api): stable machine-readable error codes on all ApiError responses (#337)
+- feat(auth): gate registration with SMTP email verification code (#324)
+- feat(app): cluster + install mutations, and no-org onboarding (#321)
+- feat(app): remove all mock data, wire real API everywhere (#320)
+- feat(admin): Phase 2 admin panel UI + missing backend endpoints (#315)
+- feat(api): GCP Cloud KMS backend for KEK and license signing (#314)
+- feat(api): admin backend MVP (Phase 1 of admin panel) (#312)
+- feat(api): Stripe billing integration (hosted mode) (#310)
+- feat(app): self-host installs management UI (#309)
+- feat(api): install license emitter (hosted mode) (#306)
+- feat(api): install license token + deployment modes (#305)
+- feat(app): clusters management UI (#299)
+- feat(api): accept ffclust_ identities and enforce per-namespace authorization on reveal (#285)
+- feat(api): cluster identities with server-side authorization (admin endpoints) (#284)
+
+### Bug Fixes
+
+- fix(api): copy keys directory into builder for license-pubkey include_str (#319)
+- fix(app,admin): proxy /api via nginx instead of baked VITE_API_URL (#317)
+- fix(api): redact secret plaintext from Debug and Display impls (#300)
+
 ## [4.1.1] - 2026-04-17
 
 ### Bug Fixes
