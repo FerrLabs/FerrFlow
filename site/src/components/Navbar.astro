@@ -6,9 +6,17 @@ interface Props {
   lang: Lang;
   activePage?: 'home' | 'docs';
   accent?: string; // CSS color for "Flow" text and logo tint
+  /**
+   * Skip rendering the FR/EN toggle built into this navbar. Used by the
+   * docs Header, which renders Starlight's native `<LanguageSelect />` in
+   * the `docs-controls` slot — Starlight knows the localised URL for the
+   * current docs page, which the manual toggle can't resolve without
+   * maintaining its own route table.
+   */
+  hideLanguageToggle?: boolean;
 }
 
-const { lang, activePage = 'home', accent } = Astro.props;
+const { lang, activePage = 'home', accent, hideLanguageToggle = false } = Astro.props;
 
 const docsPath = getLocalizedPath('/docs/introduction', lang);
 const accentColor = accent || '#e8733a';
@@ -30,8 +38,23 @@ const navTextHover = accent === '#6366F1' ? '#1E1B4B'
 const navFerr = accent === '#6366F1' ? '#1E1B4B'
               : accent === '#10B981' ? '#064E3B'
               :                        '#2d1b0e';
-const altLang = lang === 'en' ? 'fr' : 'en';
-const altPath = altLang === 'en' ? '/' : '/fr/';
+// Compute localised siblings for the <select> options. Docs pages (and
+// home) have parity across both languages; marketing product pages
+// (/cli, /issues, /secrets, /pricing) are English-only for now. When
+// there's no counterpart, we hide the selector altogether rather than
+// offering an option that 404s.
+const currentPath = Astro.url.pathname;
+const enEquiv = currentPath.startsWith('/fr/')
+  ? currentPath.slice(3) || '/'
+  : currentPath === '/fr'
+    ? '/'
+    : currentPath;
+const frEquiv = enEquiv === '/' ? '/fr/' : `/fr${enEquiv.startsWith('/') ? '' : '/'}${enEquiv}`;
+
+// Paths with a FR translation today. Keep small + explicit — adding a new
+// FR page is a two-step (create the page, add to this regex).
+const FR_AVAILABLE_RE = /^\/(?:fr\/)?(?:$|docs(?:$|\/))/;
+const hasAltTranslation = FR_AVAILABLE_RE.test(currentPath);
 ---
 
 <div class="navbar" id="navbar-root" data-accent={accentColor} data-header-bg={headerBg} data-header-border={headerBorder} data-logo-filter={logoFilter} style={`--nav-text: ${navText}; --nav-text-hover: ${navTextHover}; --nav-ferr: ${navFerr};`}>
@@ -148,6 +171,14 @@ const altPath = altLang === 'en' ? '/' : '/fr/';
     </nav>
   </div>
 
+  {/* Absolutely centered so the slot sits in the visual middle of the
+      header regardless of how wide the left/right clusters grow. Empty
+      when no `center` slot content is provided (landing pages), which
+      means zero layout cost on marketing. */}
+  <div class="navbar-center">
+    <slot name="center" />
+  </div>
+
   <div class="navbar-right">
   <!--
     Slot receives the children passed from `Header.astro` when the navbar is
@@ -157,14 +188,32 @@ const altPath = altLang === 'en' ? '/' : '/fr/';
     controls sit left of the language/auth/GitHub buttons.
   -->
   <slot />
-  <button
-    id="lang-switcher"
-    class="navbar-lang"
-    title={altLang === 'en' ? 'English' : 'Français'}
-    data-target-lang={altLang}
-  >
-    {altLang === 'en' ? 'EN' : 'FR'}
-  </button>
+  {!hideLanguageToggle && hasAltTranslation && (
+    /*
+     * Visually identical to Starlight's <LanguageSelect /> (same icons,
+     * same sizing, same padding logic) but wired to the marketing
+     * navbar's color palette via --nav-text. Keeps the two surfaces
+     * consistent without routing marketing pages through Starlight.
+     *
+     * Icon SVGs are copied verbatim from
+     * `@astrojs/starlight/components-internals/Icons.ts`
+     * (`translate` + `down-caret`) so visual parity stays guaranteed
+     * on Starlight upgrades — we just re-sync the paths.
+     */
+    <label class="navbar-lang-select" style="--sl-select-width: 7em;">
+      <span class="sr-only">Language</span>
+      <svg class="navbar-lang-select-icon navbar-lang-select-label-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path fill-rule="evenodd" d="M8.516 3a.94.94 0 0 0-.941.94v1.15H2.94a.94.94 0 1 0 0 1.882h7.362a7.422 7.422 0 0 1-1.787 3.958 7.42 7.42 0 0 1-1.422-2.425.94.94 0 1 0-1.774.627 9.303 9.303 0 0 0 1.785 3.043 7.422 7.422 0 0 1-4.164 1.278.94.94 0 1 0 0 1.881 9.303 9.303 0 0 0 5.575-1.855 9.303 9.303 0 0 0 4.11 1.74l-.763 1.525a.968.968 0 0 0-.016.034l-1.385 2.77a.94.94 0 1 0 1.683.841l1.133-2.267h5.806l1.134 2.267a.94.94 0 0 0 1.683-.841l-1.385-2.769a.95.95 0 0 0-.018-.036l-3.476-6.951a.94.94 0 0 0-1.682 0l-1.82 3.639a7.423 7.423 0 0 1-3.593-1.256 9.303 9.303 0 0 0 2.27-5.203h1.894a.94.94 0 0 0 0-1.881H9.456V3.94A.94.94 0 0 0 8.516 3Zm6.426 11.794a1.068 1.068 0 0 1-.02.039l-.703 1.407h3.924l-1.962-3.924-1.24 2.478Z" clip-rule="evenodd"/>
+      </svg>
+      <select id="lang-switcher" autocomplete="off">
+        <option value={enEquiv} selected={lang === 'en'}>English</option>
+        <option value={frEquiv} selected={lang === 'fr'}>Français</option>
+      </select>
+      <svg class="navbar-lang-select-icon navbar-lang-select-caret" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/>
+      </svg>
+    </label>
+  )}
   <a href="https://app.ferrflow.com/login" class="navbar-signin">
     {t(lang, 'nav.signin')}
   </a>
@@ -196,11 +245,20 @@ const altPath = altLang === 'en' ? '/' : '/fr/';
     document.addEventListener('click', () => menu.classList.remove('open'));
   }
 
-  const langBtn = document.getElementById('lang-switcher');
-  langBtn?.addEventListener('click', () => {
-    const target = langBtn.dataset.targetLang;
-    if (target && (window as any).__setLang) {
-      (window as any).__setLang(target);
+  // Native <select>-based language switcher — matches Starlight's docs
+  // selector pattern. On change, navigate to the chosen locale's URL. The
+  // option values are full paths (computed server-side via the
+  // FR_AVAILABLE_RE map), so client code stays trivial.
+  const langSelect = document.getElementById('lang-switcher') as HTMLSelectElement | null;
+  langSelect?.addEventListener('change', () => {
+    const target = langSelect.value;
+    if (target && target !== window.location.pathname) {
+      // Preserve the locale preference so future first visits land in the
+      // right language. The i18n helper stores it in localStorage.
+      const inferredLang = target.startsWith('/fr') ? 'fr' : 'en';
+      const saveLang = (window as any).__saveLang as ((l: string) => void) | undefined;
+      if (saveLang) saveLang(inferredLang);
+      window.location.assign(target);
     }
   });
 
@@ -208,6 +266,7 @@ const altPath = altLang === 'en' ? '/' : '/fr/';
 
 <style>
   .navbar {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -219,6 +278,32 @@ const altPath = altLang === 'en' ? '/' : '/fr/';
     display: flex;
     align-items: center;
     gap: 2rem;
+  }
+
+  /* Absolutely centered so the content sits in the visual middle of the
+     header regardless of the left/right cluster widths. Flush-collapses
+     on narrow viewports (pointer-events none on the empty wrapper so it
+     never blocks clicks). */
+  .navbar-center {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    pointer-events: none;
+  }
+  .navbar-center > * {
+    pointer-events: auto;
+  }
+  @media (max-width: 900px) {
+    /* Small viewports: drop back into flow at the right edge so the
+       centered element doesn't overlap the logo / right cluster. Same
+       visual outcome as the original layout there. */
+    .navbar-center {
+      position: static;
+      transform: none;
+    }
   }
 
   .navbar-logo {
@@ -389,6 +474,79 @@ const altPath = altLang === 'en' ? '/' : '/fr/';
   }
 
   .navbar-lang:hover { color: var(--nav-text-hover, #2d1b0e); }
+
+  /* Mirrors Starlight's Select component geometry (same sizing vars,
+     same absolute positioning, same padding math) so the marketing
+     navbar picker and the docs navbar picker are visually identical. */
+  .navbar-lang-select {
+    --sl-label-icon-size: 0.875rem;
+    --sl-caret-size: 1.25rem;
+    --sl-inline-padding: 0.5rem;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: var(--nav-text, #6b270e);
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: color 0.15s;
+  }
+  .navbar-lang-select:hover { color: var(--nav-text-hover, #2d1b0e); }
+
+  .navbar-lang-select-icon {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+  .navbar-lang-select-label-icon {
+    width: var(--sl-label-icon-size);
+    height: var(--sl-label-icon-size);
+    inset-inline-start: 0;
+  }
+  .navbar-lang-select-caret {
+    width: var(--sl-caret-size);
+    height: var(--sl-caret-size);
+    inset-inline-end: 0;
+  }
+
+  .navbar-lang-select select {
+    appearance: none;
+    -webkit-appearance: none;
+    border: 0;
+    margin: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    text-overflow: ellipsis;
+    padding-block: 0.375rem;
+    padding-inline: calc(var(--sl-label-icon-size) + var(--sl-inline-padding) + 0.25rem)
+                     calc(var(--sl-caret-size) + var(--sl-inline-padding) + 0.25rem);
+    margin-inline: calc(var(--sl-inline-padding) * -1);
+    width: calc(var(--sl-select-width, 7em) + var(--sl-inline-padding) * 2);
+  }
+  .navbar-lang-select select:focus-visible {
+    outline: 2px solid var(--nav-text-hover, #2d1b0e);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Screen-reader-only utility to mirror Starlight's .sr-only usage on
+     the "Language" label — we can't rely on Starlight's CSS here. */
+  .navbar-lang-select .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
 
   .navbar-github:hover { color: var(--nav-text, #6b270e); }
 

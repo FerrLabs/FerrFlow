@@ -59,8 +59,12 @@ if (!saved) {
   redirectToLang(saved);
 }
 
-// Expose for the language switcher
+// Expose for the language switcher. `__setLang` is the legacy path — it
+// both persists the preference AND redirects. The new native <select>
+// switcher in Navbar.astro does its own navigation, so it only needs the
+// saveLang side effect exposed separately via `__saveLang`.
 (window as any).__setLang = (lang: string) => {
   saveLang(lang);
   redirectToLang(lang);
 };
+(window as any).__saveLang = saveLang;

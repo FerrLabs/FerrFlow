@@ -40,6 +40,14 @@ const ui = {
     'hero.cta.download': 'Download latest release',
     'hero.cta.docs': 'Read the docs',
 
+    // Intro — SEO pass, keeps the H1 keywords ("ship faster", "stay
+    // organized") in the page body and expands the short prose on the
+    // landing so search engines have more than the cards to index.
+    'intro.heading': 'Ship faster, stay organized, from the same terminal.',
+    'intro.p1': 'FerrFlow is the developer platform that cuts release overhead and keeps issues, secrets and deployments in one place. One CLI replaces the spreadsheet of scripts, YAML snippets and vendor plugins most teams glue together — you ship faster because the chores disappear, and you stay organized because every repo, package and environment goes through the same tool.',
+    'intro.p2': 'Under the hood, FerrFlow reads your conventional commits, bumps versions for every package that changed, generates changelogs in Keep a Changelog format, creates tagged releases on GitHub or GitLab, and optionally syncs secrets into your Kubernetes clusters via the FerrFlow operator. It works in monorepos, polyrepos, Rust, Node, Python, PHP, Go, Elixir, Ruby, Swift, Helm charts and plain text — no plugin to install, no language to learn.',
+    'intro.p3': 'Self-host it behind your firewall or use the hosted platform at ferrflow.com. The CLI stays fully open source and runs entirely inside your own pipeline — your code never leaves your infrastructure, and you can walk away any time without lock-in.',
+
     // Products
     'products.title': 'One platform, multiple tools',
     'products.subtitle': 'Each tool works standalone. Together, they cover your entire release workflow.',
@@ -116,6 +124,13 @@ const ui = {
     'hero.headline1': 'Livrez vite.',
     'hero.headline2': 'Restez organis\u00e9.',
     'hero.subheading': "FerrFlow est une plateforme d\u00e9veloppeur qui automatise les releases, suit les issues et synchronise votre workflow — du commit au d\u00e9ploiement.",
+
+    // Intro — même rôle SEO que côté EN : conserver les mots du H1 dans le
+    // corps de page et allonger la prose indexable.
+    'intro.heading': 'Livrez vite, restez organisé, depuis le même terminal.',
+    'intro.p1': "FerrFlow est la plateforme d\u00e9veloppeur qui r\u00e9duit la friction des releases et garde issues, secrets et d\u00e9ploiements au m\u00eame endroit. Un seul CLI remplace la pile de scripts, snippets YAML et plugins \u00e9diteurs que la plupart des \u00e9quipes assemblent \u00e0 la main — vous livrez plus vite parce que les corv\u00e9es disparaissent, et vous restez organis\u00e9 parce que chaque d\u00e9p\u00f4t, package et environnement passe par le m\u00eame outil.",
+    'intro.p2': "En coulisses, FerrFlow lit vos commits conventionnels, incr\u00e9mente les versions pour chaque package modifi\u00e9, g\u00e9n\u00e8re le changelog au format Keep a Changelog, cr\u00e9e les releases tagg\u00e9es sur GitHub ou GitLab, et synchronise optionnellement vos secrets vers vos clusters Kubernetes via l'operator FerrFlow. Il fonctionne en monorepo, polyrepo, Rust, Node, Python, PHP, Go, Elixir, Ruby, Swift, charts Helm et texte brut — aucun plugin \u00e0 installer, aucun langage \u00e0 apprendre.",
+    'intro.p3': "H\u00e9bergez-le derri\u00e8re votre firewall ou utilisez la plateforme h\u00e9berg\u00e9e sur ferrflow.com. Le CLI reste enti\u00e8rement open source et s'ex\u00e9cute dans votre propre pipeline — votre code ne sort jamais de votre infrastructure, et vous pouvez partir quand vous voulez, sans lock-in.",
     'hero.cta.download': 'T\u00e9l\u00e9charger la derni\u00e8re version',
     'hero.cta.docs': 'Lire la documentation',
 

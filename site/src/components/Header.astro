@@ -1,6 +1,7 @@
 ---
 import type { Props } from '@astrojs/starlight/props';
 import Search from '@astrojs/starlight/components/Search.astro';
+import LanguageSelect from '@astrojs/starlight/components/LanguageSelect.astro';
 import ThemeSelect from './ThemeSelect.astro';
 import VersionSelect from 'starlight-versions/components/VersionSelect.astro';
 import Navbar from './Navbar.astro';
@@ -10,9 +11,22 @@ const lang: Lang = Astro.url.pathname.startsWith('/fr/') ? 'fr' : 'en';
 ---
 
 <div class="docs-header">
-  <Navbar lang={lang} activePage="docs">
+  {/* `hideLanguageToggle` suppresses the Navbar's own switcher — docs pages
+      get Starlight's native `<LanguageSelect />` instead, which resolves
+      the localised URL for the current docs page via Starlight's route
+      context (a custom toggle can't see it). The Header is rendered twice
+      by Starlight at different breakpoints; rendering LanguageSelect here
+      means it shows on both without bespoke mobile code. */}
+  <Navbar lang={lang} activePage="docs" hideLanguageToggle>
+    {/* Right-cluster controls — sit left of Sign in / Sign up / GitHub. */}
     <div class="docs-controls">
       <VersionSelect />
+      <LanguageSelect {...Astro.props} />
+    </div>
+    {/* Centered search — Starlight's Search component keeps its own modal
+        + keyboard shortcut binding, we just move the trigger to the
+        middle of the header for the usual docs-site affordance. */}
+    <div slot="center" class="docs-center">
       <Search {...Astro.props} />
     </div>
   </Navbar>
@@ -31,5 +45,36 @@ const lang: Lang = Astro.url.pathname.startsWith('/fr/') ? 'fr' : 'en';
     display: flex;
     align-items: center;
     gap: 0.5rem;
+  }
+
+  .docs-center {
+    width: clamp(18rem, 32vw, 28rem);
+  }
+</style>
+
+<style is:global>
+  /* Scope to .docs-center so we don't affect Starlight's default Search
+     rendering anywhere else (mobile menu sidebar, etc.). `is:global`
+     because <site-search> is a custom element Starlight renders as a
+     direct child — Astro's default scoped styles wouldn't reach it. */
+  .docs-center site-search {
+    width: 100%;
+  }
+  .docs-center site-search button[data-open-modal] {
+    width: 100%;
+    min-height: 2.5rem;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.95rem;
+    gap: 0.625rem;
+  }
+  .docs-center site-search button[data-open-modal] svg {
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+  /* The Ctrl+K hint lives inside a <kbd> — bump it too so it stays
+     proportional to the enlarged button. */
+  .docs-center site-search button[data-open-modal] kbd {
+    font-size: 0.8rem;
+    padding: 0.15rem 0.4rem;
   }
 </style>

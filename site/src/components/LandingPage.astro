@@ -78,6 +78,22 @@ const docsPath = getLocalizedPath('/docs/introduction', lang);
   </div>
 </section>
 
+<!-- ─── Intro ────────────────────────────────────────────────
+  Added for SEO: keeps the H1 keywords in the body, expands the landing's
+  indexable prose, and sets the positioning narrative before the product
+  cards. `max-w-3xl` keeps the line length readable, not marketing-wall.
+-->
+<section class="py-20 border-t border-primary-100 bg-white">
+  <div class="max-w-3xl mx-auto px-6 prose-primary">
+    <h2 class="text-3xl sm:text-4xl font-black text-primary-950 tracking-tight leading-tight">
+      {t(lang, 'intro.heading')}
+    </h2>
+    <p class="mt-6 text-lg text-primary-800 font-normal leading-relaxed">{t(lang, 'intro.p1')}</p>
+    <p class="mt-4 text-lg text-primary-800 font-normal leading-relaxed">{t(lang, 'intro.p2')}</p>
+    <p class="mt-4 text-lg text-primary-800 font-normal leading-relaxed">{t(lang, 'intro.p3')}</p>
+  </div>
+</section>
+
 <!-- ─── Products ─────────────────────────────────────────── -->
 <section class="py-24 border-t border-primary-100 bg-white" id="products-section">
   <div class="max-w-6xl mx-auto px-6">
@@ -88,7 +104,7 @@ const docsPath = getLocalizedPath('/docs/introduction', lang);
 
     <div class="space-y-24">
       <!-- CLI -->
-      <a href="/cli" class="group grid grid-cols-1 md:grid-cols-2 gap-10 items-center no-underline -mx-8 px-8 py-8 rounded-2xl hover:bg-primary-50 transition-colors">
+      <a href="/cli" aria-label={t(lang, 'products.versioning.name')} class="group grid grid-cols-1 md:grid-cols-2 gap-10 items-center no-underline -mx-8 px-8 py-8 rounded-2xl hover:bg-primary-50 transition-colors">
         <div>
           <div class="flex items-center gap-3 mb-4">
             <div class="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center">
@@ -121,7 +137,7 @@ const docsPath = getLocalizedPath('/docs/introduction', lang);
       </a>
 
       <!-- Issues -->
-      <a href="/issues" class="group grid grid-cols-1 md:grid-cols-2 gap-10 items-center no-underline -mx-8 px-8 py-8 rounded-2xl hover:bg-indigo-50 transition-colors">
+      <a href="/issues" aria-label={t(lang, 'products.issues.name')} class="group grid grid-cols-1 md:grid-cols-2 gap-10 items-center no-underline -mx-8 px-8 py-8 rounded-2xl hover:bg-indigo-50 transition-colors">
         <div class="md:order-2">
           <div class="flex items-center gap-3 mb-4">
             <div class="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
@@ -160,7 +176,7 @@ const docsPath = getLocalizedPath('/docs/introduction', lang);
       </a>
 
       <!-- Secrets -->
-      <a href="/secrets" class="group grid grid-cols-1 md:grid-cols-2 gap-10 items-center no-underline -mx-8 px-8 py-8 rounded-2xl hover:bg-emerald-50 transition-colors">
+      <a href="/secrets" aria-label={t(lang, 'products.secrets.name')} class="group grid grid-cols-1 md:grid-cols-2 gap-10 items-center no-underline -mx-8 px-8 py-8 rounded-2xl hover:bg-emerald-50 transition-colors">
         <div>
           <div class="flex items-center gap-3 mb-4">
             <div class="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
