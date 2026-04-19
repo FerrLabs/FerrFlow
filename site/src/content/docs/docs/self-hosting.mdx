@@ -61,6 +61,42 @@ The dashboard is now available on `http://localhost:3000`.
 | `DATABASE_MAX_CONNECTIONS` | no (default `10`) | Postgres pool size |
 | `RATE_LIMIT_REQUESTS` | no (default `60`) | Requests per minute before rate-limiting |
 | `RUST_LOG` | no (default `info`) | Log level |
+| `FERRFLOW_DISABLE_AUTO_ADMIN` | no (default unset) | Set to `false` to opt into env-driven admin bootstrap |
+| `FERRFLOW_ADMIN_EMAIL` | conditional | Email for the bootstrap staff user (required when opting in) |
+| `FERRFLOW_ADMIN_PASSWORD` | conditional | Password for the bootstrap staff user (8–128 chars) |
+
+## Bootstrap admin
+
+On first boot, self-hosters usually need a staff user and an organization to
+log in to. Instead of running SQL by hand you can provision one from the
+environment.
+
+Opt in explicitly by setting:
+
+```bash
+FERRFLOW_DISABLE_AUTO_ADMIN=false
+FERRFLOW_ADMIN_EMAIL=you@example.com
+FERRFLOW_ADMIN_PASSWORD=a-long-random-password
+```
+
+On startup (after migrations, before the HTTP server binds) the API will:
+
+1. Create a user with `is_staff=true` and `email_verified=true`.
+2. Create a personal organization owned by that user.
+3. Log a single info line containing the email (never the password).
+
+Rules:
+
+- Both `FERRFLOW_ADMIN_EMAIL` and `FERRFLOW_ADMIN_PASSWORD` must be set, or
+  neither. Setting only one aborts boot with a clear error.
+- If a staff user already exists, bootstrap is a no-op.
+- Any value other than the exact string `false` on
+  `FERRFLOW_DISABLE_AUTO_ADMIN` (including unset) is treated as disabled.
+  That keeps hosted deployments safe from accidental enablement.
+
+Once bootstrap has run, unset the three variables — the API doesn't need
+them again, and leaving the password in the environment is needless
+exposure.
 
 ## Using an external Postgres
 
