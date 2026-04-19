@@ -72,6 +72,8 @@ import { Tabs, TabItem } from '@astrojs/starlight/components';
 
     FerrFlow updates the `version` field and, when present, keeps `appVersion` in sync.
 
+    The newer `chartyaml` alias is functionally equivalent — use whichever reads more naturally in your config.
+
     ```yaml title="Chart.yaml"
     apiVersion: v2
     name: my-app
@@ -79,7 +81,113 @@ import { Tabs, TabItem } from '@astrojs/starlight/components';
     appVersion: "1.2.3"   # ← updated when present
     ```
   </TabItem>
+  <TabItem label="Dart">
+    Used by Dart and Flutter packages (`pubspec.yaml`).
+
+    FerrFlow updates the top-level `version:` key, leaving dependency versions, anchors, and comments intact. SemVer build suffixes (`1.2.3+42`) are supported.
+
+    ```yaml title="pubspec.yaml"
+    name: my_app
+    version: 1.2.3+42     # ← updated
+    dependencies:
+      some_pkg:
+        version: 2.0.0    # untouched — this is a dep constraint
+    ```
+
+    Config snippet:
+    ```toml
+    [[package.versioned_files]]
+    path   = "pubspec.yaml"
+    format = "pubspecyaml"
+    ```
+  </TabItem>
+  <TabItem label="Elixir">
+    Used by Elixir / Mix projects (`mix.exs`).
+
+    FerrFlow updates the first `version: "…"` literal it finds — the canonical spot is inside `def project do [ ..., version: "x.y.z", ... ] end`.
+
+    ```elixir title="mix.exs"
+    def project do
+      [
+        app: :my_app,
+        version: "1.2.3",   # ← updated
+        elixir: "~> 1.15",
+        deps: deps()
+      ]
+    end
+    ```
+
+    Config snippet:
+    ```toml
+    [[package.versioned_files]]
+    path   = "mix.exs"
+    format = "mixexs"
+    ```
+  </TabItem>
+  <TabItem label="Ruby">
+    Used by Ruby gems (`*.gemspec`).
+
+    FerrFlow updates the `.version = "…"` assignment. Any receiver name works (`s`, `spec`, `gem`, …). Setting `version` from a constant (`s.version = MyGem::VERSION`) isn't covered — version the loaded `version.rb` file directly in that case.
+
+    ```ruby title="my_gem.gemspec"
+    Gem::Specification.new do |s|
+      s.name    = "my_gem"
+      s.version = "1.2.3"  # ← updated
+    end
+    ```
+
+    Config snippet:
+    ```toml
+    [[package.versioned_files]]
+    path   = "my_gem.gemspec"
+    format = "gemspec"
+    ```
+  </TabItem>
+  <TabItem label="Swift">
+    Used by Swift packages (`Package.swift`).
+
+    Swift PM derives a package's version from git tags, so there's no canonical location inside `Package.swift` — FerrFlow updates the first `let <name>Version = "…"` declaration. Constant names must end with `Version` (e.g. `packageVersion`, `AppVersion`) or be literally `version`. Dependency `.package(url:..., from: "…")` arguments are **not** touched.
+
+    ```swift title="Package.swift"
+    import PackageDescription
+
+    let packageVersion = "1.2.3"   // ← updated
+
+    let package = Package(
+      name: "MyPackage",
+      dependencies: [
+        .package(url: "…", from: "1.5.0"),   // untouched
+      ]
+    )
+    ```
+
+    Config snippet:
+    ```toml
+    [[package.versioned_files]]
+    path   = "Package.swift"
+    format = "packageswift"
+    ```
+  </TabItem>
 </Tabs>
+
+## File → format quick reference
+
+| File | `format` | Selector / behaviour |
+|---|---|---|
+| `Cargo.toml` | `toml` | `package.version` |
+| `pyproject.toml` | `toml` | `project.version` or `tool.poetry.version` |
+| `package.json` | `json` | `version` |
+| `composer.json` | `json` | `version` |
+| `pom.xml` | `xml` | first `<version>` tag |
+| `*.csproj` | `csproj` | `<Version>` in `<PropertyGroup>` |
+| `build.gradle`, `build.gradle.kts` | `gradle` | `version = "…"` |
+| `Chart.yaml` | `helm` or `chartyaml` | top-level `version:` |
+| `pubspec.yaml` | `pubspecyaml` | top-level `version:` |
+| `mix.exs` | `mixexs` | `version: "…"` in project keyword list |
+| `*.gemspec` | `gemspec` | `<ident>.version = "…"` |
+| `Package.swift` | `packageswift` | top-level `let <name>Version = "…"` |
+| `go.mod` | `gomod` | git tag only — no file write |
+| `VERSION`, `VERSION.txt` | `txt` | entire file content |
 
 ## Multiple files per package
 
