@@ -934,19 +934,52 @@ fn fetch_and_rebase(repo: &Repository, remote_name: &str, branch: &str) -> Resul
         return Ok(());
     }
 
-    // Replay each local commit on top of remote HEAD
+    // Replay each local commit on top of remote HEAD.
+    //
+    // For each commit X being rebased onto `current_parent`, the three-way
+    // merge needs:
+    //   - ancestor: X.parent.tree  (what X was originally built on)
+    //   - ours:     current_parent.tree  (the new base we're moving onto)
+    //   - theirs:   X.tree  (the commit we want to carry forward)
+    //
+    // The previous implementation rotated these: it passed current_parent.tree
+    // as ancestor, X.tree as ours, and X.parent.tree as theirs. With that
+    // rotation, any file differing between X.parent and current_parent
+    // resolved to X.parent's state — silently reverting every concurrent
+    // change that had landed on the remote while this process was running. See
+    // FerrFlow-Org/FerrFlow#367 for the prod incident.
     let mut current_parent = repo.find_commit(remote_oid)?;
     for commit_oid in &local_commits {
         let commit = repo.find_commit(*commit_oid)?;
-        let tree = commit.tree()?;
-        let parent_tree = current_parent.tree()?;
+        let commit_parent_tree = commit.parent(0)?.tree()?;
+        let commit_tree = commit.tree()?;
+        let new_base_tree = current_parent.tree()?;
 
         let mut merge_index =
-            repo.merge_trees(&parent_tree, &tree, &commit.parent(0)?.tree()?, None)?;
+            repo.merge_trees(&commit_parent_tree, &new_base_tree, &commit_tree, None)?;
         if merge_index.has_conflicts() {
+            let paths: Vec<String> = merge_index
+                .conflicts()
+                .ok()
+                .into_iter()
+                .flatten()
+                .filter_map(|c| c.ok())
+                .filter_map(|c| {
+                    c.our
+                        .as_ref()
+                        .or(c.their.as_ref())
+                        .or(c.ancestor.as_ref())
+                        .map(|e| String::from_utf8_lossy(&e.path).into_owned())
+                })
+                .collect();
+            let path_list = if paths.is_empty() {
+                String::new()
+            } else {
+                format!("\nConflicting paths:\n  - {}", paths.join("\n  - "))
+            };
             anyhow::bail!(
                 "Rebase conflict: cannot rebase release commits on top of remote '{branch}'. \
-                 Run manually or use releaseCommitMode = \"pr\"."
+                 Run manually or use releaseCommitMode = \"pr\".{path_list}"
             );
         }
 
@@ -1881,5 +1914,132 @@ mod tests {
         // or the fallback — never an empty string.
         let branch = resolve_current_branch(&repo, "my-fallback");
         assert!(!branch.is_empty());
+    }
+
+    // -----------------------------------------------------------------------
+    // fetch_and_rebase — regression test for #367
+    // -----------------------------------------------------------------------
+
+    /// Simulates what the release bot does when a concurrent push advances
+    /// main between the action's checkout and its push:
+    ///
+    ///   A  ← common base
+    ///   ├── B   (fast-forward on the remote while we were working —
+    ///   │       analog of a feature PR merging just before we push)
+    ///   └── X   (our local release commit, parent = A)
+    ///
+    /// After fetch_and_rebase, the replayed X' must contain BOTH B's changes
+    /// and X's changes. Issue #367: the previous merge_trees arg order quietly
+    /// reverted B so the rebased commit ended up as "A + X — B" — losing
+    /// every file B had touched.
+    #[test]
+    fn fetch_and_rebase_preserves_concurrent_remote_changes() {
+        use std::path::Path as StdPath;
+        let base_dir = tempfile::tempdir().unwrap();
+
+        // --- Set up a bare "remote" repo ---
+        // init_bare picks the default branch name from git's init.defaultBranch
+        // config, which differs by platform (master on some Linux distros,
+        // main on newer ones, etc.). Avoid the whole problem by not using the
+        // bare's default at all: we create commits locally, set our *own*
+        // HEAD to a fixed branch name, and point the bare's HEAD at it
+        // symbolically.
+        let remote_path = base_dir.path().join("remote.git");
+        let bare = Repository::init_bare(&remote_path).unwrap();
+        // Make the bare's HEAD symbolic ref target "main" so clones pick that.
+        bare.set_head("refs/heads/main").unwrap();
+        drop(bare);
+
+        // --- Set up a local working repo (non-clone to avoid default-branch
+        //     pitfalls) and wire origin to the bare remote manually. ---
+        let local_path = base_dir.path().join("local");
+        std::fs::create_dir_all(&local_path).unwrap();
+        let repo = Repository::init(&local_path).unwrap();
+        {
+            let mut cfg = repo.config().unwrap();
+            cfg.set_str("user.name", "Test").unwrap();
+            cfg.set_str("user.email", "test@test.com").unwrap();
+        }
+        repo.remote("origin", remote_path.to_str().unwrap())
+            .unwrap();
+        // Pin local HEAD to refs/heads/main so create_commit_in_repo commits
+        // onto the branch we expect.
+        repo.set_head("refs/heads/main").unwrap();
+
+        create_commit_in_repo(&repo, &local_path, "base.txt", "commit A");
+        // Push A to the remote so it becomes the shared base.
+        repo.find_remote("origin")
+            .unwrap()
+            .push(&["refs/heads/main:refs/heads/main"], None)
+            .unwrap();
+        let base_oid = repo.head().unwrap().target().unwrap();
+
+        // --- Advance the remote with commit B (simulated concurrent merge) ---
+        // Same init-then-add-remote dance to keep the branch naming under our
+        // control.
+        let helper_path = base_dir.path().join("helper");
+        std::fs::create_dir_all(&helper_path).unwrap();
+        let helper = Repository::init(&helper_path).unwrap();
+        {
+            let mut cfg = helper.config().unwrap();
+            cfg.set_str("user.name", "Helper").unwrap();
+            cfg.set_str("user.email", "helper@test.com").unwrap();
+        }
+        helper
+            .remote("origin", remote_path.to_str().unwrap())
+            .unwrap();
+        // Fetch + check out main from the remote so we commit on top of A,
+        // not on an unrelated root.
+        helper
+            .find_remote("origin")
+            .unwrap()
+            .fetch(&["refs/heads/main:refs/heads/main"], None, None)
+            .unwrap();
+        helper.set_head("refs/heads/main").unwrap();
+        helper
+            .checkout_head(Some(git2::build::CheckoutBuilder::new().force()))
+            .unwrap();
+        create_commit_in_repo(&helper, &helper_path, "from_concurrent_pr.txt", "commit B");
+        helper
+            .find_remote("origin")
+            .unwrap()
+            .push(&["refs/heads/main:refs/heads/main"], None)
+            .unwrap();
+
+        // --- Back in local, create commit X on top of A (the release commit) ---
+        // Local HEAD is still at A at this point (we haven't fetched).
+        assert_eq!(repo.head().unwrap().target().unwrap(), base_oid);
+        create_commit_in_repo(&repo, &local_path, "release_commit.txt", "commit X");
+
+        // --- Call fetch_and_rebase on local ---
+        fetch_and_rebase(&repo, "origin", "main").expect("rebase should succeed");
+
+        // --- Verify: the resulting HEAD tree contains BOTH B's file and X's file ---
+        let tip = repo.head().unwrap().peel_to_commit().unwrap();
+        let tree = tip.tree().unwrap();
+        assert!(
+            tree.get_path(StdPath::new("base.txt")).is_ok(),
+            "base.txt (from A) must be in the rebased tree"
+        );
+        assert!(
+            tree.get_path(StdPath::new("from_concurrent_pr.txt"))
+                .is_ok(),
+            "from_concurrent_pr.txt (from B — the concurrent remote change) must be in the rebased tree; \
+             this is the regression from #367"
+        );
+        assert!(
+            tree.get_path(StdPath::new("release_commit.txt")).is_ok(),
+            "release_commit.txt (from X — our local commit being rebased) must be in the rebased tree"
+        );
+
+        // The new tip's first parent should be B's oid (the remote HEAD we fetched).
+        let parent = tip.parent(0).unwrap();
+        let parent_tree = parent.tree().unwrap();
+        assert!(
+            parent_tree
+                .get_path(StdPath::new("from_concurrent_pr.txt"))
+                .is_ok(),
+            "rebased commit's parent should be B (the fetched remote HEAD)"
+        );
     }
 }
