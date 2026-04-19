@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.1.0] - 2026-04-19
+
+### Features
+
+- feat(site): snapshot v3 docs and promote current to v4 (#361)
+
 ## [5.0.0] - 2026-04-19
 
 ### Breaking Changes
