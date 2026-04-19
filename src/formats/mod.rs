@@ -1,8 +1,13 @@
+pub mod chart_yaml;
 pub mod csproj;
+pub mod gemspec;
 pub mod gomod;
 pub mod gradle;
 pub mod helm;
 pub mod json;
+pub mod mix_exs;
+pub mod package_swift;
+pub mod pubspec_yaml;
 pub mod toml_format;
 pub mod txt;
 pub mod xml;
@@ -34,6 +39,11 @@ pub fn get_handler(format: &FileFormat) -> Box<dyn VersionFile> {
         FileFormat::Toml => Box::new(toml_format::TomlVersionFile),
         FileFormat::Txt => Box::new(txt::TxtVersionFile),
         FileFormat::Xml => Box::new(xml::XmlVersionFile),
+        FileFormat::PubspecYaml => Box::new(pubspec_yaml::PubspecYamlVersionFile),
+        FileFormat::MixExs => Box::new(mix_exs::MixExsVersionFile),
+        FileFormat::ChartYaml => Box::new(chart_yaml::ChartYamlVersionFile),
+        FileFormat::Gemspec => Box::new(gemspec::GemspecVersionFile),
+        FileFormat::PackageSwift => Box::new(package_swift::PackageSwiftVersionFile),
     }
 }
 
@@ -66,6 +76,11 @@ mod tests {
             FileFormat::Toml,
             FileFormat::Txt,
             FileFormat::Xml,
+            FileFormat::PubspecYaml,
+            FileFormat::MixExs,
+            FileFormat::ChartYaml,
+            FileFormat::Gemspec,
+            FileFormat::PackageSwift,
         ] {
             let _ = get_handler(format);
         }
@@ -87,6 +102,11 @@ mod tests {
             FileFormat::Toml,
             FileFormat::Txt,
             FileFormat::Xml,
+            FileFormat::PubspecYaml,
+            FileFormat::MixExs,
+            FileFormat::ChartYaml,
+            FileFormat::Gemspec,
+            FileFormat::PackageSwift,
         ] {
             let handler = get_handler(format);
             assert!(
