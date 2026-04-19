@@ -51,8 +51,9 @@ export default defineConfig({
       },
       plugins: [
         starlightVersions({
-          current: { label: 'v3' },
+          current: { label: 'v4' },
           versions: [
+            { slug: 'v3', label: 'v3' },
             { slug: 'v2', label: 'v2' },
             { slug: 'v1', label: 'v1' },
             { slug: 'v0', label: 'v0' },

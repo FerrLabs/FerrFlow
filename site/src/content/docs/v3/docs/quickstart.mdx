@@ -1,0 +1,83 @@
+---
+title: Quick start
+description: Go from zero to your first automated release in under 5 minutes.
+---
+
+import { Steps } from '@astrojs/starlight/components';
+
+<Steps>
+
+1. **Scaffold the config**
+
+   Run `ferrflow init` at the root of your repository. It detects your version files and writes a `.ferrflow` config:
+
+   ```bash
+   ferrflow init
+   ```
+
+   For a Rust project this produces:
+
+   ```json
+   {
+     "$schema": "https://ferrflow.com/schema/ferrflow.json",
+     "workspace": {
+       "tagTemplate": "v{version}"
+     },
+     "package": [
+       {
+         "name": "my-app",
+         "path": ".",
+         "changelog": "CHANGELOG.md",
+         "versionedFiles": [
+           { "path": "Cargo.toml", "format": "toml" }
+         ]
+       }
+     ]
+   }
+   ```
+
+2. **Preview what would happen**
+
+   Before touching anything, run a dry-run to see what FerrFlow would do:
+
+   ```bash
+   ferrflow check
+   ```
+
+   Output:
+
+   ```
+   Scanning . ...
+   → feat: add user authentication
+   → fix: correct pagination offset
+
+   Bump  my-app  0.1.0 → 0.2.0
+   Tag   v0.2.0
+   ```
+
+3. **Run the release**
+
+   ```bash
+   ferrflow release
+   ```
+
+   FerrFlow will:
+   - Update `Cargo.toml` to `0.2.0`
+   - Append to `CHANGELOG.md`
+   - Commit the changes
+   - Create and push `v0.2.0`
+   - Create a GitHub release (if `GITHUB_TOKEN` is set)
+
+</Steps>
+
+:::tip[Starting from scratch]
+No prior tag? FerrFlow v3 bootstraps from the strategy's zero value automatically — the first `feat:` lands at `0.1.0`, the first `fix:` at `0.0.1`. You don't need to create a `v0.0.0` tag by hand. See [how the baseline is chosen](/docs/reference/cli#which-version-is-bumped-from).
+:::
+
+## Next steps
+
+- Set up [GitHub Actions](/docs/ci/github-actions) to run releases automatically on push to `main`
+- Configure a [monorepo](/docs/configuration/monorepo) if you have multiple packages
+- Add [pre/post-release hooks](/docs/configuration/config-file#hooks) for custom scripts during the release lifecycle
+- Use `ferrflow version` and `ferrflow tag` in CI scripts — see the [CLI reference](/docs/reference/cli)
+- Review the full [config reference](/docs/configuration/config-file)
