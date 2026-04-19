@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.3.0] - 2026-04-19
+
+### Features
+
+- feat(api): env-driven bootstrap admin for self-host (#344)
+- feat(api): per-IP and per-email rate limits on /auth/login (#343)
+
 ## [4.2.0] - 2026-04-19
 
 ### Features
