@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [4.0.0] - 2026-04-19
+
+### Breaking Changes
+
+- feat(formats)!: add PubspecYaml, MixExs, ChartYaml, Gemspec, PackageSwift variants (#364) (#369)
+
 ## [3.2.1] - 2026-04-19
 
 ### Bug Fixes
