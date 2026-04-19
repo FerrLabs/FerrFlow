@@ -1,5 +1,23 @@
 # Changelog
 
+## [5.0.0] - 2026-04-19
+
+### Breaking Changes
+
+- feat(api)!: standardise pagination envelope to { items, total, page, per_page, has_more } (#336) (#352)
+
+### Features
+
+- feat(site): document PubspecYaml / MixExs / ChartYaml / Gemspec / PackageSwift tabs (#359)
+- feat(app): wire New project / New issue / New vault buttons (#323) (#355)
+- feat(api,admin): add /admin/changelog feed + page (#336) (#351)
+- feat(api): self-serve account deletion with grace window + purge worker (#336) (#350)
+- feat(api): rotate sessions on org role change or member removal (#336) (#349)
+- feat(api): add GET /auth/me/export for GDPR data export (#336) (#348)
+- feat(api): async email outbox with retry/backoff (#347)
+- feat(api): structured logs, Prometheus metrics, readyz/livez split (#346)
+- feat(meta): first batch of grab-bag improvements (#336) (#345)
+
 ## [4.3.0] - 2026-04-19
 
 ### Features
