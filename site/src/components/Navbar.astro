@@ -55,7 +55,7 @@ const frEquiv = enEquiv === '/' ? '/fr/' : `/fr${enEquiv.startsWith('/') ? '' : 
 // new FR page is a two-step (create `src/pages/fr/<page>.astro`, add it
 // here). The selector still renders on all pages; the Français option is
 // rendered disabled when this returns false.
-const FR_AVAILABLE_RE = /^\/(?:fr\/)?(?:$|docs(?:$|\/)|issues(?:$|\/))/;
+const FR_AVAILABLE_RE = /^\/(?:fr\/)?(?:$|docs(?:$|\/)|issues(?:$|\/)|cli(?:$|\/)|secrets(?:$|\/)|pricing(?:$|\/))/;
 const hasAltTranslation = FR_AVAILABLE_RE.test(currentPath);
 ---
 
