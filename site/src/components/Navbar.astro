@@ -51,9 +51,11 @@ const enEquiv = currentPath.startsWith('/fr/')
     : currentPath;
 const frEquiv = enEquiv === '/' ? '/fr/' : `/fr${enEquiv.startsWith('/') ? '' : '/'}${enEquiv}`;
 
-// Paths with a FR translation today. Keep small + explicit — adding a new
-// FR page is a two-step (create the page, add to this regex).
-const FR_AVAILABLE_RE = /^\/(?:fr\/)?(?:$|docs(?:$|\/))/;
+// Paths that have a FR mirror today. Keep it small + explicit — adding a
+// new FR page is a two-step (create `src/pages/fr/<page>.astro`, add it
+// here). The selector still renders on all pages; the Français option is
+// rendered disabled when this returns false.
+const FR_AVAILABLE_RE = /^\/(?:fr\/)?(?:$|docs(?:$|\/)|issues(?:$|\/))/;
 const hasAltTranslation = FR_AVAILABLE_RE.test(currentPath);
 ---
 
@@ -188,7 +190,7 @@ const hasAltTranslation = FR_AVAILABLE_RE.test(currentPath);
     controls sit left of the language/auth/GitHub buttons.
   -->
   <slot />
-  {!hideLanguageToggle && hasAltTranslation && (
+  {!hideLanguageToggle && (
     /*
      * Visually identical to Starlight's <LanguageSelect /> (same icons,
      * same sizing, same padding logic) but wired to the marketing
@@ -199,6 +201,12 @@ const hasAltTranslation = FR_AVAILABLE_RE.test(currentPath);
      * `@astrojs/starlight/components-internals/Icons.ts`
      * (`translate` + `down-caret`) so visual parity stays guaranteed
      * on Starlight upgrades — we just re-sync the paths.
+     *
+     * Always rendered so readers know the site is multilingual. The
+     * Français option is disabled (greyed out natively by the browser)
+     * on paths without a FR mirror yet — see `FR_AVAILABLE_RE` above.
+     * `hideLanguageToggle` suppresses the whole control (docs pass it
+     * so Starlight's native <LanguageSelect /> takes over).
      */
     <label class="navbar-lang-select" style="--sl-select-width: 7em;">
       <span class="sr-only">Language</span>
@@ -207,7 +215,9 @@ const hasAltTranslation = FR_AVAILABLE_RE.test(currentPath);
       </svg>
       <select id="lang-switcher" autocomplete="off">
         <option value={enEquiv} selected={lang === 'en'}>English</option>
-        <option value={frEquiv} selected={lang === 'fr'}>Français</option>
+        <option value={frEquiv} selected={lang === 'fr'} disabled={!hasAltTranslation}>
+          {hasAltTranslation ? 'Français' : 'Français (soon)'}
+        </option>
       </select>
       <svg class="navbar-lang-select-icon navbar-lang-select-caret" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/>
