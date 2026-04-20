@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.3.0] - 2026-04-20
+
+### Features
+
+- feat(site): FR mirror for /issues, remove landing intro, disabled FR option on untranslated pages (#372)
+
 ## [5.2.0] - 2026-04-19
 
 ### Features
