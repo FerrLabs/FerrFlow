@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.4.0] - 2026-04-20
+
+### Features
+
+- feat(site): FR mirrors for /cli, /secrets, /pricing (#373)
+
 ## [5.3.0] - 2026-04-20
 
 ### Features
