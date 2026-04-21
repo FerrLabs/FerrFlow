@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## Unreleased
+
+### Added
+
+- Action input `bot: true` opts into the hosted FerrFlow bot identity. Requires `permissions: { id-token: write }`. Releases are authored by `ferrflow[bot]`. See README for setup.
+
 ## [4.0.2] - 2026-04-21
 
 ### Bug Fixes
