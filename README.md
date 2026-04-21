@@ -527,6 +527,26 @@ release:
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
+### Using the hosted bot (ferrflow[bot])
+
+Install the [FerrFlow GitHub App](https://github.com/apps/ferrflow) on your repo or org, then opt in with `bot: true`. Release commits, tags, and GitHub Releases are authored by `ferrflow[bot]` and downstream workflows triggered by those events run normally (unlike the default `GITHUB_TOKEN`, which suppresses them).
+
+```yaml
+permissions:
+  id-token: write
+  contents: read
+
+steps:
+  - uses: actions/checkout@v6
+    with:
+      fetch-depth: 0
+  - uses: FerrLabs/FerrFlow@v4
+    with:
+      bot: true
+```
+
+Three auth modes are supported: `bot: true` uses the hosted FerrFlow App (recommended); `token: <PAT>` uses a personal access token or your own GitHub App token (DIY); omitting both falls back to the workflow's `GITHUB_TOKEN` (simplest, but release events won't trigger downstream workflows).
+
 ## License
 
 [MPL-2.0](LICENSE)
