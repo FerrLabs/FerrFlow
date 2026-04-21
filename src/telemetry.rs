@@ -285,24 +285,24 @@ mod tests {
     #[test]
     fn normalize_ssh_url() {
         assert_eq!(
-            normalize_remote_url("git@github.com:FerrFlow-Org/FerrFlow.git"),
-            "github.com/ferrflow-org/ferrflow"
+            normalize_remote_url("git@github.com:FerrLabs/FerrFlow.git"),
+            "github.com/ferrlabs/ferrflow"
         );
     }
 
     #[test]
     fn normalize_https_url() {
         assert_eq!(
-            normalize_remote_url("https://github.com/FerrFlow-Org/FerrFlow.git"),
-            "github.com/ferrflow-org/ferrflow"
+            normalize_remote_url("https://github.com/FerrLabs/FerrFlow.git"),
+            "github.com/ferrlabs/ferrflow"
         );
     }
 
     #[test]
     fn normalize_https_without_git_suffix() {
         assert_eq!(
-            normalize_remote_url("https://github.com/FerrFlow-Org/FerrFlow"),
-            "github.com/ferrflow-org/ferrflow"
+            normalize_remote_url("https://github.com/FerrLabs/FerrFlow"),
+            "github.com/ferrlabs/ferrflow"
         );
     }
 
@@ -310,9 +310,9 @@ mod tests {
     fn normalize_https_with_token() {
         assert_eq!(
             normalize_remote_url(
-                "https://x-access-token:ghs_abc123@github.com/FerrFlow-Org/FerrFlow.git"
+                "https://x-access-token:ghs_abc123@github.com/FerrLabs/FerrFlow.git"
             ),
-            "github.com/ferrflow-org/ferrflow"
+            "github.com/ferrlabs/ferrflow"
         );
     }
 
@@ -326,12 +326,11 @@ mod tests {
 
     #[test]
     fn normalize_ssh_and_https_produce_same_hash() {
-        let ssh = normalize_remote_url("git@github.com:FerrFlow-Org/FerrFlow.git");
-        let https = normalize_remote_url("https://github.com/FerrFlow-Org/FerrFlow.git");
-        let https_no_git = normalize_remote_url("https://github.com/FerrFlow-Org/FerrFlow");
-        let https_token = normalize_remote_url(
-            "https://x-access-token:TOKEN@github.com/FerrFlow-Org/FerrFlow.git",
-        );
+        let ssh = normalize_remote_url("git@github.com:FerrLabs/FerrFlow.git");
+        let https = normalize_remote_url("https://github.com/FerrLabs/FerrFlow.git");
+        let https_no_git = normalize_remote_url("https://github.com/FerrLabs/FerrFlow");
+        let https_token =
+            normalize_remote_url("https://x-access-token:TOKEN@github.com/FerrLabs/FerrFlow.git");
         assert_eq!(ssh, https);
         assert_eq!(https, https_no_git);
         assert_eq!(https_no_git, https_token);

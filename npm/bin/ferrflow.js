@@ -36,7 +36,7 @@ function getBinaryPath() {
 
   console.error(
     `Unsupported platform: ${process.platform}-${process.arch}\n` +
-    "Install ferrflow from https://github.com/FerrFlow-Org/FerrFlow/releases"
+    "Install ferrflow from https://github.com/FerrLabs/FerrFlow/releases"
   );
   process.exit(1);
 }

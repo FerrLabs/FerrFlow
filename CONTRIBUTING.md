@@ -68,11 +68,11 @@ When adding or changing features, update the relevant docs in
 
 ## Reporting Bugs
 
-Use the [bug report template](https://github.com/FerrFlow-Org/FerrFlow/issues/new?template=bug_report.md).
+Use the [bug report template](https://github.com/FerrLabs/FerrFlow/issues/new?template=bug_report.md).
 
 ## Requesting Features
 
-Use the [feature request template](https://github.com/FerrFlow-Org/FerrFlow/issues/new?template=feature_request.md).
+Use the [feature request template](https://github.com/FerrLabs/FerrFlow/issues/new?template=feature_request.md).
 
 ## Security
 

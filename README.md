@@ -1,10 +1,10 @@
 # FerrFlow
 
-[![CI](https://github.com/FerrFlow-Org/FerrFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/FerrFlow-Org/FerrFlow/actions/workflows/ci.yml)
-[![Release](https://github.com/FerrFlow-Org/FerrFlow/actions/workflows/release.yml/badge.svg)](https://github.com/FerrFlow-Org/FerrFlow/actions/workflows/release.yml)
-[![Latest release](https://img.shields.io/github/v/release/FerrFlow-Org/FerrFlow)](https://github.com/FerrFlow-Org/FerrFlow/releases/latest)
-[![Coverage](https://codecov.io/gh/FerrFlow-Org/FerrFlow/graph/badge.svg)](https://codecov.io/gh/FerrFlow-Org/FerrFlow)
-[![License](https://img.shields.io/github/license/FerrFlow-Org/FerrFlow)](LICENSE)
+[![CI](https://github.com/FerrLabs/FerrFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/FerrLabs/FerrFlow/actions/workflows/ci.yml)
+[![Release](https://github.com/FerrLabs/FerrFlow/actions/workflows/release.yml/badge.svg)](https://github.com/FerrLabs/FerrFlow/actions/workflows/release.yml)
+[![Latest release](https://img.shields.io/github/v/release/FerrLabs/FerrFlow)](https://github.com/FerrLabs/FerrFlow/releases/latest)
+[![Coverage](https://codecov.io/gh/FerrLabs/FerrFlow/graph/badge.svg)](https://codecov.io/gh/FerrLabs/FerrFlow)
+[![License](https://img.shields.io/github/license/FerrLabs/FerrFlow)](LICENSE)
 [![Socket Badge](https://badge.socket.dev/npm/package/ferrflow/latest)](https://badge.socket.dev/npm/package/ferrflow/latest)
 [![Known Vulnerabilities](https://snyk.io/test/npm/ferrflow/badge.svg)](https://snyk.io/test/npm/ferrflow)
 
@@ -57,7 +57,7 @@ docker run ghcr.io/ferrflow/ferrflow:latest check
 
 **Pre-built binaries**
 
-Download from [Releases](https://github.com/FerrFlow-Org/FerrFlow/releases).
+Download from [Releases](https://github.com/FerrLabs/FerrFlow/releases).
 
 ## Usage
 
@@ -108,7 +108,7 @@ ferrflow completions zsh  > ~/.zfunc/_ferrflow
 ferrflow completions fish > ~/.config/fish/completions/ferrflow.fish
 ```
 
-Pre-generated completion scripts are also available as `ferrflow-completions.tar.gz` in each [GitHub release](https://github.com/FerrFlow-Org/FerrFlow/releases).
+Pre-generated completion scripts are also available as `ferrflow-completions.tar.gz` in each [GitHub release](https://github.com/FerrLabs/FerrFlow/releases).
 
 ## Configuration
 

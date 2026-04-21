@@ -947,7 +947,7 @@ fn fetch_and_rebase(repo: &Repository, remote_name: &str, branch: &str) -> Resul
     // rotation, any file differing between X.parent and current_parent
     // resolved to X.parent's state — silently reverting every concurrent
     // change that had landed on the remote while this process was running. See
-    // FerrFlow-Org/FerrFlow#367 for the prod incident.
+    // FerrLabs/FerrFlow#367 for the prod incident.
     let mut current_parent = repo.find_commit(remote_oid)?;
     for commit_oid in &local_commits {
         let commit = repo.find_commit(*commit_oid)?;
@@ -1537,12 +1537,12 @@ mod tests {
     fn get_remote_url_https() {
         let (dir, repo) = init_repo();
         create_commit_in_repo(&repo, dir.path(), "a.txt", "initial");
-        repo.remote("origin", "https://github.com/FerrFlow-Org/FerrFlow.git")
+        repo.remote("origin", "https://github.com/FerrLabs/FerrFlow.git")
             .unwrap();
         let url = get_remote_url(&repo, "origin");
         assert_eq!(
             url,
-            Some("https://github.com/FerrFlow-Org/FerrFlow.git".to_string())
+            Some("https://github.com/FerrLabs/FerrFlow.git".to_string())
         );
     }
 
