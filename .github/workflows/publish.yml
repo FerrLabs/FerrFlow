@@ -43,7 +43,7 @@ jobs:
       - name: Install cross
         if: matrix.os == 'ubuntu-latest'
         # Download via curl with retries — we hit GitHub 504s here from time to
-        # time (see FerrFlow-Org/FerrFlow Publish run 24610662869), and the
+        # time (see FerrLabs/FerrFlow Publish run 24610662869), and the
         # whole release pipeline deserves better than a single-shot fetch.
         run: |
           curl -fsSL --retry 6 --retry-delay 5 --retry-connrefused --retry-all-errors \
@@ -231,14 +231,14 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
-            ghcr.io/ferrflow-org/ferrflow:latest
-            ghcr.io/ferrflow-org/ferrflow:${{ steps.version.outputs.value }}
+            ghcr.io/ferrlabs/ferrflow:latest
+            ghcr.io/ferrlabs/ferrflow:${{ steps.version.outputs.value }}
             ${{ secrets.DOCKERHUB_USERNAME }}/ferrflow:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/ferrflow:${{ steps.version.outputs.value }}
       - name: Attest Docker image
         uses: actions/attest-build-provenance@v4
         with:
-          subject-name: ghcr.io/ferrflow-org/ferrflow
+          subject-name: ghcr.io/ferrlabs/ferrflow
           subject-digest: ${{ steps.docker-push.outputs.digest }}
           push-to-registry: true
         continue-on-error: true

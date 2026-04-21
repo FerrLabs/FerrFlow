@@ -22,7 +22,7 @@ node -e "
   pkg.version = '${VERSION}';
   pkg.repository = {
     type: 'git',
-    url: 'git+https://github.com/FerrFlow-Org/FerrFlow.git',
+    url: 'git+https://github.com/FerrLabs/FerrFlow.git',
     directory: 'ferrflow-wasm'
   };
   pkg.homepage = 'https://ferrflow.com';

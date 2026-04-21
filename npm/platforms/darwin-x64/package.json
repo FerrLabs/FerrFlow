@@ -10,7 +10,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/FerrFlow-Org/FerrFlow.git"
+    "url": "git+https://github.com/FerrLabs/FerrFlow.git"
   },
   "version": "4.0.1"
 }

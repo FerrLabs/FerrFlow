@@ -1,6 +1,6 @@
 name: 'FerrFlow Release'
 description: 'Universal semantic versioning for monorepos and classic repos'
-author: 'FerrFlow-Org'
+author: 'FerrLabs'
 
 branding:
   icon: 'tag'
@@ -53,9 +53,9 @@ runs:
         ARCHIVE="ferrflow-${PLATFORM}-${ARCH_NAME}.${EXT}"
 
         if [ "${{ inputs.version }}" = "latest" ]; then
-          URL="https://github.com/FerrFlow-Org/ferrflow/releases/latest/download/${ARCHIVE}"
+          URL="https://github.com/FerrLabs/ferrflow/releases/latest/download/${ARCHIVE}"
         else
-          URL="https://github.com/FerrFlow-Org/ferrflow/releases/download/v${{ inputs.version }}/${ARCHIVE}"
+          URL="https://github.com/FerrLabs/ferrflow/releases/download/v${{ inputs.version }}/${ARCHIVE}"
         fi
 
         INSTALL_DIR="${RUNNER_TEMP:-$HOME/.local/bin}/ferrflow-bin"
