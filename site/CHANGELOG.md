@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.4.1] - 2026-04-21
+
+### Bug Fixes
+
+- fix(ci): rebrand GHCR + GitHub URLs from ferrflow-org to ferrlabs (#376)
+
 ## [5.4.0] - 2026-04-20
 
 ### Features
