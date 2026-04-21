@@ -9,7 +9,7 @@ The self-host bundle is a single Docker image that contains the API and the
 dashboard. The API serves the dashboard assets on the same origin, so there is
 only one container to run and no CORS configuration to manage.
 
-Image: `ghcr.io/ferrflow-org/ferrflow-selfhost:latest`
+Image: `ghcr.io/ferrlabs/ferrflow-selfhost:latest`
 
 ## Prerequisites
 
@@ -20,11 +20,11 @@ Image: `ghcr.io/ferrflow-org/ferrflow-selfhost:latest`
 ## Quickstart with Docker Compose
 
 Download the reference compose file and environment template from the
-[Application repository](https://github.com/FerrFlow-Org/Application):
+[Application repository](https://github.com/FerrLabs/FerrFlow-Cloud):
 
 ```bash
-curl -O https://raw.githubusercontent.com/FerrFlow-Org/Application/main/docker-compose.selfhost.yml
-curl -o .env https://raw.githubusercontent.com/FerrFlow-Org/Application/main/.env.example.selfhost
+curl -O https://raw.githubusercontent.com/FerrLabs/FerrFlow-Cloud/main/docker-compose.selfhost.yml
+curl -o .env https://raw.githubusercontent.com/FerrLabs/FerrFlow-Cloud/main/.env.example.selfhost
 ```
 
 Generate secrets and edit `.env`:

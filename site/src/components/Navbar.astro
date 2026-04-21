@@ -38,11 +38,8 @@ const navTextHover = accent === '#6366F1' ? '#1E1B4B'
 const navFerr = accent === '#6366F1' ? '#1E1B4B'
               : accent === '#10B981' ? '#064E3B'
               :                        '#2d1b0e';
-// Compute localised siblings for the <select> options. Docs pages (and
-// home) have parity across both languages; marketing product pages
-// (/cli, /issues, /secrets, /pricing) are English-only for now. When
-// there's no counterpart, we hide the selector altogether rather than
-// offering an option that 404s.
+// Compute localised siblings for the <select> options. Docs pages and
+// home have parity across both languages. /cli also has an FR mirror.
 const currentPath = Astro.url.pathname;
 const enEquiv = currentPath.startsWith('/fr/')
   ? currentPath.slice(3) || '/'
@@ -55,7 +52,7 @@ const frEquiv = enEquiv === '/' ? '/fr/' : `/fr${enEquiv.startsWith('/') ? '' : 
 // new FR page is a two-step (create `src/pages/fr/<page>.astro`, add it
 // here). The selector still renders on all pages; the Français option is
 // rendered disabled when this returns false.
-const FR_AVAILABLE_RE = /^\/(?:fr\/)?(?:$|docs(?:$|\/)|issues(?:$|\/)|cli(?:$|\/)|secrets(?:$|\/)|pricing(?:$|\/))/;
+const FR_AVAILABLE_RE = /^\/(?:fr\/)?(?:$|docs(?:$|\/)|cli(?:$|\/))/;
 const hasAltTranslation = FR_AVAILABLE_RE.test(currentPath);
 ---
 
@@ -130,43 +127,7 @@ const hasAltTranslation = FR_AVAILABLE_RE.test(currentPath);
     </script>
 
     <nav class="navbar-links">
-      <div class="navbar-dropdown" id="products-dropdown">
-        <button class="navbar-dropdown-btn" id="products-btn">
-          Products
-          <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 5l3 2.5L9 5"/></svg>
-        </button>
-        <div class="navbar-dropdown-menu" id="products-menu">
-          <a href="/cli" class="navbar-dropdown-item navbar-dropdown-item--orange">
-            <div class="navbar-dropdown-icon" style="background:#FFE8D2;">
-              <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="#E8733A" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z" /></svg>
-            </div>
-            <div>
-              <div class="navbar-dropdown-name" style="color:#2D1B0E;">CLI</div>
-              <div class="navbar-dropdown-desc" style="color:#9E3F1A;">{t(lang, 'nav.products.cli.desc')}</div>
-            </div>
-          </a>
-          <a href="/issues" class="navbar-dropdown-item navbar-dropdown-item--indigo">
-            <div class="navbar-dropdown-icon" style="background:#E0E7FF;">
-              <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="#6366F1" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
-            </div>
-            <div>
-              <div class="navbar-dropdown-name" style="color:#1E1B4B;">Issues</div>
-              <div class="navbar-dropdown-desc" style="color:#4338CA;">{t(lang, 'nav.products.issues.desc')}</div>
-            </div>
-          </a>
-          <a href="/secrets" class="navbar-dropdown-item navbar-dropdown-item--emerald">
-            <div class="navbar-dropdown-icon" style="background:#D1FAE5;">
-              <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="#10B981" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-            </div>
-            <div>
-              <div class="navbar-dropdown-name" style="color:#064E3B;">Secrets</div>
-              <div class="navbar-dropdown-desc" style="color:#065F46;">{t(lang, 'nav.products.secrets.desc')}</div>
-            </div>
-          </a>
-        </div>
-      </div>
-
-      <a href="/pricing" class="navbar-link">Pricing</a>
+      <a href="/cli" class="navbar-link">CLI</a>
       {activePage !== 'docs' && (
         <a href={docsPath} class="navbar-link">{t(lang, 'nav.docs')}</a>
       )}
@@ -231,7 +192,7 @@ const hasAltTranslation = FR_AVAILABLE_RE.test(currentPath);
     {t(lang, 'nav.signup')}
   </a>
   <a
-    href="https://github.com/FerrFlow-Org/FerrFlow"
+    href="https://github.com/FerrLabs/FerrFlow"
     class="navbar-github"
     aria-label="GitHub"
   >

@@ -25,7 +25,7 @@ const lang: Lang = Astro.url.pathname.startsWith('/fr/') ? 'fr' : 'en';
         {t(lang, 'cliPage.hero.subheading')}
       </p>
       <div class="mt-8 flex gap-3 justify-center">
-        <a href="https://github.com/FerrFlow-Org/FerrFlow/releases/latest" class="px-7 py-3 rounded-full bg-primary-600 text-white font-medium hover:bg-primary-700 transition-colors shadow-lg shadow-primary-200">{t(lang, 'cliPage.hero.download')}</a>
+        <a href="https://github.com/FerrLabs/FerrFlow/releases/latest" class="px-7 py-3 rounded-full bg-primary-600 text-white font-medium hover:bg-primary-700 transition-colors shadow-lg shadow-primary-200">{t(lang, 'cliPage.hero.download')}</a>
         <a href={lang === 'fr' ? '/fr/docs/introduction' : '/docs/introduction'} class="px-7 py-3 rounded-full border border-primary-300 text-primary-800 font-medium hover:bg-primary-100 transition-colors">{t(lang, 'cliPage.hero.docs')}</a>
       </div>
     </div>
@@ -42,15 +42,15 @@ const lang: Lang = Astro.url.pathname.startsWith('/fr/') ? 'fr' : 'en';
           <span class="ml-3 text-xs text-primary-400 font-mono">ferrflow</span>
         </div>
         <div class="bg-primary-950 px-5 py-5 font-mono text-sm leading-7">
-          <p><span class="text-primary-400">$ </span><span class="text-primary-100">ferrflow release</span></p>
+          <p><span class="text-primary-400">$ </span><span class="text-primary-100">ferrflow check</span></p>
           <p class="text-primary-500">{t(lang, 'cliPage.terminal.scanning')}</p>
           <p><span class="text-primary-500">{t(lang, 'cliPage.terminal.bump')}</span><span class="text-primary-200">api</span><span class="text-primary-500"> 1.5.0 &rarr; </span><span class="text-green-400 font-medium">1.6.0</span></p>
+          <p><span class="text-primary-500">{t(lang, 'cliPage.terminal.bump')}</span><span class="text-primary-200">web</span><span class="text-primary-500"> 0.4.2 &rarr; </span><span class="text-green-400 font-medium">0.5.0</span></p>
+          <p class="mt-3"><span class="text-primary-400">$ </span><span class="text-primary-100">ferrflow release</span></p>
+          <p class="text-primary-500">{t(lang, 'cliPage.terminal.generating')}</p>
           <p><span class="text-primary-500">{t(lang, 'cliPage.terminal.tag')}</span><span class="text-primary-200">api@v1.6.0</span><span class="text-green-400 ml-2">&check;</span></p>
-          <p class="mt-3"><span class="text-primary-400">$ </span><span class="text-primary-100">ferrflow issues create --title "Fix auth"</span></p>
-          <p><span class="text-green-400">&check;</span><span class="text-primary-300">{t(lang, 'cliPage.terminal.issue')}</span></p>
-          <p class="mt-3"><span class="text-primary-400">$ </span><span class="text-primary-100">ferrflow secrets inject -- npm test</span></p>
-          <p class="text-primary-500">{t(lang, 'cliPage.terminal.injecting')}</p>
-          <p><span class="text-green-400">&check;</span><span class="text-primary-300">{t(lang, 'cliPage.terminal.passed')}</span></p>
+          <p><span class="text-primary-500">{t(lang, 'cliPage.terminal.tag')}</span><span class="text-primary-200">web@v0.5.0</span><span class="text-green-400 ml-2">&check;</span></p>
+          <p><span class="text-primary-500">{t(lang, 'cliPage.terminal.released')}</span></p>
         </div>
       </div>
     </div>
@@ -92,30 +92,21 @@ const lang: Lang = Astro.url.pathname.startsWith('/fr/') ? 'fr' : 'en';
           </div>
         </div>
         <div class="flex gap-4">
-          <div class="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center shrink-0 mt-0.5">
-            <svg class="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+          <div class="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center shrink-0 mt-0.5">
+            <svg class="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
           </div>
           <div>
-            <h3 class="font-bold text-primary-950 text-lg">{t(lang, 'cliPage.features.issues.title')}</h3>
-            <p class="mt-1 text-sm text-primary-700 leading-relaxed">{t(lang, 'cliPage.features.issues.desc')}</p>
+            <h3 class="font-bold text-primary-950 text-lg">{t(lang, 'cliPage.features.forge.title')}</h3>
+            <p class="mt-1 text-sm text-primary-700 leading-relaxed">{t(lang, 'cliPage.features.forge.desc')}</p>
           </div>
         </div>
         <div class="flex gap-4">
-          <div class="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
-            <svg class="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+          <div class="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center shrink-0 mt-0.5">
+            <svg class="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
           </div>
           <div>
-            <h3 class="font-bold text-primary-950 text-lg">{t(lang, 'cliPage.features.secrets.title')}</h3>
-            <p class="mt-1 text-sm text-primary-700 leading-relaxed">{t(lang, 'cliPage.features.secrets.desc')}</p>
-          </div>
-        </div>
-        <div class="flex gap-4">
-          <div class="w-10 h-10 rounded-lg bg-rose-100 flex items-center justify-center shrink-0 mt-0.5">
-            <svg class="w-5 h-5 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
-          </div>
-          <div>
-            <h3 class="font-bold text-primary-950 text-lg">{t(lang, 'cliPage.features.ai.title')}</h3>
-            <p class="mt-1 text-sm text-primary-700 leading-relaxed">{t(lang, 'cliPage.features.ai.desc')}</p>
+            <h3 class="font-bold text-primary-950 text-lg">{t(lang, 'cliPage.features.formats.title')}</h3>
+            <p class="mt-1 text-sm text-primary-700 leading-relaxed">{t(lang, 'cliPage.features.formats.desc')}</p>
           </div>
         </div>
       </div>
@@ -133,7 +124,7 @@ const lang: Lang = Astro.url.pathname.startsWith('/fr/') ? 'fr' : 'en';
           <p class="text-primary-500 mt-4"># npm</p>
           <p><span class="text-primary-400">$ </span><span class="text-primary-100">npm install -g ferrflow</span></p>
           <p class="text-primary-500 mt-4"># Docker</p>
-          <p><span class="text-primary-400">$ </span><span class="text-primary-100">docker run ghcr.io/ferrflow-org/ferrflow check</span></p>
+          <p><span class="text-primary-400">$ </span><span class="text-primary-100">docker run ghcr.io/ferrlabs/ferrflow check</span></p>
         </div>
       </div>
       <p class="mt-6 text-sm text-primary-600">{t(lang, 'cliPage.install.works')}<a href={lang === 'fr' ? '/fr/docs/ci/github-actions' : '/docs/ci/github-actions'} class="text-primary-600 underline hover:text-primary-800">{t(lang, 'cliPage.install.ghAction')}</a>{t(lang, 'cliPage.install.and')}<a href={lang === 'fr' ? '/fr/docs/ci/gitlab-ci' : '/docs/ci/gitlab-ci'} class="text-primary-600 underline hover:text-primary-800">{t(lang, 'cliPage.install.glCi')}</a>{t(lang, 'cliPage.install.dot')}</p>
@@ -145,7 +136,7 @@ const lang: Lang = Astro.url.pathname.startsWith('/fr/') ? 'fr' : 'en';
     <div class="max-w-4xl mx-auto px-6 py-24 text-center">
       <h2 class="text-4xl sm:text-5xl font-black text-primary-50 tracking-tight">{t(lang, 'cliPage.cta.title')}</h2>
       <p class="mt-4 text-lg text-primary-400">{t(lang, 'cliPage.cta.subtitle')}</p>
-      <a href="https://github.com/FerrFlow-Org/FerrFlow" class="mt-10 inline-block px-8 py-4 rounded-full bg-primary-600 text-white font-medium text-lg hover:bg-primary-500 transition-colors shadow-lg shadow-primary-900/50">{t(lang, 'cliPage.cta.button')}</a>
+      <a href="https://github.com/FerrLabs/FerrFlow" class="mt-10 inline-block px-8 py-4 rounded-full bg-primary-600 text-white font-medium text-lg hover:bg-primary-500 transition-colors shadow-lg shadow-primary-900/50">{t(lang, 'cliPage.cta.button')}</a>
     </div>
   </section>
 
@@ -155,8 +146,8 @@ const lang: Lang = Astro.url.pathname.startsWith('/fr/') ? 'fr' : 'en';
       <span>&copy; 2026 FerrFlow. All rights reserved.</span>
       <nav class="flex gap-6">
         <a href={lang === 'fr' ? '/fr/docs/introduction' : '/docs/introduction'} class="hover:text-primary-800 transition-colors">{t(lang, 'footer.documentation')}</a>
-        <a href="https://github.com/FerrFlow-Org/FerrFlow" class="hover:text-primary-800 transition-colors">GitHub</a>
-        <a href="https://github.com/FerrFlow-Org/FerrFlow/releases" class="hover:text-primary-800 transition-colors">{t(lang, 'footer.releases')}</a>
+        <a href="https://github.com/FerrLabs/FerrFlow" class="hover:text-primary-800 transition-colors">GitHub</a>
+        <a href="https://github.com/FerrLabs/FerrFlow/releases" class="hover:text-primary-800 transition-colors">{t(lang, 'footer.releases')}</a>
       </nav>
     </div>
   </footer>

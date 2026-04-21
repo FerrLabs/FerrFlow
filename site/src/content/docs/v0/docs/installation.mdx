@@ -24,18 +24,18 @@ import { Tabs, TabItem } from '@astrojs/starlight/components';
   </TabItem>
 
   <TabItem label="Binary">
-    Download a pre-built binary from [Releases](https://github.com/FerrFlow-Org/FerrFlow/releases/latest):
+    Download a pre-built binary from [Releases](https://github.com/FerrLabs/FerrFlow/releases/latest):
 
     ```bash
     # Linux x86_64
-    curl -L https://github.com/FerrFlow-Org/FerrFlow/releases/latest/download/ferrflow-x86_64-unknown-linux-gnu.tar.gz | tar xz
+    curl -L https://github.com/FerrLabs/FerrFlow/releases/latest/download/ferrflow-x86_64-unknown-linux-gnu.tar.gz | tar xz
     sudo mv ferrflow /usr/local/bin/
     ```
   </TabItem>
 
   <TabItem label="Docker">
     ```bash
-    docker run --rm -v $(pwd):/repo ghcr.io/ferrflow-org/ferrflow:latest check
+    docker run --rm -v $(pwd):/repo ghcr.io/ferrlabs/ferrflow:latest check
     ```
   </TabItem>
 </Tabs>

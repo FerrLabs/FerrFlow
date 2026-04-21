@@ -11,7 +11,7 @@ The official FerrFlow Docker image ships the binary and can be used directly as 
 
 ```yaml title=".gitlab-ci.yml"
 release:
-  image: ghcr.io/ferrflow-org/ferrflow:latest
+  image: ghcr.io/ferrlabs/ferrflow:latest
   stage: release
   script:
     - ferrflow release
@@ -30,7 +30,7 @@ Make sure your CI runner clones with full history. Add `GIT_DEPTH: 0` to the job
 
 ```yaml title=".gitlab-ci.yml"
 release:
-  image: ghcr.io/ferrflow-org/ferrflow:latest
+  image: ghcr.io/ferrlabs/ferrflow:latest
   variables:
     GIT_DEPTH: 0          # full history — required for tag scanning
     GITLAB_TOKEN: $CI_JOB_TOKEN
@@ -46,7 +46,7 @@ If `CI_JOB_TOKEN` doesn't have permission to push tags, create a project deploy 
 
 ```yaml title=".gitlab-ci.yml"
 release:
-  image: ghcr.io/ferrflow-org/ferrflow:latest
+  image: ghcr.io/ferrlabs/ferrflow:latest
   variables:
     GIT_DEPTH: 0
     GITLAB_TOKEN: $FERRFLOW_DEPLOY_TOKEN   # CI variable with write_repository access
@@ -62,7 +62,7 @@ FerrFlow can post a comment on every merge request showing what versions will be
 
 ```yaml title=".gitlab-ci.yml"
 ferrflow-preview:
-  image: ghcr.io/ferrflow-org/ferrflow:latest
+  image: ghcr.io/ferrlabs/ferrflow:latest
   stage: test
   variables:
     GIT_DEPTH: 0

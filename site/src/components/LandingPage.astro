@@ -63,7 +63,7 @@ const docsPath = getLocalizedPath('/docs/introduction', lang);
 
     <div class="mt-10 flex flex-col sm:flex-row gap-3 justify-center">
       <a
-        href="https://github.com/FerrFlow-Org/FerrFlow/releases/latest"
+        href="https://github.com/FerrLabs/FerrFlow/releases/latest"
         class="px-7 py-3 rounded-full bg-primary-600 text-white font-medium text-base hover:bg-primary-700 transition-colors shadow-lg shadow-primary-200 text-center"
       >
         {t(lang, 'hero.cta.download')}
@@ -120,89 +120,6 @@ const docsPath = getLocalizedPath('/docs/introduction', lang);
         </div>
       </a>
 
-      <!-- Issues -->
-      <a href="/issues" aria-label={t(lang, 'products.issues.name')} class="group grid grid-cols-1 md:grid-cols-2 gap-10 items-center no-underline -mx-8 px-8 py-8 rounded-2xl hover:bg-indigo-50 transition-colors">
-        <div class="md:order-2">
-          <div class="flex items-center gap-3 mb-4">
-            <div class="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
-              <svg class="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-              </svg>
-            </div>
-            <h3 class="text-3xl font-black text-indigo-950 tracking-tight">{t(lang, 'products.issues.name')}</h3>
-            <span class="text-xs font-medium text-indigo-600 bg-indigo-100 px-2.5 py-0.5 rounded-full">{t(lang, 'products.issues.badge')}</span>
-          </div>
-          <p class="text-indigo-800 font-normal text-base leading-relaxed mb-5">{t(lang, 'products.issues.desc')}</p>
-          <span class="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 group-hover:gap-2.5 transition-all">
-            {t(lang, 'products.issues.cta')}
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-          </span>
-        </div>
-        <div class="md:order-1 rounded-xl overflow-hidden border border-indigo-200 bg-indigo-50 px-6 py-8">
-          <div class="space-y-3">
-            <div class="flex items-center gap-3 px-3 py-2 bg-white rounded-lg border border-indigo-100 hover:bg-indigo-50 transition-colors cursor-pointer">
-              <span class="w-2 h-2 rounded-full bg-red-400"></span>
-              <span class="text-xs text-indigo-900 font-medium flex-1">Auth token refresh fails silently</span>
-              <span class="text-xs text-indigo-400">#42</span>
-            </div>
-            <div class="flex items-center gap-3 px-3 py-2 bg-white rounded-lg border border-indigo-100 hover:bg-indigo-50 transition-colors cursor-pointer">
-              <span class="w-2 h-2 rounded-full bg-amber-400"></span>
-              <span class="text-xs text-indigo-900 font-medium flex-1">Add rate limiting to /api/events</span>
-              <span class="text-xs text-indigo-400">#38</span>
-            </div>
-            <div class="flex items-center gap-3 px-3 py-2 bg-white rounded-lg border border-indigo-100 hover:bg-indigo-50 transition-colors cursor-pointer">
-              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-              <span class="text-xs text-indigo-900 font-medium flex-1">Migrate config to TOML format</span>
-              <span class="text-xs text-indigo-400">#35</span>
-            </div>
-          </div>
-        </div>
-      </a>
-
-      <!-- Secrets -->
-      <a href="/secrets" aria-label={t(lang, 'products.secrets.name')} class="group grid grid-cols-1 md:grid-cols-2 gap-10 items-center no-underline -mx-8 px-8 py-8 rounded-2xl hover:bg-emerald-50 transition-colors">
-        <div>
-          <div class="flex items-center gap-3 mb-4">
-            <div class="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
-              <svg class="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-            </div>
-            <h3 class="text-3xl font-black text-emerald-950 tracking-tight">{t(lang, 'products.secrets.name')}</h3>
-            <span class="text-xs font-medium text-emerald-600 bg-emerald-100 px-2.5 py-0.5 rounded-full">{t(lang, 'products.secrets.badge')}</span>
-          </div>
-          <p class="text-emerald-800 font-normal text-base leading-relaxed mb-5">{t(lang, 'products.secrets.desc')}</p>
-          <span class="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 group-hover:gap-2.5 transition-all">
-            {t(lang, 'products.secrets.cta')}
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-          </span>
-        </div>
-        <div class="rounded-xl overflow-hidden border border-emerald-200 bg-emerald-50 px-6 py-8">
-          <div class="space-y-3">
-            <div class="flex items-center justify-between px-3 py-2 bg-white rounded-lg border border-emerald-100 hover:bg-emerald-50 transition-colors cursor-pointer">
-              <div class="flex items-center gap-2">
-                <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                <span class="text-xs text-emerald-900 font-medium">DATABASE_URL</span>
-              </div>
-              <span class="text-xs text-emerald-400 font-mono">********</span>
-            </div>
-            <div class="flex items-center justify-between px-3 py-2 bg-white rounded-lg border border-emerald-100 hover:bg-emerald-50 transition-colors cursor-pointer">
-              <div class="flex items-center gap-2">
-                <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                <span class="text-xs text-emerald-900 font-medium">GITHUB_TOKEN</span>
-              </div>
-              <span class="text-xs text-emerald-400 font-mono">********</span>
-            </div>
-            <div class="flex items-center justify-between px-3 py-2 bg-white rounded-lg border border-emerald-100 hover:bg-emerald-50 transition-colors cursor-pointer">
-              <div class="flex items-center gap-2">
-                <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                <span class="text-xs text-emerald-900 font-medium">SMTP_PASSWORD</span>
-              </div>
-              <span class="text-xs text-emerald-400 font-mono">********</span>
-            </div>
-          </div>
-        </div>
-      </a>
     </div>
   </div>
 </section>
@@ -265,7 +182,7 @@ const docsPath = getLocalizedPath('/docs/introduction', lang);
       {t(lang, 'cta.subtitle')}
     </p>
     <a
-      href="https://github.com/FerrFlow-Org/FerrFlow"
+      href="https://github.com/FerrLabs/FerrFlow"
       class="mt-10 inline-block px-8 py-4 rounded-full bg-primary-600 text-white font-medium text-lg hover:bg-primary-500 transition-colors shadow-lg shadow-primary-900/50"
     >
       {t(lang, 'cta.button')}
@@ -275,16 +192,46 @@ const docsPath = getLocalizedPath('/docs/introduction', lang);
 
 <!-- ─── Footer ────────────────────────────────────────────── -->
 <footer class="bg-primary-50 border-t border-primary-100">
-  <div class="max-w-6xl mx-auto px-6 py-10 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-primary-500">
-    <span class="font-bold text-primary-800 tracking-tight">
-      Ferr<span class="text-primary-600">Flow</span>
-    </span>
-    <span>{t(lang, 'footer.rights')}</span>
-    <nav class="flex gap-6">
-      <a href={docsPath} class="hover:text-primary-800 transition-colors">{t(lang, 'footer.documentation')}</a>
-      <a href="https://github.com/FerrFlow-Org/FerrFlow" class="hover:text-primary-800 transition-colors">GitHub</a>
-      <a href="https://github.com/FerrFlow-Org/FerrFlow/releases" class="hover:text-primary-800 transition-colors">{t(lang, 'footer.releases')}</a>
-    </nav>
+  <div class="max-w-6xl mx-auto px-6 py-12">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
+      <div>
+        <h4 class="text-xs font-semibold tracking-wider text-primary-500 uppercase mb-3">{t(lang, 'footer.product')}</h4>
+        <ul class="space-y-2 text-sm">
+          <li><a href={docsPath} class="text-primary-700 hover:text-primary-900 transition-colors">{t(lang, 'footer.documentation')}</a></li>
+          <li><a href="/cli" class="text-primary-700 hover:text-primary-900 transition-colors">CLI</a></li>
+          <li><a href="https://github.com/FerrLabs/FerrFlow/releases" class="text-primary-700 hover:text-primary-900 transition-colors">{t(lang, 'footer.releases')}</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4 class="text-xs font-semibold tracking-wider text-primary-500 uppercase mb-3">{t(lang, 'footer.resources')}</h4>
+        <ul class="space-y-2 text-sm">
+          <li><a href="https://github.com/FerrLabs/FerrFlow" class="text-primary-700 hover:text-primary-900 transition-colors">GitHub</a></li>
+          <li><a href="https://github.com/FerrLabs/FerrFlow/issues" class="text-primary-700 hover:text-primary-900 transition-colors">{t(lang, 'footer.reportIssue')}</a></li>
+          <li><a href="https://github.com/FerrLabs/FerrFlow/discussions" class="text-primary-700 hover:text-primary-900 transition-colors">{t(lang, 'footer.discussions')}</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4 class="text-xs font-semibold tracking-wider text-primary-500 uppercase mb-3">{t(lang, 'footer.ferrlabs')}</h4>
+        <ul class="space-y-2 text-sm">
+          <li><a href="https://ferrlabs.com" class="text-primary-700 hover:text-primary-900 transition-colors">FerrLabs</a></li>
+          <li><a href="https://ferrvault.com" class="text-primary-700 hover:text-primary-900 transition-colors">FerrVault</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4 class="text-xs font-semibold tracking-wider text-primary-500 uppercase mb-3">{t(lang, 'footer.legal')}</h4>
+        <ul class="space-y-2 text-sm">
+          <li><a href="https://ferrlabs.com/legal/terms" class="text-primary-700 hover:text-primary-900 transition-colors">{t(lang, 'footer.terms')}</a></li>
+          <li><a href="https://ferrlabs.com/legal/privacy" class="text-primary-700 hover:text-primary-900 transition-colors">{t(lang, 'footer.privacy')}</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="pt-6 border-t border-primary-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-primary-500">
+      <span class="font-bold text-primary-800 tracking-tight">
+        Ferr<span class="text-primary-600">Flow</span>
+        <span class="ml-2 font-normal text-primary-500">— a <a href="https://ferrlabs.com" class="underline hover:text-primary-800">FerrLabs</a> product</span>
+      </span>
+      <span>{t(lang, 'footer.rights')}</span>
+    </div>
   </div>
 </footer>
 
