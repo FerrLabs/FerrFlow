@@ -7,7 +7,7 @@ import { Aside } from '@astrojs/starlight/components';
 
 ## Utiliser l'action officielle
 
-La manière la plus simple d'utiliser FerrFlow dans GitHub Actions est l'action `FerrFlow-Org/ferrflow@v2`. Elle installe le binaire et exécute `ferrflow release` automatiquement.
+La manière la plus simple d'utiliser FerrFlow dans GitHub Actions est l'action `FerrLabs/ferrflow@v2`. Elle installe le binaire et exécute `ferrflow release` automatiquement.
 
 ```yaml
 name: Release
@@ -27,7 +27,7 @@ jobs:
           fetch-depth: 0          # historique complet nécessaire pour le scan des commits
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: FerrFlow-Org/ferrflow@v2
+      - uses: FerrLabs/ferrflow@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
@@ -50,7 +50,7 @@ Si votre repository a des règles de protection de branche, créez un token déd
 L'action expose la nouvelle version en output que vous pouvez utiliser dans les étapes suivantes :
 
 ```yaml
-- uses: FerrFlow-Org/ferrflow@v2
+- uses: FerrLabs/ferrflow@v2
   id: ferrflow
   env:
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -87,7 +87,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: FerrFlow-Org/ferrflow@v2
+      - uses: FerrLabs/ferrflow@v2
         with:
           mode: preview
         env:
@@ -101,7 +101,7 @@ Si aucun changement publiable n'est d\u00e9tect\u00e9, le commentaire l'indique.
 Dans un monorepo, FerrFlow publie chaque package modifi\u00e9 en une seule ex\u00e9cution :
 
 ```yaml
-- uses: FerrFlow-Org/ferrflow@v2
+- uses: FerrLabs/ferrflow@v2
   env:
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 # Cr\u00e9e api@v1.3.0 et site@v0.5.1 en une seule \u00e9tape si les deux ont chang\u00e9

@@ -30,7 +30,7 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.FERRFLOW_TOKEN }}
 
-      - uses: FerrFlow-Org/ferrflow@v2
+      - uses: FerrLabs/ferrflow@v2
         env:
           GITHUB_TOKEN: ${{ secrets.FERRFLOW_TOKEN }}
 ```
@@ -162,7 +162,7 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.FERRFLOW_TOKEN }}
 
-      - uses: FerrFlow-Org/ferrflow@v2
+      - uses: FerrLabs/ferrflow@v2
         with:
           args: ${{ inputs.dry_run == true && '--dry-run' || '' }}
         env:
@@ -203,7 +203,7 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.FERRFLOW_TOKEN }}
 
-      - uses: FerrFlow-Org/ferrflow@v2
+      - uses: FerrLabs/ferrflow@v2
         env:
           GITHUB_TOKEN: ${{ secrets.FERRFLOW_TOKEN }}
 ```
