@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [4.1.0] - 2026-04-21
+
+### Features
+
+- feat(action): bot: true flag for hosted ferrflow[bot] identity (#373)
+
 ## Unreleased
 
 ### Added
