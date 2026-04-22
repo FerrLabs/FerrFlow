@@ -79,6 +79,7 @@ pub fn check(
     channel: Option<&str>,
     comment: bool,
 ) -> Result<()> {
+    crate::bot_token::ensure_bot_token()?;
     let repo = open_repo(&std::env::current_dir()?)?;
     let root = get_repo_root(&repo)?;
     let config = Config::load(&root, config_path)?;
@@ -180,6 +181,7 @@ pub fn release(
     channel: Option<&str>,
     draft: bool,
 ) -> Result<()> {
+    crate::bot_token::ensure_bot_token()?;
     let repo = open_repo(&std::env::current_dir()?)?;
     let root = get_repo_root(&repo)?;
     let config = Config::load(&root, config_path)?;

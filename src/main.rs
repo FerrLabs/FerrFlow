@@ -1,3 +1,4 @@
+mod bot_token;
 mod changelog;
 mod cli;
 mod config;

@@ -16,6 +16,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 - Action input `bot: true` opts into the hosted FerrFlow bot identity. Requires `permissions: { id-token: write }`. Releases are authored by `ferrflow[bot]`. See README for setup.
 
+### Changed
+
+- `bot: true` flow now performs the OIDC exchange directly in the Rust CLI. Users no longer need `actions/setup-node` (or any Node runtime) on minimal self-hosted runners. The `action.yml` step that shelled out to `node -e` is removed.
+
 ## [4.0.2] - 2026-04-21
 
 ### Bug Fixes
