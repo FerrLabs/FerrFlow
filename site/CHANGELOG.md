@@ -1,5 +1,23 @@
 # Changelog
 
+## [5.5.0] - 2026-04-22
+
+### Features
+
+- feat(site): revert hero copy to release/automatically, drop stale cli.* keys (#391)
+- feat(site): home page becomes cli landing, drop multi-product marketing (#390)
+
+### Bug Fixes
+
+- fix(ci): drop version: 10 from pnpm/action-setup, defer to package.json packageManager (#392)
+- fix(ci): regenerate pnpm-lock.yaml after api/app/admin were moved out (#387)
+- fix(ci): pin pnpm version for action-setup@v5 (#386)
+- fix(api): mirror monorepo layout in Dockerfile for include_str CHANGELOG paths (#382)
+- fix: add module-level doc headers to api and app entrypoints (#381)
+- fix(ci): install build-essential on Lint API job (#380)
+- fix: add per-package READMEs for api and app (#379)
+- fix(ci): run buildah with --isolation=chroot (#378)
+
 ## Unreleased
 
 ### Changed
