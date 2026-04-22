@@ -270,24 +270,99 @@ jobs:
           if-no-files-found: ignore
 
   micro-bench:
-    name: Micro Benchmarks
+    name: Micro Benchmark - ${{ matrix.group }}
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     continue-on-error: true
-    permissions:
-      pull-requests: write
+    strategy:
+      fail-fast: false
+      matrix:
+        group:
+          - commit_parsing
+          - changelog
+          - version_files
+          - config_loading
+          - git_commits
+          - git_find_tag
+          - git_collect_tags
+          - git_changed_files
+          - git_changed_since_tag
+          - validate
+          - full_check_flow
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - uses: dtolnay/rust-toolchain@nightly
       - uses: Swatinem/rust-cache@v2
       - uses: FerrLabs/Benchmarks@v3
         with:
           type: micro
+          group-filter: ${{ matrix.group }}
           definitions: benchmarks/fixtures/definitions
           ferrflow-token: ${{ secrets.GITHUB_TOKEN }}
           skip-competitors: true
+          comment-on-pr: false
         env:
           FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: micro-partial-${{ matrix.group }}
+          path: output.txt
+          retention-days: 1
+
+  micro-bench-aggregate:
+    name: Micro Benchmark (aggregate)
+    needs: micro-bench
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: micro-partial-*
+          merge-multiple: true
+          path: shards/
+      - name: Merge partials
+        run: |
+          cat shards/* > output.txt
+          echo "Merged bench rows: $(wc -l < output.txt)"
+      - name: Find baseline artifact from main
+        id: find-baseline
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RUN_ID=$(gh api "repos/${{ github.repository }}/actions/artifacts?name=criterion-baseline&per_page=1" \
+            --jq '.artifacts[0].workflow_run.id // empty')
+          echo "run_id=${RUN_ID}" >> "$GITHUB_OUTPUT"
+        continue-on-error: true
+      - name: Download baseline
+        if: steps.find-baseline.outputs.run_id
+        uses: actions/download-artifact@v8
+        with:
+          name: criterion-baseline
+          path: baseline/
+          run-id: ${{ steps.find-baseline.outputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+      - name: Ensure baseline file
+        run: |
+          if [[ ! -f baseline/benchmark-data.json ]]; then
+            mkdir -p baseline
+            echo '[]' > baseline/benchmark-data.json
+          fi
+      - uses: benchmark-action/github-action-benchmark@v1
+        with:
+          tool: cargo
+          output-file-path: output.txt
+          external-data-json-path: baseline/benchmark-data.json
+          comment-on-alert: true
+          alert-threshold: '120%'
+          fail-on-alert: false
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          comment-always: true
 
   benchmark:
     name: Benchmark
