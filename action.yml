@@ -87,6 +87,19 @@ runs:
 
         echo "$INSTALL_DIR" >> "$GITHUB_PATH"
 
+    - name: Configure git identity for ferrflow[bot]
+      # When bot: true, release commits must be authored by ferrflow[bot] (not
+      # the checkout actor or the runner's previous git identity). libgit2
+      # reads the repo config, so we set it here before `ferrflow release`
+      # does any committing. The bot user ID (278126555) is stable for the
+      # hosted ferrflow GitHub App; self-hosters running their own App should
+      # replace these values with their bot's identity.
+      if: inputs.bot == 'true'
+      shell: bash
+      run: |
+        git config user.name "ferrflow[bot]"
+        git config user.email "278126555+ferrflow[bot]@users.noreply.github.com"
+
     - name: Preview release
       if: inputs.mode == 'preview'
       shell: bash
