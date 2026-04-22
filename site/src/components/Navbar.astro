@@ -39,7 +39,7 @@ const navFerr = accent === '#6366F1' ? '#1E1B4B'
               : accent === '#10B981' ? '#064E3B'
               :                        '#2d1b0e';
 // Compute localised siblings for the <select> options. Docs pages and
-// home have parity across both languages. /cli also has an FR mirror.
+// home have parity across both languages.
 const currentPath = Astro.url.pathname;
 const enEquiv = currentPath.startsWith('/fr/')
   ? currentPath.slice(3) || '/'
@@ -52,7 +52,7 @@ const frEquiv = enEquiv === '/' ? '/fr/' : `/fr${enEquiv.startsWith('/') ? '' : 
 // new FR page is a two-step (create `src/pages/fr/<page>.astro`, add it
 // here). The selector still renders on all pages; the Français option is
 // rendered disabled when this returns false.
-const FR_AVAILABLE_RE = /^\/(?:fr\/)?(?:$|docs(?:$|\/)|cli(?:$|\/))/;
+const FR_AVAILABLE_RE = /^\/(?:fr\/)?(?:$|docs(?:$|\/))/;
 const hasAltTranslation = FR_AVAILABLE_RE.test(currentPath);
 ---
 
@@ -127,7 +127,6 @@ const hasAltTranslation = FR_AVAILABLE_RE.test(currentPath);
     </script>
 
     <nav class="navbar-links">
-      <a href="/cli" class="navbar-link">CLI</a>
       {activePage !== 'docs' && (
         <a href={docsPath} class="navbar-link">{t(lang, 'nav.docs')}</a>
       )}

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Home page (`/` and `/fr/`) now shows the CLI-focused landing that was previously at `/cli`. Old `/cli` URLs 301-redirect to `/`. FerrFlow is versioning-only — removed the old multi-product marketing copy.
+
 ## [5.4.1] - 2026-04-21
 
 ### Bug Fixes

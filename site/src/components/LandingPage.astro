@@ -9,277 +9,147 @@ interface Props {
 
 const { lang } = Astro.props;
 
-const grainStyle = `background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E"); background-repeat: repeat; background-size: 200px;`;
-
-const featureIcons = {
-  monorepo: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z" />`,
-  agnostic: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />`,
-  commits: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />`,
-  changelog: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.25 15a4.5 4.5 0 004.5 4.5H18a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25H6.75A4.5 4.5 0 002.25 10.5v4.5z" />`,
-  ci: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />`,
-  private: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />`,
-};
-
-const features = [
-  { key: 'monorepo' as const, icon: featureIcons.monorepo },
-  { key: 'agnostic' as const, icon: featureIcons.agnostic },
-  { key: 'commits' as const, icon: featureIcons.commits },
-  { key: 'changelog' as const, icon: featureIcons.changelog },
-  { key: 'ci' as const, icon: featureIcons.ci },
-  { key: 'private' as const, icon: featureIcons.private },
-];
-
 const docsPath = getLocalizedPath('/docs/introduction', lang);
+const ghActionsPath = getLocalizedPath('/docs/ci/github-actions', lang);
+const glCiPath = getLocalizedPath('/docs/ci/gitlab-ci', lang);
 ---
 
-<!-- ─── Navbar ─────────────────────────────────────────────── -->
-<header class="landing-header">
-  <div class="landing-header-inner">
-    <Navbar lang={lang} activePage="home" />
-  </div>
-</header>
+<header class="landing-header"><div class="landing-header-inner"><Navbar lang={lang} activePage="home" /></div></header>
 
-<!-- ─── Hero ──────────────────────────────────────────────── -->
+<!-- Hero -->
 <section class="relative overflow-hidden">
-  <div
-    class="pointer-events-none absolute inset-0 opacity-[0.035]"
-    style={grainStyle}
-  ></div>
-
-  <div
-    class="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[600px] rounded-full opacity-40"
-    style="background: radial-gradient(ellipse, #FFCBA4 0%, #FFE8D2 40%, transparent 70%);"
-  ></div>
-
-  <div class="relative max-w-6xl mx-auto px-6 pt-24 pb-20">
-    <h1 class="text-center font-black leading-[0.92] tracking-tight text-primary-950">
-      <span class="block text-7xl sm:text-8xl md:text-[7rem] lg:text-[8.5rem]">{t(lang, 'hero.headline1')}</span>
-      <span class="block text-7xl sm:text-8xl md:text-[7rem] lg:text-[8.5rem] italic text-primary-600">{t(lang, 'hero.headline2')}</span>
+  <div class="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[600px] rounded-full opacity-40" style="background: radial-gradient(ellipse, #FFCBA4 0%, #FFE8D2 40%, transparent 70%);"></div>
+  <div class="relative max-w-5xl mx-auto px-6 pt-24 pb-16">
+    <div class="flex items-center justify-center gap-2 mb-6">
+      <span class="px-3 py-1 rounded-full bg-primary-100 text-primary-700 text-xs font-medium">{t(lang, 'cliPage.hero.badge')}</span>
+    </div>
+    <h1 class="text-center font-black text-primary-950 tracking-tight leading-[0.95]">
+      <span class="block text-7xl sm:text-8xl md:text-[7rem] lg:text-[8.5rem]">{t(lang, 'cliPage.hero.headline1')}</span>
+      <span class="block text-7xl sm:text-8xl md:text-[7rem] lg:text-[8.5rem] italic text-primary-600">{t(lang, 'cliPage.hero.headline2')}</span>
     </h1>
-
-    <p class="mt-8 text-center text-lg sm:text-xl text-primary-800 max-w-2xl mx-auto leading-relaxed font-normal">
-      {t(lang, 'hero.subheading')}
+    <p class="mt-8 text-center text-lg sm:text-xl text-primary-700 max-w-2xl mx-auto leading-relaxed">
+      {t(lang, 'cliPage.hero.subheading')}
     </p>
-
-    <div class="mt-10 flex flex-col sm:flex-row gap-3 justify-center">
-      <a
-        href="https://github.com/FerrLabs/FerrFlow/releases/latest"
-        class="px-7 py-3 rounded-full bg-primary-600 text-white font-medium text-base hover:bg-primary-700 transition-colors shadow-lg shadow-primary-200 text-center"
-      >
-        {t(lang, 'hero.cta.download')}
-      </a>
-      <a
-        href={docsPath}
-        class="px-7 py-3 rounded-full border border-primary-300 text-primary-800 font-medium text-base hover:bg-primary-100 hover:border-primary-400 transition-colors text-center"
-      >
-        {t(lang, 'hero.cta.docs')}
-      </a>
+    <div class="mt-8 flex gap-3 justify-center">
+      <a href="https://github.com/FerrLabs/FerrFlow/releases/latest" class="px-7 py-3 rounded-full bg-primary-600 text-white font-medium hover:bg-primary-700 transition-colors shadow-lg shadow-primary-200">{t(lang, 'cliPage.hero.download')}</a>
+      <a href={docsPath} class="px-7 py-3 rounded-full border border-primary-300 text-primary-800 font-medium hover:bg-primary-100 transition-colors">{t(lang, 'cliPage.hero.docs')}</a>
     </div>
   </div>
 </section>
 
-<!-- ─── Products ─────────────────────────────────────────── -->
-<section class="py-24 border-t border-primary-100 bg-white" id="products-section">
-  <div class="max-w-6xl mx-auto px-6">
-    <div class="text-center mb-16">
-      <h2 class="text-4xl sm:text-5xl font-black text-primary-950 tracking-tight">{t(lang, 'products.title')}</h2>
-      <p class="mt-4 text-lg text-primary-700 font-normal max-w-xl mx-auto">{t(lang, 'products.subtitle')}</p>
+<!-- Terminal -->
+<section class="pb-20">
+  <div class="max-w-2xl mx-auto px-6">
+    <div class="rounded-2xl overflow-hidden shadow-xl shadow-primary-200/60 border border-primary-200">
+      <div class="bg-primary-950 px-4 py-3 flex items-center gap-2">
+        <span class="w-3 h-3 rounded-full bg-red-400/70"></span>
+        <span class="w-3 h-3 rounded-full bg-yellow-400/70"></span>
+        <span class="w-3 h-3 rounded-full bg-green-400/70"></span>
+        <span class="ml-3 text-xs text-primary-400 font-mono">ferrflow</span>
+      </div>
+      <div class="bg-primary-950 px-5 py-5 font-mono text-sm leading-7">
+        <p><span class="text-primary-400">$ </span><span class="text-primary-100">ferrflow check</span></p>
+        <p class="text-primary-500">{t(lang, 'cliPage.terminal.scanning')}</p>
+        <p><span class="text-primary-500">{t(lang, 'cliPage.terminal.bump')}</span><span class="text-primary-200">api</span><span class="text-primary-500"> 1.5.0 &rarr; </span><span class="text-green-400 font-medium">1.6.0</span></p>
+        <p><span class="text-primary-500">{t(lang, 'cliPage.terminal.bump')}</span><span class="text-primary-200">web</span><span class="text-primary-500"> 0.4.2 &rarr; </span><span class="text-green-400 font-medium">0.5.0</span></p>
+        <p class="mt-3"><span class="text-primary-400">$ </span><span class="text-primary-100">ferrflow release</span></p>
+        <p class="text-primary-500">{t(lang, 'cliPage.terminal.generating')}</p>
+        <p><span class="text-primary-500">{t(lang, 'cliPage.terminal.tag')}</span><span class="text-primary-200">api@v1.6.0</span><span class="text-green-400 ml-2">&check;</span></p>
+        <p><span class="text-primary-500">{t(lang, 'cliPage.terminal.tag')}</span><span class="text-primary-200">web@v0.5.0</span><span class="text-green-400 ml-2">&check;</span></p>
+        <p><span class="text-primary-500">{t(lang, 'cliPage.terminal.released')}</span></p>
+      </div>
     </div>
+  </div>
+</section>
 
-    <div class="space-y-24">
-      <!-- CLI -->
-      <a href="/cli" aria-label={t(lang, 'products.versioning.name')} class="group grid grid-cols-1 md:grid-cols-2 gap-10 items-center no-underline -mx-8 px-8 py-8 rounded-2xl hover:bg-primary-50 transition-colors">
+<!-- What's inside -->
+<section class="py-20 bg-white border-t border-primary-100">
+  <div class="max-w-5xl mx-auto px-6">
+    <div class="text-center mb-14">
+      <h2 class="text-3xl sm:text-4xl font-black text-primary-950 tracking-tight">{t(lang, 'cliPage.features.title')}</h2>
+      <p class="mt-3 text-primary-600">{t(lang, 'cliPage.features.subtitle')}</p>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10">
+      <div class="flex gap-4">
+        <div class="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center shrink-0 mt-0.5">
+          <svg class="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z" /></svg>
+        </div>
         <div>
-          <div class="flex items-center gap-3 mb-4">
-            <div class="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center">
-              <svg class="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z" />
-              </svg>
-            </div>
-            <h3 class="text-3xl font-black text-primary-950 tracking-tight">{t(lang, 'products.versioning.name')}</h3>
-          </div>
-          <p class="text-primary-700 font-normal text-base leading-relaxed mb-5">{t(lang, 'products.versioning.desc')}</p>
-          <span class="inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 group-hover:gap-2.5 transition-all">
-            {t(lang, 'products.versioning.cta')}
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-          </span>
+          <h3 class="font-bold text-primary-950 text-lg">{t(lang, 'cliPage.features.versioning.title')}</h3>
+          <p class="mt-1 text-sm text-primary-700 leading-relaxed">{t(lang, 'cliPage.features.versioning.desc')}</p>
         </div>
-        <div class="rounded-xl overflow-hidden border border-primary-200">
-          <div class="bg-primary-950 px-4 py-2.5 flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-red-400/70"></span>
-            <span class="w-2.5 h-2.5 rounded-full bg-yellow-400/70"></span>
-            <span class="w-2.5 h-2.5 rounded-full bg-green-400/70"></span>
-            <span class="ml-2 text-xs text-primary-400 font-mono">ferrflow release</span>
-          </div>
-          <div class="bg-primary-950 px-4 py-4 font-mono text-xs leading-6">
-            <p><span class="text-primary-400">$ </span><span class="text-primary-100">ferrflow release</span></p>
-            <p class="text-primary-500">{t(lang, 'terminal.scanning')}</p>
-            <p><span class="text-primary-500">Bump </span><span class="text-primary-200">api</span><span class="text-primary-500"> 0.2.6 &rarr; </span><span class="text-green-400">0.3.0</span></p>
-            <p><span class="text-primary-500">Tag  </span><span class="text-primary-200">api@v0.3.0</span><span class="text-green-400 ml-2">&check;</span></p>
-          </div>
+      </div>
+      <div class="flex gap-4">
+        <div class="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center shrink-0 mt-0.5">
+          <svg class="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
         </div>
-      </a>
-
-      <!-- Issues -->
-      <a href="/issues" aria-label={t(lang, 'products.issues.name')} class="group grid grid-cols-1 md:grid-cols-2 gap-10 items-center no-underline -mx-8 px-8 py-8 rounded-2xl hover:bg-indigo-50 transition-colors">
-        <div class="md:order-2">
-          <div class="flex items-center gap-3 mb-4">
-            <div class="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
-              <svg class="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-              </svg>
-            </div>
-            <h3 class="text-3xl font-black text-indigo-950 tracking-tight">{t(lang, 'products.issues.name')}</h3>
-            <span class="text-xs font-medium text-indigo-600 bg-indigo-100 px-2.5 py-0.5 rounded-full">{t(lang, 'products.issues.badge')}</span>
-          </div>
-          <p class="text-indigo-800 font-normal text-base leading-relaxed mb-5">{t(lang, 'products.issues.desc')}</p>
-          <span class="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 group-hover:gap-2.5 transition-all">
-            {t(lang, 'products.issues.cta')}
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-          </span>
-        </div>
-        <div class="md:order-1 rounded-xl overflow-hidden border border-indigo-200 bg-indigo-50 px-6 py-8">
-          <div class="space-y-3">
-            <div class="flex items-center gap-3 px-3 py-2 bg-white rounded-lg border border-indigo-100 hover:bg-indigo-50 transition-colors cursor-pointer">
-              <span class="w-2 h-2 rounded-full bg-red-400"></span>
-              <span class="text-xs text-indigo-900 font-medium flex-1">Auth token refresh fails silently</span>
-              <span class="text-xs text-indigo-400">#42</span>
-            </div>
-            <div class="flex items-center gap-3 px-3 py-2 bg-white rounded-lg border border-indigo-100 hover:bg-indigo-50 transition-colors cursor-pointer">
-              <span class="w-2 h-2 rounded-full bg-amber-400"></span>
-              <span class="text-xs text-indigo-900 font-medium flex-1">Add rate limiting to /api/events</span>
-              <span class="text-xs text-indigo-400">#38</span>
-            </div>
-            <div class="flex items-center gap-3 px-3 py-2 bg-white rounded-lg border border-indigo-100 hover:bg-indigo-50 transition-colors cursor-pointer">
-              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-              <span class="text-xs text-indigo-900 font-medium flex-1">Migrate config to TOML format</span>
-              <span class="text-xs text-indigo-400">#35</span>
-            </div>
-          </div>
-        </div>
-      </a>
-
-      <!-- Secrets -->
-      <a href="/secrets" aria-label={t(lang, 'products.secrets.name')} class="group grid grid-cols-1 md:grid-cols-2 gap-10 items-center no-underline -mx-8 px-8 py-8 rounded-2xl hover:bg-emerald-50 transition-colors">
         <div>
-          <div class="flex items-center gap-3 mb-4">
-            <div class="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
-              <svg class="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-            </div>
-            <h3 class="text-3xl font-black text-emerald-950 tracking-tight">{t(lang, 'products.secrets.name')}</h3>
-            <span class="text-xs font-medium text-emerald-600 bg-emerald-100 px-2.5 py-0.5 rounded-full">{t(lang, 'products.secrets.badge')}</span>
-          </div>
-          <p class="text-emerald-800 font-normal text-base leading-relaxed mb-5">{t(lang, 'products.secrets.desc')}</p>
-          <span class="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 group-hover:gap-2.5 transition-all">
-            {t(lang, 'products.secrets.cta')}
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-          </span>
+          <h3 class="font-bold text-primary-950 text-lg">{t(lang, 'cliPage.features.monorepo.title')}</h3>
+          <p class="mt-1 text-sm text-primary-700 leading-relaxed">{t(lang, 'cliPage.features.monorepo.desc')}</p>
         </div>
-        <div class="rounded-xl overflow-hidden border border-emerald-200 bg-emerald-50 px-6 py-8">
-          <div class="space-y-3">
-            <div class="flex items-center justify-between px-3 py-2 bg-white rounded-lg border border-emerald-100 hover:bg-emerald-50 transition-colors cursor-pointer">
-              <div class="flex items-center gap-2">
-                <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                <span class="text-xs text-emerald-900 font-medium">DATABASE_URL</span>
-              </div>
-              <span class="text-xs text-emerald-400 font-mono">********</span>
-            </div>
-            <div class="flex items-center justify-between px-3 py-2 bg-white rounded-lg border border-emerald-100 hover:bg-emerald-50 transition-colors cursor-pointer">
-              <div class="flex items-center gap-2">
-                <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                <span class="text-xs text-emerald-900 font-medium">GITHUB_TOKEN</span>
-              </div>
-              <span class="text-xs text-emerald-400 font-mono">********</span>
-            </div>
-            <div class="flex items-center justify-between px-3 py-2 bg-white rounded-lg border border-emerald-100 hover:bg-emerald-50 transition-colors cursor-pointer">
-              <div class="flex items-center gap-2">
-                <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                <span class="text-xs text-emerald-900 font-medium">SMTP_PASSWORD</span>
-              </div>
-              <span class="text-xs text-emerald-400 font-mono">********</span>
-            </div>
-          </div>
+      </div>
+      <div class="flex gap-4">
+        <div class="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center shrink-0 mt-0.5">
+          <svg class="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
         </div>
-      </a>
+        <div>
+          <h3 class="font-bold text-primary-950 text-lg">{t(lang, 'cliPage.features.changelog.title')}</h3>
+          <p class="mt-1 text-sm text-primary-700 leading-relaxed">{t(lang, 'cliPage.features.changelog.desc')}</p>
+        </div>
+      </div>
+      <div class="flex gap-4">
+        <div class="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center shrink-0 mt-0.5">
+          <svg class="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+        </div>
+        <div>
+          <h3 class="font-bold text-primary-950 text-lg">{t(lang, 'cliPage.features.forge.title')}</h3>
+          <p class="mt-1 text-sm text-primary-700 leading-relaxed">{t(lang, 'cliPage.features.forge.desc')}</p>
+        </div>
+      </div>
+      <div class="flex gap-4">
+        <div class="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center shrink-0 mt-0.5">
+          <svg class="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+        </div>
+        <div>
+          <h3 class="font-bold text-primary-950 text-lg">{t(lang, 'cliPage.features.formats.title')}</h3>
+          <p class="mt-1 text-sm text-primary-700 leading-relaxed">{t(lang, 'cliPage.features.formats.desc')}</p>
+        </div>
+      </div>
     </div>
   </div>
 </section>
 
-<!-- ─── Features ──────────────────────────────────────────── -->
-<section class="py-28 bg-white border-t border-primary-100">
-  <div class="max-w-6xl mx-auto px-6">
-    <div class="text-center mb-16">
-      <h2 class="text-4xl sm:text-5xl font-black text-primary-950 tracking-tight">{t(lang, 'features.title')}</h2>
-      <p class="mt-4 text-lg text-primary-700 font-normal">{t(lang, 'features.subtitle')}</p>
+<!-- Install -->
+<section class="py-20 bg-primary-50 border-t border-primary-100">
+  <div class="max-w-2xl mx-auto px-6 text-center">
+    <h2 class="text-3xl sm:text-4xl font-black text-primary-950 tracking-tight mb-8">{t(lang, 'cliPage.install.title')}</h2>
+    <div class="rounded-2xl overflow-hidden border border-primary-200 shadow-lg shadow-primary-200/40 text-left">
+      <div class="bg-primary-950 px-5 py-5 font-mono text-sm leading-7">
+        <p class="text-primary-500"># macOS / Linux</p>
+        <p><span class="text-primary-400">$ </span><span class="text-primary-100">curl -fsSL https://ferrflow.com/install.sh | sh</span></p>
+        <p class="text-primary-500 mt-4"># npm</p>
+        <p><span class="text-primary-400">$ </span><span class="text-primary-100">npm install -g ferrflow</span></p>
+        <p class="text-primary-500 mt-4"># Docker</p>
+        <p><span class="text-primary-400">$ </span><span class="text-primary-100">docker run ghcr.io/ferrlabs/ferrflow check</span></p>
+      </div>
     </div>
-
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-      {features.map((f, i) => (
-        <div
-          class="group p-7 rounded-2xl border border-primary-100 bg-white hover:border-primary-300 transition-all duration-300 opacity-0 animate-fade-up"
-          style={`animation-delay: ${i * 80}ms; box-shadow: 0 4px 24px rgba(232,115,58,0.07);`}
-        >
-          <div class="w-11 h-11 rounded-xl bg-primary-100 flex items-center justify-center mb-5 group-hover:bg-primary-200 transition-colors">
-            <svg class="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" set:html={f.icon} />
-          </div>
-          <h3 class="text-lg font-bold text-primary-950 mb-2">{t(lang, `features.${f.key}.title`)}</h3>
-          <p class="text-primary-700 font-normal text-sm leading-relaxed">{t(lang, `features.${f.key}.desc`)}</p>
-        </div>
-      ))}
-    </div>
+    <p class="mt-6 text-sm text-primary-600">{t(lang, 'cliPage.install.works')}<a href={ghActionsPath} class="text-primary-600 underline hover:text-primary-800">{t(lang, 'cliPage.install.ghAction')}</a>{t(lang, 'cliPage.install.and')}<a href={glCiPath} class="text-primary-600 underline hover:text-primary-800">{t(lang, 'cliPage.install.glCi')}</a>{t(lang, 'cliPage.install.dot')}</p>
   </div>
 </section>
 
-<!-- ─── How it works ──────────────────────────────────────── -->
-<section class="py-28 bg-primary-50 border-t border-primary-100">
-  <div class="max-w-6xl mx-auto px-6">
-    <div class="text-center mb-16">
-      <h2 class="text-4xl sm:text-5xl font-black text-primary-950 tracking-tight">{t(lang, 'how.title')}</h2>
-    </div>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
-      {[
-        { n: '01', titleKey: 'how.step1.title' as const, descKey: 'how.step1.desc' as const },
-        { n: '02', titleKey: 'how.step2.title' as const, descKey: 'how.step2.desc' as const },
-        { n: '03', titleKey: 'how.step3.title' as const, descKey: 'how.step3.desc' as const },
-      ].map((step) => (
-        <div class="text-center relative">
-          <div class="text-7xl font-black text-primary-200 leading-none mb-4">{step.n}</div>
-          <h3 class="text-xl font-bold text-primary-950 mb-2">{t(lang, step.titleKey)}</h3>
-          <p class="text-primary-700 font-normal text-sm leading-relaxed max-w-xs mx-auto">{t(lang, step.descKey)}</p>
-        </div>
-      ))}
-    </div>
-  </div>
-</section>
-
-<!-- ─── CTA Final ─────────────────────────────────────────── -->
+<!-- CTA -->
 <section class="bg-primary-950">
   <div class="max-w-4xl mx-auto px-6 py-24 text-center">
-    <h2 class="text-4xl sm:text-5xl font-black text-primary-50 tracking-tight">
-      {t(lang, 'cta.title1')}<br />
-      <span class="italic text-primary-300">{t(lang, 'cta.title2')}</span>
-    </h2>
-    <p class="mt-6 text-lg text-primary-400 font-normal">
-      {t(lang, 'cta.subtitle')}
-    </p>
-    <a
-      href="https://github.com/FerrLabs/FerrFlow"
-      class="mt-10 inline-block px-8 py-4 rounded-full bg-primary-600 text-white font-medium text-lg hover:bg-primary-500 transition-colors shadow-lg shadow-primary-900/50"
-    >
-      {t(lang, 'cta.button')}
-    </a>
+    <h2 class="text-4xl sm:text-5xl font-black text-primary-50 tracking-tight">{t(lang, 'cliPage.cta.title')}</h2>
+    <p class="mt-4 text-lg text-primary-400">{t(lang, 'cliPage.cta.subtitle')}</p>
+    <a href="https://github.com/FerrLabs/FerrFlow" class="mt-10 inline-block px-8 py-4 rounded-full bg-primary-600 text-white font-medium text-lg hover:bg-primary-500 transition-colors shadow-lg shadow-primary-900/50">{t(lang, 'cliPage.cta.button')}</a>
   </div>
 </section>
 
-<!-- ─── Footer ────────────────────────────────────────────── -->
 <footer class="bg-primary-50 border-t border-primary-100">
   <div class="max-w-6xl mx-auto px-6 py-10 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-primary-500">
-    <span class="font-bold text-primary-800 tracking-tight">
-      Ferr<span class="text-primary-600">Flow</span>
-    </span>
-    <span>{t(lang, 'footer.rights')}</span>
+    <span class="font-bold text-primary-800 tracking-tight">Ferr<span class="text-primary-600">Flow</span></span>
+    <span>&copy; 2026 FerrFlow. All rights reserved.</span>
     <nav class="flex gap-6">
       <a href={docsPath} class="hover:text-primary-800 transition-colors">{t(lang, 'footer.documentation')}</a>
       <a href="https://github.com/FerrLabs/FerrFlow" class="hover:text-primary-800 transition-colors">GitHub</a>
@@ -297,6 +167,10 @@ const docsPath = getLocalizedPath('/docs/introduction', lang);
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
     border-bottom: 1px solid var(--border, #ffe8d2);
+  }
+
+  .landing-header:not(.no-transition) {
+    animation: header-fill 0.9s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   }
 
   .landing-header-inner {

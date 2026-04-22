@@ -135,7 +135,7 @@ const ui = {
     'cli.cta.button': 'View on GitHub',
 
 
-    // CLI product page — FR mirror at src/pages/fr/cli.astro.
+    // Landing page copy — rendered by src/components/LandingPage.astro on both / and /fr/.
     'cliPage.meta.title': 'FerrFlow CLI',
     'cliPage.meta.description': 'A single Rust binary for automated semantic versioning, changelogs, and releases. Monorepo-native, conventional-commit driven, runs in any CI.',
     'cliPage.hero.badge': 'Open source',
@@ -289,7 +289,7 @@ const ui = {
     'cli.cta.button': 'Voir sur GitHub',
 
 
-    // CLI product page — mirror at src/pages/fr/cli.astro.
+    // Landing page copy — rendered by src/components/LandingPage.astro on both / and /fr/.
     'cliPage.meta.title': 'FerrFlow CLI',
     'cliPage.meta.description': 'Un binaire Rust pour le versioning s\u00e9mantique automatis\u00e9, les changelogs et les releases. Monorepo-native, pilot\u00e9 par conventional commits, tourne dans toute CI.',
     'cliPage.hero.badge': 'Open source',
