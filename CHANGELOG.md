@@ -4,6 +4,19 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [4.4.0] - 2026-04-22
+
+### Features
+
+- feat(ci): matrix-shard micro benchmarks across runners (#379)
+- feat(cli): handle bot OIDC exchange in rust, drop node dependency from action (#375)
+
+### Bug Fixes
+
+- fix(action): ensure v4.3.0 action identity fix is tagged (re-release) (#381)
+- fix(action): set git identity to ferrflow[bot] when bot: true (#380)
+- fix(tests): use here-string in fixture runner to avoid sigpipe under pipefail (#378)
+
 ## [4.3.0] - 2026-04-22
 
 ### Features
