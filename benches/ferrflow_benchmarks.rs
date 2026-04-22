@@ -347,12 +347,7 @@ fn bench_full_check_flow(c: &mut Criterion) {
         let config_content = generate_config_json(1);
         std::fs::write(_dir.path().join(".ferrflow"), &config_content).unwrap();
 
-        // Create version file
-        std::fs::write(
-            _dir.path().join("packages/pkg-001/package.json"),
-            r#"{"name":"pkg-001","version":"1.0.0"}"#,
-        )
-        .unwrap();
+        // Create version file (directory MUST exist before write)
         std::fs::create_dir_all(_dir.path().join("packages/pkg-001")).unwrap();
         std::fs::write(
             _dir.path().join("packages/pkg-001/package.json"),
