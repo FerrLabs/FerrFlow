@@ -100,7 +100,11 @@ run_fixture() {
     # Check check_contains
     while IFS= read -r expected; do
         [ -z "$expected" ] && continue
-        if ! echo "$output" | grep -qF "$expected"; then
+        # Use here-string instead of `echo | grep` to avoid SIGPIPE race under
+        # `set -o pipefail`: grep -q exits early on first match and closes
+        # stdin, which kills echo with a broken pipe and fails the pipeline
+        # even though grep succeeded.
+        if ! grep -qF "$expected" <<< "$output"; then
             failure_details+="  FAIL $name: expected output to contain '$expected'\n"
             failed=true
         fi
@@ -109,7 +113,7 @@ run_fixture() {
     # Check check_not_contains
     while IFS= read -r unexpected; do
         [ -z "$unexpected" ] && continue
-        if echo "$output" | grep -qF "$unexpected"; then
+        if grep -qF "$unexpected" <<< "$output"; then
             failure_details+="  FAIL $name: expected output NOT to contain '$unexpected'\n"
             failed=true
         fi
@@ -122,7 +126,7 @@ run_fixture() {
         last_pos=-1
         order_ok=true
         for item in "${order_items[@]}"; do
-            pos=$(echo "$output" | grep -b -o "$item" | head -1 | cut -d: -f1 || echo "-1")
+            pos=$(grep -b -o "$item" <<< "$output" | head -1 | cut -d: -f1 || echo "-1")
             if [ "$pos" = "-1" ]; then
                 failure_details+="  FAIL $name: '$item' not found in output for order check\n"
                 failed=true
@@ -143,8 +147,8 @@ run_fixture() {
             for i in $(seq 0 $((${#order_items[@]} - 2))); do
                 current="${order_items[$i]}"
                 next="${order_items[$((i + 1))]}"
-                between=$(echo "$output" | sed -n "/$current/,/$next/p")
-                if ! echo "$between" | grep -q '^$'; then
+                between=$(sed -n "/$current/,/$next/p" <<< "$output")
+                if ! grep -q '^$' <<< "$between"; then
                     failure_details+="  FAIL $name: no blank line between '$current' and '$next'\n"
                     failed=true
                 fi
@@ -175,7 +179,7 @@ except:
     # Check json_contains
     while IFS= read -r expected; do
         [ -z "$expected" ] && continue
-        if [ -n "$json_output" ] && ! echo "$json_output" | grep -qF "$expected"; then
+        if [ -n "$json_output" ] && ! grep -qF "$expected" <<< "$json_output"; then
             failure_details+="  FAIL $name: expected JSON output to contain '$expected'\n"
             failed=true
         fi
@@ -184,7 +188,7 @@ except:
     # Check json_not_contains
     while IFS= read -r unexpected; do
         [ -z "$unexpected" ] && continue
-        if [ -n "$json_output" ] && echo "$json_output" | grep -qF "$unexpected"; then
+        if [ -n "$json_output" ] && grep -qF "$unexpected" <<< "$json_output"; then
             failure_details+="  FAIL $name: expected JSON output NOT to contain '$unexpected'\n"
             failed=true
         fi
