@@ -545,6 +545,8 @@ steps:
       bot: true
 ```
 
+That's it — no `setup-node`, no extra dependencies. FerrFlow's Rust binary handles the OIDC exchange directly, so minimal self-hosted runners work out of the box.
+
 Three auth modes are supported: `bot: true` uses the hosted FerrFlow App (recommended); `token: <PAT>` uses a personal access token or your own GitHub App token (DIY); omitting both falls back to the workflow's `GITHUB_TOKEN` (simplest, but release events won't trigger downstream workflows).
 
 ## License

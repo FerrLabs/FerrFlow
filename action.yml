@@ -87,92 +87,20 @@ runs:
 
         echo "$INSTALL_DIR" >> "$GITHUB_PATH"
 
-    - name: Exchange OIDC for FerrFlow bot token
-      if: inputs.bot == 'true'
-      shell: bash
-      env:
-        BOT_ENDPOINT: ${{ inputs.bot_endpoint }}
-        BOT_AUDIENCE: ${{ inputs.bot_audience }}
-      run: |
-        set -euo pipefail
-
-        if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ] || [ -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]; then
-          echo "::error::FerrFlow bot mode requires OIDC access. Add 'permissions: { id-token: write }' to your workflow (or the job) so the runner exposes an OIDC token endpoint."
-          exit 1
-        fi
-
-        # Request an OIDC JWT from the runner, scoped to the FerrFlow bot audience.
-        OIDC_RESPONSE=$(curl --fail -sSL \
-          -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-          "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${BOT_AUDIENCE}") || {
-          echo "::error::Failed to fetch OIDC token from the GitHub Actions runner."
-          exit 1
-        }
-
-        OIDC_JWT=$(printf '%s' "$OIDC_RESPONSE" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const o=JSON.parse(s);if(!o.value){process.exit(2);}process.stdout.write(o.value);})')
-        if [ -z "$OIDC_JWT" ]; then
-          echo "::error::OIDC response from the runner did not contain a token value."
-          exit 1
-        fi
-
-        # Exchange the OIDC JWT for a short-lived GitHub App installation token.
-        HTTP_BODY_FILE="$(mktemp)"
-        HTTP_CODE=$(curl -sSL -o "$HTTP_BODY_FILE" -w "%{http_code}" \
-          -X POST "$BOT_ENDPOINT" \
-          -H "Authorization: Bearer $OIDC_JWT" \
-          -H "Content-Type: application/json" \
-          --data "$(node -e 'process.stdout.write(JSON.stringify({token: process.argv[1]}))' "$OIDC_JWT")") || HTTP_CODE="000"
-
-        case "$HTTP_CODE" in
-          200|201)
-            ;;
-          401)
-            echo "::error::FerrFlow OIDC verification failed. The runner's OIDC token was rejected by the hosted bot service."
-            rm -f "$HTTP_BODY_FILE"
-            exit 1
-            ;;
-          404)
-            echo "::error::FerrFlow App not installed on this repository's owner. Install at https://github.com/apps/ferrflow."
-            rm -f "$HTTP_BODY_FILE"
-            exit 1
-            ;;
-          429)
-            echo "::error::FerrFlow hosted bot rate limit hit. Retry in a few minutes or use 'token:' fallback."
-            rm -f "$HTTP_BODY_FILE"
-            exit 1
-            ;;
-          5*|000)
-            echo "::error::FerrFlow hosted bot unavailable. See status.ferrlabs.com or fall back to 'token:' input."
-            rm -f "$HTTP_BODY_FILE"
-            exit 1
-            ;;
-          *)
-            echo "::error::FerrFlow hosted bot returned unexpected HTTP $HTTP_CODE."
-            rm -f "$HTTP_BODY_FILE"
-            exit 1
-            ;;
-        esac
-
-        BOT_TOKEN=$(node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const o=JSON.parse(s);if(!o.token){process.exit(2);}process.stdout.write(o.token);})' < "$HTTP_BODY_FILE")
-        BOT_EXPIRES=$(node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const o=JSON.parse(s);process.stdout.write(o.expires_at||"");})' < "$HTTP_BODY_FILE")
-        rm -f "$HTTP_BODY_FILE"
-
-        if [ -z "$BOT_TOKEN" ]; then
-          echo "::error::FerrFlow hosted bot response did not contain a token."
-          exit 1
-        fi
-
-        echo "::add-mask::$BOT_TOKEN"
-        echo "GITHUB_TOKEN=$BOT_TOKEN" >> "$GITHUB_ENV"
-        echo "FERRFLOW_TOKEN=$BOT_TOKEN" >> "$GITHUB_ENV"
-        echo "Authenticated as ferrflow[bot] (token expires at ${BOT_EXPIRES:-unknown})."
-
     - name: Preview release
       if: inputs.mode == 'preview'
       shell: bash
+      env:
+        FERRFLOW_BOT: ${{ inputs.bot }}
+        FERRFLOW_BOT_ENDPOINT: ${{ inputs.bot_endpoint }}
+        FERRFLOW_BOT_AUDIENCE: ${{ inputs.bot_audience }}
       run: ferrflow check --comment
 
     - name: Run FerrFlow release
       if: inputs.mode == 'release'
       shell: bash
+      env:
+        FERRFLOW_BOT: ${{ inputs.bot }}
+        FERRFLOW_BOT_ENDPOINT: ${{ inputs.bot_endpoint }}
+        FERRFLOW_BOT_AUDIENCE: ${{ inputs.bot_audience }}
       run: ferrflow ${{ inputs.dry_run == 'true' && '--dry-run' || '' }} release ${{ inputs.force_version != '' && format('--force-version {0}', inputs.force_version) || '' }}
