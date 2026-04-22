@@ -1,7 +1,5 @@
 # FerrFlow
 
-[![CI](https://github.com/FerrLabs/FerrFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/FerrLabs/FerrFlow/actions/workflows/ci.yml)
-[![Release](https://github.com/FerrLabs/FerrFlow/actions/workflows/release.yml/badge.svg)](https://github.com/FerrLabs/FerrFlow/actions/workflows/release.yml)
 [![Latest release](https://img.shields.io/github/v/release/FerrLabs/FerrFlow)](https://github.com/FerrLabs/FerrFlow/releases/latest)
 [![Coverage](https://codecov.io/gh/FerrLabs/FerrFlow/graph/badge.svg)](https://codecov.io/gh/FerrLabs/FerrFlow)
 [![License](https://img.shields.io/github/license/FerrLabs/FerrFlow)](LICENSE)
