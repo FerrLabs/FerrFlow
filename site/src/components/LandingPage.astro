@@ -138,11 +138,31 @@ const glCiPath = getLocalizedPath('/docs/ci/gitlab-ci', lang);
 </section>
 
 <!-- CTA -->
-<section class="bg-primary-950">
-  <div class="max-w-4xl mx-auto px-6 py-24 text-center">
-    <h2 class="text-4xl sm:text-5xl font-black text-primary-50 tracking-tight">{t(lang, 'cliPage.cta.title')}</h2>
-    <p class="mt-4 text-lg text-primary-400">{t(lang, 'cliPage.cta.subtitle')}</p>
-    <a href="https://github.com/FerrLabs/FerrFlow" class="mt-10 inline-block px-8 py-4 rounded-full bg-primary-600 text-white font-medium text-lg hover:bg-primary-500 transition-colors shadow-lg shadow-primary-900/50">{t(lang, 'cliPage.cta.button')}</a>
+<section class="bg-primary-950 relative overflow-hidden">
+  <div
+    class="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[500px] rounded-full opacity-20"
+    style="background: radial-gradient(ellipse, #e8733a 0%, #b35a2b 40%, transparent 70%);"
+  ></div>
+  <div class="relative max-w-4xl mx-auto px-6 py-28 text-center">
+    <h2 class="font-black tracking-tight leading-[0.95] text-primary-50">
+      <span class="block text-4xl sm:text-5xl md:text-6xl">{t(lang, 'cta.title1')}</span>
+      <span class="block text-4xl sm:text-5xl md:text-6xl italic text-primary-400">{t(lang, 'cta.title2')}</span>
+    </h2>
+    <p class="mt-6 text-lg text-primary-300 max-w-2xl mx-auto leading-relaxed">{t(lang, 'cta.subtitle')}</p>
+    <div class="mt-10 flex gap-3 justify-center flex-wrap">
+      <a
+        href="https://github.com/FerrLabs/FerrFlow"
+        class="px-8 py-4 rounded-full bg-primary-600 text-white font-medium text-lg hover:bg-primary-500 transition-colors shadow-lg shadow-primary-900/50"
+      >
+        {t(lang, 'cta.button')}
+      </a>
+      <a
+        href={docsPath}
+        class="px-8 py-4 rounded-full border border-primary-700 text-primary-100 font-medium text-lg hover:bg-primary-900 transition-colors"
+      >
+        {t(lang, 'cliPage.hero.docs')}
+      </a>
+    </div>
   </div>
 </section>
 

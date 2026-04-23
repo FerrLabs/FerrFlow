@@ -125,9 +125,6 @@ const ui = {
     'cliPage.install.and': ' and ',
     'cliPage.install.glCi': 'GitLab CI template',
     'cliPage.install.dot': '.',
-    'cliPage.cta.title': 'Start shipping',
-    'cliPage.cta.subtitle': 'Open source. Works with GitHub, GitLab, and self-hosted forges.',
-    'cliPage.cta.button': 'View on GitHub',
 
 
   },
@@ -236,9 +233,6 @@ const ui = {
     'cliPage.install.and': ' et ',
     'cliPage.install.glCi': 'template GitLab CI',
     'cliPage.install.dot': '.',
-    'cliPage.cta.title': 'Commencez \u00e0 livrer',
-    'cliPage.cta.subtitle': 'Open source. Compatible avec GitHub, GitLab et les forges self-hosted.',
-    'cliPage.cta.button': 'Voir sur GitHub',
 
 
   },
