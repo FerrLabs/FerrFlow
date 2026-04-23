@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.7.0] - 2026-04-23
+
+### Features
+
+- feat: marketing landing uses unified @ferrlabs/ui-astro chrome (#402)
+
 ## [5.6.1] - 2026-04-23
 
 ### Bug Fixes
