@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.6.1] - 2026-04-23
+
+### Bug Fixes
+
+- fix(site): drop radial gradient from cta, keep solid primary-950 bg (#397)
+
 ## [5.6.0] - 2026-04-23
 
 ### Features
