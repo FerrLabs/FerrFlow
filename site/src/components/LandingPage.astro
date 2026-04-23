@@ -1,7 +1,9 @@
 ---
 import { t, getLocalizedPath } from '../i18n/translations';
 import type { Lang } from '../i18n/translations';
-import Navbar from './Navbar.astro';
+import SharedNavbar from '@ferrlabs/ui-astro/Navbar.astro';
+import SharedFooter from '@ferrlabs/ui-astro/Footer.astro';
+import PreFooterCTA from '@ferrlabs/ui-astro/PreFooterCTA.astro';
 
 interface Props {
   lang: Lang;
@@ -12,9 +14,26 @@ const { lang } = Astro.props;
 const docsPath = getLocalizedPath('/docs/introduction', lang);
 const ghActionsPath = getLocalizedPath('/docs/ci/github-actions', lang);
 const glCiPath = getLocalizedPath('/docs/ci/gitlab-ci', lang);
+
+const currentPath = Astro.url.pathname;
+const enEquiv =
+  currentPath.startsWith('/fr/') ? currentPath.slice(3) || '/'
+  : currentPath === '/fr' ? '/'
+  : currentPath;
+const frEquiv = enEquiv === '/' ? '/fr/' : `/fr${enEquiv.startsWith('/') ? '' : '/'}${enEquiv}`;
 ---
 
-<header class="landing-header"><div class="landing-header-inner"><Navbar lang={lang} activePage="home" /></div></header>
+<SharedNavbar
+  lang={lang}
+  currentProduct="ferrflow"
+  accent="orange"
+  brand={{ name: 'FerrFlow', href: lang === 'fr' ? '/fr/' : '/' }}
+  links={[
+    { label: t(lang, 'nav.docs') ?? 'Docs', href: docsPath },
+  ]}
+  enEquiv={enEquiv}
+  frEquiv={frEquiv}
+/>
 
 <!-- Hero -->
 <section class="relative overflow-hidden">
@@ -162,39 +181,24 @@ const glCiPath = getLocalizedPath('/docs/ci/gitlab-ci', lang);
   </div>
 </section>
 
-<footer class="bg-primary-50 border-t border-primary-100">
-  <div class="max-w-6xl mx-auto px-6 py-10 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-primary-500">
-    <span class="font-bold text-primary-800 tracking-tight">Ferr<span class="text-primary-600">Flow</span></span>
-    <span>&copy; 2026 FerrFlow. All rights reserved.</span>
-    <nav class="flex gap-6">
-      <a href={docsPath} class="hover:text-primary-800 transition-colors">{t(lang, 'footer.documentation')}</a>
-      <a href="https://github.com/FerrLabs/FerrFlow" class="hover:text-primary-800 transition-colors">GitHub</a>
-      <a href="https://github.com/FerrLabs/FerrFlow/releases" class="hover:text-primary-800 transition-colors">{t(lang, 'footer.releases')}</a>
-    </nav>
-  </div>
-</footer>
+<PreFooterCTA
+  lang={lang}
+  accent="orange"
+  title={t(lang, 'prefooter.title') ?? 'Ready to ship.'}
+  subtitle={t(lang, 'prefooter.subtitle') ?? 'Without the ceremony.'}
+  action={{ type: 'code', snippet: 'cargo install ferrflow' }}
+/>
 
-<style>
-  .landing-header {
-    position: sticky;
-    top: 0;
-    z-index: 50;
-    background: var(--bg, rgba(255, 248, 242, 0.9));
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    border-bottom: 1px solid var(--border, #ffe8d2);
-  }
+<SharedFooter
+  lang={lang}
+  currentProduct="ferrflow"
+  accent="orange"
+  productLinks={[
+    { label: t(lang, 'footer.documentation') ?? 'Documentation', href: docsPath },
+    { label: t(lang, 'footer.releases') ?? 'Releases', href: 'https://github.com/FerrLabs/FerrFlow/releases', external: true },
+  ]}
+  resourceLinks={[
+    { label: 'GitHub', href: 'https://github.com/FerrLabs/FerrFlow', external: true },
+  ]}
+/>
 
-  .landing-header:not(.no-transition) {
-    animation: header-fill 0.9s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  }
-
-  .landing-header-inner {
-    max-width: 72rem;
-    margin: 0 auto;
-    padding: 0 1.5rem;
-    height: 4rem;
-    display: flex;
-    align-items: center;
-  }
-</style>

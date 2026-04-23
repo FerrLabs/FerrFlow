@@ -3,12 +3,16 @@ FROM docker.io/library/node:24-alpine AS builder
 
 WORKDIR /app
 
-RUN npm install -g pnpm@9
+# NODE_AUTH_TOKEN authenticates pnpm against GitHub Packages so it can
+# resolve private @ferrlabs/* packages (ui-astro, styles, …).
+ARG NODE_AUTH_TOKEN
 
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+RUN npm install -g pnpm@10
+
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
 COPY packages/site/package.json ./packages/site/
 
-RUN pnpm install --frozen-lockfile
+RUN NODE_AUTH_TOKEN="${NODE_AUTH_TOKEN}" pnpm install --frozen-lockfile --filter @ferrflow/site...
 
 COPY packages/site ./packages/site
 

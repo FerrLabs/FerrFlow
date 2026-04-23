@@ -79,6 +79,10 @@ const ui = {
     'cta.subtitle': 'Open source. Runs in your own CI. No data leaves your infrastructure.',
     'cta.button': 'View on GitHub',
 
+    // Pre-footer CTA (shared ui-astro component) — DESIGN.md §4.1 (FerrFlow row).
+    'prefooter.title': 'Ready to ship.',
+    'prefooter.subtitle': 'Without the ceremony.',
+
     // Footer
     'footer.rights': '© 2026 FerrLabs. All rights reserved.',
     'footer.documentation': 'Documentation',
@@ -187,6 +191,9 @@ const ui = {
     'cta.title2': 'sans c\u00e9r\u00e9monie ?',
     'cta.subtitle': 'Gratuit et open source. Tourne dans votre propre CI. Aucune donn\u00e9e ne quitte votre infrastructure.',
     'cta.button': 'Voir sur GitHub',
+
+    'prefooter.title': 'Pr\u00eat \u00e0 livrer.',
+    'prefooter.subtitle': 'Sans le protocole.',
 
     // Footer
     'footer.rights': '\u00a9 2026 FerrLabs. Tous droits r\u00e9serv\u00e9s.',
