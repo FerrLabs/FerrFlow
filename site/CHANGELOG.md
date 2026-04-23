@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.6.0] - 2026-04-23
+
+### Features
+
+- feat(site): restore 2-line structured CTA with 'Ready to ship / without the ceremony' (#396)
+
 ## [5.5.0] - 2026-04-22
 
 ### Features
