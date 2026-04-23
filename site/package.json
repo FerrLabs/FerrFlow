@@ -1,7 +1,7 @@
 {
   "dependencies": {
     "@astrojs/starlight": "^0.38.2",
-    "@ferrlabs/ui-astro": "^0.5.0",
+    "@ferrlabs/ui-astro": "^0.6.0",
     "astro": "^6.1.6",
     "starlight-versions": "^0.8.1"
   },
