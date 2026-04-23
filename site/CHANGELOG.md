@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.8.0] - 2026-04-23
+
+### Features
+
+- feat(site): docs Header uses shared @ferrlabs/ui-astro Navbar (delete 555-line local copy) (#403)
+
 ## [5.7.0] - 2026-04-23
 
 ### Features
