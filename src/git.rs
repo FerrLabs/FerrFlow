@@ -1013,6 +1013,97 @@ fn fetch_and_rebase(repo: &Repository, remote_name: &str, branch: &str) -> Resul
     Ok(())
 }
 
+/// Hard-reset the working tree and the local branch ref to the remote tip
+/// of `branch`. Used by the release-retry path to throw away an in-progress
+/// release commit before regenerating it against fresh remote state — see
+/// [`is_push_rejected_error`] and the retry loop in
+/// `monorepo::release`.
+///
+/// Doesn't touch the remote at all. Drops any uncommitted changes too.
+pub fn reset_branch_to_remote(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
+    let mut remote = get_authenticated_remote(repo, remote_name)?;
+    let mut opts = make_fetch_options();
+    remote
+        .fetch(
+            &[&format!(
+                "refs/heads/{branch}:refs/remotes/{remote_name}/{branch}"
+            )],
+            Some(&mut opts),
+            None,
+        )
+        .with_context(|| format!("Failed to fetch '{remote_name}/{branch}' for reset"))?;
+    drop(remote);
+
+    let remote_ref = format!("refs/remotes/{remote_name}/{branch}");
+    let remote_oid = repo
+        .refname_to_id(&remote_ref)
+        .with_context(|| format!("Could not find remote ref {remote_ref} after fetch"))?;
+
+    // Move the local branch ref (if any) to the remote tip.
+    let local_ref = format!("refs/heads/{branch}");
+    if repo.find_reference(&local_ref).is_ok() {
+        repo.reference(
+            &local_ref,
+            remote_oid,
+            true,
+            "ferrflow: reset to remote for release retry",
+        )?;
+    }
+
+    // Detach HEAD onto the remote tip and force-checkout to scrub the
+    // working tree. `set_head_detached` first so the subsequent
+    // `checkout_head` lands on the right commit even if HEAD was tracking
+    // the now-rewound branch ref.
+    //
+    // `remove_untracked(true)` wipes hook side-output (lockfile dumps,
+    // generated changelogs, etc.) from the failed attempt so the retry
+    // doesn't see stale artifacts.
+    repo.set_head_detached(remote_oid)?;
+    repo.checkout_head(Some(
+        git2::build::CheckoutBuilder::new()
+            .force()
+            .remove_untracked(true),
+    ))?;
+
+    // Re-attach HEAD to the branch ref now that it points at remote tip,
+    // so subsequent commits land on the branch as expected.
+    if repo.find_reference(&local_ref).is_ok() {
+        repo.set_head(&local_ref)?;
+    }
+
+    Ok(())
+}
+
+/// Walk the error chain looking for the signatures of a push that was
+/// rejected by the remote — either a rule violation, a non-fast-forward
+/// rebuff from libgit2, or our own rebase-conflict bail in
+/// [`fetch_and_rebase`]. The release retry loop uses this to decide
+/// whether throwing away local state and regenerating the release commit
+/// is worth attempting.
+///
+/// We match by message and by the rendered `ErrorCode` Display (e.g.
+/// `"E2005"`) rather than downcasting `ErrorCode` directly: anyhow's
+/// context wrappers are visible via `Display` in the chain but aren't
+/// downcastable through `&dyn Error`.
+pub fn is_push_rejected_error(err: &anyhow::Error) -> bool {
+    let push_codes: &[String] = &[
+        error_code::GIT_PUSH_REJECTED.to_string(),
+        error_code::GIT_PUSH_BRANCH.to_string(),
+    ];
+    err.chain().any(|cause| {
+        let raw = cause.to_string();
+        if push_codes.iter().any(|c| raw == c.as_str()) {
+            return true;
+        }
+        let msg = raw.to_lowercase();
+        msg.contains("rebase conflict")
+            || msg.contains("push declined due to repository rule")
+            || msg.contains("non-fast-forward")
+            || msg.contains("non-fastforward")
+            || msg.contains("not fast forward")
+    })
+}
+
 const MAX_PUSH_RETRIES: usize = 3;
 
 pub fn push(repo: &Repository, remote_name: &str, branch: &str, tags: &[&str]) -> Result<()> {
@@ -2041,5 +2132,130 @@ mod tests {
                 .is_ok(),
             "rebased commit's parent should be B (the fetched remote HEAD)"
         );
+    }
+
+    // ── reset_branch_to_remote — used by the release retry path ─────────
+    //
+    // Topology (same skeleton as the rebase test):
+    //   A   ← shared base (pushed)
+    //   ├── B   (advances on the remote)
+    //   └── X   (our local in-progress release commit, plus dirty files)
+    //
+    // After reset_branch_to_remote, local HEAD must be at B (remote tip),
+    // X must be gone, and dirty working-tree files introduced after X
+    // must have been wiped — that's the contract the release retry loop
+    // depends on.
+    #[test]
+    fn reset_branch_to_remote_drops_local_commit_and_dirty_tree() {
+        use std::path::Path as StdPath;
+        let base_dir = tempfile::tempdir().unwrap();
+
+        let remote_path = base_dir.path().join("remote.git");
+        let bare = Repository::init_bare(&remote_path).unwrap();
+        bare.set_head("refs/heads/main").unwrap();
+        drop(bare);
+
+        let local_path = base_dir.path().join("local");
+        std::fs::create_dir_all(&local_path).unwrap();
+        let repo = Repository::init(&local_path).unwrap();
+        {
+            let mut cfg = repo.config().unwrap();
+            cfg.set_str("user.name", "Test").unwrap();
+            cfg.set_str("user.email", "test@test.com").unwrap();
+        }
+        repo.remote("origin", remote_path.to_str().unwrap())
+            .unwrap();
+        repo.set_head("refs/heads/main").unwrap();
+
+        create_commit_in_repo(&repo, &local_path, "base.txt", "commit A");
+        repo.find_remote("origin")
+            .unwrap()
+            .push(&["refs/heads/main:refs/heads/main"], None)
+            .unwrap();
+
+        // Advance the remote with B.
+        let helper_path = base_dir.path().join("helper");
+        std::fs::create_dir_all(&helper_path).unwrap();
+        let helper = Repository::init(&helper_path).unwrap();
+        {
+            let mut cfg = helper.config().unwrap();
+            cfg.set_str("user.name", "Helper").unwrap();
+            cfg.set_str("user.email", "helper@test.com").unwrap();
+        }
+        helper
+            .remote("origin", remote_path.to_str().unwrap())
+            .unwrap();
+        helper
+            .find_remote("origin")
+            .unwrap()
+            .fetch(&["refs/heads/main:refs/heads/main"], None, None)
+            .unwrap();
+        helper.set_head("refs/heads/main").unwrap();
+        helper
+            .checkout_head(Some(git2::build::CheckoutBuilder::new().force()))
+            .unwrap();
+        create_commit_in_repo(&helper, &helper_path, "remote_only.txt", "commit B");
+        let remote_b_oid = helper.head().unwrap().target().unwrap();
+        helper
+            .find_remote("origin")
+            .unwrap()
+            .push(&["refs/heads/main:refs/heads/main"], None)
+            .unwrap();
+
+        // Local: build the release commit X on top of A and add a dirty,
+        // unstaged file that the cleanup must also wipe.
+        create_commit_in_repo(&repo, &local_path, "release.txt", "commit X");
+        let x_oid = repo.head().unwrap().target().unwrap();
+        std::fs::write(local_path.join("dirty.txt"), "stale hook output").unwrap();
+
+        reset_branch_to_remote(&repo, "origin", "main").expect("reset must succeed");
+
+        // HEAD is at B, not X.
+        let new_head = repo.head().unwrap().target().unwrap();
+        assert_eq!(new_head, remote_b_oid, "HEAD must be at remote B");
+        assert_ne!(new_head, x_oid, "HEAD must not still be at X");
+
+        // Working tree was reset: release.txt is gone, base.txt and
+        // remote_only.txt exist, dirty.txt was wiped.
+        assert!(!local_path.join("release.txt").exists());
+        assert!(local_path.join("base.txt").exists());
+        assert!(local_path.join("remote_only.txt").exists());
+        assert!(!local_path.join("dirty.txt").exists());
+
+        // The branch ref must also point at B, and HEAD must be reattached
+        // to refs/heads/main (so subsequent commits land on the branch).
+        let main_ref = repo.find_reference("refs/heads/main").unwrap();
+        assert_eq!(main_ref.target().unwrap(), remote_b_oid);
+        assert!(repo.head().unwrap().is_branch());
+        let _ = StdPath::new("dummy"); // silence unused import on some configs
+    }
+
+    // is_push_rejected_error — used by the retry trigger.
+    #[test]
+    fn is_push_rejected_error_recognises_known_signatures() {
+        // GIT_PUSH_REJECTED via attached ErrorCode.
+        let e =
+            anyhow::anyhow!("upstream rejected the push").context(error_code::GIT_PUSH_REJECTED);
+        assert!(is_push_rejected_error(&e));
+
+        // Rebase conflict bail message.
+        let e = anyhow::anyhow!(
+            "Rebase conflict: cannot rebase release commits on top of remote 'main'."
+        );
+        assert!(is_push_rejected_error(&e));
+
+        // Server-side rule violation phrasing as it comes back from GitHub.
+        let e = anyhow::anyhow!("refs/heads/main: push declined due to repository rule violations");
+        assert!(is_push_rejected_error(&e));
+
+        // Plain non-fast-forward from libgit2.
+        let e = anyhow::anyhow!(
+            "Updates were rejected because the tip of your current branch is non-fast-forward"
+        );
+        assert!(is_push_rejected_error(&e));
+
+        // Unrelated error must not match.
+        let e = anyhow::anyhow!("hook failed: prettier exited with status 1");
+        assert!(!is_push_rejected_error(&e));
     }
 }
