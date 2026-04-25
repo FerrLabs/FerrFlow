@@ -9,6 +9,11 @@
       "type": "string",
       "description": "JSON Schema reference for editor autocompletion."
     },
+    "auto": {
+      "type": "boolean",
+      "description": "Auto mode. When true, FerrFlow re-runs project detection on every release/check and appends newly-discovered packages or versioned files to this config — never overwriting hand edits. New users start with auto: true (FerrFlow scaffolded the file); set false to freeze the config in place.",
+      "default": false
+    },
     "workspace": {
       "type": "object",
       "description": "Workspace-level settings.",

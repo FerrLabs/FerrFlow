@@ -82,7 +82,7 @@ pub fn check(
     crate::bot_token::ensure_bot_token()?;
     let repo = open_repo(&std::env::current_dir()?)?;
     let root = get_repo_root(&repo)?;
-    let config = Config::load(&root, config_path)?;
+    let config = Config::load_or_scaffold(&root, config_path)?;
 
     if !json {
         println!("{}", "FerrFlow — Check (dry run)".bold().blue());
@@ -195,7 +195,7 @@ pub fn release(
     crate::bot_token::ensure_bot_token()?;
     let repo = open_repo(&std::env::current_dir()?)?;
     let root = get_repo_root(&repo)?;
-    let config = Config::load(&root, config_path)?;
+    let config = Config::load_or_scaffold(&root, config_path)?;
     drop(repo);
 
     if dry_run {

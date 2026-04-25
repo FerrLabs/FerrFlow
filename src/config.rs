@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use crate::error_code::{self, ErrorCodeExt};
@@ -100,6 +101,19 @@ pub struct Config {
     pub workspace: WorkspaceConfig,
     #[serde(default, rename = "package")]
     pub packages: Vec<PackageConfig>,
+
+    /// Auto mode. When `true`, FerrFlow re-runs project detection on every
+    /// `release`/`check` and appends newly-discovered packages or
+    /// versioned files to this config — never overwriting hand edits. New
+    /// users start with `auto: true` (FerrFlow scaffolded the file), keep
+    /// it for hands-off behaviour as the repo grows, or remove the flag
+    /// to freeze the config in place.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub auto: bool,
+}
+
+fn is_false(b: &bool) -> bool {
+    !*b
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Default)]
@@ -765,102 +779,255 @@ impl Config {
     }
 
     fn auto_detect(root: &Path) -> Self {
-        let mut versioned_files = Vec::new();
+        let mut packages: Vec<PackageConfig> = Vec::new();
+        let mut covered: HashSet<PathBuf> = HashSet::new();
 
-        if root.join("Cargo.toml").exists() {
-            versioned_files.push(VersionedFile {
-                path: "Cargo.toml".to_string(),
-                format: FileFormat::Toml,
-                selector: None,
-            });
-        }
-        if root.join("build.gradle").exists() || root.join("build.gradle.kts").exists() {
-            let path = if root.join("build.gradle.kts").exists() {
-                "build.gradle.kts"
-            } else {
-                "build.gradle"
-            };
-            versioned_files.push(VersionedFile {
-                path: path.to_string(),
-                format: FileFormat::Gradle,
-                selector: None,
-            });
-        }
-        if root.join("Chart.yaml").exists() {
-            versioned_files.push(VersionedFile {
-                path: "Chart.yaml".to_string(),
-                format: FileFormat::Helm,
-                selector: None,
-            });
-        }
-        if root.join("go.mod").exists() {
-            versioned_files.push(VersionedFile {
-                path: "go.mod".to_string(),
-                format: FileFormat::GoMod,
-                selector: None,
-            });
-        }
-        if root.join("package.json").exists() {
-            versioned_files.push(VersionedFile {
-                path: "package.json".to_string(),
-                format: FileFormat::Json,
-                selector: None,
-            });
-        }
-        if root.join("pom.xml").exists() {
-            versioned_files.push(VersionedFile {
-                path: "pom.xml".to_string(),
-                format: FileFormat::Xml,
-                selector: None,
-            });
-        }
-        for name in &["VERSION", "VERSION.txt"] {
-            if root.join(name).exists() {
-                versioned_files.push(VersionedFile {
-                    path: name.to_string(),
-                    format: FileFormat::Txt,
-                    selector: None,
-                });
-                break;
+        // ── Workspace layouts: detect monorepos and emit one
+        // PackageConfig per member. Each detector returns a list of
+        // member paths *relative to root* — empty when this layout
+        // doesn't apply. Members are deduplicated by absolute path so
+        // overlapping layouts (e.g. a Cargo workspace that also has a
+        // pnpm-workspace.yaml) don't double-count the same directory.
+        let mut members: Vec<String> = Vec::new();
+        members.extend(detect_cargo_workspace_members(root));
+        members.extend(detect_maven_modules(root));
+        members.extend(detect_pnpm_workspace_members(root));
+
+        for member_rel in &members {
+            let member_dir = root.join(member_rel);
+            let canonical = std::fs::canonicalize(&member_dir).unwrap_or(member_dir.clone());
+            if !covered.insert(canonical) {
+                continue;
+            }
+            if let Some(pkg) = detect_single_package(&member_dir, member_rel) {
+                packages.push(pkg);
             }
         }
-        if root.join("pyproject.toml").exists() {
-            versioned_files.push(VersionedFile {
-                path: "pyproject.toml".to_string(),
-                format: FileFormat::Toml,
-                selector: None,
-            });
-        }
 
-        let name = root
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("project")
-            .to_string();
+        // ── Root-level package: emitted only when it carries its own
+        // version (e.g. a single-repo Cargo project, or a Maven parent
+        // pom that's also a real package). Skipped when the root is
+        // purely a workspace umbrella (`[workspace]`-only Cargo.toml,
+        // pom with `<packaging>pom</packaging>`).
+        if !root_is_workspace_only(root) {
+            let canonical = std::fs::canonicalize(root).unwrap_or(root.to_path_buf());
+            if covered.insert(canonical)
+                && let Some(pkg) = detect_single_package(root, ".")
+            {
+                packages.push(pkg);
+            }
+        }
 
         Config {
             workspace: WorkspaceConfig::default(),
-            packages: if versioned_files.is_empty() {
-                vec![]
-            } else {
-                vec![PackageConfig {
-                    name,
-                    path: ".".to_string(),
-                    versioned_files,
-                    changelog: Some("CHANGELOG.md".to_string()),
-                    shared_paths: Vec::new(),
-                    depends_on: vec![],
-                    versioning: None,
-                    tag_template: None,
-                    hooks: None,
-                    floating_tags: None,
-                }]
-            },
+            packages,
+            auto: false,
         }
     }
 
     pub fn is_monorepo(&self) -> bool {
         self.packages.len() > 1
+    }
+
+    /// Public for tests in the same module — keeps the auto-detect
+    /// helper functions free-floating (not on `Config`) so they don't
+    /// pollute the public API.
+    #[cfg(test)]
+    pub fn auto_detect_for_test(root: &Path) -> Self {
+        Self::auto_detect(root)
+    }
+
+    /// Like [`Self::load`] but with the **auto mode** lifecycle layered on
+    /// top. Used by `release` and `check` so first-time runs scaffold a
+    /// real config file instead of returning an in-memory detection
+    /// result that silently disappears.
+    ///
+    /// Three branches, mirroring the table in
+    /// [`FerrLabs/FerrFlow#388`](https://github.com/FerrLabs/FerrFlow/issues/388):
+    ///
+    /// 1. **Explicit path or any existing config**: load it. If the loaded
+    ///    config has `auto: true`, run reconcile (append-only) and write
+    ///    back when the detection finds new things.
+    /// 2. **No config anywhere AND detection finds at least one version
+    ///    file**: scaffold `.ferrflow/config.json` with `auto: true`.
+    ///    Tell the user.
+    /// 3. **No config and detection is empty**: behave like the old
+    ///    [`Self::load`] no-op fallback (empty Config, nothing on disk).
+    ///    Surfaces later as a clear "no packages configured" message.
+    ///
+    /// Side effects (writing files) only happen when there's something
+    /// useful to write. Tests that want pure load-without-side-effects
+    /// can keep using [`Self::load`].
+    pub fn load_or_scaffold(repo_root: &Path, explicit_path: Option<&Path>) -> Result<Self> {
+        if let Some(path) = explicit_path {
+            // Explicit path bypasses auto mode entirely.
+            return Self::load(repo_root, Some(path));
+        }
+
+        // 1. Legacy discovery first. If there's a hand-written
+        //    `ferrflow.json` (or any other root-level config), load it
+        //    as-is — auto mode never kicks in for users who already have
+        //    a config on disk. `.ferrflow/config.json` is intentionally
+        //    NOT searched here: it's the auto-mode slot, not a regular
+        //    discovery path.
+        if let Some(legacy) = Self::find_legacy_config(repo_root)? {
+            return Self::load_from_path(&legacy);
+        }
+
+        // 2. No legacy config — check the auto-mode slot.
+        let scaffold_path = repo_root.join(".ferrflow").join("config.json");
+        if scaffold_path.is_file() {
+            let mut config = Self::load_from_path(&scaffold_path)?;
+            if config.auto {
+                let detected = Self::auto_detect(repo_root);
+                let added = config.reconcile_with(&detected);
+                if added > 0 {
+                    config.write_to_path(&scaffold_path)?;
+                    eprintln!(
+                        "auto mode: added {added} new entr{} to {} after re-detection",
+                        if added == 1 { "y" } else { "ies" },
+                        scaffold_path
+                            .strip_prefix(repo_root)
+                            .unwrap_or(&scaffold_path)
+                            .display(),
+                    );
+                }
+            }
+            return Ok(config);
+        }
+
+        // 3. Nothing on disk — try detection.
+        let mut config = Self::auto_detect(repo_root);
+        if config.packages.is_empty() {
+            // Nothing to write. Caller will surface the "no packages
+            // configured" message.
+            return Ok(config);
+        }
+
+        config.auto = true;
+
+        config.write_to_path(&scaffold_path)?;
+        eprintln!(
+            "no config found — running in auto mode (scaffolded {})",
+            scaffold_path
+                .strip_prefix(repo_root)
+                .unwrap_or(&scaffold_path)
+                .display(),
+        );
+        Ok(config)
+    }
+
+    /// Look for a hand-written config at any of the legacy root-level
+    /// locations (`ferrflow.json`, `ferrflow.toml`, …, `.ferrflow`). Does
+    /// **not** look inside `.ferrflow/config.json` — that path is reserved
+    /// for the auto-mode scaffold and only consulted by
+    /// [`Self::load_or_scaffold`].
+    fn find_legacy_config(repo_root: &Path) -> Result<Option<PathBuf>> {
+        let mut search: Vec<String> = CONFIG_FORMATS
+            .iter()
+            .map(|h| h.filename().to_string())
+            .collect();
+        #[cfg(feature = "cli")]
+        {
+            let dotfile_pos = search.len() - 1;
+            search.insert(dotfile_pos, TS_CONFIG_FILENAME.to_string());
+            search.insert(dotfile_pos + 1, JS_CONFIG_FILENAME.to_string());
+        }
+
+        let mut found: Vec<PathBuf> = Vec::new();
+        for filename in &search {
+            let path = repo_root.join(filename);
+            if path.exists() && path.is_file() {
+                found.push(path);
+            }
+        }
+
+        match found.len() {
+            0 => Ok(None),
+            1 => Ok(Some(found.remove(0))),
+            _ => {
+                let names: Vec<String> = found
+                    .iter()
+                    .filter_map(|p| {
+                        p.strip_prefix(repo_root)
+                            .ok()
+                            .map(|p| p.to_string_lossy().to_string())
+                    })
+                    .collect();
+                Err(anyhow::anyhow!(
+                    "multiple config files found: {}\nUse --config <path> to specify which one to use.",
+                    names.join(", ")
+                ))
+                .error_code(error_code::CONFIG_MULTIPLE_FILES)
+            }
+        }
+    }
+
+    /// Append-only merge of `detected` into `self`. Returns the number of
+    /// new entries added. Used in auto-mode reconcile so that adding a
+    /// new module to a monorepo gets picked up on the next run without
+    /// touching anything the user has hand-edited.
+    ///
+    /// Rules:
+    /// - Packages keyed by `path` first, then by `name` (so renaming a
+    ///   package to "frontend" while keeping `path: "."` doesn't make
+    ///   detection see it as a brand-new package). New packages are
+    ///   appended.
+    /// - For existing packages, `versioned_files` keyed by `path`: new
+    ///   entries appended, existing entries left intact (so a user-set
+    ///   `selector` or a renamed `format` stays).
+    /// - `workspace`, `auto`, and any other top-level fields are never
+    ///   touched.
+    pub fn reconcile_with(&mut self, detected: &Self) -> usize {
+        let mut added = 0usize;
+        for det_pkg in &detected.packages {
+            // Match first by path (strong signal of "same logical
+            // package"), then fall back to name.
+            let existing_idx = self
+                .packages
+                .iter()
+                .position(|p| p.path == det_pkg.path)
+                .or_else(|| self.packages.iter().position(|p| p.name == det_pkg.name));
+
+            match existing_idx {
+                Some(idx) => {
+                    let existing = &mut self.packages[idx];
+                    let known_paths: HashSet<String> = existing
+                        .versioned_files
+                        .iter()
+                        .map(|f| f.path.clone())
+                        .collect();
+                    for vf in &det_pkg.versioned_files {
+                        if !known_paths.contains(&vf.path) {
+                            existing.versioned_files.push(vf.clone());
+                            added += 1;
+                        }
+                    }
+                }
+                None => {
+                    self.packages.push(det_pkg.clone());
+                    added += 1;
+                }
+            }
+        }
+        added
+    }
+
+    /// Serialize this config as pretty JSON and write it to `path`,
+    /// creating any missing parent directories. Used by the auto-mode
+    /// scaffold and reconcile paths.
+    fn write_to_path(&self, path: &Path) -> Result<()> {
+        if let Some(parent) = path.parent()
+            && !parent.as_os_str().is_empty()
+        {
+            std::fs::create_dir_all(parent)
+                .with_context(|| format!("failed to create directory {}", parent.display()))?;
+        }
+        let serialized =
+            serde_json::to_string_pretty(self).context("failed to serialize generated config")?;
+        std::fs::write(path, format!("{serialized}\n"))
+            .with_context(|| format!("failed to write {}", path.display()))?;
+        Ok(())
     }
 }
 
@@ -1088,6 +1255,7 @@ pub fn init(format: Option<ConfigFileFormat>) -> Result<()> {
     let config = Config {
         workspace: WorkspaceConfig::default(),
         packages,
+        auto: false,
     };
 
     let content = handler.serialize(&config)?;
@@ -1101,6 +1269,304 @@ pub fn init(format: Option<ConfigFileFormat>) -> Result<()> {
     }
 
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Auto-detect helpers (used by Config::auto_detect)
+// ---------------------------------------------------------------------------
+
+/// Detect a single package at `dir`, given its relative path from the
+/// repo root. Returns `None` when no version-bearing files are found.
+///
+/// Naming: the package gets the directory's basename, with `.` falling
+/// back to the repo root's name. The changelog defaults to a sibling
+/// `CHANGELOG.md` so single-repo projects keep their existing layout.
+fn detect_single_package(dir: &Path, relative: &str) -> Option<PackageConfig> {
+    let mut versioned_files: Vec<VersionedFile> = Vec::new();
+
+    let mut push = |path: &str, format: FileFormat| {
+        let full = if relative == "." {
+            path.to_string()
+        } else {
+            format!("{relative}/{path}")
+        };
+        versioned_files.push(VersionedFile {
+            path: full,
+            format,
+            selector: None,
+        });
+    };
+
+    if dir.join("Cargo.toml").is_file() {
+        // Workspace-only Cargo.toml ([workspace] without [package]) is
+        // handled by the caller via `root_is_workspace_only`. At this
+        // level we still emit it: detect_single_package is only invoked
+        // for package directories, never for the workspace umbrella.
+        push("Cargo.toml", FileFormat::Toml);
+    }
+    if dir.join("build.gradle.kts").is_file() {
+        push("build.gradle.kts", FileFormat::Gradle);
+    } else if dir.join("build.gradle").is_file() {
+        push("build.gradle", FileFormat::Gradle);
+    }
+    if dir.join("Chart.yaml").is_file() {
+        push("Chart.yaml", FileFormat::Helm);
+    }
+    if dir.join("go.mod").is_file() {
+        push("go.mod", FileFormat::GoMod);
+    }
+    if dir.join("package.json").is_file() {
+        push("package.json", FileFormat::Json);
+    }
+    if dir.join("pom.xml").is_file() {
+        push("pom.xml", FileFormat::Xml);
+    }
+    if dir.join("pyproject.toml").is_file() {
+        push("pyproject.toml", FileFormat::Toml);
+    }
+    for name in &["VERSION", "VERSION.txt"] {
+        if dir.join(name).is_file() {
+            push(name, FileFormat::Txt);
+            break;
+        }
+    }
+
+    if versioned_files.is_empty() {
+        return None;
+    }
+
+    // Package name: basename of the directory (or repo root for ".").
+    let name = dir
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("project")
+        .to_string();
+
+    // Changelog: per-package CHANGELOG.md so each member tracks its own
+    // history. Single-repo (`.`) keeps the conventional repo-root path.
+    let changelog = if relative == "." {
+        Some("CHANGELOG.md".to_string())
+    } else {
+        Some(format!("{relative}/CHANGELOG.md"))
+    };
+
+    Some(PackageConfig {
+        name,
+        path: relative.to_string(),
+        versioned_files,
+        changelog,
+        shared_paths: Vec::new(),
+        depends_on: vec![],
+        versioning: None,
+        tag_template: None,
+        hooks: None,
+        floating_tags: None,
+    })
+}
+
+/// True when the repo root is a workspace umbrella that doesn't itself
+/// declare a package version. Currently recognises:
+/// - Cargo `[workspace]` block in `Cargo.toml` with no `[package]`.
+/// - Maven pom with `<packaging>pom</packaging>` and at least one
+///   `<modules><module>`.
+fn root_is_workspace_only(root: &Path) -> bool {
+    if let Ok(text) = std::fs::read_to_string(root.join("Cargo.toml")) {
+        let has_workspace = text.contains("[workspace]");
+        let has_package = text.contains("[package]");
+        if has_workspace && !has_package {
+            return true;
+        }
+    }
+    if let Ok(text) = std::fs::read_to_string(root.join("pom.xml"))
+        && text.contains("<packaging>pom</packaging>")
+        && text.contains("<modules>")
+    {
+        return true;
+    }
+    false
+}
+
+/// Parse `Cargo.toml`'s `[workspace] members = [...]` and return the
+/// list of member paths *relative to root*. Glob entries like
+/// `"packages/*"` are expanded by listing the parent directory and
+/// keeping each subdirectory that contains a `Cargo.toml`.
+///
+/// Empty Vec when the repo isn't a Cargo workspace.
+fn detect_cargo_workspace_members(root: &Path) -> Vec<String> {
+    let Ok(text) = std::fs::read_to_string(root.join("Cargo.toml")) else {
+        return Vec::new();
+    };
+    let Ok(doc) = text.parse::<toml_edit::DocumentMut>() else {
+        return Vec::new();
+    };
+    let Some(members) = doc
+        .get("workspace")
+        .and_then(|w| w.as_table())
+        .and_then(|t| t.get("members"))
+        .and_then(|m| m.as_array())
+    else {
+        return Vec::new();
+    };
+
+    let mut out: Vec<String> = Vec::new();
+    for entry in members.iter() {
+        let Some(s) = entry.as_str() else { continue };
+        out.extend(expand_glob_one_level(root, s, |dir| {
+            dir.join("Cargo.toml").is_file()
+        }));
+    }
+    out
+}
+
+/// Parse the root `pom.xml` for `<modules><module>NAME</module></modules>`
+/// and return each module name as a relative path. Reuses the depth-aware
+/// XML walker shipped for the version-file selector feature.
+fn detect_maven_modules(root: &Path) -> Vec<String> {
+    let Ok(text) = std::fs::read_to_string(root.join("pom.xml")) else {
+        return Vec::new();
+    };
+
+    // Quick literal scan: we only care about <module>NAME</module> entries
+    // inside a top-level <modules> block. A regex would be enough but we
+    // already have the depth-aware walker on the format side; keep this
+    // file dep-light by doing a small string parse.
+    let mut out: Vec<String> = Vec::new();
+    if let Some(modules_start) = text.find("<modules>") {
+        let after = &text[modules_start + "<modules>".len()..];
+        if let Some(modules_end) = after.find("</modules>") {
+            let block = &after[..modules_end];
+            for line in block.lines() {
+                let trimmed = line.trim();
+                if let Some(rest) = trimmed.strip_prefix("<module>")
+                    && let Some(name) = rest.strip_suffix("</module>")
+                {
+                    let name = name.trim();
+                    if !name.is_empty() {
+                        out.push(name.to_string());
+                    }
+                }
+            }
+        }
+    }
+    out
+}
+
+/// Parse `pnpm-workspace.yaml` for the `packages:` list and expand any
+/// `path/*` patterns to actual subdirectories that contain a
+/// `package.json`. Hand-rolled (no YAML dep) — accepts the common
+/// formatting only:
+///
+/// ```yaml
+/// packages:
+///   - 'apps/*'
+///   - 'packages/foo'
+/// ```
+///
+/// Lines starting with `!` (negative patterns) are honoured: matching
+/// directories get filtered out from the final list.
+fn detect_pnpm_workspace_members(root: &Path) -> Vec<String> {
+    let Ok(text) = std::fs::read_to_string(root.join("pnpm-workspace.yaml")) else {
+        return Vec::new();
+    };
+
+    let mut in_packages = false;
+    let mut patterns: Vec<String> = Vec::new();
+    for raw in text.lines() {
+        let line = raw.trim_end();
+        if line.is_empty() || line.trim_start().starts_with('#') {
+            continue;
+        }
+        if !in_packages {
+            if line.starts_with("packages:") {
+                in_packages = true;
+            }
+            continue;
+        }
+        // List item — must start with whitespace + `-`.
+        if let Some(rest) = line.trim_start().strip_prefix("- ") {
+            let value = rest.trim().trim_matches(|c: char| c == '"' || c == '\'');
+            patterns.push(value.to_string());
+        } else if !line.starts_with(' ') && !line.starts_with('\t') {
+            // Top-level key reached — end of the packages list.
+            break;
+        }
+    }
+
+    let mut positives: Vec<String> = Vec::new();
+    let mut negatives: Vec<String> = Vec::new();
+    for p in patterns {
+        if let Some(neg) = p.strip_prefix('!') {
+            negatives.push(neg.to_string());
+        } else {
+            positives.push(p);
+        }
+    }
+
+    let mut expanded: Vec<String> = Vec::new();
+    for pat in &positives {
+        expanded.extend(expand_glob_one_level(root, pat, |dir| {
+            dir.join("package.json").is_file()
+        }));
+    }
+
+    // Filter negatives: drop any expanded entry that matches a negative
+    // pattern as a literal path.
+    expanded.retain(|m| {
+        !negatives.iter().any(|neg| {
+            // Negative is literal or `name/*` style; expand with a
+            // permissive predicate (anything is a match) and check
+            // membership.
+            let candidates = expand_glob_one_level(root, neg, |_| true);
+            candidates.iter().any(|c| c == m)
+        })
+    });
+    expanded
+}
+
+/// Expand a one-level glob pattern (no `**`) like `packages/*` to
+/// concrete subdirectory paths under `root`. The optional `keep`
+/// predicate filters the matches — typically by checking for a
+/// signature file (Cargo.toml, package.json, …) in the candidate dir.
+///
+/// Patterns without `*` are returned as-is when the directory exists.
+fn expand_glob_one_level(root: &Path, pattern: &str, keep: impl Fn(&Path) -> bool) -> Vec<String> {
+    if !pattern.contains('*') {
+        let candidate = root.join(pattern);
+        if candidate.is_dir() && keep(&candidate) {
+            return vec![pattern.to_string()];
+        }
+        return Vec::new();
+    }
+
+    // Only `path/*` form supported. Anything else (e.g. `**`, multi-level
+    // globs) is silently skipped — users with exotic layouts can pin
+    // members manually.
+    let Some((parent_rel, last)) = pattern.rsplit_once('/') else {
+        return Vec::new();
+    };
+    if last != "*" {
+        return Vec::new();
+    }
+    let parent_dir = root.join(parent_rel);
+    let Ok(entries) = std::fs::read_dir(&parent_dir) else {
+        return Vec::new();
+    };
+    let mut out: Vec<String> = Vec::new();
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+        if !keep(&path) {
+            continue;
+        }
+        if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+            out.push(format!("{parent_rel}/{name}"));
+        }
+    }
+    // Stable order across filesystems — deterministic config diffs.
+    out.sort();
+    out
 }
 
 #[cfg(test)]
@@ -1411,6 +1877,7 @@ format = "toml"
         let config = Config {
             workspace: WorkspaceConfig::default(),
             packages: vec![make_pkg("a", None)],
+            auto: false,
         };
         assert!(!config.is_monorepo());
     }
@@ -1420,6 +1887,7 @@ format = "toml"
         let config = Config {
             workspace: WorkspaceConfig::default(),
             packages: vec![make_pkg("a", None), make_pkg("b", None)],
+            auto: false,
         };
         assert!(config.is_monorepo());
     }
@@ -1538,6 +2006,7 @@ format = "toml"
         let config = Config {
             workspace: WorkspaceConfig::default(),
             packages: vec![make_pkg("test", None)],
+            auto: false,
         };
         let serialized = handler.serialize(&config).unwrap();
         let parsed = handler.parse(&serialized).unwrap();
@@ -1569,6 +2038,7 @@ format = "toml"
                 hooks: None,
                 floating_tags: None,
             }],
+            auto: false,
         };
         let serialized = handler.serialize(&config).unwrap();
         assert!(serialized.contains("tagTemplate"));
@@ -1615,6 +2085,7 @@ format = "toml"
                 hooks: None,
                 floating_tags: None,
             }],
+            auto: false,
         };
         let serialized = handler.serialize(&config).unwrap();
         assert!(serialized.contains("tag_template"));
@@ -1637,6 +2108,7 @@ format = "toml"
         let config = Config {
             workspace: WorkspaceConfig::default(),
             packages: vec![make_pkg("test", None)],
+            auto: false,
         };
         let serialized = handler.serialize(&config).unwrap();
         let parsed = handler.parse(&serialized).unwrap();
@@ -1962,6 +2434,7 @@ format = "toml"
         let config = Config {
             workspace: WorkspaceConfig::default(),
             packages: vec![make_pkg("test", None)],
+            auto: false,
         };
         let serialized = handler.serialize(&config).unwrap();
         let parsed = handler.parse(&serialized).unwrap();
@@ -1978,6 +2451,7 @@ format = "toml"
         let config = Config {
             workspace: WorkspaceConfig::default(),
             packages: vec![make_pkg("test", None)],
+            auto: false,
         };
         let serialized = handler.serialize(&config).unwrap();
         let parsed = handler.parse(&serialized).unwrap();
@@ -2087,6 +2561,7 @@ format = "toml"
         let config = Config {
             workspace: WorkspaceConfig::default(),
             packages: vec![],
+            auto: false,
         };
         assert!(!config.is_monorepo());
     }
@@ -2566,5 +3041,424 @@ export default config;"#,
         assert!(url.starts_with("file:///"));
         assert!(url.contains("test.js"));
         assert!(!url.contains('\\'));
+    }
+
+    // ── Auto mode (#388) ────────────────────────────────────────────────
+
+    #[test]
+    fn load_or_scaffold_writes_config_when_absent_and_detection_succeeds() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("Cargo.toml"),
+            "[package]\nname=\"foo\"\nversion = \"0.1.0\"\n",
+        )
+        .unwrap();
+
+        let config = Config::load_or_scaffold(dir.path(), None).unwrap();
+        assert!(config.auto, "scaffolded config must have auto: true");
+        assert_eq!(config.packages.len(), 1);
+
+        let scaffold = dir.path().join(".ferrflow").join("config.json");
+        assert!(scaffold.exists(), "config.json should have been written");
+
+        // The persisted JSON must round-trip with auto: true so the next
+        // run re-runs detection (instead of treating the scaffold as a
+        // frozen hand-written config).
+        let body = std::fs::read_to_string(&scaffold).unwrap();
+        assert!(body.contains("\"auto\": true"));
+    }
+
+    #[test]
+    fn load_or_scaffold_no_op_when_detection_finds_nothing() {
+        let dir = tempfile::tempdir().unwrap();
+        // Empty dir — nothing detectable.
+        let config = Config::load_or_scaffold(dir.path(), None).unwrap();
+        assert!(config.packages.is_empty());
+        assert!(!dir.path().join(".ferrflow").exists());
+    }
+
+    #[test]
+    fn load_or_scaffold_picks_up_existing_scaffold_on_second_run() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("Cargo.toml"),
+            "[package]\nname=\"foo\"\nversion = \"0.1.0\"\n",
+        )
+        .unwrap();
+
+        // First run scaffolds.
+        let _ = Config::load_or_scaffold(dir.path(), None).unwrap();
+        let scaffold = dir.path().join(".ferrflow").join("config.json");
+        let mtime1 = std::fs::metadata(&scaffold).unwrap().modified().unwrap();
+
+        // Second run loads the same file — no rewrite expected because
+        // detection finds the same single Cargo.toml that's already in
+        // the config, so nothing to add.
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        let config = Config::load_or_scaffold(dir.path(), None).unwrap();
+        assert!(config.auto);
+        let mtime2 = std::fs::metadata(&scaffold).unwrap().modified().unwrap();
+        assert_eq!(mtime1, mtime2, "no-op reconcile must not touch the file");
+    }
+
+    #[test]
+    fn load_or_scaffold_appends_new_package_in_auto_mode() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("Cargo.toml"),
+            "[package]\nname=\"foo\"\nversion = \"0.1.0\"\n",
+        )
+        .unwrap();
+
+        // First run scaffolds with one package.
+        let first = Config::load_or_scaffold(dir.path(), None).unwrap();
+        assert_eq!(first.packages.len(), 1);
+
+        // User adds a package.json — second run reconciles in append-only
+        // mode and persists.
+        std::fs::write(
+            dir.path().join("package.json"),
+            r#"{"name":"bar","version":"0.1.0"}"#,
+        )
+        .unwrap();
+        let second = Config::load_or_scaffold(dir.path(), None).unwrap();
+        // Same single package (named after the dir) but two versioned
+        // files now.
+        assert_eq!(second.packages.len(), 1);
+        let pkg = &second.packages[0];
+        assert!(pkg.versioned_files.iter().any(|f| f.path == "Cargo.toml"));
+        assert!(pkg.versioned_files.iter().any(|f| f.path == "package.json"));
+    }
+
+    #[test]
+    fn load_or_scaffold_does_not_overwrite_user_edits() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join(".ferrflow")).unwrap();
+        // Hand-written-ish config: auto: true, but custom package name
+        // and a custom selector on Cargo.toml.
+        std::fs::write(
+            dir.path().join(".ferrflow").join("config.json"),
+            r#"{
+  "auto": true,
+  "package": [
+    {
+      "name": "user-named",
+      "path": ".",
+      "versioned_files": [
+        { "path": "Cargo.toml", "format": "toml", "selector": "/foo/bar" }
+      ],
+      "changelog": "CHANGELOG.md"
+    }
+  ]
+}
+"#,
+        )
+        .unwrap();
+        std::fs::write(
+            dir.path().join("Cargo.toml"),
+            "[package]\nname=\"foo\"\nversion = \"0.1.0\"\n",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.path().join("package.json"),
+            r#"{"name":"bar","version":"0.1.0"}"#,
+        )
+        .unwrap();
+
+        let config = Config::load_or_scaffold(dir.path(), None).unwrap();
+        assert_eq!(config.packages.len(), 1);
+        let pkg = &config.packages[0];
+        assert_eq!(pkg.name, "user-named", "user-set name must survive");
+        // Cargo.toml entry: existing one kept (with selector), NOT
+        // re-detected as a fresh entry.
+        let cargo = pkg
+            .versioned_files
+            .iter()
+            .find(|f| f.path == "Cargo.toml")
+            .unwrap();
+        assert_eq!(cargo.selector.as_deref(), Some("/foo/bar"));
+        // New file (package.json) was appended.
+        assert!(pkg.versioned_files.iter().any(|f| f.path == "package.json"));
+    }
+
+    #[test]
+    fn reconcile_with_appends_new_packages_only() {
+        let mut existing = Config::default();
+        existing.packages.push(PackageConfig {
+            name: "alpha".into(),
+            path: ".".into(),
+            versioned_files: vec![VersionedFile {
+                path: "a.json".into(),
+                format: FileFormat::Json,
+                selector: None,
+            }],
+            changelog: None,
+            shared_paths: vec![],
+            depends_on: vec![],
+            versioning: None,
+            tag_template: None,
+            hooks: None,
+            floating_tags: None,
+        });
+
+        let mut detected = Config::default();
+        detected.packages.push(PackageConfig {
+            name: "alpha".into(),
+            path: ".".into(),
+            versioned_files: vec![
+                // Same path — should be skipped.
+                VersionedFile {
+                    path: "a.json".into(),
+                    format: FileFormat::Json,
+                    selector: None,
+                },
+                // New path — should be appended.
+                VersionedFile {
+                    path: "b.toml".into(),
+                    format: FileFormat::Toml,
+                    selector: None,
+                },
+            ],
+            changelog: None,
+            shared_paths: vec![],
+            depends_on: vec![],
+            versioning: None,
+            tag_template: None,
+            hooks: None,
+            floating_tags: None,
+        });
+        detected.packages.push(PackageConfig {
+            // Distinct path so it doesn't collide with "alpha" — that
+            // would be the case for a real monorepo gaining a module.
+            name: "beta".into(),
+            path: "packages/beta".into(),
+            versioned_files: vec![],
+            changelog: None,
+            shared_paths: vec![],
+            depends_on: vec![],
+            versioning: None,
+            tag_template: None,
+            hooks: None,
+            floating_tags: None,
+        });
+
+        let added = existing.reconcile_with(&detected);
+        assert_eq!(added, 2, "1 new vf + 1 new pkg");
+        assert_eq!(existing.packages.len(), 2);
+        assert_eq!(existing.packages[0].versioned_files.len(), 2);
+    }
+
+    /// `.ferrflow/config.json` is the auto-mode slot, not a regular
+    /// discovery path. If a legacy `ferrflow.json` exists at the root,
+    /// it must win — and `.ferrflow/config.json` is *not* even consulted.
+    /// This guards against the path being treated as a generic
+    /// "alternative config location".
+    #[test]
+    fn load_or_scaffold_legacy_config_wins_over_scaffold_path() {
+        let dir = tempfile::tempdir().unwrap();
+        // A "legacy" hand-written ferrflow.json with one named package.
+        std::fs::write(
+            dir.path().join("ferrflow.json"),
+            r#"{
+  "package": [
+    { "name": "legacy-app", "path": ".", "versioned_files": [] }
+  ]
+}
+"#,
+        )
+        .unwrap();
+        // And a stale scaffold with completely different content.
+        std::fs::create_dir_all(dir.path().join(".ferrflow")).unwrap();
+        std::fs::write(
+            dir.path().join(".ferrflow").join("config.json"),
+            r#"{
+  "auto": true,
+  "package": [
+    { "name": "scaffold-app", "path": ".", "versioned_files": [] }
+  ]
+}
+"#,
+        )
+        .unwrap();
+
+        let config = Config::load_or_scaffold(dir.path(), None).unwrap();
+        assert_eq!(config.packages.len(), 1);
+        assert_eq!(config.packages[0].name, "legacy-app");
+        // Auto stays false — we loaded the legacy config, not the scaffold.
+        assert!(!config.auto);
+    }
+
+    // ── Monorepo detection ──────────────────────────────────────────────
+
+    #[test]
+    fn auto_detect_cargo_workspace_with_glob_members() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("Cargo.toml"),
+            r#"[workspace]
+members = ["crates/*", "tools/cli"]
+"#,
+        )
+        .unwrap();
+        for member in ["crates/api", "crates/web", "tools/cli"] {
+            let path = dir.path().join(member);
+            std::fs::create_dir_all(&path).unwrap();
+            std::fs::write(
+                path.join("Cargo.toml"),
+                "[package]\nname=\"x\"\nversion = \"0.1.0\"\n",
+            )
+            .unwrap();
+        }
+        // A directory under crates/ without Cargo.toml — must be skipped
+        // by the glob expansion.
+        std::fs::create_dir_all(dir.path().join("crates").join("notes")).unwrap();
+
+        let config = Config::auto_detect_for_test(dir.path());
+        let names: Vec<&str> = config.packages.iter().map(|p| p.name.as_str()).collect();
+        assert!(names.contains(&"api"));
+        assert!(names.contains(&"web"));
+        assert!(names.contains(&"cli"));
+        // Workspace umbrella isn't itself a package.
+        assert!(
+            !config.packages.iter().any(|p| p.path == "."),
+            "[workspace]-only Cargo.toml must not become a package"
+        );
+        assert_eq!(config.packages.len(), 3);
+        // Per-package versioned_files use the correct relative path.
+        let api = config.packages.iter().find(|p| p.name == "api").unwrap();
+        assert_eq!(api.path, "crates/api");
+        assert_eq!(
+            api.versioned_files[0].path, "crates/api/Cargo.toml",
+            "versioned file path must be relative to repo root"
+        );
+        assert_eq!(api.changelog.as_deref(), Some("crates/api/CHANGELOG.md"));
+    }
+
+    #[test]
+    fn auto_detect_maven_multi_module() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("pom.xml"),
+            r#"<?xml version="1.0"?>
+<project>
+    <groupId>com.example</groupId>
+    <artifactId>parent</artifactId>
+    <version>1.0.0</version>
+    <packaging>pom</packaging>
+    <modules>
+        <module>common</module>
+        <module>rest-api</module>
+    </modules>
+</project>
+"#,
+        )
+        .unwrap();
+        for m in ["common", "rest-api"] {
+            let p = dir.path().join(m);
+            std::fs::create_dir_all(&p).unwrap();
+            std::fs::write(
+                p.join("pom.xml"),
+                r#"<project><artifactId>x</artifactId><version>1.0.0</version></project>"#,
+            )
+            .unwrap();
+        }
+
+        let config = Config::auto_detect_for_test(dir.path());
+        assert_eq!(config.packages.len(), 2, "no umbrella entry expected");
+        let names: Vec<&str> = config.packages.iter().map(|p| p.name.as_str()).collect();
+        assert!(names.contains(&"common"));
+        assert!(names.contains(&"rest-api"));
+    }
+
+    #[test]
+    fn auto_detect_pnpm_workspace_expands_globs_and_negatives() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("pnpm-workspace.yaml"),
+            "packages:\n  - 'apps/*'\n  - 'packages/shared'\n  - '!apps/legacy'\n",
+        )
+        .unwrap();
+        for member in ["apps/web", "apps/admin", "apps/legacy", "packages/shared"] {
+            let p = dir.path().join(member);
+            std::fs::create_dir_all(&p).unwrap();
+            std::fs::write(p.join("package.json"), r#"{"name":"x","version":"0.1.0"}"#).unwrap();
+        }
+
+        let config = Config::auto_detect_for_test(dir.path());
+        let paths: Vec<&str> = config.packages.iter().map(|p| p.path.as_str()).collect();
+        assert!(paths.contains(&"apps/web"));
+        assert!(paths.contains(&"apps/admin"));
+        assert!(paths.contains(&"packages/shared"));
+        assert!(
+            !paths.contains(&"apps/legacy"),
+            "negative pattern must drop apps/legacy"
+        );
+    }
+
+    #[test]
+    fn auto_detect_falls_back_to_single_package_for_non_workspace_repo() {
+        // No Cargo workspace, no Maven modules, no pnpm-workspace —
+        // behaves exactly like the pre-monorepo path: one package at
+        // root.
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("Cargo.toml"),
+            "[package]\nname=\"foo\"\nversion = \"0.1.0\"\n",
+        )
+        .unwrap();
+        let config = Config::auto_detect_for_test(dir.path());
+        assert_eq!(config.packages.len(), 1);
+        assert_eq!(config.packages[0].path, ".");
+    }
+
+    #[test]
+    fn auto_detect_single_repo_keeps_root_changelog() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("package.json"),
+            r#"{"name":"foo","version":"0.1.0"}"#,
+        )
+        .unwrap();
+        let config = Config::auto_detect_for_test(dir.path());
+        assert_eq!(config.packages.len(), 1);
+        assert_eq!(
+            config.packages[0].changelog.as_deref(),
+            Some("CHANGELOG.md")
+        );
+    }
+
+    #[test]
+    fn auto_detect_workspace_only_root_does_not_become_package() {
+        // Pure umbrella: Cargo.toml has [workspace] but no [package].
+        // Detection must not emit a root-level package entry even if
+        // there are other root files (none here).
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("Cargo.toml"),
+            "[workspace]\nmembers = [\"a\"]\n",
+        )
+        .unwrap();
+        let path_a = dir.path().join("a");
+        std::fs::create_dir_all(&path_a).unwrap();
+        std::fs::write(
+            path_a.join("Cargo.toml"),
+            "[package]\nname=\"a\"\nversion = \"0.1.0\"\n",
+        )
+        .unwrap();
+        let config = Config::auto_detect_for_test(dir.path());
+        assert_eq!(config.packages.len(), 1);
+        assert_eq!(config.packages[0].path, "a");
+    }
+
+    #[test]
+    fn auto_field_does_not_serialise_when_false() {
+        let cfg = Config::default();
+        let s = serde_json::to_string(&cfg).unwrap();
+        // Match the JSON key boundary precisely — naive substring matches
+        // the unrelated `auto_merge_releases` key on the workspace.
+        assert!(
+            !s.contains("\"auto\":"),
+            "default Config should hide top-level auto field, got: {s}"
+        );
     }
 }

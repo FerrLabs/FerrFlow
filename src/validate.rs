@@ -694,6 +694,7 @@ mod tests {
         Config {
             workspace: WorkspaceConfig::default(),
             packages,
+            auto: false,
         }
     }
 

@@ -117,7 +117,17 @@ FerrFlow looks for a config file at the root of your repository, in this order:
 3. `ferrflow.toml`
 4. `.ferrflow` (dotfile, JSON format)
 
-If multiple config files exist, FerrFlow exits with an error listing the conflicting files. Use `--config <path>` (or `FERRFLOW_CONFIG` env var) to specify which one to use. If no config file is found, FerrFlow auto-detects common version files in the current directory.
+If multiple config files exist, FerrFlow exits with an error listing the conflicting files. Use `--config <path>` (or `FERRFLOW_CONFIG` env var) to specify which one to use.
+
+If no config file is found, FerrFlow runs in **auto mode**: it scans the repo for known version files (`Cargo.toml`, `package.json`, `pom.xml`, `pyproject.toml`, …), scaffolds a `.ferrflow/config.json` with `"auto": true`, and proceeds with the release. Workspace layouts get expanded into one package per member:
+
+- **Cargo workspace** (`[workspace] members = ["crates/*", …]`)
+- **Maven multi-module** (root pom with `<modules><module>…</module></modules>`)
+- **pnpm workspace** (`pnpm-workspace.yaml` with `packages:` list, including `path/*` globs and `!negative` patterns)
+
+On subsequent runs the scaffolded config is loaded; while `auto: true` stays set, FerrFlow re-runs detection on every release and appends newly-discovered packages or version files without touching anything you've hand-edited (custom `name`, `selector`, etc. all survive). Remove the flag (or delete the file) to freeze the config.
+
+`.ferrflow/config.json` is the auto-mode slot; it's not a generic discovery path. A hand-written `ferrflow.json` at the repo root always wins, no auto-mode logic kicks in.
 
 Run `ferrflow init` to scaffold a config file interactively. Use `--format` to skip the format prompt:
 
