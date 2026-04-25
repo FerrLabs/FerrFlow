@@ -160,6 +160,10 @@
                   "type": "string",
                   "description": "File format used to locate and update the version field.",
                   "enum": ["csproj", "toml", "json", "xml", "gradle", "gomod", "helm", "txt"]
+                },
+                "selector": {
+                  "type": "string",
+                  "description": "Optional selector to disambiguate which version is bumped. xml: a slash-delimited tag path like '/project/version' (or '//tag' for first-anywhere); txt: a regex with one capture group around the version. Without a selector, xml uses a Maven-aware default (first <version> direct child of root)."
                 }
               },
               "additionalProperties": false

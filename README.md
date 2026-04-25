@@ -22,7 +22,7 @@ A single compiled binary with no runtime dependencies. Native monorepo support, 
 | `toml` | `pyproject.toml` | Python | `project.version` or `tool.poetry.version` |
 | `json` | `package.json` | Node.js | `version` |
 | `json` | `composer.json` | PHP | `version` |
-| `xml` | `pom.xml` | Java / Maven | first `<version>` tag |
+| `xml` | `pom.xml` | Java / Maven | first `<version>` that's a direct child of the root element (skips `<parent>` and dependencies) |
 | `csproj` | `*.csproj` | .NET (C#, F#) | `<Version>` in `<PropertyGroup>` |
 | `gradle` | `build.gradle`, `build.gradle.kts` | Java / Kotlin | `version = "…"` |
 | `helm` / `chartyaml` | `Chart.yaml` | Kubernetes / Helm | top-level `version:` |

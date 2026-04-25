@@ -962,6 +962,7 @@ mod tests {
         pkg.versioned_files = vec![VersionedFile {
             path: "packages/api/package.json".to_string(),
             format: FileFormat::Json,
+            selector: None,
         }];
         let config = make_config(vec![pkg]);
         let (entries, versions) = check_versioned_files(&config, &source);

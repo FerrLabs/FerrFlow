@@ -27,6 +27,27 @@ pub trait VersionFile {
     }
     /// Parse version from raw file content without filesystem access.
     fn read_version_from_bytes(&self, content: &[u8], filename: &str) -> Result<String>;
+
+    /// Read with an optional per-file selector. Default delegates to the
+    /// selector-less path; formats that support selectors override this.
+    /// See [`crate::config::VersionedFile::selector`] for syntax.
+    fn read_version_with_selector(
+        &self,
+        file_path: &Path,
+        _selector: Option<&str>,
+    ) -> Result<String> {
+        self.read_version(file_path)
+    }
+
+    /// Write counterpart of [`Self::read_version_with_selector`].
+    fn write_version_with_selector(
+        &self,
+        file_path: &Path,
+        version: &str,
+        _selector: Option<&str>,
+    ) -> Result<()> {
+        self.write_version(file_path, version)
+    }
 }
 
 pub fn get_handler(format: &FileFormat) -> Box<dyn VersionFile> {
@@ -50,13 +71,13 @@ pub fn get_handler(format: &FileFormat) -> Box<dyn VersionFile> {
 pub fn read_version(vf: &VersionedFile, repo_root: &Path) -> Result<String> {
     let path = repo_root.join(&vf.path);
     let handler = get_handler(&vf.format);
-    handler.read_version(&path)
+    handler.read_version_with_selector(&path, vf.selector.as_deref())
 }
 
 pub fn write_version(vf: &VersionedFile, repo_root: &Path, version: &str) -> Result<()> {
     let path = repo_root.join(&vf.path);
     let handler = get_handler(&vf.format);
-    handler.write_version(&path, version)
+    handler.write_version_with_selector(&path, version, vf.selector.as_deref())
 }
 
 #[cfg(test)]
@@ -128,6 +149,7 @@ mod tests {
         let vf = VersionedFile {
             path: "package.json".to_string(),
             format: FileFormat::Json,
+            selector: None,
         };
         assert_eq!(read_version(&vf, dir.path()).unwrap(), "3.2.1");
     }
@@ -143,6 +165,7 @@ mod tests {
         let vf = VersionedFile {
             path: "package.json".to_string(),
             format: FileFormat::Json,
+            selector: None,
         };
         write_version(&vf, dir.path(), "2.0.0").unwrap();
         assert_eq!(read_version(&vf, dir.path()).unwrap(), "2.0.0");
@@ -159,6 +182,7 @@ mod tests {
         let vf = VersionedFile {
             path: "Cargo.toml".to_string(),
             format: FileFormat::Toml,
+            selector: None,
         };
         assert_eq!(read_version(&vf, dir.path()).unwrap(), "0.5.0");
     }
@@ -170,6 +194,7 @@ mod tests {
         let vf = VersionedFile {
             path: "VERSION".to_string(),
             format: FileFormat::Txt,
+            selector: None,
         };
         assert_eq!(read_version(&vf, dir.path()).unwrap(), "4.1.0");
     }
@@ -181,6 +206,7 @@ mod tests {
         let vf = VersionedFile {
             path: "VERSION".to_string(),
             format: FileFormat::Txt,
+            selector: None,
         };
         write_version(&vf, dir.path(), "1.1.0").unwrap();
         assert_eq!(read_version(&vf, dir.path()).unwrap(), "1.1.0");
@@ -197,6 +223,7 @@ mod tests {
         let vf = VersionedFile {
             path: "pom.xml".to_string(),
             format: FileFormat::Xml,
+            selector: None,
         };
         assert_eq!(read_version(&vf, dir.path()).unwrap(), "2.3.4");
     }
@@ -207,6 +234,7 @@ mod tests {
         let vf = VersionedFile {
             path: "nope.json".to_string(),
             format: FileFormat::Json,
+            selector: None,
         };
         assert!(read_version(&vf, dir.path()).is_err());
     }
@@ -218,6 +246,7 @@ mod tests {
         let vf = VersionedFile {
             path: "build.gradle".to_string(),
             format: FileFormat::Gradle,
+            selector: None,
         };
         assert_eq!(read_version(&vf, dir.path()).unwrap(), "1.2.3");
     }
@@ -231,6 +260,7 @@ mod tests {
         let vf = VersionedFile {
             path: "sub/VERSION".to_string(),
             format: FileFormat::Txt,
+            selector: None,
         };
         assert_eq!(read_version(&vf, dir.path()).unwrap(), "5.0.0");
     }

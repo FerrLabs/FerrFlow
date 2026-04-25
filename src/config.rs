@@ -305,6 +305,19 @@ impl PackageConfig {
 pub struct VersionedFile {
     pub path: String,
     pub format: FileFormat,
+    /// Optional selector to disambiguate which occurrence in the file is the
+    /// version to bump. Syntax depends on the format:
+    ///
+    /// - `xml`: a slash-delimited path of tag names rooted at the document
+    ///   element, e.g. `/project/version`. Without a selector the handler
+    ///   targets the first `<version>` that is a direct child of the root
+    ///   element — which fixes the common Maven `<parent>` pitfall.
+    /// - `txt`: a regex with a single capture group that brackets the
+    ///   version string, e.g. `^VERSION=(.+)$`.
+    ///
+    /// Other formats currently ignore this field.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub selector: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -758,6 +771,7 @@ impl Config {
             versioned_files.push(VersionedFile {
                 path: "Cargo.toml".to_string(),
                 format: FileFormat::Toml,
+                selector: None,
             });
         }
         if root.join("build.gradle").exists() || root.join("build.gradle.kts").exists() {
@@ -769,30 +783,35 @@ impl Config {
             versioned_files.push(VersionedFile {
                 path: path.to_string(),
                 format: FileFormat::Gradle,
+                selector: None,
             });
         }
         if root.join("Chart.yaml").exists() {
             versioned_files.push(VersionedFile {
                 path: "Chart.yaml".to_string(),
                 format: FileFormat::Helm,
+                selector: None,
             });
         }
         if root.join("go.mod").exists() {
             versioned_files.push(VersionedFile {
                 path: "go.mod".to_string(),
                 format: FileFormat::GoMod,
+                selector: None,
             });
         }
         if root.join("package.json").exists() {
             versioned_files.push(VersionedFile {
                 path: "package.json".to_string(),
                 format: FileFormat::Json,
+                selector: None,
             });
         }
         if root.join("pom.xml").exists() {
             versioned_files.push(VersionedFile {
                 path: "pom.xml".to_string(),
                 format: FileFormat::Xml,
+                selector: None,
             });
         }
         for name in &["VERSION", "VERSION.txt"] {
@@ -800,6 +819,7 @@ impl Config {
                 versioned_files.push(VersionedFile {
                     path: name.to_string(),
                     format: FileFormat::Txt,
+                    selector: None,
                 });
                 break;
             }
@@ -808,6 +828,7 @@ impl Config {
             versioned_files.push(VersionedFile {
                 path: "pyproject.toml".to_string(),
                 format: FileFormat::Toml,
+                selector: None,
             });
         }
 
@@ -1010,6 +1031,7 @@ fn collect_package(path_default: &str, monorepo: bool) -> PackageConfig {
         versioned_files: vec![VersionedFile {
             path: version_file_path,
             format: parse_file_format(&format_str),
+            selector: None,
         }],
         changelog: Some(changelog),
         shared_paths: Vec::new(),
@@ -1537,6 +1559,7 @@ format = "toml"
                 versioned_files: vec![VersionedFile {
                     path: "Cargo.toml".into(),
                     format: FileFormat::Toml,
+                    selector: None,
                 }],
                 changelog: None,
                 shared_paths: vec!["shared/".into()],
@@ -1582,6 +1605,7 @@ format = "toml"
                 versioned_files: vec![VersionedFile {
                     path: "Cargo.toml".into(),
                     format: FileFormat::Toml,
+                    selector: None,
                 }],
                 changelog: None,
                 shared_paths: vec!["shared/".into()],
