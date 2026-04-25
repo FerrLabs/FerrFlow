@@ -87,6 +87,23 @@ runs:
 
         echo "$INSTALL_DIR" >> "$GITHUB_PATH"
 
+    - name: Strip cached GITHUB_TOKEN credentials
+      # actions/checkout writes `AUTHORIZATION: basic <GITHUB_TOKEN>` into
+      # the repo's git extraheader. When ferrflow later swaps in the App
+      # installation token via OIDC, that extraheader still wins on every
+      # `git push` / `git fetch` — so the push authenticates as
+      # github-actions[bot] (not ferrflow[bot]) and is rejected by any
+      # branch ruleset that lists ferrflow[bot] in its bypass actors.
+      #
+      # Dropping the cache here means ferrflow's URL-rewrite path
+      # (`build_authenticated_url` in src/git.rs) takes over and the bot
+      # identity is what reaches the server. Idempotent: a no-op when the
+      # caller already set `persist-credentials: false` on the checkout.
+      if: inputs.bot == 'true'
+      shell: bash
+      run: |
+        git config --unset-all http.https://github.com/.extraheader || true
+
     - name: Configure git identity for ferrflow[bot]
       # When bot: true, release commits must be authored by ferrflow[bot] (not
       # the checkout actor or the runner's previous git identity). libgit2
