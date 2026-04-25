@@ -4,6 +4,17 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [4.5.0] - 2026-04-25
+
+### Features
+
+- feat(formats): per-file selector + Maven-aware default for XML (#389)
+
+### Bug Fixes
+
+- fix(release): regenerate release commit on push rejection instead of rebasing (#394)
+- fix(ci): release job pushes as github-actions[bot] instead of ferrflow[bot] (#391)
+
 ## [4.4.0] - 2026-04-22
 
 ### Features
