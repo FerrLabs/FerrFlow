@@ -423,10 +423,8 @@ jobs:
         run: cargo build --release
         env:
           FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
-      - name: Configure git identity for ferrflow[bot]
-        run: |
-          git config user.name "ferrflow[bot]"
-          git config user.email "278126555+ferrflow[bot]@users.noreply.github.com"
+      # Git identity is configured by the binary itself (see
+      # ensure_bot_token in src/bot_token.rs) when FERRFLOW_BOT=true.
       - name: Run ferrflow release
         run: ./target/release/ferrflow ${{ inputs.dry_run == 'true' && '--dry-run' || '' }} release --draft
         env:
