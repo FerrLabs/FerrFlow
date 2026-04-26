@@ -269,8 +269,52 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+  # Compile the bench binary ONCE per PR and hand it to the matrix shards
+  # below. Before this split, every shard ran `cargo bench` with its own
+  # cold rust-cache (all 11 shards start in parallel and share a key, so
+  # nobody hits a sibling's cache), paying the ~5–7 min build cost 11
+  # times. With a pre-built binary the matrix only does the actual
+  # measurement step. See FerrLabs/FerrFlow#397.
+  micro-bench-build:
+    name: Build micro bench binary
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: Swatinem/rust-cache@v2
+      - name: Compile bench binary (no run)
+        run: cargo bench --bench ferrflow_benchmarks --no-run
+      - name: Locate compiled binary
+        id: locate
+        run: |
+          set -euo pipefail
+          # criterion + cargo emit a hashed binary name like
+          # ferrflow_benchmarks-1234abcd. Pick the most recent matching
+          # executable and skip dSYMs, .d files, and pdbs.
+          bin=$(find target/release/deps -maxdepth 1 -type f \
+                  -name 'ferrflow_benchmarks-*' \
+                  ! -name '*.d' ! -name '*.pdb' ! -name '*.dSYM' \
+                  -printf '%T@ %p\n' \
+                | sort -nr | head -n1 | cut -d' ' -f2-)
+          if [ -z "$bin" ] || [ ! -x "$bin" ]; then
+            echo "::error::could not find compiled bench binary under target/release/deps"
+            ls -la target/release/deps/ferrflow_benchmarks-* 2>/dev/null || true
+            exit 1
+          fi
+          echo "bin=$bin" >> "$GITHUB_OUTPUT"
+          # Strip the hash so the matrix doesn't have to re-derive it.
+          cp "$bin" target/release/deps/ferrflow_benchmarks
+      - uses: actions/upload-artifact@v7
+        with:
+          name: micro-bench-binary
+          path: target/release/deps/ferrflow_benchmarks
+          retention-days: 1
+          if-no-files-found: error
+
   micro-bench:
     name: Micro Benchmark - ${{ matrix.group }}
+    needs: micro-bench-build
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     continue-on-error: true
@@ -290,21 +334,38 @@ jobs:
           - validate
           - full_check_flow
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v8
         with:
-          fetch-depth: 0
-      - uses: dtolnay/rust-toolchain@nightly
-      - uses: Swatinem/rust-cache@v2
-      - uses: FerrLabs/Benchmarks@v3
-        with:
-          type: micro
-          group-filter: ${{ matrix.group }}
-          definitions: benchmarks/fixtures/definitions
-          ferrflow-token: ${{ secrets.GITHUB_TOKEN }}
-          skip-competitors: true
-          comment-on-pr: false
-        env:
-          FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
+          name: micro-bench-binary
+          path: bench-bin/
+      - name: Run group ${{ matrix.group }}
+        # Mirrors what FerrLabs/Benchmarks@v3 used to do for the micro
+        # path: invoke the bench binary directly with the criterion
+        # positional filter, capture bencher-format stdout, and keep
+        # only the well-formed `test … bench: …` rows so the aggregate
+        # job's benchmark-action consumer doesn't choke on noise.
+        # The bench binary's fixtures are all in-process (tempdir +
+        # libgit2), so no checkout is needed in this job.
+        run: |
+          set +e
+          chmod +x bench-bin/ferrflow_benchmarks
+          ./bench-bin/ferrflow_benchmarks --bench --output-format bencher \
+              "${{ matrix.group }}" \
+              2> bench-stderr.log | tee raw-output.txt
+          bench_exit=${PIPESTATUS[0]}
+          set -e
+          if [ "$bench_exit" != "0" ]; then
+            echo "::warning::bench binary exited ${bench_exit} — tolerating as long as rows were captured. Stderr tail:"
+            tail -40 bench-stderr.log || true
+          fi
+          grep -E '^test .+ \.\.\. bench:[[:space:]]+[0-9,]+ ns/iter' raw-output.txt > output.txt || true
+          echo "---"
+          echo "Filtered bencher output ($(wc -l < output.txt) lines kept):"
+          cat output.txt
+          if [ ! -s output.txt ]; then
+            echo "::error::no well-formed benchmark rows captured; bench exit was ${bench_exit}"
+            exit 1
+          fi
       - uses: actions/upload-artifact@v7
         with:
           name: micro-partial-${{ matrix.group }}
