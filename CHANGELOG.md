@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [4.6.0] - 2026-04-26
+
+### Features
+
+- feat(bot): set git user.name/user.email from inside the binary (#396)
+
 ## [4.5.0] - 2026-04-25
 
 ### Features
