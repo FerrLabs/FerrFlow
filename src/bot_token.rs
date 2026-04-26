@@ -228,8 +228,65 @@ pub fn ensure_bot_token() -> Result<()> {
     };
     println!("Authenticated as ferrflow[bot]{repo_note}{expires_note}.");
 
+    // Configure the local git identity so subsequent commits authored by
+    // ferrflow attribute correctly to the bot user. Workflows used to do
+    // this themselves with two `git config` lines, but the values are an
+    // implementation detail of the hosted App that the binary already
+    // owns — keeping them out of every consuming workflow means
+    // self-hosters don't have to remember to override both `user.name`
+    // *and* `user.email` to match their own App.
+    //
+    // Self-hosted overrides: set `FERRFLOW_BOT_LOGIN` and
+    // `FERRFLOW_BOT_USER_ID` in the calling workflow. Both default to
+    // the FerrLabs hosted ferrflow App identity when unset.
+    configure_bot_git_identity();
+
     let _ = EXCHANGED.set(());
     Ok(())
+}
+
+/// Default identity for the FerrLabs-hosted FerrFlow GitHub App
+/// (https://github.com/apps/ferrflow). Self-hosters running their own
+/// App override these via environment variables — see
+/// [`configure_bot_git_identity`].
+const DEFAULT_BOT_LOGIN: &str = "ferrflow[bot]";
+const DEFAULT_BOT_USER_ID: &str = "278126555";
+
+/// Resolve the bot's git identity from the environment, falling back to
+/// the FerrLabs hosted App, and write it into the local repo's git
+/// config. Best-effort: failures (no repo, git binary missing) are
+/// swallowed so this never blocks the release path.
+///
+/// The email follows GitHub's noreply convention
+/// `<id>+<login>@users.noreply.github.com`, which links commits to the
+/// bot user's profile in the GitHub UI.
+fn configure_bot_git_identity() {
+    if let Ok(cwd) = std::env::current_dir() {
+        configure_bot_git_identity_in(&cwd);
+    }
+}
+
+/// Inner form that takes an explicit working directory, used by tests so
+/// they don't race other tests on the process's cwd.
+fn configure_bot_git_identity_in(repo_dir: &std::path::Path) {
+    let login = std::env::var("FERRFLOW_BOT_LOGIN")
+        .ok()
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| DEFAULT_BOT_LOGIN.to_string());
+    let user_id = std::env::var("FERRFLOW_BOT_USER_ID")
+        .ok()
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| DEFAULT_BOT_USER_ID.to_string());
+    let email = format!("{user_id}+{login}@users.noreply.github.com");
+
+    let _ = std::process::Command::new("git")
+        .args(["config", "--local", "user.name", &login])
+        .current_dir(repo_dir)
+        .status();
+    let _ = std::process::Command::new("git")
+        .args(["config", "--local", "user.email", &email])
+        .current_dir(repo_dir)
+        .status();
 }
 
 #[cfg(test)]
@@ -360,5 +417,124 @@ mod tests {
     #[test]
     fn encode_query_component_escapes_unsafe() {
         assert_eq!(encode_query_component("a b&c=d"), "a%20b%26c%3Dd");
+    }
+
+    /// `configure_bot_git_identity` writes via `git config --local`, which
+    /// only does anything inside a git repo. Init a fresh tempdir repo,
+    /// run the helper, and read the values back. Default path uses the
+    /// FerrLabs hosted identity; explicit env overrides take effect.
+    fn read_local_git_config(repo_dir: &std::path::Path, key: &str) -> Option<String> {
+        let out = std::process::Command::new("git")
+            .args(["config", "--local", "--get", key])
+            .current_dir(repo_dir)
+            .output()
+            .ok()?;
+        if out.status.success() {
+            Some(String::from_utf8_lossy(&out.stdout).trim().to_string())
+        } else {
+            None
+        }
+    }
+
+    fn init_repo(dir: &std::path::Path) {
+        let ok = std::process::Command::new("git")
+            .args(["init", "-q"])
+            .current_dir(dir)
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false);
+        assert!(ok, "git init must succeed for the test setup");
+    }
+
+    #[test]
+    fn configure_bot_git_identity_uses_hosted_defaults() {
+        if std::process::Command::new("git")
+            .arg("--version")
+            .status()
+            .is_err()
+        {
+            return;
+        }
+        let tmp = tempfile::tempdir().unwrap();
+        init_repo(tmp.path());
+
+        with_env(
+            &[("FERRFLOW_BOT_LOGIN", None), ("FERRFLOW_BOT_USER_ID", None)],
+            || {
+                configure_bot_git_identity_in(tmp.path());
+            },
+        );
+
+        assert_eq!(
+            read_local_git_config(tmp.path(), "user.name").as_deref(),
+            Some("ferrflow[bot]")
+        );
+        assert_eq!(
+            read_local_git_config(tmp.path(), "user.email").as_deref(),
+            Some("278126555+ferrflow[bot]@users.noreply.github.com")
+        );
+    }
+
+    #[test]
+    fn configure_bot_git_identity_honours_env_overrides() {
+        if std::process::Command::new("git")
+            .arg("--version")
+            .status()
+            .is_err()
+        {
+            return;
+        }
+        let tmp = tempfile::tempdir().unwrap();
+        init_repo(tmp.path());
+
+        with_env(
+            &[
+                ("FERRFLOW_BOT_LOGIN", Some("vault-bot[bot]")),
+                ("FERRFLOW_BOT_USER_ID", Some("999")),
+            ],
+            || {
+                configure_bot_git_identity_in(tmp.path());
+            },
+        );
+
+        assert_eq!(
+            read_local_git_config(tmp.path(), "user.name").as_deref(),
+            Some("vault-bot[bot]")
+        );
+        assert_eq!(
+            read_local_git_config(tmp.path(), "user.email").as_deref(),
+            Some("999+vault-bot[bot]@users.noreply.github.com")
+        );
+    }
+
+    #[test]
+    fn configure_bot_git_identity_treats_blank_overrides_as_unset() {
+        if std::process::Command::new("git")
+            .arg("--version")
+            .status()
+            .is_err()
+        {
+            return;
+        }
+        let tmp = tempfile::tempdir().unwrap();
+        init_repo(tmp.path());
+
+        with_env(
+            &[
+                // Empty string must NOT win over the default — protects
+                // against a workflow declaring the env var but leaving
+                // it blank.
+                ("FERRFLOW_BOT_LOGIN", Some("")),
+                ("FERRFLOW_BOT_USER_ID", Some("")),
+            ],
+            || {
+                configure_bot_git_identity_in(tmp.path());
+            },
+        );
+
+        assert_eq!(
+            read_local_git_config(tmp.path(), "user.name").as_deref(),
+            Some("ferrflow[bot]")
+        );
     }
 }
