@@ -36,23 +36,29 @@ const frEquiv = enEquiv === '/' ? '/fr/' : `/fr${enEquiv.startsWith('/') ? '' : 
   frEquiv={frEquiv}
 />
 
-<!-- Hero -->
-<section class="relative overflow-hidden">
-  <div class="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[600px] rounded-full opacity-40" style="background: radial-gradient(ellipse, #FFCBA4 0%, #FFE8D2 40%, transparent 70%);"></div>
-  <div class="relative max-w-5xl mx-auto px-6 pt-24 pb-16">
-    <div class="flex items-center justify-center gap-2 mb-6">
-      <span class="px-3 py-1 rounded-full bg-primary-100 text-primary-700 text-xs font-medium">{t(lang, 'cliPage.hero.badge')}</span>
+<!--
+  № 01 — Hero (editorial design refresh, FerrLabs-Cloud#70 pattern).
+  Display headline in Fraunces clamp(56–168px) with an italic accent
+  line for the second clause. Two pill CTAs (mono labels, orange
+  accent). Existing sections (terminal, features, integrations, CTA)
+  render below — they get the editorial treatment in follow-up PRs.
+-->
+<section class="hero">
+  <div class="container">
+    <div class="badge">
+      <span class="badge-dot" />
+      <span class="mono badge-text">{t(lang, 'cliPage.hero.badge')}</span>
     </div>
-    <h1 class="text-center font-black text-primary-950 tracking-tight leading-[0.95]">
-      <span class="block text-7xl sm:text-8xl md:text-[7rem] lg:text-[8.5rem]">{t(lang, 'cliPage.hero.headline1')}</span>
-      <span class="block text-7xl sm:text-8xl md:text-[7rem] lg:text-[8.5rem] italic text-primary-600">{t(lang, 'cliPage.hero.headline2')}</span>
+    <h1 class="display-1">
+      {t(lang, 'cliPage.hero.headline1')}<br />
+      <span class="italic">{t(lang, 'cliPage.hero.headline2')}</span>
     </h1>
-    <p class="mt-8 text-center text-lg sm:text-xl text-primary-700 max-w-2xl mx-auto leading-relaxed">
-      {t(lang, 'cliPage.hero.subheading')}
-    </p>
-    <div class="mt-8 flex gap-3 justify-center">
-      <a href="https://github.com/FerrLabs/FerrFlow/releases/latest" class="px-7 py-3 rounded-full bg-primary-600 text-white font-medium hover:bg-primary-700 transition-colors shadow-lg shadow-primary-200">{t(lang, 'cliPage.hero.download')}</a>
-      <a href={docsPath} class="px-7 py-3 rounded-full border border-primary-300 text-primary-800 font-medium hover:bg-primary-100 transition-colors">{t(lang, 'cliPage.hero.docs')}</a>
+    <div class="hero-grid">
+      <p class="hero-sub">{t(lang, 'cliPage.hero.subheading')}</p>
+      <div class="hero-actions">
+        <a href="https://github.com/FerrLabs/FerrFlow/releases/latest" class="btn-primary">{t(lang, 'cliPage.hero.download')}</a>
+        <a href={docsPath} class="btn-ghost">{t(lang, 'cliPage.hero.docs')}</a>
+      </div>
     </div>
   </div>
 </section>
@@ -203,3 +209,66 @@ const frEquiv = enEquiv === '/' ? '/fr/' : `/fr${enEquiv.startsWith('/') ? '' : 
   ]}
 />
 
+
+<style is:global>
+  /* Editorial paper/ink palette + orange accent. Migrates to the shared
+   * @ferrlabs/styles base once UI#25 lands. */
+  :root {
+    --paper: #faf8f4; --paper-2: #f3efe7;
+    --paper-ink: #1e293b; --paper-ink-2: #475569; --paper-ink-3: #64748b;
+    --paper-rule: rgba(30,41,59,0.14); --paper-rule-strong: rgba(30,41,59,0.28);
+    --accent: #e8733a; --accent-soft: #fff8f2;
+  }
+  html, body { background: var(--paper); color: var(--paper-ink); font-feature-settings: "ss01", "ss02"; }
+  ::selection { background: var(--paper-ink); color: var(--paper); }
+</style>
+
+<style>
+  .container { max-width: 1440px; margin: 0 auto; padding: 0 40px; }
+  @media (max-width: 768px) { .container { padding: 0 20px; } }
+  .mono { font-family: var(--font-mono); font-feature-settings: normal; }
+  .italic { font-style: italic; font-weight: 400; }
+
+  .hero { padding: 96px 0 72px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 6px 14px; border-radius: 999px;
+    background: var(--accent-soft);
+    border: 1px solid color-mix(in oklab, var(--accent) 30%, transparent);
+    margin-bottom: 32px;
+  }
+  .badge-dot { width: 7px; height: 7px; border-radius: 4px; background: var(--accent); }
+  .badge-text { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #8f4315; }
+
+  .display-1 {
+    font-family: var(--font-display, var(--font-sans));
+    font-weight: 900;
+    font-size: clamp(56px, 11vw, 168px);
+    line-height: 0.92; letter-spacing: -0.045em;
+    margin: 0; text-wrap: pretty;
+  }
+  .hero-grid {
+    display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: 64px; margin-top: 56px; align-items: end;
+  }
+  .hero-sub {
+    font-size: clamp(17px, 1.5vw, 21px); line-height: 1.55;
+    color: var(--paper-ink-2); max-width: 600px; margin: 0; text-wrap: pretty;
+  }
+  .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+  @media (max-width: 760px) {
+    .hero-grid { grid-template-columns: 1fr; gap: 32px; }
+  }
+
+  .btn-primary, .btn-ghost {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 14px 24px; border-radius: 999px;
+    font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.04em;
+    border: 1px solid transparent; cursor: pointer; text-decoration: none;
+    transition: transform 180ms, opacity 180ms, background 180ms;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { transform: translateY(-1px); opacity: 0.92; }
+  .btn-ghost { background: transparent; color: var(--paper-ink); border-color: var(--paper-rule-strong); }
+  .btn-ghost:hover { background: var(--paper-2); transform: translateY(-1px); }
+</style>
