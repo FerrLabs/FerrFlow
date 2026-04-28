@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.9.0] - 2026-04-28
+
+### Features
+
+- feat(site): editorial hero on the FerrFlow landing (#405)
+
 ## [5.8.0] - 2026-04-23
 
 ### Features
