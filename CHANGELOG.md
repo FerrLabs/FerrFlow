@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [4.6.3] - 2026-04-29
+
+### Bug Fixes
+
+- fix(deny): allow-wildcard-paths is a bool, set to true for workspace path deps (#404)
+
 ## [4.6.2] - 2026-04-29
 
 ### Bug Fixes
