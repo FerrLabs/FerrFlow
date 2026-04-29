@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.12.0] - 2026-04-29
+
+### Features
+
+- feat(site): finish editorial refactor — stats strip, features grid, install grid, dark CTA (#415)
+
 ## [5.11.1] - 2026-04-29
 
 ### Bug Fixes
