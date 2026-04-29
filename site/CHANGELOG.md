@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.16.0] - 2026-04-29
+
+### Features
+
+- feat(ci): i18n parity + key resolution check (closes #420) (#421)
+
 ## [5.15.0] - 2026-04-29
 
 ### Features

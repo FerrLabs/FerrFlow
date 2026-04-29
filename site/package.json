@@ -20,11 +20,11 @@
   "private": true,
   "scripts": {
     "build": "astro build",
+    "check:i18n": "node ./scripts/check-i18n.mjs",
     "dev": "astro dev",
     "preview": "astro preview",
-    "typecheck": "astro check",
-    "check:i18n": "node ./scripts/check-i18n.mjs"
+    "typecheck": "astro check"
   },
   "type": "module",
-  "version": "5.15.0"
+  "version": "5.16.0"
 }
