@@ -1,5 +1,16 @@
 # Changelog
 
+## [5.11.0] - 2026-04-29
+
+### Features
+
+- feat(site): brand-glyph favicon matching the navbar logo (#412)
+- feat(site): editorial Navbar + Footer matching the design bundle (#411)
+
+### Bug Fixes
+
+- fix(docker): switch site runtime to nginx-unprivileged (non-root + 8080) (#413)
+
 ## [5.10.0] - 2026-04-29
 
 ### Features
