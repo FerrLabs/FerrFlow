@@ -12,7 +12,7 @@ RUN npm install -g pnpm@10
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
 COPY packages/site/package.json ./packages/site/
 
-RUN NODE_AUTH_TOKEN="${NODE_AUTH_TOKEN}" pnpm install --no-frozen-lockfile --filter @ferrflow/site...
+RUN NODE_AUTH_TOKEN="${NODE_AUTH_TOKEN}" pnpm install --frozen-lockfile --filter @ferrflow/site...
 
 COPY packages/site ./packages/site
 
