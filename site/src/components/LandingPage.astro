@@ -3,7 +3,6 @@ import { t, getLocalizedPath } from '../i18n/translations';
 import type { Lang } from '../i18n/translations';
 import SharedNavbar from './Navbar.astro';
 import SharedFooter from './Footer.astro';
-import PreFooterCTA from '@ferrlabs/ui-astro/PreFooterCTA.astro';
 
 interface Props {
   lang: Lang;
@@ -52,138 +51,107 @@ const frEquiv = enEquiv === '/' ? '/fr/' : `/fr${enEquiv.startsWith('/') ? '' : 
   </div>
 </section>
 
-<!-- Terminal -->
-<section class="pb-20">
-  <div class="max-w-2xl mx-auto px-6">
-    <div class="rounded-2xl overflow-hidden shadow-xl shadow-primary-200/60 border border-primary-200">
-      <div class="bg-primary-950 px-4 py-3 flex items-center gap-2">
-        <span class="w-3 h-3 rounded-full bg-red-400/70"></span>
-        <span class="w-3 h-3 rounded-full bg-yellow-400/70"></span>
-        <span class="w-3 h-3 rounded-full bg-green-400/70"></span>
-        <span class="ml-3 text-xs text-primary-400 font-mono">ferrflow</span>
+<!-- № 02a — Stats strip: file formats FerrFlow reads natively -->
+<section class="stats-strip">
+  <div class="container stats-row">
+    <span class="mono stats-eyebrow">{lang === 'fr' ? 'Lit nativement' : 'Reads natively'}</span>
+    <div class="stats-chips">
+      {['Cargo.toml','package.json','pyproject.toml','pom.xml','*.csproj','build.gradle','Chart.yaml','pubspec.yaml','mix.exs','*.gemspec','Package.swift','go.mod','composer.json'].map((f) => (
+        <span class="mono stats-chip">{f}</span>
+      ))}
+    </div>
+  </div>
+</section>
+
+<!-- № 02 — FEATURES -->
+<section id="features" class="section features">
+  <div class="container">
+    <p class="eyebrow features-eyebrow">{lang === 'fr' ? '№ 02 — Fonctionnalités' : '№ 02 — Features'}</p>
+    <div class="features-header">
+      <h2 class="display-2">{t(lang, 'cliPage.features.title')}</h2>
+      <p class="features-sub">{t(lang, 'cliPage.features.subtitle')}</p>
+    </div>
+    <div class="feat-grid">
+      <div class="feat-cell">
+        <span class="mono feat-key">— 01</span>
+        <h3 class="feat-title">{t(lang, 'cliPage.features.versioning.title')}</h3>
+        <p class="feat-desc">{t(lang, 'cliPage.features.versioning.desc')}</p>
       </div>
-      <div class="bg-primary-950 px-5 py-5 font-mono text-sm leading-7">
-        <p><span class="text-primary-400">$ </span><span class="text-primary-100">ferrflow check</span></p>
-        <p class="text-primary-500">{t(lang, 'cliPage.terminal.scanning')}</p>
-        <p><span class="text-primary-500">{t(lang, 'cliPage.terminal.bump')}</span><span class="text-primary-200">api</span><span class="text-primary-500"> 1.5.0 &rarr; </span><span class="text-green-400 font-medium">1.6.0</span></p>
-        <p><span class="text-primary-500">{t(lang, 'cliPage.terminal.bump')}</span><span class="text-primary-200">web</span><span class="text-primary-500"> 0.4.2 &rarr; </span><span class="text-green-400 font-medium">0.5.0</span></p>
-        <p class="mt-3"><span class="text-primary-400">$ </span><span class="text-primary-100">ferrflow release</span></p>
-        <p class="text-primary-500">{t(lang, 'cliPage.terminal.generating')}</p>
-        <p><span class="text-primary-500">{t(lang, 'cliPage.terminal.tag')}</span><span class="text-primary-200">api@v1.6.0</span><span class="text-green-400 ml-2">&check;</span></p>
-        <p><span class="text-primary-500">{t(lang, 'cliPage.terminal.tag')}</span><span class="text-primary-200">web@v0.5.0</span><span class="text-green-400 ml-2">&check;</span></p>
-        <p><span class="text-primary-500">{t(lang, 'cliPage.terminal.released')}</span></p>
+      <div class="feat-cell">
+        <span class="mono feat-key">— 02</span>
+        <h3 class="feat-title">{t(lang, 'cliPage.features.monorepo.title')}</h3>
+        <p class="feat-desc">{t(lang, 'cliPage.features.monorepo.desc')}</p>
+      </div>
+      <div class="feat-cell">
+        <span class="mono feat-key">— 03</span>
+        <h3 class="feat-title">{t(lang, 'cliPage.features.forge.title')}</h3>
+        <p class="feat-desc">{t(lang, 'cliPage.features.forge.desc')}</p>
+      </div>
+      <div class="feat-cell">
+        <span class="mono feat-key">— 04</span>
+        <h3 class="feat-title">{t(lang, 'cliPage.features.formats.title')}</h3>
+        <p class="feat-desc">{t(lang, 'cliPage.features.formats.desc')}</p>
+      </div>
+      <div class="feat-cell">
+        <span class="mono feat-key">— 05</span>
+        <h3 class="feat-title">{t(lang, 'cliPage.features.changelog.title')}</h3>
+        <p class="feat-desc">{t(lang, 'cliPage.features.changelog.desc')}</p>
+      </div>
+      <div class="feat-cell">
+        <span class="mono feat-key">— 06</span>
+        <h3 class="feat-title">{lang === 'fr' ? 'Open source' : 'Open source'}</h3>
+        <p class="feat-desc">{lang === 'fr' ? 'MPL-2.0. Self-host, forkez, auditez. Le binaire Rust gère OIDC GitHub — les runners minimaux fonctionnent immédiatement.' : 'MPL-2.0. Self-host, fork, audit. The Rust binary handles GitHub OIDC directly — minimal runners work out of the box.'}</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- What's inside -->
-<section class="py-20 bg-white border-t border-primary-100">
-  <div class="max-w-5xl mx-auto px-6">
-    <div class="text-center mb-14">
-      <h2 class="text-3xl sm:text-4xl font-black text-primary-950 tracking-tight">{t(lang, 'cliPage.features.title')}</h2>
-      <p class="mt-3 text-primary-600">{t(lang, 'cliPage.features.subtitle')}</p>
-    </div>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10">
-      <div class="flex gap-4">
-        <div class="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center shrink-0 mt-0.5">
-          <svg class="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z" /></svg>
-        </div>
-        <div>
-          <h3 class="font-bold text-primary-950 text-lg">{t(lang, 'cliPage.features.versioning.title')}</h3>
-          <p class="mt-1 text-sm text-primary-700 leading-relaxed">{t(lang, 'cliPage.features.versioning.desc')}</p>
-        </div>
+<!-- № 03 — INSTALL -->
+<section id="install" class="section install">
+  <div class="container">
+    <p class="eyebrow install-eyebrow">{lang === 'fr' ? '№ 03 — Installer' : '№ 03 — Install'}</p>
+    <h2 class="display-2">{t(lang, 'cliPage.install.title')}</h2>
+    <p class="install-sub">{lang === 'fr' ? 'Linux, macOS et Windows. Disponible en GitHub Action et en template GitLab CI.' : 'Works on Linux, macOS, and Windows. Available as a GitHub Action and a GitLab CI template.'}</p>
+    <div class="install-grid">
+      <div class="install-cell">
+        <div class="mono install-key">Cargo</div>
+        <code class="mono install-cmd"><span class="install-prompt">$</span>cargo install ferrflow</code>
       </div>
-      <div class="flex gap-4">
-        <div class="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center shrink-0 mt-0.5">
-          <svg class="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-        </div>
-        <div>
-          <h3 class="font-bold text-primary-950 text-lg">{t(lang, 'cliPage.features.monorepo.title')}</h3>
-          <p class="mt-1 text-sm text-primary-700 leading-relaxed">{t(lang, 'cliPage.features.monorepo.desc')}</p>
-        </div>
+      <div class="install-cell">
+        <div class="mono install-key">npm</div>
+        <code class="mono install-cmd"><span class="install-prompt">$</span>npm install -D ferrflow</code>
       </div>
-      <div class="flex gap-4">
-        <div class="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center shrink-0 mt-0.5">
-          <svg class="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-        </div>
-        <div>
-          <h3 class="font-bold text-primary-950 text-lg">{t(lang, 'cliPage.features.changelog.title')}</h3>
-          <p class="mt-1 text-sm text-primary-700 leading-relaxed">{t(lang, 'cliPage.features.changelog.desc')}</p>
-        </div>
+      <div class="install-cell">
+        <div class="mono install-key">Docker</div>
+        <code class="mono install-cmd"><span class="install-prompt">$</span>docker run ghcr.io/ferrlabs/ferrflow</code>
       </div>
-      <div class="flex gap-4">
-        <div class="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center shrink-0 mt-0.5">
-          <svg class="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-        </div>
-        <div>
-          <h3 class="font-bold text-primary-950 text-lg">{t(lang, 'cliPage.features.forge.title')}</h3>
-          <p class="mt-1 text-sm text-primary-700 leading-relaxed">{t(lang, 'cliPage.features.forge.desc')}</p>
-        </div>
-      </div>
-      <div class="flex gap-4">
-        <div class="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center shrink-0 mt-0.5">
-          <svg class="w-5 h-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
-        </div>
-        <div>
-          <h3 class="font-bold text-primary-950 text-lg">{t(lang, 'cliPage.features.formats.title')}</h3>
-          <p class="mt-1 text-sm text-primary-700 leading-relaxed">{t(lang, 'cliPage.features.formats.desc')}</p>
-        </div>
+      <div class="install-cell">
+        <div class="mono install-key">GitHub</div>
+        <code class="mono install-cmd"><span class="install-prompt">$</span>uses: FerrLabs/FerrFlow@v4</code>
       </div>
     </div>
   </div>
 </section>
 
-<!-- Install -->
-<section class="py-20 bg-primary-50 border-t border-primary-100">
-  <div class="max-w-2xl mx-auto px-6 text-center">
-    <h2 class="text-3xl sm:text-4xl font-black text-primary-950 tracking-tight mb-8">{t(lang, 'cliPage.install.title')}</h2>
-    <div class="rounded-2xl overflow-hidden border border-primary-200 shadow-lg shadow-primary-200/40 text-left">
-      <div class="bg-primary-950 px-5 py-5 font-mono text-sm leading-7">
-        <p class="text-primary-500"># macOS / Linux</p>
-        <p><span class="text-primary-400">$ </span><span class="text-primary-100">curl -fsSL https://ferrflow.com/install.sh | sh</span></p>
-        <p class="text-primary-500 mt-4"># npm</p>
-        <p><span class="text-primary-400">$ </span><span class="text-primary-100">npm install -g ferrflow</span></p>
-        <p class="text-primary-500 mt-4"># Docker</p>
-        <p><span class="text-primary-400">$ </span><span class="text-primary-100">docker run ghcr.io/ferrlabs/ferrflow check</span></p>
+<!-- № 04 — CTA dark contrast block -->
+<section class="cta">
+  <div class="container">
+    <div class="cta-block">
+      <div>
+        <p class="mono cta-eyebrow">{lang === 'fr' ? '№ 04 — Démarrer' : '№ 04 — Get started'}</p>
+        <h2 class="cta-title">
+          {t(lang, 'cta.title1')}<br />
+          <span class="italic">{t(lang, 'cta.title2')}</span>
+        </h2>
+        <p class="cta-sub">{t(lang, 'cta.subtitle')}</p>
+      </div>
+      <div class="cta-actions">
+        <a href="https://github.com/FerrLabs/FerrFlow" class="cta-btn cta-btn-primary">★ {t(lang, 'cta.button')} →</a>
+        <a href="#install" class="cta-btn cta-btn-ghost">{lang === 'fr' ? 'Installer' : 'Install'} →</a>
       </div>
     </div>
-    <p class="mt-6 text-sm text-primary-600">{t(lang, 'cliPage.install.works')}<a href={ghActionsPath} class="text-primary-600 underline hover:text-primary-800">{t(lang, 'cliPage.install.ghAction')}</a>{t(lang, 'cliPage.install.and')}<a href={glCiPath} class="text-primary-600 underline hover:text-primary-800">{t(lang, 'cliPage.install.glCi')}</a>{t(lang, 'cliPage.install.dot')}</p>
   </div>
 </section>
-
-<!-- CTA -->
-<section class="bg-primary-950">
-  <div class="max-w-4xl mx-auto px-6 py-28 text-center">
-    <h2 class="font-black tracking-tight leading-[0.95] text-primary-50">
-      <span class="block text-4xl sm:text-5xl md:text-6xl">{t(lang, 'cta.title1')}</span>
-      <span class="block text-4xl sm:text-5xl md:text-6xl italic text-primary-400">{t(lang, 'cta.title2')}</span>
-    </h2>
-    <p class="mt-6 text-lg text-primary-300 max-w-2xl mx-auto leading-relaxed">{t(lang, 'cta.subtitle')}</p>
-    <div class="mt-10 flex gap-3 justify-center flex-wrap">
-      <a
-        href="https://github.com/FerrLabs/FerrFlow"
-        class="px-8 py-4 rounded-full bg-primary-600 text-white font-medium text-lg hover:bg-primary-500 transition-colors shadow-lg shadow-primary-900/50"
-      >
-        {t(lang, 'cta.button')}
-      </a>
-      <a
-        href={docsPath}
-        class="px-8 py-4 rounded-full border border-primary-700 text-primary-100 font-medium text-lg hover:bg-primary-900 transition-colors"
-      >
-        {t(lang, 'cliPage.hero.docs')}
-      </a>
-    </div>
-  </div>
-</section>
-
-<PreFooterCTA
-  lang={lang}
-  accent="orange"
-  title={t(lang, 'prefooter.title') ?? 'Ready to ship.'}
-  subtitle={t(lang, 'prefooter.subtitle') ?? 'Without the ceremony.'}
-  action={{ type: 'code', snippet: 'cargo install ferrflow' }}
-/>
 
 <SharedFooter />
 
@@ -249,4 +217,151 @@ const frEquiv = enEquiv === '/' ? '/fr/' : `/fr${enEquiv.startsWith('/') ? '' : 
   .btn-primary:hover { transform: translateY(-1px); opacity: 0.92; }
   .btn-ghost { background: transparent; color: var(--paper-ink); border-color: var(--paper-rule-strong); }
   .btn-ghost:hover { background: var(--paper-2); transform: translateY(-1px); }
+
+  .section { padding: 96px 0; }
+  .display-2 {
+    font-family: var(--font-display, var(--font-sans));
+    font-weight: 900;
+    font-size: clamp(40px, 6vw, 88px);
+    line-height: 0.94;
+    letter-spacing: -0.04em;
+    margin: 0;
+  }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--paper-ink-3);
+    margin: 0;
+  }
+
+  /* Stats strip — file formats */
+  .stats-strip {
+    padding: 32px 0;
+    border-top: 1px solid var(--paper-rule);
+    border-bottom: 1px solid var(--paper-rule);
+  }
+  .stats-row { display: flex; align-items: center; gap: 32px; flex-wrap: wrap; }
+  .stats-eyebrow {
+    font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--paper-ink-3);
+  }
+  .stats-chips { display: flex; gap: 12px; flex-wrap: wrap; flex: 1; }
+  .stats-chip {
+    font-size: 12px; color: var(--paper-ink-2);
+    padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--paper-rule); background: #fff;
+  }
+
+  /* Features */
+  .features-eyebrow { margin-bottom: 28px; }
+  .features-header {
+    display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    gap: 48px; margin-bottom: 64px;
+  }
+  .features-sub {
+    font-size: 17px; line-height: 1.55; color: var(--paper-ink-2);
+    align-self: end; margin: 0;
+  }
+  .feat-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0;
+    border: 1px solid var(--paper-rule); border-radius: 18px; overflow: hidden;
+    background: #fff;
+  }
+  .feat-cell {
+    padding: 32px; min-height: 220px;
+    display: flex; flex-direction: column;
+    border-right: 1px solid var(--paper-rule);
+    border-bottom: 1px solid var(--paper-rule);
+  }
+  .feat-cell:nth-child(3n) { border-right: none; }
+  .feat-cell:nth-last-child(-n+3) { border-bottom: none; }
+  .feat-key {
+    font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 16px;
+  }
+  .feat-title {
+    font-family: var(--font-display, var(--font-sans));
+    font-weight: 700; font-size: 24px; letter-spacing: -0.02em; margin: 0;
+  }
+  .feat-desc {
+    font-size: 14.5px; line-height: 1.55; color: var(--paper-ink-2);
+    margin: 12px 0 0;
+  }
+  @media (max-width: 900px) {
+    .features-header { grid-template-columns: 1fr; gap: 24px; }
+    .feat-grid { grid-template-columns: 1fr 1fr; }
+    .feat-cell { border-right: 1px solid var(--paper-rule) !important; border-bottom: 1px solid var(--paper-rule) !important; }
+    .feat-cell:nth-child(2n) { border-right: none !important; }
+    .feat-cell:nth-last-child(-n+2) { border-bottom: none !important; }
+  }
+  @media (max-width: 600px) {
+    .feat-grid { grid-template-columns: 1fr; }
+    .feat-cell { border-right: none !important; border-bottom: 1px solid var(--paper-rule) !important; }
+    .feat-cell:last-child { border-bottom: none !important; }
+  }
+
+  /* Install */
+  .install { padding: 64px 0 96px; }
+  .install-eyebrow { margin-bottom: 28px; }
+  .install-sub {
+    font-size: 17px; color: var(--paper-ink-2);
+    max-width: 640px; margin: 24px 0 48px;
+  }
+  .install-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .install-cell {
+    background: #fff; border: 1px solid var(--paper-rule);
+    border-radius: 14px; padding: 20px;
+  }
+  .install-key {
+    font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--paper-ink-3); margin-bottom: 12px;
+  }
+  .install-cmd {
+    font-family: var(--font-mono); font-size: 13px;
+    color: var(--paper-ink); display: block; word-break: break-all;
+  }
+  .install-prompt { color: var(--accent); margin-right: 6px; }
+  @media (max-width: 900px) { .install-grid { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 540px) { .install-grid { grid-template-columns: 1fr; } }
+
+  /* CTA dark contrast block */
+  .cta { padding: 32px 0 80px; }
+  .cta-block {
+    background: var(--paper-ink); color: var(--paper);
+    border-radius: 24px;
+    padding: clamp(40px, 6vw, 80px);
+    display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    gap: 32px; align-items: center;
+    border-left: 8px solid var(--accent);
+  }
+  .cta-eyebrow {
+    font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+    opacity: 0.6; margin: 0 0 24px;
+  }
+  .cta-title {
+    font-family: var(--font-display, var(--font-sans));
+    font-weight: 900;
+    font-size: clamp(36px, 5vw, 72px);
+    line-height: 0.96; letter-spacing: -0.04em;
+    margin: 0;
+  }
+  .cta-sub {
+    font-size: 17px; opacity: 0.7; margin: 20px 0 0; max-width: 480px;
+  }
+  .cta-actions { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+  .cta-btn {
+    padding: 18px 28px; border-radius: 999px;
+    font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.04em;
+    text-decoration: none; display: inline-flex; align-items: center; gap: 8px;
+  }
+  .cta-btn-primary { background: var(--accent); color: #fff; }
+  .cta-btn-ghost {
+    background: transparent; color: var(--paper);
+    border: 1px solid color-mix(in oklab, var(--paper) 30%, transparent);
+  }
+  @media (max-width: 760px) {
+    .cta-block { grid-template-columns: 1fr; }
+  }
 </style>
