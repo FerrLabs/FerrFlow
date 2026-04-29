@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.14.0] - 2026-04-29
+
+### Features
+
+- feat(site): editorial scrollbar + translate=no on code blocks (#417)
+
 ## [5.13.0] - 2026-04-29
 
 ### Features
