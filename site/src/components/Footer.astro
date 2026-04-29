@@ -1,0 +1,68 @@
+---
+const accent = '#e8733a';
+const products = [
+  { name: 'FerrFlow', href: 'https://ferrflow.com', c: '#e8733a', current: true },
+  { name: 'FerrVault', href: 'https://ferrvault.com', c: '#10b981', current: false },
+  { name: 'FerrTrack', href: 'https://ferrtrack.com', c: '#6366f1', current: false },
+  { name: 'FerrGrowth', href: 'https://ferrgrowth.com', c: '#8b5cf6', current: false },
+];
+---
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand-row">
+          <svg width="36" height="36" viewBox="0 0 32 32" aria-hidden="true" style={`color:${accent};`}>
+            <line x1="6" y1="16" x2="14" y2="16" stroke="currentColor" stroke-width="1.5" />
+            <line x1="18" y1="16" x2="24" y2="10" stroke="currentColor" stroke-width="1.5" />
+            <line x1="18" y1="16" x2="24" y2="22" stroke="currentColor" stroke-width="1.5" />
+            <circle cx="4" cy="16" r="3" fill="currentColor" />
+            <circle cx="16" cy="16" r="3" fill="currentColor" />
+            <circle cx="26" cy="10" r="3" fill="currentColor" opacity="0.6" />
+            <circle cx="26" cy="22" r="3" fill="currentColor" opacity="0.6" />
+          </svg>
+          <span class="footer-wordmark">ferrflow</span>
+        </div>
+        <p class="footer-tagline">Conventional commits in, semantic versions out. One Rust binary, every monorepo.</p>
+        <div class="footer-products">
+          {products.map((p) => (
+            <a href={p.href} class:list={['footer-chip', 'mono', p.current && 'is-current']}>
+              <span class="footer-chip-dot" style={`background:${p.c};`} />
+              {p.name}
+            </a>
+          ))}
+        </div>
+      </div>
+      <div class="footer-back">
+        <a href="https://ferrlabs.com" class="mono back-link">← Back to ferrlabs.com</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span class="mono footer-bottom-text">© 2026 FerrLabs. FerrFlow is a FerrLabs product.</span>
+      <span class="mono footer-bottom-text">Set in Fraunces · Hand-built in Lille, FR</span>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .site-footer { padding: 96px 0 48px; border-top: 1px solid rgba(30, 41, 59, 0.14); background: #faf8f4; color: #1e293b; }
+  .container { max-width: 1440px; margin: 0 auto; padding: 0 40px; }
+  @media (max-width: 768px) { .container { padding: 0 20px; } }
+  .mono { font-family: "DM Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .footer-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 48px; align-items: end; }
+  .footer-brand-row { display: flex; align-items: center; gap: 14px; }
+  .footer-wordmark { font-family: "Fraunces", Georgia, ui-serif, serif; font-weight: 900; font-size: 32px; letter-spacing: -0.03em; color: #1e293b; }
+  .footer-tagline { font-family: "Fraunces", Georgia, ui-serif, serif; font-style: italic; font-size: 18px; line-height: 1.45; color: #475569; margin: 16px 0 0; max-width: 380px; }
+  .footer-products { display: flex; gap: 8px; margin-top: 28px; flex-wrap: wrap; }
+  .footer-chip { display: inline-flex; align-items: center; gap: 8px; border: 1px solid rgba(30, 41, 59, 0.14); border-radius: 999px; padding: 6px 12px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: #475569; text-decoration: none; transition: border-color 180ms; }
+  .footer-chip:hover { border-color: rgba(30, 41, 59, 0.28); }
+  .footer-chip.is-current { border-color: #1e293b; color: #1e293b; }
+  .footer-chip-dot { width: 7px; height: 7px; border-radius: 4px; flex-shrink: 0; }
+  .footer-back { display: flex; justify-content: flex-end; }
+  .back-link { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: #475569; text-decoration: none; border-bottom: 1px solid rgba(30, 41, 59, 0.28); padding-bottom: 4px; }
+  .back-link:hover { color: #1e293b; }
+  .footer-bottom { margin-top: 64px; padding-top: 24px; border-top: 1px solid rgba(30, 41, 59, 0.14); display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .footer-bottom-text { font-size: 11px; letter-spacing: 0.06em; color: #64748b; }
+  @media (max-width: 720px) { .footer-grid { grid-template-columns: 1fr; gap: 32px; } .footer-back { justify-content: flex-start; } }
+</style>

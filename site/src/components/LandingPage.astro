@@ -1,8 +1,8 @@
 ---
 import { t, getLocalizedPath } from '../i18n/translations';
 import type { Lang } from '../i18n/translations';
-import SharedNavbar from '@ferrlabs/ui-astro/Navbar.astro';
-import SharedFooter from '@ferrlabs/ui-astro/Footer.astro';
+import SharedNavbar from './Navbar.astro';
+import SharedFooter from './Footer.astro';
 import PreFooterCTA from '@ferrlabs/ui-astro/PreFooterCTA.astro';
 
 interface Props {
@@ -23,18 +23,7 @@ const enEquiv =
 const frEquiv = enEquiv === '/' ? '/fr/' : `/fr${enEquiv.startsWith('/') ? '' : '/'}${enEquiv}`;
 ---
 
-<SharedNavbar
-  lang={lang}
-  currentProduct="ferrflow"
-  accent="orange"
-  brand={{ name: 'FerrFlow', href: lang === 'fr' ? '/fr/' : '/' }}
-  links={[
-    { label: t(lang, 'nav.docs') ?? 'Docs', href: docsPath },
-  ]}
-  activePage="home"
-  enEquiv={enEquiv}
-  frEquiv={frEquiv}
-/>
+<SharedNavbar />
 
 <!--
   № 01 — Hero (editorial design refresh, FerrLabs-Cloud#70 pattern).
@@ -196,18 +185,7 @@ const frEquiv = enEquiv === '/' ? '/fr/' : `/fr${enEquiv.startsWith('/') ? '' : 
   action={{ type: 'code', snippet: 'cargo install ferrflow' }}
 />
 
-<SharedFooter
-  lang={lang}
-  currentProduct="ferrflow"
-  accent="orange"
-  productLinks={[
-    { label: t(lang, 'footer.documentation') ?? 'Documentation', href: docsPath },
-    { label: t(lang, 'footer.releases') ?? 'Releases', href: 'https://github.com/FerrLabs/FerrFlow/releases', external: true },
-  ]}
-  resourceLinks={[
-    { label: 'GitHub', href: 'https://github.com/FerrLabs/FerrFlow', external: true },
-  ]}
-/>
+<SharedFooter />
 
 
 <style is:global>
