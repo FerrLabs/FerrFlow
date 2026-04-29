@@ -30,6 +30,7 @@ const ui = {
     'nav.signin': 'Sign in',
     'nav.signup': 'Sign up',
     'nav.products.cli.desc': 'One binary for versioning and releases',
+    'lang.unavailable': 'Not yet translated',
 
     // Hero
     'hero.headline1': 'Ship faster.',
@@ -143,6 +144,7 @@ const ui = {
     'nav.signin': 'Connexion',
     'nav.signup': 'Inscription',
     'nav.products.cli.desc': 'Un binaire pour le versioning et les releases',
+    'lang.unavailable': 'Pas encore traduit',
 
     // Hero
     'hero.headline1': 'Livrez vite.',

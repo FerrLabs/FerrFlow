@@ -1,11 +1,16 @@
 ---
+import { t } from '../i18n/translations';
+
 interface Props {
   lang?: 'en' | 'fr';
   enEquiv?: string;
   frEquiv?: string;
+  enAvailable?: boolean;
+  frAvailable?: boolean;
 }
-const { lang = 'en', enEquiv = '/', frEquiv = '/fr/' } = Astro.props;
+const { lang = 'en', enEquiv = '/', frEquiv = '/fr/', enAvailable = true, frAvailable = true } = Astro.props;
 const accent = '#e8733a';
+const unavailableTitle = t(lang, 'lang.unavailable');
 ---
 
 <header id="site-navbar">
@@ -30,8 +35,12 @@ const accent = '#e8733a';
       <a href="https://ferrlabs.com" class="nav-link mono">FerrLabs ↗</a>
 
       <div class="lang-pill mono">
-        <a href={enEquiv} class:list={['lang-opt', lang === 'en' && 'active']}>EN</a>
-        <a href={frEquiv} class:list={['lang-opt', lang === 'fr' && 'active']}>FR</a>
+        {enAvailable
+          ? <a href={enEquiv} class:list={['lang-opt', lang === 'en' && 'active']}>EN</a>
+          : <span class="lang-opt is-disabled" aria-disabled="true" title={unavailableTitle}>EN</span>}
+        {frAvailable
+          ? <a href={frEquiv} class:list={['lang-opt', lang === 'fr' && 'active']}>FR</a>
+          : <span class="lang-opt is-disabled" aria-disabled="true" title={unavailableTitle}>FR</span>}
       </div>
 
       <a href="https://github.com/FerrLabs/FerrFlow/releases" target="_blank" rel="noreferrer" class="cta-btn mono" style={`background:${accent}; border-color:${accent};`}>
@@ -53,7 +62,7 @@ const accent = '#e8733a';
   };
   onScroll();
   window.addEventListener('scroll', onScroll, { passive: true });
-  document.querySelectorAll('.lang-opt').forEach(function(a){
+  document.querySelectorAll('a.lang-opt').forEach(function(a){
     a.addEventListener('click', function(){ try { localStorage.setItem('lang-pref', a.textContent.trim().toLowerCase()); } catch(e){} });
   });
   document.querySelectorAll("code, pre, kbd, samp, .mono").forEach(function(el){ el.setAttribute("translate", "no"); el.classList.add("notranslate"); });
@@ -87,6 +96,8 @@ const accent = '#e8733a';
   .lang-pill { display: flex; align-items: center; border: 1px solid rgba(30, 41, 59, 0.14); border-radius: 999px; overflow: hidden; }
   .lang-opt { font-family: inherit; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding: 6px 12px; color: #475569; text-decoration: none; transition: background 180ms, color 180ms; }
   .lang-opt.active { background: #1e293b; color: #faf8f4; }
+  .lang-opt.is-disabled { opacity: 0.4; text-decoration: line-through; cursor: not-allowed; }
+  .lang-opt.is-disabled:hover { background: transparent; color: #475569; }
   .cta-btn { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; padding: 10px 16px; border-radius: 999px; border: 1px solid; text-decoration: none; color: #fff; }
   .mobile-toggle { display: none; margin-left: auto; border: 1px solid rgba(30, 41, 59, 0.14); border-radius: 999px; background: transparent; color: #1e293b; padding: 8px 14px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; }
   @media (max-width: 880px) { .desktop-nav { display: none; } .mobile-toggle { display: inline-flex; } }
