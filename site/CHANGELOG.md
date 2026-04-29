@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.10.0] - 2026-04-29
+
+### Features
+
+- feat(site): editorial Navbar + Footer matching the design bundle (#411)
+
 ## [5.9.1] - 2026-04-29
 
 ### Bug Fixes
