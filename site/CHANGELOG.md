@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.11.1] - 2026-04-29
+
+### Bug Fixes
+
+- fix(docker): refresh lockfile + restore --frozen-lockfile (#414)
+
 ## [5.11.0] - 2026-04-29
 
 ### Features
