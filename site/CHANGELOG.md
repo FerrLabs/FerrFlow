@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.15.0] - 2026-04-29
+
+### Features
+
+- feat(site): Claude-style docs chrome (#419)
+
 ## [5.14.0] - 2026-04-29
 
 ### Features
