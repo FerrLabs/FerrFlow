@@ -19,12 +19,14 @@ COPY packages/site ./packages/site
 RUN pnpm --filter @ferrflow/site build
 
 # Runtime stage
-FROM docker.io/library/nginx:alpine
+FROM docker.io/nginxinc/nginx-unprivileged:alpine
 
+USER root
 RUN apk upgrade --no-cache
+USER nginx
 
 COPY --from=builder /app/packages/site/dist /usr/share/nginx/html
 COPY packages/site/nginx.conf /etc/nginx/conf.d/default.conf
 
-EXPOSE 80
+EXPOSE 8080
 CMD ["nginx", "-g", "daemon off;"]
