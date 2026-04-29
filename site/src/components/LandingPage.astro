@@ -22,7 +22,7 @@ const enEquiv =
 const frEquiv = enEquiv === '/' ? '/fr/' : `/fr${enEquiv.startsWith('/') ? '' : '/'}${enEquiv}`;
 ---
 
-<SharedNavbar />
+<SharedNavbar lang={lang} enEquiv={enEquiv} frEquiv={frEquiv} />
 
 <!--
   № 01 — Hero (editorial design refresh, FerrLabs-Cloud#70 pattern).

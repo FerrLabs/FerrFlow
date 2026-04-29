@@ -28,13 +28,16 @@ export default defineConfig({
       },
       favicon: '/favicon.svg',
       head: [
-        { tag: 'meta', attrs: { name: 'google', content: 'notranslate' } },
         { tag: 'link', attrs: { rel: 'icon', href: '/favicon.ico', sizes: '32x32' } },
         { tag: 'link', attrs: { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' } },
         { tag: 'meta', attrs: { property: 'og:image', content: 'https://ferrflow.com/og.png' } },
         { tag: 'meta', attrs: { property: 'og:site_name', content: 'FerrFlow' } },
         { tag: 'meta', attrs: { name: 'twitter:card', content: 'summary_large_image' } },
         { tag: 'meta', attrs: { name: 'twitter:image', content: 'https://ferrflow.com/og.png' } },
+        {
+          tag: 'script',
+          content: `(function(){try{if(localStorage.getItem("lang-pref"))return;var p=location.pathname;if(p.startsWith("/fr/")||p==="/fr")return;var b=(navigator.language||"en").slice(0,2).toLowerCase();if(b==="fr")location.replace("/fr"+(p==="/"?"/":p)+location.search+location.hash);}catch(e){}})();`,
+        },
       ],
       social: [],
       customCss: ['./src/styles/docs.css'],

@@ -1,4 +1,10 @@
 ---
+interface Props {
+  lang?: 'en' | 'fr';
+  enEquiv?: string;
+  frEquiv?: string;
+}
+const { lang = 'en', enEquiv = '/', frEquiv = '/fr/' } = Astro.props;
 const accent = '#e8733a';
 ---
 
@@ -23,6 +29,11 @@ const accent = '#e8733a';
       <a href="https://github.com/FerrLabs/FerrFlow" class="nav-link mono">GitHub ↗</a>
       <a href="https://ferrlabs.com" class="nav-link mono">FerrLabs ↗</a>
 
+      <div class="lang-pill mono">
+        <a href={enEquiv} class:list={['lang-opt', lang === 'en' && 'active']}>EN</a>
+        <a href={frEquiv} class:list={['lang-opt', lang === 'fr' && 'active']}>FR</a>
+      </div>
+
       <a href="https://github.com/FerrLabs/FerrFlow/releases" target="_blank" rel="noreferrer" class="cta-btn mono" style={`background:${accent}; border-color:${accent};`}>
         Get FerrFlow
         <span aria-hidden>↗</span>
@@ -42,6 +53,9 @@ const accent = '#e8733a';
   };
   onScroll();
   window.addEventListener('scroll', onScroll, { passive: true });
+  document.querySelectorAll('.lang-opt').forEach(function(a){
+    a.addEventListener('click', function(){ try { localStorage.setItem('lang-pref', a.textContent.trim().toLowerCase()); } catch(e){} });
+  });
 </script>
 
 <style>
@@ -69,6 +83,9 @@ const accent = '#e8733a';
   .nav-link { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: #475569; position: relative; padding: 6px 0; text-decoration: none; }
   .nav-link::after { content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 1px; background: #1e293b; transform: scaleX(0); transform-origin: left; transition: transform 220ms ease; }
   .nav-link:hover::after { transform: scaleX(1); }
+  .lang-pill { display: flex; align-items: center; border: 1px solid rgba(30, 41, 59, 0.14); border-radius: 999px; overflow: hidden; }
+  .lang-opt { font-family: inherit; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding: 6px 12px; color: #475569; text-decoration: none; transition: background 180ms, color 180ms; }
+  .lang-opt.active { background: #1e293b; color: #faf8f4; }
   .cta-btn { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; padding: 10px 16px; border-radius: 999px; border: 1px solid; text-decoration: none; color: #fff; }
   .mobile-toggle { display: none; margin-left: auto; border: 1px solid rgba(30, 41, 59, 0.14); border-radius: 999px; background: transparent; color: #1e293b; padding: 8px 14px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; }
   @media (max-width: 880px) { .desktop-nav { display: none; } .mobile-toggle { display: inline-flex; } }
