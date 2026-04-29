@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [4.6.2] - 2026-04-29
+
+### Bug Fixes
+
+- fix(ci): rename allow-wildcards-in-private to allow-wildcard-paths (cargo-deny) (#403)
+
 ## [4.6.1] - 2026-04-26
 
 ### Bug Fixes
