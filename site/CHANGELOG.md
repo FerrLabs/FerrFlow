@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.13.0] - 2026-04-29
+
+### Features
+
+- feat(site): re-add lang pill + auto-redirect FR browsers on first visit (#416)
+
 ## [5.12.0] - 2026-04-29
 
 ### Features
