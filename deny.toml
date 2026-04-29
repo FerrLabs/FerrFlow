@@ -32,7 +32,7 @@ exceptions = []
 [bans]
 multiple-versions = "warn"
 wildcards = "deny"
-allow-wildcard-paths = []
+allow-wildcard-paths = true
 deny = []
 skip = []
 skip-tree = []
