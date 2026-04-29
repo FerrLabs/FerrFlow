@@ -56,6 +56,7 @@ const accent = '#e8733a';
   document.querySelectorAll('.lang-opt').forEach(function(a){
     a.addEventListener('click', function(){ try { localStorage.setItem('lang-pref', a.textContent.trim().toLowerCase()); } catch(e){} });
   });
+  document.querySelectorAll("code, pre, kbd, samp, .mono").forEach(function(el){ el.setAttribute("translate", "no"); el.classList.add("notranslate"); });
 </script>
 
 <style>
