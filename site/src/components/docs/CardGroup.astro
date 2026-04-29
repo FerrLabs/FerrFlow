@@ -1,0 +1,11 @@
+---
+interface Props {
+  cols?: 2 | 3 | 4;
+}
+
+const { cols = 2 } = Astro.props;
+---
+
+<div class="ferr-card-grid not-content" data-cols={String(cols)}>
+  <slot />
+</div>

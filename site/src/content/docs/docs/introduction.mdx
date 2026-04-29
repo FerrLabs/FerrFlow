@@ -3,9 +3,28 @@ title: Introduction
 description: What FerrFlow is and why it exists.
 ---
 
+import Card from '../../../components/docs/Card.astro';
+import CardGroup from '../../../components/docs/CardGroup.astro';
+import Note from '../../../components/docs/Note.astro';
+
 FerrFlow is a single binary that automates semantic versioning for any repository — monorepo or classic, any language.
 
 It reads your commit history, determines the right version bump, updates your version files, writes a changelog, creates a git tag, and publishes a release. Zero runtime dependencies.
+
+<CardGroup cols={2}>
+  <Card title="CLI-first" icon="seti:powershell">
+    Everything happens from your terminal or your CI. No UI to click, no config server to babysit.
+  </Card>
+  <Card title="Multi-forge" icon="github">
+    GitHub, GitLab, self-hosted — FerrFlow adapts to your forge. One tool, any platform.
+  </Card>
+  <Card title="Conventional commits" icon="setting">
+    Reads commit history to determine version bumps automatically. No manual changelog maintenance.
+  </Card>
+  <Card title="Zero infra" icon="rocket">
+    A single binary with no daemon, no server, no database. Runs wherever your CI runs.
+  </Card>
+</CardGroup>
 
 ## Why not semantic-release or changesets?
 
@@ -20,6 +39,10 @@ Most versioning tools are coupled to a specific ecosystem or require Node.js to 
 | **FerrFlow** | **native** | **any** | **none** |
 
 FerrFlow ships as a compiled binary. Drop it in any CI environment without installing a runtime. A WASM build (`@ferrflow/wasm`) is also available for browser-side usage.
+
+<Note title="Heads up">
+  FerrFlow is versioning only. Issue tracking, secrets, and AI agents live in separate FerrLabs products.
+</Note>
 
 ## How it works
 

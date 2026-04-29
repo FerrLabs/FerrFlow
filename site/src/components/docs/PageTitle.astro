@@ -1,0 +1,53 @@
+---
+import VersionNotice from 'starlight-versions/components/VersionNotice.astro';
+
+const PAGE_TITLE_ID = '_top';
+
+type SidebarLink = { type: 'link'; label: string; href: string; isCurrent: boolean };
+type SidebarGroup = { type: 'group'; label: string; entries: (SidebarLink | SidebarGroup)[] };
+type SidebarEntry = SidebarLink | SidebarGroup;
+
+const route = Astro.locals.starlightRoute;
+const title = route.entry.data.title;
+
+function findActiveGroupLabel(entries: SidebarEntry[], parentLabel: string | null = null): string | null {
+  for (const entry of entries) {
+    if (entry.type === 'link') {
+      if (entry.isCurrent) return parentLabel;
+    } else {
+      const found = findActiveGroupLabel(entry.entries, entry.label);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+const section = findActiveGroupLabel((route.sidebar ?? []) as SidebarEntry[]);
+---
+
+<VersionNotice />
+
+{
+  section && (
+    <p class="ferr-breadcrumb">
+      <span>{section}</span>
+      <span class="ferr-breadcrumb__sep">/</span>
+      <span>{title}</span>
+    </p>
+  )
+}
+
+<h1 id={PAGE_TITLE_ID}>{title}</h1>
+
+<style>
+  @layer starlight.core {
+    h1 {
+      margin-top: 0.5rem;
+      font-size: var(--sl-text-h1);
+      line-height: var(--sl-line-height-headings);
+      font-weight: 600;
+      color: var(--sl-color-white);
+      letter-spacing: -0.02em;
+    }
+  }
+</style>

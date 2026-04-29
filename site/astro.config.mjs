@@ -2,7 +2,6 @@ import { defineConfig } from 'astro/config';
 import tailwindcss from '@tailwindcss/vite';
 import starlight from '@astrojs/starlight';
 import starlightVersions from 'starlight-versions';
-import ferrflowTheme from './src/styles/ferrflow-theme.json' with { type: 'json' };
 
 export default defineConfig({
   site: 'https://ferrflow.com',
@@ -23,8 +22,9 @@ export default defineConfig({
         },
       },
       components: {
-        ThemeSelect: './src/components/ThemeSelect.astro',
         Header: './src/components/Header.astro',
+        PageTitle: './src/components/docs/PageTitle.astro',
+        Footer: './src/components/docs/Footer.astro',
       },
       favicon: '/favicon.svg',
       head: [
@@ -40,17 +40,26 @@ export default defineConfig({
         },
       ],
       social: [],
-      customCss: ['./src/styles/docs.css'],
+      customCss: ['./src/styles/claude.css'],
       expressiveCode: {
+        themes: ['github-dark-default', 'github-dark-default'],
+        useStarlightDarkModeSwitch: false,
         styleOverrides: {
-          borderRadius: '1rem',
+          borderRadius: '12px',
+          borderWidth: '1px',
           codeFontFamily: "'DM Mono', ui-monospace, monospace",
-          uiFontFamily: "'Fraunces', Georgia, serif",
+          codeFontSize: '0.85rem',
+          uiFontFamily:
+            "'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+          codeBackground: '#1c1c1c',
           frames: {
-            shadowColor: 'rgba(232, 115, 58, 0.15)',
+            shadowColor: 'transparent',
+            editorTabBarBackground: '#161616',
+            editorActiveTabBackground: '#1c1c1c',
+            terminalBackground: '#1c1c1c',
+            terminalTitlebarBackground: '#161616',
           },
         },
-        themes: [ferrflowTheme],
       },
       plugins: [
         starlightVersions({
