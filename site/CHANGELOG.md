@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.9.1] - 2026-04-29
+
+### Bug Fixes
+
+- fix(docker): use --no-frozen-lockfile to match CI install behaviour (#410)
+
 ## [5.9.0] - 2026-04-28
 
 ### Features
