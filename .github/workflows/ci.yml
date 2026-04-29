@@ -37,6 +37,24 @@ jobs:
         env:
           FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
 
+  security:
+    name: Cargo Security
+    if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit,cargo-deny,cargo-machete
+      - name: cargo audit (RustSec advisories)
+        run: cargo audit --deny warnings
+      - name: cargo deny (licenses + bans + sources)
+        run: cargo deny --all-features check
+      - name: cargo machete (unused deps)
+        run: cargo machete
+
   build:
     name: Build Release Binary
     needs: test
