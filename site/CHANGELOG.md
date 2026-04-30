@@ -1,5 +1,15 @@
 # Changelog
 
+## [5.18.0] - 2026-04-30
+
+### Features
+
+- feat(site): adopt Claude/Anthropic design language on the marketing surface (#424)
+
+### Bug Fixes
+
+- fix(ci): pnpm/action-setup@v6 needs standalone:true on self-hosted runner (#425)
+
 ## [5.17.0] - 2026-04-30
 
 ### Features
