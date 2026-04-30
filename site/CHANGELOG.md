@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.19.0] - 2026-04-30
+
+### Features
+
+- feat(site): rebuild after design revert (force release) (#428)
+
 ## [5.18.0] - 2026-04-30
 
 ### Features
