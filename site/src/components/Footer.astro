@@ -1,5 +1,4 @@
 ---
-const accent = '#e8733a';
 const products = [
   { name: 'FerrFlow', href: 'https://ferrflow.com', c: '#e8733a', current: true },
   { name: 'FerrVault', href: 'https://ferrvault.com', c: '#10b981', current: false },
@@ -9,11 +8,11 @@ const products = [
 ---
 
 <footer class="site-footer">
-  <div class="container">
-    <div class="footer-grid">
-      <div>
+  <div class="footer-container">
+    <div class="footer-top">
+      <div class="footer-brand-block">
         <div class="footer-brand-row">
-          <svg width="36" height="36" viewBox="0 0 32 32" aria-hidden="true" style={`color:${accent};`}>
+          <svg width="22" height="22" viewBox="0 0 32 32" aria-hidden="true" style="color:#e8733a;">
             <line x1="6" y1="16" x2="14" y2="16" stroke="currentColor" stroke-width="1.5" />
             <line x1="18" y1="16" x2="24" y2="10" stroke="currentColor" stroke-width="1.5" />
             <line x1="18" y1="16" x2="24" y2="22" stroke="currentColor" stroke-width="1.5" />
@@ -22,47 +21,105 @@ const products = [
             <circle cx="26" cy="10" r="3" fill="currentColor" opacity="0.6" />
             <circle cx="26" cy="22" r="3" fill="currentColor" opacity="0.6" />
           </svg>
-          <span class="footer-wordmark">ferrflow</span>
+          <span class="footer-wordmark">FerrFlow</span>
         </div>
         <p class="footer-tagline">Conventional commits in, semantic versions out. One Rust binary, every monorepo.</p>
-        <div class="footer-products">
-          {products.map((p) => (
-            <a href={p.href} class:list={['footer-chip', 'mono', p.current && 'is-current']}>
-              <span class="footer-chip-dot" style={`background:${p.c};`} />
-              {p.name}
-            </a>
-          ))}
-        </div>
       </div>
-      <div class="footer-back">
-        <a href="https://ferrlabs.com" class="mono back-link">← Back to ferrlabs.com</a>
+      <div class="footer-products">
+        {products.map((p) => (
+          <a href={p.href} class:list={['footer-chip', p.current && 'is-current']}>
+            <span class="footer-chip-dot" style={`background:${p.c};`} />
+            {p.name}
+          </a>
+        ))}
       </div>
     </div>
     <div class="footer-bottom">
-      <span class="mono footer-bottom-text">© 2026 FerrLabs. FerrFlow is a FerrLabs product.</span>
-      <span class="mono footer-bottom-text">Set in Fraunces · Hand-built in Lille, FR</span>
+      <span class="footer-bottom-text">&copy; 2026 FerrLabs. FerrFlow is a FerrLabs product.</span>
+      <a href="https://ferrlabs.com" class="back-link">ferrlabs.com &rarr;</a>
     </div>
   </div>
 </footer>
 
 <style>
-  .site-footer { padding: 96px 0 48px; border-top: 1px solid rgba(30, 41, 59, 0.14); background: #faf8f4; color: #1e293b; }
-  .container { max-width: 1440px; margin: 0 auto; padding: 0 40px; }
-  @media (max-width: 768px) { .container { padding: 0 20px; } }
-  .mono { font-family: "DM Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-  .footer-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 48px; align-items: end; }
-  .footer-brand-row { display: flex; align-items: center; gap: 14px; }
-  .footer-wordmark { font-family: "Fraunces", Georgia, ui-serif, serif; font-weight: 900; font-size: 32px; letter-spacing: -0.03em; color: #1e293b; }
-  .footer-tagline { font-family: "Fraunces", Georgia, ui-serif, serif; font-style: italic; font-size: 18px; line-height: 1.45; color: #475569; margin: 16px 0 0; max-width: 380px; }
-  .footer-products { display: flex; gap: 8px; margin-top: 28px; flex-wrap: wrap; }
-  .footer-chip { display: inline-flex; align-items: center; gap: 8px; border: 1px solid rgba(30, 41, 59, 0.14); border-radius: 999px; padding: 6px 12px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: #475569; text-decoration: none; transition: border-color 180ms; }
-  .footer-chip:hover { border-color: rgba(30, 41, 59, 0.28); }
-  .footer-chip.is-current { border-color: #1e293b; color: #1e293b; }
+  .site-footer {
+    padding: 48px 0 32px;
+    border-top: 1px solid var(--hairline, #e4e4e7);
+    background: var(--bg, #fafafa);
+    color: var(--text, #18181b);
+  }
+  .footer-container { max-width: 1200px; margin: 0 auto; padding: 0 32px; }
+  @media (max-width: 720px) { .footer-container { padding: 0 20px; } }
+
+  .footer-top {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    gap: 32px;
+    align-items: start;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--hairline, #e4e4e7);
+  }
+  .footer-brand-row { display: inline-flex; align-items: center; gap: 10px; }
+  .footer-wordmark {
+    font-weight: 600;
+    font-size: 16px;
+    letter-spacing: -0.01em;
+    color: var(--text, #18181b);
+  }
+  .footer-tagline {
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--text-muted, #52525b);
+    margin: 12px 0 0;
+    max-width: 380px;
+  }
+
+  .footer-products {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .footer-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid var(--hairline, #e4e4e7);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted, #52525b);
+    text-decoration: none;
+    transition: border-color 150ms ease, color 150ms ease;
+  }
+  .footer-chip:hover { border-color: var(--text-muted, #52525b); color: var(--text, #18181b); }
+  .footer-chip.is-current { border-color: var(--text, #18181b); color: var(--text, #18181b); }
   .footer-chip-dot { width: 7px; height: 7px; border-radius: 4px; flex-shrink: 0; }
-  .footer-back { display: flex; justify-content: flex-end; }
-  .back-link { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: #475569; text-decoration: none; border-bottom: 1px solid rgba(30, 41, 59, 0.28); padding-bottom: 4px; }
-  .back-link:hover { color: #1e293b; }
-  .footer-bottom { margin-top: 64px; padding-top: 24px; border-top: 1px solid rgba(30, 41, 59, 0.14); display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
-  .footer-bottom-text { font-size: 11px; letter-spacing: 0.06em; color: #64748b; }
-  @media (max-width: 720px) { .footer-grid { grid-template-columns: 1fr; gap: 32px; } .footer-back { justify-content: flex-start; } }
+
+  .footer-bottom {
+    margin-top: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .footer-bottom-text {
+    font-size: 12px;
+    color: var(--text-muted, #52525b);
+  }
+  .back-link {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted, #52525b);
+    text-decoration: none;
+    transition: color 150ms ease;
+  }
+  .back-link:hover { color: var(--accent, #e8733a); }
+
+  @media (max-width: 720px) {
+    .footer-top { grid-template-columns: 1fr; }
+    .footer-products { justify-content: flex-start; }
+  }
 </style>
