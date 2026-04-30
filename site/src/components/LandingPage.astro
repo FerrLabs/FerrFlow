@@ -11,6 +11,8 @@ interface Props {
 const { lang } = Astro.props;
 
 const docsPath = getLocalizedPath('/docs/introduction', lang);
+const ghActionsPath = getLocalizedPath('/docs/ci/github-actions', lang);
+const glCiPath = getLocalizedPath('/docs/ci/gitlab-ci', lang);
 
 const currentPath = Astro.url.pathname;
 const enEquiv =
@@ -18,395 +20,348 @@ const enEquiv =
   : currentPath === '/fr' ? '/'
   : currentPath;
 const frEquiv = enEquiv === '/' ? '/fr/' : `/fr${enEquiv.startsWith('/') ? '' : '/'}${enEquiv}`;
-
-const installs = [
-  { key: t(lang, 'cliPage.install.cargo'), cmd: 'cargo install ferrflow' },
-  { key: t(lang, 'cliPage.install.npm'),   cmd: 'npm install -D ferrflow' },
-  { key: t(lang, 'cliPage.install.brew'),  cmd: 'brew install ferrlabs/tap/ferrflow' },
-  { key: t(lang, 'cliPage.install.docker'),cmd: 'docker run ghcr.io/ferrlabs/ferrflow' },
-];
-
-const features = [
-  { title: t(lang, 'cliPage.features.versioning.title'), desc: t(lang, 'cliPage.features.versioning.desc') },
-  { title: t(lang, 'cliPage.features.monorepo.title'),   desc: t(lang, 'cliPage.features.monorepo.desc') },
-  { title: t(lang, 'cliPage.features.forge.title'),      desc: t(lang, 'cliPage.features.forge.desc') },
-  { title: t(lang, 'cliPage.features.formats.title'),    desc: t(lang, 'cliPage.features.formats.desc') },
-  { title: t(lang, 'cliPage.features.changelog.title'),  desc: t(lang, 'cliPage.features.changelog.desc') },
-  { title: t(lang, 'cliPage.features.opensource.title'), desc: t(lang, 'cliPage.features.opensource.desc') },
-];
-
-const softwareJsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'SoftwareApplication',
-  name: 'FerrFlow',
-  applicationCategory: 'DeveloperApplication',
-  operatingSystem: 'Linux, macOS, Windows',
-  url: 'https://ferrflow.com',
-  downloadUrl: 'https://github.com/FerrLabs/FerrFlow/releases/latest',
-  description: t(lang, 'cliPage.meta.description'),
-  offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
-  publisher: { '@type': 'Organization', name: 'FerrLabs', url: 'https://ferrlabs.com' },
-};
 ---
-
-<script is:inline type="application/ld+json" set:html={JSON.stringify(softwareJsonLd)} />
 
 <SharedNavbar lang={lang} enEquiv={enEquiv} frEquiv={frEquiv} />
 
-<main class="marketing">
-  <section class="hero">
-    <div class="container narrow">
-      <h1 class="display">
-        {t(lang, 'cliPage.hero.headline1')} {t(lang, 'cliPage.hero.headline2')}
-      </h1>
-      <p class="lede">{t(lang, 'cliPage.hero.subheading')}</p>
-      <div class="cta-row">
-        <a href="https://github.com/FerrLabs/FerrFlow/releases/latest" class="btn btn-primary">{t(lang, 'cliPage.hero.download')}</a>
-        <a href={docsPath} class="btn btn-secondary">{t(lang, 'cliPage.hero.docs')}</a>
+<!--
+  № 01 — Hero (editorial design refresh, FerrLabs-Cloud#70 pattern).
+  Display headline in Fraunces clamp(56–168px) with an italic accent
+  line for the second clause. Two pill CTAs (mono labels, orange
+  accent). Existing sections (terminal, features, integrations, CTA)
+  render below — they get the editorial treatment in follow-up PRs.
+-->
+<section class="hero">
+  <div class="container">
+    <div class="badge">
+      <span class="badge-dot" />
+      <span class="mono badge-text">{t(lang, 'cliPage.hero.badge')}</span>
+    </div>
+    <h1 class="display-1">
+      {t(lang, 'cliPage.hero.headline1')}<br />
+      <span class="italic">{t(lang, 'cliPage.hero.headline2')}</span>
+    </h1>
+    <div class="hero-grid">
+      <p class="hero-sub">{t(lang, 'cliPage.hero.subheading')}</p>
+      <div class="hero-actions">
+        <a href="https://github.com/FerrLabs/FerrFlow/releases/latest" class="btn-primary">{t(lang, 'cliPage.hero.download')}</a>
+        <a href={docsPath} class="btn-ghost">{t(lang, 'cliPage.hero.docs')}</a>
       </div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <section class="section">
-    <div class="container">
-      <div class="section-head">
-        <p class="eyebrow">{t(lang, 'cliPage.install.eyebrow')}</p>
-        <h2 class="section-title">{t(lang, 'cliPage.install.title')}</h2>
-        <p class="section-sub">{t(lang, 'cliPage.install.subtitle')}</p>
+<!-- № 02a — Stats strip: file formats FerrFlow reads natively -->
+<section class="stats-strip">
+  <div class="container stats-row">
+    <span class="mono stats-eyebrow">{lang === 'fr' ? 'Lit nativement' : 'Reads natively'}</span>
+    <div class="stats-chips">
+      {['Cargo.toml','package.json','pyproject.toml','pom.xml','*.csproj','build.gradle','Chart.yaml','pubspec.yaml','mix.exs','*.gemspec','Package.swift','go.mod','composer.json'].map((f) => (
+        <span class="mono stats-chip">{f}</span>
+      ))}
+    </div>
+  </div>
+</section>
+
+<!-- № 02 — FEATURES -->
+<section id="features" class="section features">
+  <div class="container">
+    <p class="eyebrow features-eyebrow">{lang === 'fr' ? '№ 02 — Fonctionnalités' : '№ 02 — Features'}</p>
+    <div class="features-header">
+      <h2 class="display-2">{t(lang, 'cliPage.features.title')}</h2>
+      <p class="features-sub">{t(lang, 'cliPage.features.subtitle')}</p>
+    </div>
+    <div class="feat-grid">
+      <div class="feat-cell">
+        <span class="mono feat-key">— 01</span>
+        <h3 class="feat-title">{t(lang, 'cliPage.features.versioning.title')}</h3>
+        <p class="feat-desc">{t(lang, 'cliPage.features.versioning.desc')}</p>
       </div>
-      <div class="card-grid card-grid-2">
-        {installs.map((i) => (
-          <div class="install-card">
-            <div class="install-head">{i.key}</div>
-            <div class="codeblock">
-              <pre class="code"><span class="prompt">$</span><code>{i.cmd}</code></pre>
-              <button class="copy-btn" type="button" data-copy={i.cmd} aria-label="Copy">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        ))}
+      <div class="feat-cell">
+        <span class="mono feat-key">— 02</span>
+        <h3 class="feat-title">{t(lang, 'cliPage.features.monorepo.title')}</h3>
+        <p class="feat-desc">{t(lang, 'cliPage.features.monorepo.desc')}</p>
+      </div>
+      <div class="feat-cell">
+        <span class="mono feat-key">— 03</span>
+        <h3 class="feat-title">{t(lang, 'cliPage.features.forge.title')}</h3>
+        <p class="feat-desc">{t(lang, 'cliPage.features.forge.desc')}</p>
+      </div>
+      <div class="feat-cell">
+        <span class="mono feat-key">— 04</span>
+        <h3 class="feat-title">{t(lang, 'cliPage.features.formats.title')}</h3>
+        <p class="feat-desc">{t(lang, 'cliPage.features.formats.desc')}</p>
+      </div>
+      <div class="feat-cell">
+        <span class="mono feat-key">— 05</span>
+        <h3 class="feat-title">{t(lang, 'cliPage.features.changelog.title')}</h3>
+        <p class="feat-desc">{t(lang, 'cliPage.features.changelog.desc')}</p>
+      </div>
+      <div class="feat-cell">
+        <span class="mono feat-key">— 06</span>
+        <h3 class="feat-title">{lang === 'fr' ? 'Open source' : 'Open source'}</h3>
+        <p class="feat-desc">{lang === 'fr' ? 'MPL-2.0. Self-host, forkez, auditez. Le binaire Rust gère OIDC GitHub — les runners minimaux fonctionnent immédiatement.' : 'MPL-2.0. Self-host, fork, audit. The Rust binary handles GitHub OIDC directly — minimal runners work out of the box.'}</p>
       </div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <section class="section section-alt">
-    <div class="container">
-      <div class="section-head">
-        <p class="eyebrow">{t(lang, 'cliPage.features.eyebrow')}</p>
-        <h2 class="section-title">{t(lang, 'cliPage.features.title')}</h2>
-        <p class="section-sub">{t(lang, 'cliPage.features.subtitle')}</p>
+<!-- № 03 — INSTALL -->
+<section id="install" class="section install">
+  <div class="container">
+    <p class="eyebrow install-eyebrow">{lang === 'fr' ? '№ 03 — Installer' : '№ 03 — Install'}</p>
+    <h2 class="display-2">{t(lang, 'cliPage.install.title')}</h2>
+    <p class="install-sub">{lang === 'fr' ? 'Linux, macOS et Windows. Disponible en GitHub Action et en template GitLab CI.' : 'Works on Linux, macOS, and Windows. Available as a GitHub Action and a GitLab CI template.'}</p>
+    <div class="install-grid">
+      <div class="install-cell">
+        <div class="mono install-key">Cargo</div>
+        <code class="mono install-cmd"><span class="install-prompt">$</span>cargo install ferrflow</code>
       </div>
-      <div class="card-grid card-grid-3">
-        {features.map((f) => (
-          <div class="feature-card">
-            <div class="feature-icon" aria-hidden="true">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            </div>
-            <h3 class="feature-title">{f.title}</h3>
-            <p class="feature-desc">{f.desc}</p>
-          </div>
-        ))}
+      <div class="install-cell">
+        <div class="mono install-key">npm</div>
+        <code class="mono install-cmd"><span class="install-prompt">$</span>npm install -D ferrflow</code>
+      </div>
+      <div class="install-cell">
+        <div class="mono install-key">Docker</div>
+        <code class="mono install-cmd"><span class="install-prompt">$</span>docker run ghcr.io/ferrlabs/ferrflow</code>
+      </div>
+      <div class="install-cell">
+        <div class="mono install-key">GitHub</div>
+        <code class="mono install-cmd"><span class="install-prompt">$</span>uses: FerrLabs/FerrFlow@v4</code>
       </div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <section class="section">
-    <div class="container narrow">
-      <div class="cta-card">
-        <p class="eyebrow">{t(lang, 'cliPage.cta.eyebrow')}</p>
-        <h2 class="cta-title">{t(lang, 'cta.title1')} {t(lang, 'cta.title2')}</h2>
+<!-- № 04 — CTA dark contrast block -->
+<section class="cta">
+  <div class="container">
+    <div class="cta-block">
+      <div>
+        <p class="mono cta-eyebrow">{lang === 'fr' ? '№ 04 — Démarrer' : '№ 04 — Get started'}</p>
+        <h2 class="cta-title">
+          {t(lang, 'cta.title1')}<br />
+          <span class="italic">{t(lang, 'cta.title2')}</span>
+        </h2>
         <p class="cta-sub">{t(lang, 'cta.subtitle')}</p>
-        <div class="cta-row">
-          <a href="https://github.com/FerrLabs/FerrFlow" class="btn btn-primary">{t(lang, 'cta.button')}</a>
-          <a href="#install" class="btn btn-secondary">{t(lang, 'cliPage.cta.install')}</a>
-        </div>
+      </div>
+      <div class="cta-actions">
+        <a href="https://github.com/FerrLabs/FerrFlow" class="cta-btn cta-btn-primary">★ {t(lang, 'cta.button')} →</a>
+        <a href="#install" class="cta-btn cta-btn-ghost">{lang === 'fr' ? 'Installer' : 'Install'} →</a>
       </div>
     </div>
-  </section>
-</main>
+  </div>
+</section>
 
 <SharedFooter />
 
-<script is:inline>
-  document.querySelectorAll('button.copy-btn').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      var text = btn.getAttribute('data-copy') || '';
-      if (!text) return;
-      var ok = function () {
-        btn.classList.add('copied');
-        setTimeout(function () { btn.classList.remove('copied'); }, 1200);
-      };
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(ok).catch(function () {});
-      } else {
-        try {
-          var ta = document.createElement('textarea');
-          ta.value = text;
-          document.body.appendChild(ta);
-          ta.select();
-          document.execCommand('copy');
-          document.body.removeChild(ta);
-          ok();
-        } catch (e) {}
-      }
-    });
-  });
-</script>
 
 <style is:global>
+  /* Editorial paper/ink palette + orange accent. Migrates to the shared
+   * @ferrlabs/styles base once UI#25 lands. */
   :root {
-    --bg: #fafafa;
-    --text: #18181b;
-    --text-muted: #52525b;
-    --hairline: #e4e4e7;
-    --accent: #e8733a;
-    --accent-strong: #c85a2c;
-    --card: #ffffff;
-    --code-bg: #1c1c1c;
-    --code-bg-header: #161616;
-    --code-fg: #e6e6e6;
+    --paper: #faf8f4; --paper-2: #f3efe7;
+    --paper-ink: #1e293b; --paper-ink-2: #475569; --paper-ink-3: #64748b;
+    --paper-rule: rgba(30,41,59,0.14); --paper-rule-strong: rgba(30,41,59,0.28);
+    --accent: #e8733a; --accent-soft: #fff8f2;
   }
-  :root[data-theme='dark'] {
-    --bg: #0a0a0a;
-    --text: #e4e4e7;
-    --text-muted: #a1a1aa;
-    --hairline: #27272a;
-    --accent: #ef8a55;
-    --accent-strong: #ffb07a;
-    --card: #18181b;
-  }
-  html, body {
-    background: var(--bg);
-    color: var(--text);
-    font-family:
-      'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
-      'Helvetica Neue', Arial, sans-serif;
-    font-feature-settings: 'cv11', 'ss01', 'ss03';
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-  ::selection { background: var(--accent); color: #fff; }
+  html, body { background: var(--paper); color: var(--paper-ink); font-feature-settings: "ss01", "ss02"; }
+  ::selection { background: var(--paper-ink); color: var(--paper); }
 </style>
 
 <style>
-  .marketing { color: var(--text); }
-  .container { max-width: 1200px; margin: 0 auto; padding: 0 32px; }
-  .container.narrow { max-width: 760px; }
-  @media (max-width: 720px) { .container { padding: 0 20px; } }
+  .container { max-width: 1440px; margin: 0 auto; padding: 0 40px; }
+  @media (max-width: 768px) { .container { padding: 0 20px; } }
+  .mono { font-family: var(--font-mono); font-feature-settings: normal; }
+  .italic { font-style: italic; font-weight: 400; }
 
-  .eyebrow {
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--accent);
-    margin: 0 0 12px;
+  .hero { padding: 96px 0 72px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 6px 14px; border-radius: 999px;
+    background: var(--accent-soft);
+    border: 1px solid color-mix(in oklab, var(--accent) 30%, transparent);
+    margin-bottom: 32px;
+  }
+  .badge-dot { width: 7px; height: 7px; border-radius: 4px; background: var(--accent); }
+  .badge-text { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #8f4315; }
+
+  .display-1 {
+    font-family: var(--font-display, var(--font-sans));
+    font-weight: 900;
+    font-size: clamp(56px, 11vw, 168px);
+    line-height: 0.92; letter-spacing: -0.045em;
+    margin: 0; text-wrap: pretty;
+  }
+  .hero-grid {
+    display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: 64px; margin-top: 56px; align-items: end;
+  }
+  .hero-sub {
+    font-size: clamp(17px, 1.5vw, 21px); line-height: 1.55;
+    color: var(--paper-ink-2); max-width: 600px; margin: 0; text-wrap: pretty;
+  }
+  .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+  @media (max-width: 760px) {
+    .hero-grid { grid-template-columns: 1fr; gap: 32px; }
   }
 
-  .hero {
-    padding: 96px 0 72px;
-    text-align: center;
-  }
-  .display {
-    font-family: inherit;
-    font-weight: 600;
-    font-size: clamp(40px, 6vw, 64px);
-    line-height: 1.05;
-    letter-spacing: -0.025em;
-    color: var(--text);
-    margin: 0 0 24px;
-    text-wrap: balance;
-  }
-  .lede {
-    font-size: 18px;
-    line-height: 1.55;
-    color: var(--text-muted);
-    margin: 0 auto 40px;
-    max-width: 640px;
-    text-wrap: pretty;
-  }
-
-  .cta-row {
-    display: inline-flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 11px 20px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    line-height: 1;
-    border: 1px solid transparent;
-    text-decoration: none;
-    cursor: pointer;
-    transition: transform 150ms ease, background 150ms ease, border-color 150ms ease, color 150ms ease;
+  .btn-primary, .btn-ghost {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 14px 24px; border-radius: 999px;
+    font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.04em;
+    border: 1px solid transparent; cursor: pointer; text-decoration: none;
+    transition: transform 180ms, opacity 180ms, background 180ms;
   }
   .btn-primary { background: var(--accent); color: #fff; }
-  .btn-primary:hover { background: var(--accent-strong); transform: translateY(-1px); }
-  .btn-secondary { background: transparent; color: var(--text); border-color: var(--hairline); }
-  .btn-secondary:hover { border-color: var(--text-muted); transform: translateY(-1px); }
+  .btn-primary:hover { transform: translateY(-1px); opacity: 0.92; }
+  .btn-ghost { background: transparent; color: var(--paper-ink); border-color: var(--paper-rule-strong); }
+  .btn-ghost:hover { background: var(--paper-2); transform: translateY(-1px); }
 
-  .section { padding: 64px 0; border-top: 1px solid var(--hairline); }
-  .section:first-of-type { border-top: none; }
-  .section-alt { background: transparent; }
-  .section-head {
-    text-align: center;
-    margin: 0 auto 40px;
-    max-width: 640px;
+  .section { padding: 96px 0; }
+  .display-2 {
+    font-family: var(--font-display, var(--font-sans));
+    font-weight: 900;
+    font-size: clamp(40px, 6vw, 88px);
+    line-height: 0.94;
+    letter-spacing: -0.04em;
+    margin: 0;
   }
-  .section-title {
-    font-family: inherit;
-    font-weight: 600;
-    font-size: clamp(28px, 3.5vw, 36px);
-    line-height: 1.15;
-    letter-spacing: -0.02em;
-    color: var(--text);
-    margin: 0 0 12px;
-  }
-  .section-sub {
-    font-size: 16px;
-    line-height: 1.55;
-    color: var(--text-muted);
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--paper-ink-3);
     margin: 0;
   }
 
-  .card-grid {
-    display: grid;
-    gap: 16px;
+  /* Stats strip — file formats */
+  .stats-strip {
+    padding: 32px 0;
+    border-top: 1px solid var(--paper-rule);
+    border-bottom: 1px solid var(--paper-rule);
   }
-  .card-grid-2 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); }
-  .card-grid-3 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); }
-  @media (max-width: 720px) {
-    .card-grid-2, .card-grid-3 { grid-template-columns: 1fr; }
+  .stats-row { display: flex; align-items: center; gap: 32px; flex-wrap: wrap; }
+  .stats-eyebrow {
+    font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--paper-ink-3);
   }
-
-  .install-card {
-    background: var(--card);
-    border: 1px solid var(--hairline);
-    border-radius: 12px;
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    transition: transform 150ms ease, border-color 150ms ease;
-  }
-  .install-card:hover { transform: translateY(-1px); border-color: var(--text-muted); }
-  .install-head {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text);
-    letter-spacing: -0.005em;
-  }
-  .codeblock {
-    position: relative;
-    background: var(--code-bg);
-    border-radius: 8px;
-    padding: 10px 12px;
-    overflow: hidden;
-  }
-  .code {
-    margin: 0;
-    font-family: ui-monospace, SFMono-Regular, 'DM Mono', Menlo, Consolas, monospace;
-    font-size: 13px;
-    line-height: 1.5;
-    color: var(--code-fg);
-    white-space: pre;
-    overflow-x: auto;
-    padding-right: 28px;
-  }
-  .prompt { color: var(--accent); margin-right: 6px; user-select: none; }
-  .copy-btn {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    width: 24px;
-    height: 24px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    color: #a1a1aa;
-    border: 1px solid #2a2a2a;
-    border-radius: 6px;
-    cursor: pointer;
-    opacity: 0;
-    transition: opacity 150ms ease, color 150ms ease, border-color 150ms ease;
-  }
-  .codeblock:hover .copy-btn { opacity: 1; }
-  .copy-btn:hover { color: #fff; border-color: #404040; }
-  .copy-btn.copied { color: var(--accent); border-color: var(--accent); opacity: 1; }
-
-  .feature-card {
-    background: var(--card);
-    border: 1px solid var(--hairline);
-    border-radius: 12px;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    transition: transform 150ms ease, border-color 150ms ease;
-  }
-  .feature-card:hover { transform: translateY(-1px); border-color: var(--text-muted); }
-  .feature-icon {
-    width: 24px;
-    height: 24px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 6px;
-    background: color-mix(in oklab, var(--accent) 15%, transparent);
-    color: var(--accent);
-    margin-bottom: 4px;
-  }
-  .feature-title {
-    font-family: inherit;
-    font-weight: 600;
-    font-size: 16px;
-    color: var(--text);
-    margin: 0;
-    letter-spacing: -0.01em;
-  }
-  .feature-desc {
-    font-size: 14px;
-    line-height: 1.55;
-    color: var(--text-muted);
-    margin: 0;
+  .stats-chips { display: flex; gap: 12px; flex-wrap: wrap; flex: 1; }
+  .stats-chip {
+    font-size: 12px; color: var(--paper-ink-2);
+    padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--paper-rule); background: #fff;
   }
 
-  .cta-card {
-    background: var(--card);
-    border: 1px solid var(--hairline);
-    border-radius: 16px;
-    padding: 48px 32px;
-    text-align: center;
+  /* Features */
+  .features-eyebrow { margin-bottom: 28px; }
+  .features-header {
+    display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    gap: 48px; margin-bottom: 64px;
   }
-  .cta-card .eyebrow { margin-bottom: 16px; }
+  .features-sub {
+    font-size: 17px; line-height: 1.55; color: var(--paper-ink-2);
+    align-self: end; margin: 0;
+  }
+  .feat-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0;
+    border: 1px solid var(--paper-rule); border-radius: 18px; overflow: hidden;
+    background: #fff;
+  }
+  .feat-cell {
+    padding: 32px; min-height: 220px;
+    display: flex; flex-direction: column;
+    border-right: 1px solid var(--paper-rule);
+    border-bottom: 1px solid var(--paper-rule);
+  }
+  .feat-cell:nth-child(3n) { border-right: none; }
+  .feat-cell:nth-last-child(-n+3) { border-bottom: none; }
+  .feat-key {
+    font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 16px;
+  }
+  .feat-title {
+    font-family: var(--font-display, var(--font-sans));
+    font-weight: 700; font-size: 24px; letter-spacing: -0.02em; margin: 0;
+  }
+  .feat-desc {
+    font-size: 14.5px; line-height: 1.55; color: var(--paper-ink-2);
+    margin: 12px 0 0;
+  }
+  @media (max-width: 900px) {
+    .features-header { grid-template-columns: 1fr; gap: 24px; }
+    .feat-grid { grid-template-columns: 1fr 1fr; }
+    .feat-cell { border-right: 1px solid var(--paper-rule) !important; border-bottom: 1px solid var(--paper-rule) !important; }
+    .feat-cell:nth-child(2n) { border-right: none !important; }
+    .feat-cell:nth-last-child(-n+2) { border-bottom: none !important; }
+  }
+  @media (max-width: 600px) {
+    .feat-grid { grid-template-columns: 1fr; }
+    .feat-cell { border-right: none !important; border-bottom: 1px solid var(--paper-rule) !important; }
+    .feat-cell:last-child { border-bottom: none !important; }
+  }
+
+  /* Install */
+  .install { padding: 64px 0 96px; }
+  .install-eyebrow { margin-bottom: 28px; }
+  .install-sub {
+    font-size: 17px; color: var(--paper-ink-2);
+    max-width: 640px; margin: 24px 0 48px;
+  }
+  .install-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .install-cell {
+    background: #fff; border: 1px solid var(--paper-rule);
+    border-radius: 14px; padding: 20px;
+  }
+  .install-key {
+    font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--paper-ink-3); margin-bottom: 12px;
+  }
+  .install-cmd {
+    font-family: var(--font-mono); font-size: 13px;
+    color: var(--paper-ink); display: block; word-break: break-all;
+  }
+  .install-prompt { color: var(--accent); margin-right: 6px; }
+  @media (max-width: 900px) { .install-grid { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 540px) { .install-grid { grid-template-columns: 1fr; } }
+
+  /* CTA dark contrast block */
+  .cta { padding: 32px 0 80px; }
+  .cta-block {
+    background: var(--paper-ink); color: var(--paper);
+    border-radius: 24px;
+    padding: clamp(40px, 6vw, 80px);
+    display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    gap: 32px; align-items: center;
+    border-left: 8px solid var(--accent);
+  }
+  .cta-eyebrow {
+    font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+    opacity: 0.6; margin: 0 0 24px;
+  }
   .cta-title {
-    font-family: inherit;
-    font-weight: 600;
-    font-size: clamp(24px, 3vw, 32px);
-    line-height: 1.2;
-    letter-spacing: -0.02em;
-    color: var(--text);
-    margin: 0 0 12px;
+    font-family: var(--font-display, var(--font-sans));
+    font-weight: 900;
+    font-size: clamp(36px, 5vw, 72px);
+    line-height: 0.96; letter-spacing: -0.04em;
+    margin: 0;
   }
   .cta-sub {
-    font-size: 16px;
-    line-height: 1.55;
-    color: var(--text-muted);
-    max-width: 520px;
-    margin: 0 auto 28px;
+    font-size: 17px; opacity: 0.7; margin: 20px 0 0; max-width: 480px;
+  }
+  .cta-actions { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+  .cta-btn {
+    padding: 18px 28px; border-radius: 999px;
+    font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.04em;
+    text-decoration: none; display: inline-flex; align-items: center; gap: 8px;
+  }
+  .cta-btn-primary { background: var(--accent); color: #fff; }
+  .cta-btn-ghost {
+    background: transparent; color: var(--paper);
+    border: 1px solid color-mix(in oklab, var(--paper) 30%, transparent);
+  }
+  @media (max-width: 760px) {
+    .cta-block { grid-template-columns: 1fr; }
   }
 </style>

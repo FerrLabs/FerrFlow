@@ -45,8 +45,8 @@
   --color-rose-800: #9F1239;
   --color-rose-950: #4C0519;
 
-  --font-family-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --font-family-mono: ui-monospace, SFMono-Regular, 'DM Mono', Menlo, Consolas, monospace;
+  --font-family-display: 'Fraunces', Georgia, serif;
+  --font-family-mono: 'DM Mono', ui-monospace, monospace;
 
   --animate-fade-up: fade-up 0.5s ease forwards;
 

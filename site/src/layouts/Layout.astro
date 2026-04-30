@@ -20,9 +20,9 @@ const {
   alternates = [],
 } = Astro.props;
 
-const accentRgb = accent === '#6366F1' ? '99 102 241'
-                : accent === '#10B981' ? '16 185 129'
-                :                        '232 115 58';
+const accentRgb = accent === '#6366F1' ? '99 102 241'   // indigo
+                : accent === '#10B981' ? '16 185 129'   // emerald
+                :                        '158 63 26';   // primary (default)
 
 const ogImage = 'https://ferrflow.com/og.png';
 ---
@@ -88,28 +88,22 @@ const ogImage = 'https://ferrflow.com/og.png';
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="dns-prefetch" href="https://github.com" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
-    <script is:inline>
-      (function () {
-        try {
-          var stored = localStorage.getItem('starlight-theme');
-          var theme = stored || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-          document.documentElement.setAttribute('data-theme', theme);
-        } catch (e) {
-          document.documentElement.setAttribute('data-theme', 'light');
-        }
-      })();
-    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;0,9..144,900;1,9..144,400;1,9..144,900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <style is:global>
-      html { scroll-behavior: smooth; }
+      html {
+        scroll-behavior: smooth;
+      }
       body {
-        font-family:
-          'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
-          'Helvetica Neue', Arial, sans-serif;
+        font-family: 'Fraunces', Georgia, serif;
         -webkit-font-smoothing: antialiased;
       }
-      ::-webkit-scrollbar { width: 6px; height: 6px; }
-      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
       ::-webkit-scrollbar-thumb {
         background: rgb(var(--scrollbar-accent) / 0.5);
         border-radius: 3px;
@@ -117,7 +111,9 @@ const ogImage = 'https://ferrflow.com/og.png';
       ::-webkit-scrollbar-thumb:hover {
         background: rgb(var(--scrollbar-accent) / 0.7);
       }
-      ::-webkit-scrollbar-button { display: none; }
+      ::-webkit-scrollbar-button {
+        display: none;
+      }
       @supports (scrollbar-color: auto) {
         * {
           scrollbar-width: thin;
@@ -126,7 +122,7 @@ const ogImage = 'https://ferrflow.com/og.png';
       }
     </style>
   </head>
-  <body>
+  <body class="bg-primary-50 text-primary-950">
     <slot />
     <script>
       import '../scripts/i18n';
