@@ -1,5 +1,15 @@
 # Changelog
 
+## [5.17.0] - 2026-04-30
+
+### Features
+
+- feat(ci): i18n parity + key resolution check (closes #420) (#421)
+
+### Bug Fixes
+
+- fix(site): disable language toggle on pages without a mirror (#422)
+
 ## [5.16.0] - 2026-04-29
 
 ### Features
