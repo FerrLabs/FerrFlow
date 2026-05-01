@@ -1,14 +1,16 @@
 ---
 import '../styles/global.css';
-import type { Lang } from '../i18n/translations';
+import Navbar from '@ferrlabs/ui-astro/Navbar.astro';
+import Footer from '@ferrlabs/ui-astro/Footer.astro';
+import { t, type Lang } from '../i18n/translations';
 
 interface Props {
   title: string;
   description?: string;
   canonical?: string;
   lang?: Lang;
-  accent?: string;
   alternates?: { lang: string; href: string }[];
+  pathname?: string;
 }
 
 const {
@@ -16,26 +18,54 @@ const {
   description = 'Universal semantic versioning for monorepos and classic repos',
   canonical = Astro.url.href,
   lang = 'en',
-  accent,
   alternates = [],
+  pathname = Astro.url.pathname,
 } = Astro.props;
 
-const accentRgb = accent === '#6366F1' ? '99 102 241'   // indigo
-                : accent === '#10B981' ? '16 185 129'   // emerald
-                :                        '158 63 26';   // primary (default)
-
 const ogImage = 'https://ferrflow.com/og.png';
+
+const enEquiv =
+  pathname.startsWith('/fr/') ? pathname.slice(3) || '/'
+  : pathname === '/fr' ? '/'
+  : pathname;
+const frEquiv = enEquiv === '/' ? '/fr/' : `/fr${enEquiv.startsWith('/') ? '' : '/'}${enEquiv}`;
+
+const homeHref = lang === 'fr' ? '/fr/' : '/';
+const docsHref = lang === 'fr' ? '/fr/docs/introduction/' : '/docs/introduction/';
+
+const navLinks = [
+  { label: t(lang, 'nav.docs'), href: docsHref },
+  { label: 'GitHub', href: 'https://github.com/FerrLabs/FerrFlow', external: true },
+];
+
+const products = [
+  { name: 'FerrFlow', href: 'https://ferrflow.com', accent: '#e8733a', current: true },
+  { name: 'FerrVault', href: 'https://vault.ferrlabs.com', accent: '#10b981' },
+  { name: 'FerrTrack', href: 'https://track.ferrlabs.com', accent: '#6366f1' },
+  { name: 'FerrGrowth', href: 'https://ferrgrowth.com', accent: '#7c3aed' },
+];
+
+const legalBase = lang === 'fr' ? '/fr' : '';
+const legalLinks = [
+  { label: t(lang, 'footer.privacy'), href: `${legalBase}/privacy` },
+  { label: t(lang, 'footer.terms'), href: `${legalBase}/terms` },
+];
+const resourceLinks = [
+  { label: t(lang, 'footer.documentation'), href: docsHref },
+  { label: t(lang, 'footer.releases'), href: 'https://github.com/FerrLabs/FerrFlow/releases' },
+  { label: t(lang, 'footer.discussions'), href: 'https://github.com/FerrLabs/FerrFlow/discussions' },
+];
 ---
 
 <!doctype html>
-<html lang={lang} translate="no" style={`--scrollbar-accent: ${accentRgb};`}>
+<html lang={lang} translate="no">
   <head>
     <meta charset="UTF-8" />
     <meta name="google" content="notranslate" />
     <meta name="description" content={description} />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#E8733A" />
-    <meta name="color-scheme" content="light dark" />
+    <meta name="color-scheme" content="light" />
     <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -85,47 +115,61 @@ const ogImage = 'https://ferrflow.com/og.png';
       }
     })} />
 
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="dns-prefetch" href="https://github.com" />
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;0,9..144,900;1,9..144,400;1,9..144,900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
-    <style is:global>
-      html {
-        scroll-behavior: smooth;
-      }
-      body {
-        font-family: 'Fraunces', Georgia, serif;
-        -webkit-font-smoothing: antialiased;
-      }
-      ::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
-      }
-      ::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: rgb(var(--scrollbar-accent) / 0.5);
-        border-radius: 3px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: rgb(var(--scrollbar-accent) / 0.7);
-      }
-      ::-webkit-scrollbar-button {
-        display: none;
-      }
-      @supports (scrollbar-color: auto) {
-        * {
-          scrollbar-width: thin;
-          scrollbar-color: rgb(var(--scrollbar-accent) / 0.5) transparent;
-        }
-      }
-    </style>
   </head>
-  <body class="bg-primary-50 text-primary-950">
-    <slot />
+  <body>
+    <Navbar
+      lang={lang}
+      accent="#e8733a"
+      brandName="ferrflow"
+      brandTag="by ferrlabs"
+      brandHref={homeHref}
+      enEquiv={enEquiv}
+      frEquiv={frEquiv}
+      navLinks={navLinks}
+      gitHubUrl="https://github.com/FerrLabs/FerrFlow"
+      cta={{ label: t(lang, 'nav.cta'), href: 'https://github.com/FerrLabs/FerrFlow/releases/latest', external: true }}
+    >
+      <svg slot="logo" width="26" height="26" viewBox="0 0 32 32" aria-hidden="true" style="color:#e8733a;">
+        <line x1="6" y1="16" x2="14" y2="16" stroke="currentColor" stroke-width="1.5" />
+        <line x1="18" y1="16" x2="24" y2="10" stroke="currentColor" stroke-width="1.5" />
+        <line x1="18" y1="16" x2="24" y2="22" stroke="currentColor" stroke-width="1.5" />
+        <circle cx="4" cy="16" r="3" fill="currentColor" />
+        <circle cx="16" cy="16" r="3" fill="currentColor" />
+        <circle cx="26" cy="10" r="3" fill="currentColor" opacity="0.6" />
+        <circle cx="26" cy="22" r="3" fill="currentColor" opacity="0.6" />
+      </svg>
+    </Navbar>
+    <main>
+      <slot />
+    </main>
+    <Footer
+      lang={lang}
+      accent="#e8733a"
+      brandName="ferrflow"
+      tagline={t(lang, 'footer.tagline')}
+      products={products}
+      links={{ resources: resourceLinks, legal: legalLinks }}
+      rights={t(lang, 'footer.rights')}
+      backToHolding={{ label: t(lang, 'footer.back'), href: 'https://ferrlabs.com' }}
+    >
+      <svg slot="logo" width="36" height="36" viewBox="0 0 32 32" aria-hidden="true" style="color:#e8733a;">
+        <line x1="6" y1="16" x2="14" y2="16" stroke="currentColor" stroke-width="1.5" />
+        <line x1="18" y1="16" x2="24" y2="10" stroke="currentColor" stroke-width="1.5" />
+        <line x1="18" y1="16" x2="24" y2="22" stroke="currentColor" stroke-width="1.5" />
+        <circle cx="4" cy="16" r="3" fill="currentColor" />
+        <circle cx="16" cy="16" r="3" fill="currentColor" />
+        <circle cx="26" cy="10" r="3" fill="currentColor" opacity="0.6" />
+        <circle cx="26" cy="22" r="3" fill="currentColor" opacity="0.6" />
+      </svg>
+    </Footer>
     <script>
       import '../scripts/i18n';
     </script>
+    <style is:global>
+      body { min-height: 100dvh; display: flex; flex-direction: column; }
+      main { flex: 1 0 auto; }
+      footer { flex-shrink: 0; }
+    </style>
   </body>
 </html>

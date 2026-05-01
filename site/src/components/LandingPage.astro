@@ -1,335 +1,338 @@
 ---
-import { t, getLocalizedPath } from '../i18n/translations';
-import type { Lang } from '../i18n/translations';
-import SharedNavbar from './Navbar.astro';
-import SharedFooter from './Footer.astro';
+import { t, type Lang } from '../i18n/translations';
 
-interface Props {
-  lang: Lang;
-}
-
+interface Props { lang: Lang }
 const { lang } = Astro.props;
 
-const docsPath = getLocalizedPath('/docs/introduction', lang);
-const ghActionsPath = getLocalizedPath('/docs/ci/github-actions', lang);
-const glCiPath = getLocalizedPath('/docs/ci/gitlab-ci', lang);
+const features = ['01', '02', '03', '04', '05', '06'] as const;
 
-const currentPath = Astro.url.pathname;
-const enEquiv =
-  currentPath.startsWith('/fr/') ? currentPath.slice(3) || '/'
-  : currentPath === '/fr' ? '/'
-  : currentPath;
-const frEquiv = enEquiv === '/' ? '/fr/' : `/fr${enEquiv.startsWith('/') ? '' : '/'}${enEquiv}`;
+const installCells = [
+  { k: 'Cargo', cmd: 'cargo install ferrflow' },
+  { k: 'npm', cmd: 'npm install -D ferrflow' },
+  { k: 'Docker', cmd: 'docker run ghcr.io/ferrlabs/ferrflow' },
+  { k: 'GitHub', cmd: 'uses: FerrLabs/FerrFlow@v4' },
+];
+
+const formats = [
+  'Cargo.toml','package.json','pyproject.toml','pom.xml','*.csproj',
+  'build.gradle','Chart.yaml','pubspec.yaml','mix.exs','*.gemspec',
+  'Package.swift','go.mod','composer.json'
+];
+
+const heroStats = [
+  { k: t(lang, 'hero.stat.latest'), v: 'v4.2.0' },
+  { k: t(lang, 'hero.stat.license'), v: 'MPL-2.0' },
+  { k: t(lang, 'hero.stat.lang'), v: 'Rust' },
+  { k: t(lang, 'hero.stat.size'), v: '~8 MB' },
+];
+
+const docsHref = lang === 'fr' ? '/fr/docs/introduction/' : '/docs/introduction/';
 ---
 
-<SharedNavbar lang={lang} enEquiv={enEquiv} frEquiv={frEquiv} />
-
-<!--
-  № 01 — Hero (editorial design refresh, FerrLabs-Cloud#70 pattern).
-  Display headline in Fraunces clamp(56–168px) with an italic accent
-  line for the second clause. Two pill CTAs (mono labels, orange
-  accent). Existing sections (terminal, features, integrations, CTA)
-  render below — they get the editorial treatment in follow-up PRs.
--->
-<section class="hero">
+<section class="hero-section">
   <div class="container">
-    <div class="badge">
-      <span class="badge-dot" />
-      <span class="mono badge-text">{t(lang, 'cliPage.hero.badge')}</span>
+    <div class="hero-badge">
+      <span class="hero-badge-dot" aria-hidden></span>
+      <span class="mono hero-badge-text">{t(lang, 'hero.badge')}</span>
     </div>
-    <h1 class="display-1">
-      {t(lang, 'cliPage.hero.headline1')}<br />
-      <span class="italic">{t(lang, 'cliPage.hero.headline2')}</span>
-    </h1>
+
     <div class="hero-grid">
-      <p class="hero-sub">{t(lang, 'cliPage.hero.subheading')}</p>
-      <div class="hero-actions">
-        <a href="https://github.com/FerrLabs/FerrFlow/releases/latest" class="btn-primary">{t(lang, 'cliPage.hero.download')}</a>
-        <a href={docsPath} class="btn-ghost">{t(lang, 'cliPage.hero.docs')}</a>
+      <div>
+        <h1 class="hero-title">
+          {t(lang, 'hero.h1')}
+          <br />
+          <span class="hero-italic">{t(lang, 'hero.h2')}</span>
+        </h1>
+        <p class="hero-sub">{t(lang, 'hero.sub')}</p>
+
+        <div class="hero-actions">
+          <a href="https://github.com/FerrLabs/FerrFlow" class="btn-primary mono">
+            <span class="hero-prompt">$</span>{t(lang, 'hero.cta1')}
+          </a>
+          <a href={docsHref} class="btn-ghost">{t(lang, 'hero.cta2')}</a>
+        </div>
+
+        <div class="hero-stats">
+          {heroStats.map((s) => (
+            <div>
+              <div class="mono hero-stat-key">{s.k}</div>
+              <div class="mono hero-stat-val">{s.v}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div class="terminal">
+        <div class="terminal-chrome">
+          <span class="terminal-dot terminal-dot-accent"></span>
+          <span class="terminal-dot"></span>
+          <span class="terminal-dot"></span>
+          <span class="terminal-title">~/code/monorepo · ferrflow v4.2</span>
+        </div>
+        <div class="terminal-body">
+          <div class="terminal-line"><span class="terminal-prompt">$</span><span>ferrflow release</span></div>
+          <div class="terminal-line is-dim"><span class="terminal-prompt">→</span><span>{t(lang, 'terminal.reading')}</span></div>
+          <div class="terminal-line is-dim"><span class="terminal-prompt">→</span><span>{t(lang, 'terminal.detected')}</span></div>
+          <div class="terminal-line is-dim"><span class="terminal-prompt">→</span><span>{t(lang, 'terminal.scanning')}</span></div>
+          <div class="terminal-line is-ok"><span class="terminal-prompt is-ok">✓</span><span>bump  api      v4.1.7  →  v5.0.0  (breaking)</span></div>
+          <div class="terminal-line is-ok"><span class="terminal-prompt is-ok">✓</span><span>bump  app      v4.1.4  →  v4.2.0  (minor)</span></div>
+          <div class="terminal-line is-ok"><span class="terminal-prompt is-ok">✓</span><span>bump  site     v1.3.9  →  v1.4.0  (minor)</span></div>
+          <div class="terminal-line is-ok"><span class="terminal-prompt is-ok">✓</span><span>bump  admin    v0.8.2  →  v0.8.3  (patch)</span></div>
+          <div class="terminal-line is-dim"><span class="terminal-prompt">→</span><span>{t(lang, 'terminal.generating')}</span></div>
+          <div class="terminal-line is-ok"><span class="terminal-prompt is-ok">✓</span><span>{t(lang, 'terminal.published')}</span></div>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- № 02a — Stats strip: file formats FerrFlow reads natively -->
-<section class="stats-strip">
-  <div class="container stats-row">
-    <span class="mono stats-eyebrow">{lang === 'fr' ? 'Lit nativement' : 'Reads natively'}</span>
-    <div class="stats-chips">
-      {['Cargo.toml','package.json','pyproject.toml','pom.xml','*.csproj','build.gradle','Chart.yaml','pubspec.yaml','mix.exs','*.gemspec','Package.swift','go.mod','composer.json'].map((f) => (
-        <span class="mono stats-chip">{f}</span>
+<section class="formats-strip">
+  <div class="container formats-row">
+    <span class="mono formats-eyebrow">{t(lang, 'formats.label')}</span>
+    <div class="formats-chips">
+      {formats.map((f) => <span class="mono formats-chip">{f}</span>)}
+    </div>
+  </div>
+</section>
+
+<section id="features" class="features-section">
+  <div class="container">
+    <p class="mono section-eyebrow">{t(lang, 'features.eyebrow')}</p>
+    <div class="features-header">
+      <h2 class="section-title">{t(lang, 'features.title')}</h2>
+      <p class="features-sub">{t(lang, 'features.sub')}</p>
+    </div>
+
+    <div class="features-grid">
+      {features.map((k, i) => (
+        <div class="feature-cell" data-i={i}>
+          <span class="mono feature-key">— {k}</span>
+          <h3 class="feature-title">{t(lang, `features.${k}.title` as any)}</h3>
+          <p class="feature-body">{t(lang, `features.${k}.body` as any)}</p>
+        </div>
       ))}
     </div>
   </div>
 </section>
 
-<!-- № 02 — FEATURES -->
-<section id="features" class="section features">
+<section id="install" class="install-section">
   <div class="container">
-    <p class="eyebrow features-eyebrow">{lang === 'fr' ? '№ 02 — Fonctionnalités' : '№ 02 — Features'}</p>
-    <div class="features-header">
-      <h2 class="display-2">{t(lang, 'cliPage.features.title')}</h2>
-      <p class="features-sub">{t(lang, 'cliPage.features.subtitle')}</p>
-    </div>
-    <div class="feat-grid">
-      <div class="feat-cell">
-        <span class="mono feat-key">— 01</span>
-        <h3 class="feat-title">{t(lang, 'cliPage.features.versioning.title')}</h3>
-        <p class="feat-desc">{t(lang, 'cliPage.features.versioning.desc')}</p>
-      </div>
-      <div class="feat-cell">
-        <span class="mono feat-key">— 02</span>
-        <h3 class="feat-title">{t(lang, 'cliPage.features.monorepo.title')}</h3>
-        <p class="feat-desc">{t(lang, 'cliPage.features.monorepo.desc')}</p>
-      </div>
-      <div class="feat-cell">
-        <span class="mono feat-key">— 03</span>
-        <h3 class="feat-title">{t(lang, 'cliPage.features.forge.title')}</h3>
-        <p class="feat-desc">{t(lang, 'cliPage.features.forge.desc')}</p>
-      </div>
-      <div class="feat-cell">
-        <span class="mono feat-key">— 04</span>
-        <h3 class="feat-title">{t(lang, 'cliPage.features.formats.title')}</h3>
-        <p class="feat-desc">{t(lang, 'cliPage.features.formats.desc')}</p>
-      </div>
-      <div class="feat-cell">
-        <span class="mono feat-key">— 05</span>
-        <h3 class="feat-title">{t(lang, 'cliPage.features.changelog.title')}</h3>
-        <p class="feat-desc">{t(lang, 'cliPage.features.changelog.desc')}</p>
-      </div>
-      <div class="feat-cell">
-        <span class="mono feat-key">— 06</span>
-        <h3 class="feat-title">{lang === 'fr' ? 'Open source' : 'Open source'}</h3>
-        <p class="feat-desc">{lang === 'fr' ? 'MPL-2.0. Self-host, forkez, auditez. Le binaire Rust gère OIDC GitHub — les runners minimaux fonctionnent immédiatement.' : 'MPL-2.0. Self-host, fork, audit. The Rust binary handles GitHub OIDC directly — minimal runners work out of the box.'}</p>
-      </div>
-    </div>
-  </div>
-</section>
+    <p class="mono section-eyebrow">{t(lang, 'install.eyebrow')}</p>
+    <h2 class="section-title">{t(lang, 'install.title')}</h2>
+    <p class="install-sub">{t(lang, 'install.sub')}</p>
 
-<!-- № 03 — INSTALL -->
-<section id="install" class="section install">
-  <div class="container">
-    <p class="eyebrow install-eyebrow">{lang === 'fr' ? '№ 03 — Installer' : '№ 03 — Install'}</p>
-    <h2 class="display-2">{t(lang, 'cliPage.install.title')}</h2>
-    <p class="install-sub">{lang === 'fr' ? 'Linux, macOS et Windows. Disponible en GitHub Action et en template GitLab CI.' : 'Works on Linux, macOS, and Windows. Available as a GitHub Action and a GitLab CI template.'}</p>
     <div class="install-grid">
-      <div class="install-cell">
-        <div class="mono install-key">Cargo</div>
-        <code class="mono install-cmd"><span class="install-prompt">$</span>cargo install ferrflow</code>
-      </div>
-      <div class="install-cell">
-        <div class="mono install-key">npm</div>
-        <code class="mono install-cmd"><span class="install-prompt">$</span>npm install -D ferrflow</code>
-      </div>
-      <div class="install-cell">
-        <div class="mono install-key">Docker</div>
-        <code class="mono install-cmd"><span class="install-prompt">$</span>docker run ghcr.io/ferrlabs/ferrflow</code>
-      </div>
-      <div class="install-cell">
-        <div class="mono install-key">GitHub</div>
-        <code class="mono install-cmd"><span class="install-prompt">$</span>uses: FerrLabs/FerrFlow@v4</code>
-      </div>
+      {installCells.map((i) => (
+        <div class="install-cell">
+          <div class="mono install-key">{i.k}</div>
+          <code class="mono install-cmd"><span class="install-prompt">$</span>{i.cmd}</code>
+        </div>
+      ))}
     </div>
   </div>
 </section>
 
-<!-- № 04 — CTA dark contrast block -->
-<section class="cta">
+<section class="cta-section">
   <div class="container">
     <div class="cta-block">
       <div>
-        <p class="mono cta-eyebrow">{lang === 'fr' ? '№ 04 — Démarrer' : '№ 04 — Get started'}</p>
+        <p class="mono cta-eyebrow">{t(lang, 'cta.eyebrow')}</p>
         <h2 class="cta-title">
-          {t(lang, 'cta.title1')}<br />
-          <span class="italic">{t(lang, 'cta.title2')}</span>
+          {t(lang, 'cta.title1')}
+          <br />
+          <span class="cta-italic">{t(lang, 'cta.title2')}</span>
         </h2>
         <p class="cta-sub">{t(lang, 'cta.subtitle')}</p>
       </div>
       <div class="cta-actions">
-        <a href="https://github.com/FerrLabs/FerrFlow" class="cta-btn cta-btn-primary">★ {t(lang, 'cta.button')} →</a>
-        <a href="#install" class="cta-btn cta-btn-ghost">{lang === 'fr' ? 'Installer' : 'Install'} →</a>
+        <a href="https://github.com/FerrLabs/FerrFlow" class="cta-btn cta-btn-primary mono">★ {t(lang, 'cta.button')} →</a>
+        <a href="#install" class="cta-btn cta-btn-ghost mono">{t(lang, 'cta.installShort')} →</a>
       </div>
     </div>
   </div>
 </section>
 
-<SharedFooter />
-
-
-<style is:global>
-  /* Editorial paper/ink palette + orange accent. Migrates to the shared
-   * @ferrlabs/styles base once UI#25 lands. */
-  :root {
-    --paper: #faf8f4; --paper-2: #f3efe7;
-    --paper-ink: #1e293b; --paper-ink-2: #475569; --paper-ink-3: #64748b;
-    --paper-rule: rgba(30,41,59,0.14); --paper-rule-strong: rgba(30,41,59,0.28);
-    --accent: #e8733a; --accent-soft: #fff8f2;
-  }
-  html, body { background: var(--paper); color: var(--paper-ink); font-feature-settings: "ss01", "ss02"; }
-  ::selection { background: var(--paper-ink); color: var(--paper); }
-</style>
-
 <style>
-  .container { max-width: 1440px; margin: 0 auto; padding: 0 40px; }
-  @media (max-width: 768px) { .container { padding: 0 20px; } }
-  .mono { font-family: var(--font-mono); font-feature-settings: normal; }
-  .italic { font-style: italic; font-weight: 400; }
+  .hero-section { padding: 80px 0 96px; }
 
-  .hero { padding: 96px 0 72px; }
-  .badge {
+  .hero-badge {
     display: inline-flex; align-items: center; gap: 10px;
     padding: 6px 14px; border-radius: 999px;
     background: var(--accent-soft);
     border: 1px solid color-mix(in oklab, var(--accent) 30%, transparent);
     margin-bottom: 32px;
   }
-  .badge-dot { width: 7px; height: 7px; border-radius: 4px; background: var(--accent); }
-  .badge-text { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #8f4315; }
-
-  .display-1 {
-    font-family: var(--font-display, var(--font-sans));
-    font-weight: 900;
-    font-size: clamp(56px, 11vw, 168px);
-    line-height: 0.92; letter-spacing: -0.045em;
-    margin: 0; text-wrap: pretty;
+  .hero-badge-dot {
+    width: 7px; height: 7px; border-radius: 4px; background: var(--accent);
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 20%, transparent);
   }
+  .hero-badge-text {
+    font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: #8f4315;
+  }
+
   .hero-grid {
-    display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
-    gap: 64px; margin-top: 56px; align-items: end;
+    display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    gap: 64px; align-items: center;
   }
+
+  .hero-title {
+    font-family: var(--font-serif);
+    font-weight: 900;
+    font-size: clamp(56px, 8.5vw, 132px);
+    line-height: 0.92;
+    letter-spacing: -0.045em;
+    margin: 0;
+  }
+  .hero-italic { font-style: italic; font-weight: 400; color: var(--accent); }
+
   .hero-sub {
-    font-size: clamp(17px, 1.5vw, 21px); line-height: 1.55;
-    color: var(--paper-ink-2); max-width: 600px; margin: 0; text-wrap: pretty;
-  }
-  .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
-  @media (max-width: 760px) {
-    .hero-grid { grid-template-columns: 1fr; gap: 32px; }
+    font-size: 18px; line-height: 1.55;
+    color: var(--fg-2); max-width: 540px; margin: 28px 0 0;
   }
 
-  .btn-primary, .btn-ghost {
-    display: inline-flex; align-items: center; gap: 10px;
-    padding: 14px 24px; border-radius: 999px;
-    font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.04em;
-    border: 1px solid transparent; cursor: pointer; text-decoration: none;
-    transition: transform 180ms, opacity 180ms, background 180ms;
-  }
-  .btn-primary { background: var(--accent); color: #fff; }
-  .btn-primary:hover { transform: translateY(-1px); opacity: 0.92; }
-  .btn-ghost { background: transparent; color: var(--paper-ink); border-color: var(--paper-rule-strong); }
-  .btn-ghost:hover { background: var(--paper-2); transform: translateY(-1px); }
+  .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 28px; }
+  .hero-prompt { opacity: 0.65; margin-right: 6px; }
 
-  .section { padding: 96px 0; }
-  .display-2 {
-    font-family: var(--font-display, var(--font-sans));
+  .hero-stats {
+    display: flex; gap: 32px; flex-wrap: wrap; margin-top: 40px;
+  }
+  .hero-stat-key {
+    font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--fg-3); margin-bottom: 4px;
+  }
+  .hero-stat-val { font-size: 14px; color: var(--fg); }
+
+  .terminal {
+    background: var(--bg-2); border: 1px solid var(--rule);
+    border-radius: 14px; overflow: hidden;
+    font-family: var(--font-mono); font-size: 12.5px; line-height: 1.7;
+    box-shadow: 0 28px 56px -28px rgba(15, 23, 42, 0.22);
+  }
+  .terminal-chrome {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 16px; border-bottom: 1px solid var(--rule);
+    font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--fg-3);
+  }
+  .terminal-dot { width: 10px; height: 10px; border-radius: 5px; background: var(--rule-strong); }
+  .terminal-dot-accent { background: var(--accent); }
+  .terminal-title { margin-left: 12px; }
+  .terminal-body { padding: 20px 22px 26px; min-height: 320px; }
+  .terminal-line { display: flex; gap: 12px; color: var(--fg); }
+  .terminal-line.is-dim { color: var(--fg-3); }
+  .terminal-line.is-ok { color: var(--fg); }
+  .terminal-prompt { color: var(--fg-3); min-width: 14px; }
+  .terminal-prompt.is-ok { color: var(--accent); }
+
+  @media (max-width: 880px) {
+    .hero-grid { grid-template-columns: 1fr; gap: 48px; }
+  }
+
+  .formats-strip {
+    padding: 32px 0;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+  }
+  .formats-row { display: flex; align-items: center; gap: 32px; flex-wrap: wrap; }
+  .formats-eyebrow {
+    font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--fg-3);
+  }
+  .formats-chips { display: flex; gap: 12px; flex-wrap: wrap; flex: 1; }
+  .formats-chip {
+    font-size: 12px; color: var(--fg-2);
+    padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--rule); background: var(--card);
+  }
+
+  .features-section { padding: 96px 0; }
+  .section-eyebrow {
+    font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--fg-3); margin: 0 0 28px;
+  }
+  .section-title {
+    font-family: var(--font-serif);
     font-weight: 900;
     font-size: clamp(40px, 6vw, 88px);
     line-height: 0.94;
     letter-spacing: -0.04em;
     margin: 0;
   }
-  .eyebrow {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--paper-ink-3);
-    margin: 0;
-  }
-
-  /* Stats strip — file formats */
-  .stats-strip {
-    padding: 32px 0;
-    border-top: 1px solid var(--paper-rule);
-    border-bottom: 1px solid var(--paper-rule);
-  }
-  .stats-row { display: flex; align-items: center; gap: 32px; flex-wrap: wrap; }
-  .stats-eyebrow {
-    font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
-    color: var(--paper-ink-3);
-  }
-  .stats-chips { display: flex; gap: 12px; flex-wrap: wrap; flex: 1; }
-  .stats-chip {
-    font-size: 12px; color: var(--paper-ink-2);
-    padding: 6px 12px; border-radius: 999px;
-    border: 1px solid var(--paper-rule); background: #fff;
-  }
-
-  /* Features */
-  .features-eyebrow { margin-bottom: 28px; }
   .features-header {
     display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
-    gap: 48px; margin-bottom: 64px;
+    gap: 48px; margin-bottom: 64px; align-items: end;
   }
   .features-sub {
-    font-size: 17px; line-height: 1.55; color: var(--paper-ink-2);
-    align-self: end; margin: 0;
+    font-size: 17px; line-height: 1.55; color: var(--fg-2);
+    margin: 0; align-self: end;
   }
-  .feat-grid {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0;
-    border: 1px solid var(--paper-rule); border-radius: 18px; overflow: hidden;
-    background: #fff;
+
+  .features-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    border: 1px solid var(--rule); border-radius: 18px;
+    overflow: hidden; background: var(--card);
   }
-  .feat-cell {
+  .feature-cell {
     padding: 32px; min-height: 220px;
     display: flex; flex-direction: column;
-    border-right: 1px solid var(--paper-rule);
-    border-bottom: 1px solid var(--paper-rule);
+    border-right: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
   }
-  .feat-cell:nth-child(3n) { border-right: none; }
-  .feat-cell:nth-last-child(-n+3) { border-bottom: none; }
-  .feat-key {
+  .feature-cell[data-i="2"], .feature-cell[data-i="5"] { border-right: none; }
+  .feature-cell[data-i="3"], .feature-cell[data-i="4"], .feature-cell[data-i="5"] { border-bottom: none; }
+  .feature-key {
     font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
     color: var(--accent); margin-bottom: 16px;
   }
-  .feat-title {
-    font-family: var(--font-display, var(--font-sans));
+  .feature-title {
+    font-family: var(--font-serif);
     font-weight: 700; font-size: 24px; letter-spacing: -0.02em; margin: 0;
   }
-  .feat-desc {
-    font-size: 14.5px; line-height: 1.55; color: var(--paper-ink-2);
+  .feature-body {
+    font-size: 14.5px; line-height: 1.55; color: var(--fg-2);
     margin: 12px 0 0;
   }
+
   @media (max-width: 900px) {
     .features-header { grid-template-columns: 1fr; gap: 24px; }
-    .feat-grid { grid-template-columns: 1fr 1fr; }
-    .feat-cell { border-right: 1px solid var(--paper-rule) !important; border-bottom: 1px solid var(--paper-rule) !important; }
-    .feat-cell:nth-child(2n) { border-right: none !important; }
-    .feat-cell:nth-last-child(-n+2) { border-bottom: none !important; }
+    .features-grid { grid-template-columns: 1fr 1fr; }
+    .feature-cell { border-right: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+    .feature-cell[data-i="1"], .feature-cell[data-i="3"], .feature-cell[data-i="5"] { border-right: none; }
+    .feature-cell[data-i="2"] { border-right: 1px solid var(--rule); }
+    .feature-cell[data-i="4"], .feature-cell[data-i="5"] { border-bottom: none; }
   }
   @media (max-width: 600px) {
-    .feat-grid { grid-template-columns: 1fr; }
-    .feat-cell { border-right: none !important; border-bottom: 1px solid var(--paper-rule) !important; }
-    .feat-cell:last-child { border-bottom: none !important; }
+    .features-grid { grid-template-columns: 1fr; }
+    .feature-cell { border-right: none !important; border-bottom: 1px solid var(--rule) !important; }
+    .feature-cell:last-child { border-bottom: none !important; }
   }
 
-  /* Install */
-  .install { padding: 64px 0 96px; }
-  .install-eyebrow { margin-bottom: 28px; }
+  .install-section { padding: 64px 0 96px; }
   .install-sub {
-    font-size: 17px; color: var(--paper-ink-2);
+    font-size: 17px; color: var(--fg-2);
     max-width: 640px; margin: 24px 0 48px;
   }
   .install-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
   .install-cell {
-    background: #fff; border: 1px solid var(--paper-rule);
+    background: var(--card); border: 1px solid var(--rule);
     border-radius: 14px; padding: 20px;
   }
   .install-key {
     font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
-    color: var(--paper-ink-3); margin-bottom: 12px;
+    color: var(--fg-3); margin-bottom: 12px;
   }
   .install-cmd {
     font-family: var(--font-mono); font-size: 13px;
-    color: var(--paper-ink); display: block; word-break: break-all;
+    color: var(--fg); display: block; word-break: break-all;
   }
   .install-prompt { color: var(--accent); margin-right: 6px; }
   @media (max-width: 900px) { .install-grid { grid-template-columns: 1fr 1fr; } }
   @media (max-width: 540px) { .install-grid { grid-template-columns: 1fr; } }
 
-  /* CTA dark contrast block */
-  .cta { padding: 32px 0 80px; }
+  .cta-section { padding: 32px 0 80px; }
   .cta-block {
-    background: var(--paper-ink); color: var(--paper);
+    background: var(--fg); color: var(--bg);
     border-radius: 24px;
     padding: clamp(40px, 6vw, 80px);
     display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
@@ -341,25 +344,26 @@ const frEquiv = enEquiv === '/' ? '/fr/' : `/fr${enEquiv.startsWith('/') ? '' : 
     opacity: 0.6; margin: 0 0 24px;
   }
   .cta-title {
-    font-family: var(--font-display, var(--font-sans));
+    font-family: var(--font-serif);
     font-weight: 900;
     font-size: clamp(36px, 5vw, 72px);
     line-height: 0.96; letter-spacing: -0.04em;
     margin: 0;
   }
+  .cta-italic { font-style: italic; font-weight: 400; }
   .cta-sub {
     font-size: 17px; opacity: 0.7; margin: 20px 0 0; max-width: 480px;
   }
   .cta-actions { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
   .cta-btn {
     padding: 18px 28px; border-radius: 999px;
-    font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.04em;
+    font-size: 13px; letter-spacing: 0.04em;
     text-decoration: none; display: inline-flex; align-items: center; gap: 8px;
   }
   .cta-btn-primary { background: var(--accent); color: #fff; }
   .cta-btn-ghost {
-    background: transparent; color: var(--paper);
-    border: 1px solid color-mix(in oklab, var(--paper) 30%, transparent);
+    background: transparent; color: var(--bg);
+    border: 1px solid color-mix(in oklab, var(--bg) 30%, transparent);
   }
   @media (max-width: 760px) {
     .cta-block { grid-template-columns: 1fr; }
