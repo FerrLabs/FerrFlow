@@ -4,6 +4,7 @@
     "@ferrlabs/ui-astro": "^0.9.2",
     "@fontsource/dm-mono": "^5.2.7",
     "@fontsource/fraunces": "^5.2.9",
+    "@fontsource/inter": "^5.2.7",
     "astro": "^6.1.6",
     "starlight-versions": "^0.8.1"
   },

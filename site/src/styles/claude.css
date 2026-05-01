@@ -1,4 +1,16 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;0,9..144,900;1,9..144,400&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap');
+/* Self-hosted via @fontsource/* — no Google Fonts CDN, CSP-clean. Matches
+ * the marketing landing typography exactly so docs and home read as one
+ * brand. */
+@import '@fontsource/fraunces/400.css';
+@import '@fontsource/fraunces/400-italic.css';
+@import '@fontsource/fraunces/700.css';
+@import '@fontsource/fraunces/900.css';
+@import '@fontsource/dm-mono/400.css';
+@import '@fontsource/dm-mono/500.css';
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
 
 :root {
   --sl-font:
@@ -56,15 +68,18 @@
   --sl-color-gray-7: #f4f4f5;
   --sl-color-black: #fafafa;
 
-  --sl-color-bg: #fafafa;
-  --sl-color-bg-nav: #fafafaf2;
-  --sl-color-bg-sidebar: #fafafa;
-  --sl-color-bg-inline-code: #f1f1f3;
+  /* Warm paper (#faf8f4) — matches the marketing landing. The cool
+   * #fafafa we used before clashed visually when navigating from
+   * ferrflow.com to /docs. */
+  --sl-color-bg: #faf8f4;
+  --sl-color-bg-nav: #faf8f4f2;
+  --sl-color-bg-sidebar: #f3efe7;
+  --sl-color-bg-inline-code: #f1ede4;
   --sl-color-bg-accent: var(--ferr-accent-soft);
 
-  --sl-color-hairline: #ececef;
-  --sl-color-hairline-light: #f1f1f4;
-  --sl-color-hairline-shade: #e0e0e4;
+  --sl-color-hairline: #e9e3d4;
+  --sl-color-hairline-light: #efeadc;
+  --sl-color-hairline-shade: #ddd6c2;
 
   --sl-color-text: #18181b;
   --sl-color-text-accent: var(--ferr-accent);
@@ -125,10 +140,17 @@ body,
 .sl-markdown-content h5,
 .sl-markdown-content h6,
 h1#_top {
-  font-family: var(--sl-font);
-  font-weight: 600;
-  letter-spacing: -0.015em;
+  font-family: var(--sl-font-display);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
   color: var(--sl-color-white);
+}
+
+h1#_top {
+  font-size: 2.75rem;
+  font-weight: 900;
+  letter-spacing: -0.035em;
 }
 
 .sl-markdown-content h2:not(:where(.not-content *)) {
@@ -239,11 +261,34 @@ starlight-theme-select {
   display: inline-flex !important;
 }
 
-header {
+/* Scoped to Starlight's own .header class. Without this scope the rule
+ * also matched the nested <header class="ferrlabs-nav"> from the shared
+ * cross-product Navbar, which doubled the border and forced a second
+ * blur layer on top of its own. */
+.header {
   background: color-mix(in srgb, var(--sl-color-bg) 92%, transparent) !important;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--sl-color-hairline);
+}
+
+/* The shared cross-product Navbar is itself a <header class="ferrlabs-nav">
+ * with its own sticky positioning and inner max-width container. Without
+ * flex:1 it collapses to its content width (~530px) and leaves the right
+ * two-thirds of the docs header empty. Stretching it forces the inner
+ * .ferrlabs-nav-inner to span the full doc width.
+ *
+ * Starlight's outer <header class="header"> already provides the sticky
+ * positioning, the blur, and the bottom border — strip the duplicates
+ * from the embedded Navbar so the user only sees one bar. */
+.docs-header > .ferrlabs-nav {
+  flex: 1 1 auto;
+  width: 100%;
+  position: static !important;
+  background: transparent !important;
+  border-bottom: 0 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 .sidebar-pane {
