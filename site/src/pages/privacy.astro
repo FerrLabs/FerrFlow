@@ -1,0 +1,58 @@
+---
+import LegalLayout from '../layouts/LegalLayout.astro';
+---
+<LegalLayout
+  title="Privacy — FerrFlow"
+  description="What FerrFlow does (and doesn't) send to our servers. The CLI is fully offline; cloud features are opt-in."
+  lang="en"
+  canonical="https://ferrflow.com/privacy"
+  pathname="/privacy"
+  lastUpdated="2026-05-01"
+  draft
+>
+  <span slot="heading">Privacy — <em>FerrFlow</em></span>
+
+  <h2>The FerrFlow CLI</h2>
+  <p>
+    The CLI binary <strong>does not send any data to FerrLabs servers</strong>. It reads
+    your local commits, bumps version files, generates changelogs, creates git tags and
+    GitHub releases (calling the GitHub API on your behalf with <em>your</em> token).
+    No telemetry, no error reporting, no auto-update check, no usage stats.
+  </p>
+  <p>
+    The only network traffic FerrFlow makes is what you ask it to: pulling git remotes,
+    pushing tags, posting to GitHub Releases, optionally publishing to package registries.
+  </p>
+
+  <h2>The marketing site (ferrflow.com)</h2>
+  <p>
+    Read-only marketing pages. No analytics tracker. No cookie set by FerrFlow itself.
+    See <a href="/cookies">cookie policy</a>.
+  </p>
+
+  <h2>FerrFlow Bot (optional GitHub integration)</h2>
+  <p>
+    The FerrFlow Bot is a GitHub App that automates version bumps and releases on PRs.
+    When you install it on a repository, FerrLabs receives:
+  </p>
+  <ul>
+    <li>Webhook events from GitHub: PR open / merge, push events on default branch.</li>
+    <li>The metadata necessary to compute the next version: commits SHAs, commit messages, conventional-commits trailers, branch refs.</li>
+    <li>A short-lived OAuth token with the scope you grant: read commits, write tags, write releases on the chosen repositories.</li>
+  </ul>
+  <p>
+    No source code body, no diff content, no issue / PR description body is read or
+    stored. The bot processes events in-memory and writes back the version bump as a new
+    commit and tag, without persisting your data beyond logs (30 days retention).
+  </p>
+
+  <h2>Cloud account (app.ferrlabs.com)</h2>
+  <p>
+    Account, billing and team management are governed by the canonical
+    <a href="https://ferrlabs.com/privacy">FerrLabs privacy policy</a>.
+  </p>
+
+  <p style="margin-top:48px;font-size:13px;">
+    French version: <a href="/fr/privacy">Confidentialité</a>.
+  </p>
+</LegalLayout>

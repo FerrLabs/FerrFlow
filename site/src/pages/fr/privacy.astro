@@ -1,0 +1,62 @@
+---
+import LegalLayout from '../../layouts/LegalLayout.astro';
+---
+<LegalLayout
+  title="Confidentialité — FerrFlow"
+  description="Ce que FerrFlow envoie (et n'envoie pas) à nos serveurs. Le CLI est entièrement offline ; les fonctions cloud sont opt-in."
+  lang="fr"
+  canonical="https://ferrflow.com/fr/privacy"
+  pathname="/fr/privacy"
+  lastUpdated="2026-05-01"
+  draft
+>
+  <span slot="heading">Confidentialité — <em>FerrFlow</em></span>
+
+  <h2>Le CLI FerrFlow</h2>
+  <p>
+    Le binaire CLI <strong>n'envoie aucune donnée aux serveurs FerrLabs</strong>. Il lit
+    vos commits locaux, bump les fichiers de version, génère les changelogs, crée les
+    tags git et releases GitHub (en appelant l'API GitHub en votre nom avec
+    <em>votre</em> token). Pas de télémétrie, pas de reporting d'erreur, pas de
+    vérification d'auto-update, pas de stats d'usage.
+  </p>
+  <p>
+    Le seul trafic réseau que FerrFlow effectue est celui que vous lui demandez : pull
+    des remotes git, push des tags, post vers les Releases GitHub, publication
+    optionnelle vers les package registries.
+  </p>
+
+  <h2>Le site marketing (ferrflow.com)</h2>
+  <p>
+    Pages marketing en lecture seule. Aucun traceur d'audience. Aucun cookie déposé par
+    FerrFlow lui-même. Voir <a href="/fr/cookies">politique cookies</a>.
+  </p>
+
+  <h2>FerrFlow Bot (intégration GitHub optionnelle)</h2>
+  <p>
+    Le FerrFlow Bot est une GitHub App qui automatise les bumps de version et releases
+    sur les PRs. Lorsque vous l'installez sur un dépôt, FerrLabs reçoit :
+  </p>
+  <ul>
+    <li>Événements webhook depuis GitHub : open / merge de PR, événements push sur la branche par défaut.</li>
+    <li>Les métadonnées nécessaires pour calculer la prochaine version : SHAs de commits, messages de commit, trailers conventional-commits, refs de branches.</li>
+    <li>Un token OAuth à durée courte avec le scope que vous accordez : read commits, write tags, write releases sur les dépôts choisis.</li>
+  </ul>
+  <p>
+    Aucun corps de code source, aucun contenu de diff, aucun corps de description d'issue
+    / PR n'est lu ou stocké. Le bot traite les événements en mémoire et écrit en retour
+    le bump de version comme nouveau commit et tag, sans persister vos données au-delà
+    des logs (rétention 30 jours).
+  </p>
+
+  <h2>Compte cloud (app.ferrlabs.com)</h2>
+  <p>
+    Gestion de compte, facturation et équipe régies par la
+    <a href="https://ferrlabs.com/fr/privacy">politique de confidentialité FerrLabs</a>
+    canonique.
+  </p>
+
+  <p style="margin-top:48px;font-size:13px;">
+    English version: <a href="/privacy">Privacy</a>.
+  </p>
+</LegalLayout>

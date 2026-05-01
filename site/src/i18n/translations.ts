@@ -79,8 +79,10 @@ const ui = {
     'footer.documentation': 'Documentation',
     'footer.releases': 'Releases',
     'footer.discussions': 'Discussions',
-    'footer.terms': 'Terms of service',
-    'footer.privacy': 'Privacy policy',
+    'footer.mentions': 'Legal notice',
+    'footer.terms': 'Terms',
+    'footer.privacy': 'Privacy',
+    'footer.cookies': 'Cookies',
   },
   fr: {
     'meta.title': 'FerrFlow — Versioning sémantique universel',
@@ -142,8 +144,10 @@ const ui = {
     'footer.documentation': 'Documentation',
     'footer.releases': 'Releases',
     'footer.discussions': 'Discussions',
-    'footer.terms': "Conditions d'utilisation",
-    'footer.privacy': 'Politique de confidentialité',
+    'footer.mentions': 'Mentions légales',
+    'footer.terms': "Conditions",
+    'footer.privacy': 'Confidentialité',
+    'footer.cookies': 'Cookies',
   },
 } as const;
 

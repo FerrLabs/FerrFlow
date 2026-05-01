@@ -1,0 +1,42 @@
+---
+import LegalLayout from '../layouts/LegalLayout.astro';
+---
+<LegalLayout
+  title="Legal notice — FerrFlow"
+  description="Publisher identity, hosting and director of publication for ferrflow.com."
+  lang="en"
+  canonical="https://ferrflow.com/legal"
+  pathname="/legal"
+  lastUpdated="2026-05-01"
+  draft
+>
+  <span slot="heading">Legal <em>notice</em></span>
+  <p>
+    FerrFlow is an open-source semantic-versioning CLI distributed under
+    <span class="placeholder">[TBD — MIT / Apache-2.0]</span>. The marketing site
+    <strong>ferrflow.com</strong> is operated by <strong>FerrLabs</strong>. Publisher
+    identity, hosting and director of publication are described in the canonical
+    <a href="https://ferrlabs.com/legal">FerrLabs legal notice</a>.
+  </p>
+  <h2>FerrFlow-specific contact</h2>
+  <ul>
+    <li>Open-source CLI: <a href="https://github.com/FerrLabs/FerrFlow">github.com/FerrLabs/FerrFlow</a></li>
+    <li>Cloud account features: <a href="mailto:flow@ferrlabs.com">flow@ferrlabs.com</a></li>
+    <li>Security: <a href="mailto:security@ferrlabs.com">security@ferrlabs.com</a></li>
+  </ul>
+  <h2>The CLI itself</h2>
+  <p>
+    The FerrFlow CLI binary is governed by its open-source licence. Reading commits,
+    bumping versions, generating changelogs, tagging — all happen entirely on your
+    machine and never contact FerrLabs servers. No telemetry.
+  </p>
+  <h2>Cloud features</h2>
+  <p>
+    Optional cloud features (FerrFlow Bot for GitHub PR automation, account dashboard at
+    <code>app.ferrlabs.com</code>) are operated by FerrLabs and governed by the
+    <a href="https://ferrlabs.com/terms">FerrLabs Terms of service</a>.
+  </p>
+  <p style="margin-top:48px;font-size:13px;">
+    French version: <a href="/fr/legal">Mentions légales</a>.
+  </p>
+</LegalLayout>

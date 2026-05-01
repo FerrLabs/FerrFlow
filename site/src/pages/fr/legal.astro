@@ -1,0 +1,42 @@
+---
+import LegalLayout from '../../layouts/LegalLayout.astro';
+---
+<LegalLayout
+  title="Mentions légales — FerrFlow"
+  description="Identité de l'éditeur, hébergement et directeur de publication de ferrflow.com."
+  lang="fr"
+  canonical="https://ferrflow.com/fr/legal"
+  pathname="/fr/legal"
+  lastUpdated="2026-05-01"
+  draft
+>
+  <span slot="heading">Mentions <em>légales</em></span>
+  <p>
+    FerrFlow est un CLI de versioning sémantique open source distribué sous
+    <span class="placeholder">[À COMPLÉTER — MIT / Apache-2.0]</span>. Le site marketing
+    <strong>ferrflow.com</strong> est opéré par <strong>FerrLabs</strong>. Identité de
+    l'éditeur, hébergement et directeur de la publication : voir les
+    <a href="https://ferrlabs.com/fr/legal">mentions légales canoniques FerrLabs</a>.
+  </p>
+  <h2>Contact spécifique FerrFlow</h2>
+  <ul>
+    <li>CLI open source : <a href="https://github.com/FerrLabs/FerrFlow">github.com/FerrLabs/FerrFlow</a></li>
+    <li>Fonctions cloud / compte : <a href="mailto:flow@ferrlabs.com">flow@ferrlabs.com</a></li>
+    <li>Sécurité : <a href="mailto:security@ferrlabs.com">security@ferrlabs.com</a></li>
+  </ul>
+  <h2>Le CLI lui-même</h2>
+  <p>
+    Le binaire CLI FerrFlow est régi par sa licence open source. Lecture des commits,
+    bump des versions, génération du changelog, tagging — tout se passe entièrement sur
+    votre machine et ne contacte jamais les serveurs FerrLabs. Pas de télémétrie.
+  </p>
+  <h2>Fonctions cloud</h2>
+  <p>
+    Les fonctions cloud optionnelles (FerrFlow Bot pour l'automation des PRs GitHub,
+    dashboard de compte sur <code>app.ferrlabs.com</code>) sont opérées par FerrLabs et
+    régies par les <a href="https://ferrlabs.com/fr/terms">conditions générales FerrLabs</a>.
+  </p>
+  <p style="margin-top:48px;font-size:13px;">
+    English version: <a href="/legal">Legal notice</a>.
+  </p>
+</LegalLayout>
