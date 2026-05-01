@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.20.1] - 2026-05-01
+
+### Bug Fixes
+
+- fix(site): hero italic 'Automatically.' was bleeding into terminal column at wide viewports (#433)
+
 ## [5.20.0] - 2026-05-01
 
 ### Features
