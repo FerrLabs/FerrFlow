@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.21.0] - 2026-05-01
+
+### Features
+
+- feat(site): add legal pages — mentions, privacy, terms, cookies (EN+FR) (#435)
+
 ## [5.20.1] - 2026-05-01
 
 ### Bug Fixes
