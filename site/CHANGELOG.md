@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.20.0] - 2026-05-01
+
+### Features
+
+- feat(site): port editorial bundle design to marketing surface (Fraunces, paper, shared Navbar/Footer) (#432)
+
 ## [5.19.0] - 2026-04-30
 
 ### Features
