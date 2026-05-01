@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.21.1] - 2026-05-01
+
+### Bug Fixes
+
+- fix(site): align docs with editorial brand + fix navbar collapse (#436)
+
 ## [5.21.0] - 2026-05-01
 
 ### Features
