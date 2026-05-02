@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.22.3] - 2026-05-02
+
+### Bug Fixes
+
+- fix(deps): bump @ferrlabs/* (triggered by astro@v0.12.0) (#447)
+- fix(deps): bump @ferrlabs/* (triggered by react@v0.8.0) (#448)
+
 ## [5.22.2] - 2026-05-02
 
 ### Bug Fixes
