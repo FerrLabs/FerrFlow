@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.22.1] - 2026-05-02
+
+### Bug Fixes
+
+- fix(site): add og:image:type meta for richer link previews (#440)
+
 ## [5.22.0] - 2026-05-02
 
 ### Features
