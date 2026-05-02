@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.22.2] - 2026-05-02
+
+### Bug Fixes
+
+- fix(ci): rename dispatch secret FERRFLOW_DISPATCH_TOKEN → FERRLABS_DISPATCH_TOKEN (#443)
+
 ## [5.22.1] - 2026-05-02
 
 ### Bug Fixes
