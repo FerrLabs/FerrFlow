@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.22.0] - 2026-05-02
+
+### Features
+
+- feat(site): add FerrFleet to footer products grid (#438)
+
 ## [5.21.1] - 2026-05-01
 
 ### Bug Fixes
