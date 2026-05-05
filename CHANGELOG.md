@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [4.7.0] - 2026-05-05
+
+### Features
+
+- feat(telemetry): honor DO_NOT_TRACK + print first-run notice (#409)
+
 ## [4.6.3] - 2026-04-29
 
 ### Bug Fixes
