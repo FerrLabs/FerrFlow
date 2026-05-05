@@ -3,6 +3,12 @@ members = [".", "ferrflow-wasm"]
 exclude = ["__fixtures__"]
 resolver = "3"
 
+# The codebase keeps unit tests inline before the impl block in formats/*.rs
+# (cleaner test-first reading order). Suppressing the lint workspace-wide
+# avoids reorganising every format file just to satisfy clippy.
+[workspace.lints.clippy]
+items_after_test_module = "allow"
+
 [package]
 name = "ferrflow"
 version = "4.6.3"
@@ -22,6 +28,9 @@ path = "src/main.rs"
 [lib]
 name = "ferrflow"
 path = "src/lib.rs"
+
+[lints]
+workspace = true
 
 [features]
 default = ["cli"]

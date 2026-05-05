@@ -22,6 +22,9 @@ use cli::Cli;
 fn main() {
     let cli = Cli::parse();
     let command_name = cli.command.name();
+
+    telemetry::maybe_print_first_run_notice();
+
     let result = cli.run();
 
     if let Err(err) = result {

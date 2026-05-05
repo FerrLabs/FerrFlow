@@ -42,6 +42,9 @@ struct EventPayload {
 }
 
 fn is_enabled() -> bool {
+    if check_disabled(std::env::var("DO_NOT_TRACK").ok().as_deref()) {
+        return false;
+    }
     check_enabled(
         std::env::var("FERRFLOW_ANONYMOUS_TELEMETRY")
             .or_else(|_| std::env::var("FERRFLOW_TELEMETRY"))
@@ -55,6 +58,56 @@ fn check_enabled(val: Option<&str>) -> bool {
         Some(v) => !matches!(v.to_lowercase().as_str(), "false" | "0" | "off" | "no"),
         None => true,
     }
+}
+
+fn check_disabled(val: Option<&str>) -> bool {
+    matches!(
+        val.map(str::to_lowercase).as_deref(),
+        Some("1" | "true" | "yes" | "on")
+    )
+}
+
+pub fn first_run_marker_path() -> Option<std::path::PathBuf> {
+    if let Ok(custom) = std::env::var("FERRFLOW_STATE_DIR") {
+        return Some(std::path::PathBuf::from(custom).join(".telemetry-notice-shown"));
+    }
+    let base = if cfg!(target_os = "windows") {
+        std::env::var_os("LOCALAPPDATA").map(std::path::PathBuf::from)
+    } else if cfg!(target_os = "macos") {
+        std::env::var_os("HOME")
+            .map(std::path::PathBuf::from)
+            .map(|h| h.join("Library/Application Support"))
+    } else {
+        std::env::var_os("XDG_STATE_HOME")
+            .map(std::path::PathBuf::from)
+            .or_else(|| {
+                std::env::var_os("HOME")
+                    .map(std::path::PathBuf::from)
+                    .map(|h| h.join(".local/state"))
+            })
+    }?;
+    Some(base.join("ferrflow").join(".telemetry-notice-shown"))
+}
+
+pub fn maybe_print_first_run_notice() {
+    if !is_enabled() {
+        return;
+    }
+    let Some(marker) = first_run_marker_path() else {
+        return;
+    };
+    if marker.exists() {
+        return;
+    }
+    eprintln!(
+        "Anonymous telemetry on. See https://ferrlabs.com/telemetry — opt out: FERRFLOW_TELEMETRY=0 or DO_NOT_TRACK=1"
+    );
+    if let Some(parent) = marker.parent()
+        && std::fs::create_dir_all(parent).is_err()
+    {
+        return;
+    }
+    let _ = std::fs::write(&marker, b"1");
 }
 
 fn api_url() -> String {
@@ -270,6 +323,40 @@ mod tests {
         for val in ["true", "1", "yes", "anything"] {
             assert!(check_enabled(Some(val)), "should be enabled for {val}");
         }
+    }
+
+    #[test]
+    fn do_not_track_disables_telemetry() {
+        for val in ["1", "true", "yes", "on", "TRUE", "ON"] {
+            assert!(
+                check_disabled(Some(val)),
+                "DO_NOT_TRACK={val} should disable"
+            );
+        }
+    }
+
+    #[test]
+    fn do_not_track_unset_or_zero_does_not_disable() {
+        assert!(!check_disabled(None));
+        assert!(!check_disabled(Some("0")));
+        assert!(!check_disabled(Some("false")));
+        assert!(!check_disabled(Some("")));
+    }
+
+    #[test]
+    fn first_run_marker_path_uses_custom_dir_when_set() {
+        let tmp = std::env::temp_dir().join("ferrflow-test-state-marker");
+        // SAFETY: tests run under the global CWD_LOCK / single-threaded
+        // env mutation convention used elsewhere in this crate.
+        unsafe {
+            std::env::set_var("FERRFLOW_STATE_DIR", &tmp);
+        }
+        let marker = first_run_marker_path().unwrap();
+        unsafe {
+            std::env::remove_var("FERRFLOW_STATE_DIR");
+        }
+        assert!(marker.starts_with(&tmp));
+        assert!(marker.ends_with(".telemetry-notice-shown"));
     }
 
     #[test]
