@@ -1,6 +1,7 @@
+use std::hint::black_box;
 use std::io::Write;
 
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use criterion::{Criterion, criterion_group, criterion_main};
 use ferrflow::changelog::{build_section, update_changelog};
 use ferrflow::config::{Config, FileFormat, OrphanedTagStrategy};
 use ferrflow::conventional_commits::{BumpType, determine_bump};
@@ -73,10 +74,15 @@ fn bench_changelog(c: &mut Criterion) {
                 f.write_all(b"# Changelog\n\n## v0.9.0\n\n- old entry\n")
                     .unwrap();
                 let path = f.path().to_path_buf();
-                black_box(
-                    update_changelog(&path, "myapp", "1.0.0", &commits, BumpType::Minor, false)
-                        .unwrap(),
-                );
+                update_changelog(
+                    black_box(&path),
+                    "myapp",
+                    "1.0.0",
+                    &commits,
+                    BumpType::Minor,
+                    false,
+                )
+                .unwrap();
             });
         });
     }
@@ -123,7 +129,7 @@ fn bench_version_files(c: &mut Criterion) {
             f.write_all(content.as_bytes()).unwrap();
             let path = f.path().to_path_buf();
             b.iter(|| {
-                black_box(handler.write_version(&path, "2.0.0").unwrap());
+                handler.write_version(black_box(&path), "2.0.0").unwrap();
             });
         });
     }
