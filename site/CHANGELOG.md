@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.22.5] - 2026-05-06
+
+### Bug Fixes
+
+- fix(site): inline FR auto-redirect in <head> using shared lang-pref key (#459)
+
 ## [5.22.4] - 2026-05-02
 
 ### Bug Fixes
