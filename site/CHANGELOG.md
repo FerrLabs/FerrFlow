@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.0.1] - 2026-05-06
+
+### Bug Fixes
+
+- fix(nginx): per-location Cache-Control to bust stale HTML on deploy (#481)
+
 ## [6.0.0] - 2026-05-06
 
 ### Breaking Changes
