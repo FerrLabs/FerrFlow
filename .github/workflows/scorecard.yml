@@ -13,7 +13,7 @@ permissions: read-all
 jobs:
   analysis:
     name: Scorecard analysis
-    runs-on: ubuntu-latest
+    runs-on: ferrlabs-k8s
     permissions:
       # Required for publishing results to the GitHub code scanning dashboard.
       security-events: write
