@@ -26,14 +26,17 @@ jobs:
         with:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
       - name: Format check
         run: cargo fmt --check
       - name: Clippy
         run: cargo clippy -- -D warnings
         env:
           FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
-      - name: Tests
-        run: cargo test
+      - name: Tests (nextest)
+        run: cargo nextest run --no-fail-fast
         env:
           FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
 
