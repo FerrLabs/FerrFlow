@@ -19,7 +19,7 @@ jobs:
   test:
     name: Test
     if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):')
-    runs-on: ubuntu-latest
+    runs-on: ferrlabs-k8s
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@nightly
@@ -43,7 +43,7 @@ jobs:
   security:
     name: Cargo Security
     if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):')
-    runs-on: ubuntu-latest
+    runs-on: ferrlabs-k8s
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
@@ -62,7 +62,7 @@ jobs:
     name: Build Release Binary
     needs: test
     if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):')
-    runs-on: ubuntu-latest
+    runs-on: ferrlabs-k8s
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@nightly
@@ -81,7 +81,7 @@ jobs:
   coverage:
     name: Coverage
     if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):')
-    runs-on: ubuntu-latest
+    runs-on: ferrlabs-k8s
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@nightly
@@ -102,7 +102,7 @@ jobs:
     name: Generate Fixtures
     needs: test
     if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):')
-    runs-on: ubuntu-latest
+    runs-on: ferrlabs-k8s
     steps:
       - uses: actions/checkout@v6
 
@@ -143,9 +143,9 @@ jobs:
           retention-days: 1
 
   fixture-monorepo:
-    name: Fixtures — Monorepo
+    name: Fixtures â€” Monorepo
     needs: [build, fixture-generate]
-    runs-on: ubuntu-latest
+    runs-on: ferrlabs-k8s
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
@@ -179,9 +179,9 @@ jobs:
           if-no-files-found: ignore
 
   fixture-single:
-    name: Fixtures — Single Package
+    name: Fixtures â€” Single Package
     needs: [build, fixture-generate]
-    runs-on: ubuntu-latest
+    runs-on: ferrlabs-k8s
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
@@ -215,9 +215,9 @@ jobs:
           if-no-files-found: ignore
 
   fixture-config:
-    name: Fixtures — Config & Formats
+    name: Fixtures â€” Config & Formats
     needs: [build, fixture-generate]
-    runs-on: ubuntu-latest
+    runs-on: ferrlabs-k8s
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
@@ -251,9 +251,9 @@ jobs:
           if-no-files-found: ignore
 
   fixture-advanced:
-    name: Fixtures — Advanced Features
+    name: Fixtures â€” Advanced Features
     needs: [build, fixture-generate]
-    runs-on: ubuntu-latest
+    runs-on: ferrlabs-k8s
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
@@ -293,13 +293,13 @@ jobs:
   # Compile the bench binary ONCE per PR and hand it to the matrix shards
   # below. Before this split, every shard ran `cargo bench` with its own
   # cold rust-cache (all 11 shards start in parallel and share a key, so
-  # nobody hits a sibling's cache), paying the ~5–7 min build cost 11
+  # nobody hits a sibling's cache), paying the ~5â€“7 min build cost 11
   # times. With a pre-built binary the matrix only does the actual
   # measurement step. See FerrLabs/FerrFlow#397.
   micro-bench-build:
     name: Build micro bench binary
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ferrlabs-k8s
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@nightly
@@ -337,7 +337,7 @@ jobs:
     name: Micro Benchmark - ${{ matrix.group }}
     needs: micro-bench-build
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ferrlabs-k8s
     continue-on-error: true
     strategy:
       fail-fast: false
@@ -363,7 +363,7 @@ jobs:
         # Mirrors what FerrLabs/Benchmarks@v3 used to do for the micro
         # path: invoke the bench binary directly with the criterion
         # positional filter, capture bencher-format stdout, and keep
-        # only the well-formed `test … bench: …` rows so the aggregate
+        # only the well-formed `test â€¦ bench: â€¦` rows so the aggregate
         # job's benchmark-action consumer doesn't choke on noise.
         # The bench binary's fixtures are all in-process (tempdir +
         # libgit2), so no checkout is needed in this job.
@@ -376,7 +376,7 @@ jobs:
           bench_exit=${PIPESTATUS[0]}
           set -e
           if [ "$bench_exit" != "0" ]; then
-            echo "::warning::bench binary exited ${bench_exit} — tolerating as long as rows were captured. Stderr tail:"
+            echo "::warning::bench binary exited ${bench_exit} â€” tolerating as long as rows were captured. Stderr tail:"
             tail -40 bench-stderr.log || true
           fi
           grep -E '^test .+ \.\.\. bench:[[:space:]]+[0-9,]+ ns/iter' raw-output.txt > output.txt || true
@@ -397,7 +397,7 @@ jobs:
     name: Micro Benchmark (aggregate)
     needs: micro-bench
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ferrlabs-k8s
     permissions:
       pull-requests: write
     steps:
@@ -449,7 +449,7 @@ jobs:
   benchmark:
     name: Benchmark
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: ferrlabs-k8s
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v6
@@ -470,7 +470,7 @@ jobs:
   release:
     name: Release
     needs: [test, fixture-monorepo, fixture-single, fixture-config, fixture-advanced, benchmark]
-    runs-on: ubuntu-latest
+    runs-on: ferrlabs-k8s
     concurrency:
       group: release-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: false
@@ -493,7 +493,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          # Don't bake GITHUB_TOKEN into the git remote — ferrflow's OIDC
+          # Don't bake GITHUB_TOKEN into the git remote â€” ferrflow's OIDC
           # exchange yields an App installation token that authenticates as
           # ferrflow[bot]. Without this, every git push silently reverts
           # to GITHUB_TOKEN (i.e. github-actions[bot]) which isn't in the

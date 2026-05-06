@@ -42,7 +42,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Install cross
         if: matrix.os == 'ubuntu-latest'
-        # Download via curl with retries — we hit GitHub 504s here from time to
+        # Download via curl with retries â€” we hit GitHub 504s here from time to
         # time (see FerrLabs/FerrFlow Publish run 24610662869), and the
         # whole release pipeline deserves better than a single-shot fetch.
         run: |
@@ -80,7 +80,7 @@ jobs:
   upload:
     name: Upload Release Assets
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ferrlabs-k8s
     permissions:
       contents: write
       id-token: write
@@ -131,7 +131,7 @@ jobs:
   publish-crate:
     name: Publish crates.io
     needs: upload
-    runs-on: ubuntu-latest
+    runs-on: ferrlabs-k8s
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@nightly
@@ -140,7 +140,7 @@ jobs:
   publish-npm:
     name: Publish npm
     needs: upload
-    runs-on: ubuntu-latest
+    runs-on: ferrlabs-k8s
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -161,7 +161,7 @@ jobs:
   publish-wasm:
     name: Publish @ferrflow/wasm
     needs: upload
-    runs-on: ubuntu-latest
+    runs-on: ferrlabs-k8s
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@nightly
@@ -186,7 +186,7 @@ jobs:
   publish-docker:
     name: Publish Docker
     needs: upload
-    runs-on: ubuntu-latest
+    runs-on: ferrlabs-k8s
     permissions:
       contents: read
       packages: write
