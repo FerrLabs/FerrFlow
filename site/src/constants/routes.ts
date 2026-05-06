@@ -4,19 +4,18 @@ export const ROUTES = {
   DOCS: '/docs',
   BLOG: '/blog',
   CHANGELOG: '/changelog',
-  
+
   // Auth routes
   LOGIN: '/login',
   SIGNUP: '/signup',
   FORGOT_PASSWORD: '/forgot-password',
   RESET_PASSWORD: '/reset-password',
   VERIFY_EMAIL: '/verify-email',
-  
+
   // App routes (app.ferrflow.com)
   DASHBOARD: '/',
   ANALYTICS: '/analytics',
   TOKENS: '/tokens',
-  // PLAYGROUND: '/playground', // disabled — playground is temporarily unavailable
   SETTINGS: '/settings',
   SETTINGS_PROFILE: '/settings/profile',
   SETTINGS_SECURITY: '/settings/security',
