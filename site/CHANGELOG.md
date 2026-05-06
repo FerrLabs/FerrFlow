@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.22.6] - 2026-05-06
+
+### Bug Fixes
+
+- fix(meta): correct titles, descriptions, favicons for site + playground (#470)
+
 ## [5.22.5] - 2026-05-06
 
 ### Bug Fixes
