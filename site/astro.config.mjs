@@ -9,7 +9,8 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'FerrFlow',
-      description: 'Universal semantic versioning for monorepos and classic repos',
+      description:
+        'FerrFlow — open-source CLI for universal semantic versioning. Bumps versions, generates changelogs, and ships releases across 14+ file formats, monorepos, and CI.',
       defaultLocale: 'root',
       locales: {
         root: {
@@ -107,15 +108,11 @@ export default defineConfig({
         },
         {
           label: 'Deployment',
-          items: [
-            { label: 'Self-hosting', slug: 'docs/self-hosting' },
-          ],
+          items: [{ label: 'Self-hosting', slug: 'docs/self-hosting' }],
         },
         {
           label: 'Legal',
-          items: [
-            { label: 'Telemetry', slug: 'docs/legal/telemetry' },
-          ],
+          items: [{ label: 'Telemetry', slug: 'docs/legal/telemetry' }],
         },
       ],
     }),

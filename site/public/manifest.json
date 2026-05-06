@@ -1,11 +1,11 @@
 {
   "name": "FerrFlow",
   "short_name": "FerrFlow",
-  "description": "Universal semantic versioning for monorepos and classic repos",
+  "description": "FerrFlow — open-source CLI for universal semantic versioning across 14+ file formats, monorepos, and CI.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#FDF8F4",
-  "theme_color": "#E8733A",
+  "background_color": "#fdf8f4",
+  "theme_color": "#e8733a",
   "icons": [
     { "src": "/icon-dot-64.svg", "sizes": "64x64", "type": "image/svg+xml" },
     { "src": "/icon-dot-128.svg", "sizes": "128x128", "type": "image/svg+xml" },
