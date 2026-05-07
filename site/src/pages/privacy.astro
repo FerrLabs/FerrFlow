@@ -1,58 +1,103 @@
 ---
 import LegalLayout from '../layouts/LegalLayout.astro';
 ---
+
 <LegalLayout
-  title="Privacy — FerrFlow"
-  description="What FerrFlow does (and doesn't) send to our servers. The CLI is fully offline; cloud features are opt-in."
+  title="Privacy policy — FerrFlow"
+  description="What personal data ferrflow.com collects, why, how long we keep it, and how to exercise your GDPR rights."
   lang="en"
   canonical="https://ferrflow.com/privacy"
   pathname="/privacy"
-  lastUpdated="2026-05-01"
-  draft
+  lastUpdated="2026-05-06"
 >
-  <span slot="heading">Privacy — <em>FerrFlow</em></span>
+  <span slot="heading">Privacy <em>policy</em></span>
 
-  <h2>The FerrFlow CLI</h2>
   <p>
-    The CLI binary <strong>does not send any data to FerrLabs servers</strong>. It reads
-    your local commits, bumps version files, generates changelogs, creates git tags and
-    GitHub releases (calling the GitHub API on your behalf with <em>your</em> token).
-    No telemetry, no error reporting, no auto-update check, no usage stats.
-  </p>
-  <p>
-    The only network traffic FerrFlow makes is what you ask it to: pulling git remotes,
-    pushing tags, posting to GitHub Releases, optionally publishing to package registries.
+    This policy describes the personal data collected by FerrLabs (Bryan Ferrando, sole proprietor,
+    SIREN 104 243 951) acting as data controller for the marketing site
+    <strong>ferrflow.com</strong>, in accordance with the GDPR.
   </p>
 
-  <h2>The marketing site (ferrflow.com)</h2>
+  <h2>Scope</h2>
   <p>
-    Read-only marketing pages. No analytics tracker. No cookie set by FerrFlow itself.
-    See <a href="/cookies">cookie policy</a>.
+    This policy covers ferrflow.com only. The FerrFlow CLI binary runs entirely on your machine and
+    does not contact FerrLabs servers — no telemetry, no error reporting, no usage stats. Account,
+    billing and team management on <code>app.ferrlabs.com</code> are governed by the
+    <a href="https://ferrlabs.com/privacy">canonical FerrLabs privacy policy</a>.
   </p>
 
-  <h2>FerrFlow Bot (optional GitHub integration)</h2>
-  <p>
-    The FerrFlow Bot is a GitHub App that automates version bumps and releases on PRs.
-    When you install it on a repository, FerrLabs receives:
-  </p>
+  <h2>Data collected</h2>
   <ul>
-    <li>Webhook events from GitHub: PR open / merge, push events on default branch.</li>
-    <li>The metadata necessary to compute the next version: commits SHAs, commit messages, conventional-commits trailers, branch refs.</li>
-    <li>A short-lived OAuth token with the scope you grant: read commits, write tags, write releases on the chosen repositories.</li>
+    <li>
+      <strong>Server logs</strong>: IP address, user-agent, timestamps and requested URLs, kept for
+      30 days for security and abuse prevention.
+    </li>
+    <li>
+      <strong>No cookies</strong>: ferrflow.com sets no cookie. The only client-side storage in use
+      is the browser <code>localStorage</code> for remembering your language preference.
+    </li>
+    <li>
+      <strong>No analytics</strong>: no audience tracker, no marketing pixel, no third-party script.
+    </li>
   </ul>
+
+  <h2>Purposes</h2>
+  <ul>
+    <li>Operation and security of the marketing site.</li>
+    <li>Compliance with legal obligations.</li>
+  </ul>
+
+  <h2>Legal bases (GDPR art. 6)</h2>
+  <ul>
+    <li><strong>Legitimate interest</strong> (6.1.f) for security and server logs.</li>
+    <li><strong>Legal obligation</strong> (6.1.c) where applicable.</li>
+  </ul>
+
+  <h2>Subprocessors</h2>
+  <ul>
+    <li><strong>OVH SAS</strong> — hosting (France).</li>
+  </ul>
+
+  <h2>Retention period</h2>
+  <table>
+    <thead>
+      <tr><th>Data</th><th>Retention</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Server logs</td><td>30 days</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Your rights</h2>
   <p>
-    No source code body, no diff content, no issue / PR description body is read or
-    stored. The bot processes events in-memory and writes back the version bump as a new
-    commit and tag, without persisting your data beyond logs (30 days retention).
+    Under the GDPR, you have the rights of access, rectification, erasure, portability, objection
+    and restriction of processing.
+  </p>
+  <p>
+    To exercise your rights regarding the marketing site: <strong>contact@ferrlabs.com</strong>. For
+    account-related data rights (FerrLabs account on <code>app.ferrlabs.com</code>), please use the
+    account dashboard or contact <strong>contact@ferrlabs.com</strong>.
+  </p>
+  <p>
+    You may also lodge a complaint with the CNIL (<a href="https://www.cnil.fr">cnil.fr</a>).
   </p>
 
-  <h2>Cloud account (app.ferrlabs.com)</h2>
+  <h2>Data Protection Officer (DPO)</h2>
   <p>
-    Account, billing and team management are governed by the canonical
-    <a href="https://ferrlabs.com/privacy">FerrLabs privacy policy</a>.
+    FerrLabs has not appointed a DPO. This is not required for a sole proprietorship that does not
+    carry out large-scale processing of sensitive data (GDPR art. 37).
   </p>
+
+  <h2>Transfers outside the European Union</h2>
+  <p>
+    No transfer of personal data is made outside the European Union for this site. Hosting is
+    operated by OVH SAS in France.
+  </p>
+
+  <h2>Changes</h2>
+  <p>This policy may be updated. The date of the last revision is shown at the top of this page.</p>
 
   <p style="margin-top:48px;font-size:13px;">
-    French version: <a href="/fr/privacy">Confidentialité</a>.
+    French version: <a href="/fr/privacy">Politique de confidentialité</a>.
   </p>
 </LegalLayout>
