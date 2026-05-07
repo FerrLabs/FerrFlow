@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.2.0] - 2026-05-07
+
+### Features
+
+- feat(site): add 404 pages (EN + FR) (#492)
+
 ## [6.1.0] - 2026-05-07
 
 ### Features
