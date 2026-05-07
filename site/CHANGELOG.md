@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.1.0] - 2026-05-07
+
+### Features
+
+- feat(site): add mentions légales + privacy + CGU pages (#489)
+
 ## [6.0.1] - 2026-05-06
 
 ### Bug Fixes
