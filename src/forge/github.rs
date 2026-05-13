@@ -10,16 +10,30 @@ pub struct GitHubForge {
 }
 
 impl Forge for GitHubForge {
-    fn create_release(&self, tag: &str, body: &str, prerelease: bool, draft: bool) -> Result<()> {
+    fn create_release(
+        &self,
+        tag: &str,
+        body: &str,
+        prerelease: bool,
+        draft: bool,
+        target_commitish: Option<&str>,
+    ) -> Result<()> {
         let url = format!("{}/repos/{}/releases", self.api_base, self.slug);
 
-        let payload = serde_json::json!({
+        let mut payload = serde_json::json!({
             "tag_name": tag,
             "name": tag,
             "body": body,
             "draft": draft,
             "prerelease": prerelease,
         });
+        if let Some(sha) = target_commitish.filter(|s| !s.is_empty()) {
+            // Anchors the tag to a specific commit SHA. Lets us call
+            // create_release BEFORE pushing the tag ref to the remote —
+            // eliminates the race where push:tags triggers the Publish
+            // workflow before the GitHub API has created the release.
+            payload["target_commitish"] = serde_json::Value::String(sha.to_string());
+        }
 
         ureq::post(&url)
             .header("Authorization", &format!("Bearer {}", self.token))

@@ -1237,34 +1237,41 @@ fn run_release_logic(
         }
 
         if !dry_run {
-            // Push tags (and branch for commit mode).
             let tag_refs: Vec<&str> = tags_to_create
                 .iter()
                 .map(|(t, _, _, _, _, _, _)| t.as_str())
                 .collect();
-            match mode {
-                ReleaseCommitMode::Commit => {
-                    push(&repo, &config.workspace.remote, &target_branch, &tag_refs)?;
-                    shared_outputs.push(format!(
-                        "✓ Pushed and verified on {}/{}",
-                        config.workspace.remote, target_branch
-                    ));
-                }
-                ReleaseCommitMode::Pr | ReleaseCommitMode::None => {
-                    if !tag_refs.is_empty() {
-                        push_tags(&repo, &config.workspace.remote, &tag_refs)?;
-                        shared_outputs.push("✓ Pushed tags".to_string());
-                    }
-                }
+
+            // Step 1: push the bump commit (branch only, no tags yet).
+            // This lands the chore(release): ... commit on the remote so
+            // the upcoming GitHub Release API call has a real SHA to
+            // anchor against via target_commitish.
+            //
+            // We deliberately split the branch push from the tag push so
+            // we can create the GitHub Releases BEFORE the tag refs hit
+            // the remote. Otherwise the push:tags event fires the Publish
+            // workflow, which races against the create-release API call
+            // and frequently sees `release not found` on upload-assets.
+            if let ReleaseCommitMode::Commit = mode {
+                push(&repo, &config.workspace.remote, &target_branch, &[])?;
+                shared_outputs.push(format!(
+                    "✓ Pushed and verified on {}/{}",
+                    config.workspace.remote, target_branch
+                ));
             }
 
-            // Force-push floating tags (they may already exist on the remote).
-            if !floating_tag_names.is_empty() {
-                let float_refs: Vec<&str> = floating_tag_names.iter().map(String::as_str).collect();
-                force_push_tags(&repo, &config.workspace.remote, &float_refs)?;
-                shared_outputs.push("✓ Pushed floating tags".to_string());
-            }
+            // Resolve the target SHA — HEAD now matches what's on the
+            // remote (in Commit mode after step 1; in Pr/None modes the
+            // caller is responsible for the commit already being upstream).
+            let target_sha = repo
+                .head()
+                .ok()
+                .and_then(|h| h.peel_to_commit().ok())
+                .map(|c| c.id().to_string());
 
+            // Step 2: create GitHub Releases anchored to the SHA. When
+            // this returns, the releases exist server-side and the Publish
+            // workflow (when it fires in step 3) finds them immediately.
             if let Some(forge_instance) = build_forge_instance(&repo, config) {
                 for (tag_name, _, body, pkg_name, _, _, is_pre) in &tags_to_create {
                     if !draft {
@@ -1310,7 +1317,13 @@ fn run_release_logic(
                         }
                     }
 
-                    match forge_instance.create_release(tag_name, body, *is_pre, draft) {
+                    match forge_instance.create_release(
+                        tag_name,
+                        body,
+                        *is_pre,
+                        draft,
+                        target_sha.as_deref(),
+                    ) {
                         Ok(()) => {
                             if let Some((_, lines)) =
                                 pkg_outputs.iter_mut().rev().find(|(n, _)| n == pkg_name)
@@ -1333,6 +1346,25 @@ fn run_release_logic(
                         ),
                     }
                 }
+            }
+
+            // Step 3: push the version tag refs. This fires push:tags
+            // which triggers the Publish workflow — releases already
+            // exist from step 2, so upload-assets finds them on first
+            // try. No race.
+            if !tag_refs.is_empty() {
+                push_tags(&repo, &config.workspace.remote, &tag_refs)?;
+                shared_outputs.push("✓ Pushed tags".to_string());
+            }
+
+            // Step 4: floating tags last. These overwrite existing refs
+            // (v4 -> v4.7.1 etc.). Doing them after the version tag push
+            // means consumers using @v4 only see the new version once
+            // the underlying tag is pinned.
+            if !floating_tag_names.is_empty() {
+                let float_refs: Vec<&str> = floating_tag_names.iter().map(String::as_str).collect();
+                force_push_tags(&repo, &config.workspace.remote, &float_refs)?;
+                shared_outputs.push("✓ Pushed floating tags".to_string());
             }
 
             if let Ok(summary_path) = std::env::var("GITHUB_STEP_SUMMARY") {

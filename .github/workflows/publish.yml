@@ -114,6 +114,26 @@ jobs:
         uses: actions/attest-build-provenance@v4
         with:
           subject-path: artifacts/*
+      - name: Wait for draft release to be visible
+        # Defense against the race where this workflow (push:tags) fires
+        # before `ferrflow release --draft` (running in the CI workflow on
+        # the same commit) has finished the create-release API call. We
+        # poll up to ~2.5 min — the API call normally completes within a
+        # few seconds, this only saves us from eventual-consistency lag.
+        run: |
+          TAG="${{ github.ref_name }}"
+          for i in $(seq 1 30); do
+            if gh release view "$TAG" >/dev/null 2>&1; then
+              echo "Release $TAG visible after $((i*5))s"
+              exit 0
+            fi
+            echo "Release $TAG not yet visible, retrying in 5s ($i/30)..."
+            sleep 5
+          done
+          echo "::error::Release $TAG never appeared after 150s — see ferrflow release log"
+          exit 1
+        env:
+          GH_TOKEN: ${{ secrets.FERRFLOW_TOKEN }}
       - name: Upload assets to draft release
         run: |
           TAG="${{ github.ref_name }}"
