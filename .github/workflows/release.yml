@@ -85,7 +85,7 @@ jobs:
   release:
     name: Upload Assets
     needs: build
-    runs-on: ferrlabs-k8s
+    runs-on: ubuntu-latest
     permissions:
       contents: write
       id-token: write

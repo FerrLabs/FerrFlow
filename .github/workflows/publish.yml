@@ -80,7 +80,7 @@ jobs:
   upload:
     name: Upload Release Assets
     needs: build
-    runs-on: ferrlabs-k8s
+    runs-on: ubuntu-latest
     permissions:
       contents: write
       id-token: write
@@ -131,7 +131,7 @@ jobs:
   publish-crate:
     name: Publish crates.io
     needs: upload
-    runs-on: ferrlabs-k8s
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
@@ -140,7 +140,7 @@ jobs:
   publish-npm:
     name: Publish npm
     needs: upload
-    runs-on: ferrlabs-k8s
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -161,7 +161,7 @@ jobs:
   publish-wasm:
     name: Publish @ferrflow/wasm
     needs: upload
-    runs-on: ferrlabs-k8s
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
@@ -186,7 +186,7 @@ jobs:
   publish-docker:
     name: Publish Docker
     needs: upload
-    runs-on: ferrlabs-k8s
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
