@@ -6,17 +6,23 @@ use std::path::Path;
 pub struct GoModVersionFile;
 
 impl VersionFile for GoModVersionFile {
-    fn read_version(&self, _file_path: &Path) -> Result<String> {
-        let output = std::process::Command::new("git")
-            .args([
-                "describe",
-                "--tags",
-                "--match",
-                "*@v*",
-                "--match",
-                "v*",
-                "--abbrev=0",
-            ])
+    fn read_version(&self, file_path: &Path) -> Result<String> {
+        let mut cmd = std::process::Command::new("git");
+        cmd.args([
+            "describe",
+            "--tags",
+            "--match",
+            "*@v*",
+            "--match",
+            "v*",
+            "--abbrev=0",
+        ]);
+        if let Some(parent) = file_path.parent()
+            && !parent.as_os_str().is_empty()
+        {
+            cmd.current_dir(parent);
+        }
+        let output = cmd
             .output()
             .context("Failed to run git describe")
             .error_code(error_code::GOMOD_GIT_DESCRIBE)?;
@@ -84,14 +90,7 @@ mod tests {
         assert!(!handler.modifies_file());
     }
 
-    #[test]
-    fn read_version_errors_when_no_tag() {
-        // When no matching tag exists, `read_version` surfaces a
-        // `GOMOD_NO_TAG` error so the caller can apply a strategy-aware
-        // bootstrap (see `versioning::bootstrap_version`).
-        let dir = tempfile::tempdir().unwrap();
-        let repo = dir.path();
-
+    fn init_repo(repo: &Path) {
         for (args, err_msg) in &[
             (vec!["init", "-b", "main"], "git init"),
             (
@@ -112,16 +111,46 @@ mod tests {
                 String::from_utf8_lossy(&out.stderr)
             );
         }
+    }
+
+    #[test]
+    fn read_version_errors_when_no_tag() {
+        let dir = tempfile::tempdir().unwrap();
+        let repo = dir.path();
+        init_repo(repo);
 
         let handler = GoModVersionFile;
-        let original_cwd = std::env::current_dir().unwrap();
-        std::env::set_current_dir(repo).unwrap();
-        let result = handler.read_version(Path::new("go.mod"));
-        std::env::set_current_dir(original_cwd).unwrap();
+        let result = handler.read_version(&repo.join("go.mod"));
 
         assert!(
             result.is_err(),
             "expected error when no tag, got {result:?}"
         );
+    }
+
+    #[test]
+    fn read_version_uses_file_path_parent_dir() {
+        let dir = tempfile::tempdir().unwrap();
+        let repo = dir.path();
+        init_repo(repo);
+
+        let tag_out = Command::new("git")
+            .args(["tag", "v1.2.3"])
+            .current_dir(repo)
+            .output()
+            .unwrap();
+        assert!(tag_out.status.success());
+
+        let other_dir = tempfile::tempdir().unwrap();
+        let original_cwd = std::env::current_dir().unwrap();
+        std::env::set_current_dir(other_dir.path()).unwrap();
+
+        let handler = GoModVersionFile;
+        let result = handler.read_version(&repo.join("go.mod"));
+
+        std::env::set_current_dir(original_cwd).unwrap();
+
+        let v = result.expect("should resolve version via file_path parent");
+        assert_eq!(v, "1.2.3");
     }
 }
