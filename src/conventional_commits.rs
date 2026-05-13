@@ -24,28 +24,36 @@ static BREAKING_RE: OnceLock<Regex> = OnceLock::new();
 static FEAT_RE: OnceLock<Regex> = OnceLock::new();
 static PATCH_RE: OnceLock<Regex> = OnceLock::new();
 
-fn breaking_re() -> &'static Regex {
+fn breaking_header_re() -> &'static Regex {
     BREAKING_RE.get_or_init(|| {
-        Regex::new(r"(?m)^(feat|fix|refactor|perf|build|chore|docs|style|test|ci)(\(.+\))?!:|^BREAKING CHANGE").unwrap()
+        Regex::new(r"^(feat|fix|refactor|perf|build|chore|docs|style|test|ci)(\(.+\))?!:").unwrap()
     })
 }
 
-fn feat_re() -> &'static Regex {
-    FEAT_RE.get_or_init(|| Regex::new(r"(?m)^feat(\(.+\))?:").unwrap())
+fn feat_header_re() -> &'static Regex {
+    FEAT_RE.get_or_init(|| Regex::new(r"^feat(\(.+\))?:").unwrap())
 }
 
-fn patch_re() -> &'static Regex {
-    PATCH_RE.get_or_init(|| Regex::new(r"(?m)^(fix|perf|refactor)(\(.+\))?:").unwrap())
+fn patch_header_re() -> &'static Regex {
+    PATCH_RE.get_or_init(|| Regex::new(r"^(fix|perf|refactor)(\(.+\))?:").unwrap())
+}
+
+static BREAKING_FOOTER_RE: OnceLock<Regex> = OnceLock::new();
+
+fn breaking_footer_re() -> &'static Regex {
+    BREAKING_FOOTER_RE.get_or_init(|| Regex::new(r"(?m)^BREAKING CHANGE").unwrap())
 }
 
 pub fn determine_bump(message: &str) -> BumpType {
-    if breaking_re().is_match(message) {
+    let header = parse_subject(message);
+
+    if breaking_header_re().is_match(header) || breaking_footer_re().is_match(message) {
         return BumpType::Major;
     }
-    if feat_re().is_match(message) {
+    if feat_header_re().is_match(header) {
         return BumpType::Minor;
     }
-    if patch_re().is_match(message) {
+    if patch_header_re().is_match(header) {
         return BumpType::Patch;
     }
     BumpType::None
@@ -266,9 +274,20 @@ mod tests {
     }
 
     #[test]
-    fn test_multiline_body_feat_in_body_matches() {
+    fn test_multiline_body_feat_in_body_does_not_match() {
         let msg = "chore: update deps\n\nfeat: this is in the body";
-        // The regex uses (?m) multiline, so feat: in the body DOES match
-        assert_eq!(determine_bump(msg), BumpType::Minor);
+        assert_eq!(determine_bump(msg), BumpType::None);
+    }
+
+    #[test]
+    fn test_multiline_body_fix_in_body_does_not_match() {
+        let msg = "chore: update deps\n\nfix: this is in the body";
+        assert_eq!(determine_bump(msg), BumpType::None);
+    }
+
+    #[test]
+    fn test_multiline_body_breaking_marker_in_body_does_not_match() {
+        let msg = "chore: update deps\n\nfeat!: this is in the body";
+        assert_eq!(determine_bump(msg), BumpType::None);
     }
 }
