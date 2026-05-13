@@ -19,7 +19,7 @@ jobs:
   test:
     name: Test
     if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):')
-    runs-on: ferrlabs-k8s
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
@@ -43,7 +43,7 @@ jobs:
   security:
     name: Cargo Security
     if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):')
-    runs-on: ferrlabs-k8s
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
@@ -62,7 +62,7 @@ jobs:
     name: Build Release Binary
     needs: test
     if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):')
-    runs-on: ferrlabs-k8s
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
@@ -81,7 +81,7 @@ jobs:
   coverage:
     name: Coverage
     if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):')
-    runs-on: ferrlabs-k8s
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
@@ -102,7 +102,7 @@ jobs:
     name: Generate Fixtures
     needs: test
     if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):')
-    runs-on: ferrlabs-k8s
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
 
@@ -145,7 +145,7 @@ jobs:
   fixture-monorepo:
     name: Fixtures â€” Monorepo
     needs: [build, fixture-generate]
-    runs-on: ferrlabs-k8s
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
@@ -181,7 +181,7 @@ jobs:
   fixture-single:
     name: Fixtures â€” Single Package
     needs: [build, fixture-generate]
-    runs-on: ferrlabs-k8s
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
@@ -217,7 +217,7 @@ jobs:
   fixture-config:
     name: Fixtures â€” Config & Formats
     needs: [build, fixture-generate]
-    runs-on: ferrlabs-k8s
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
@@ -253,7 +253,7 @@ jobs:
   fixture-advanced:
     name: Fixtures â€” Advanced Features
     needs: [build, fixture-generate]
-    runs-on: ferrlabs-k8s
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
@@ -299,7 +299,7 @@ jobs:
   micro-bench-build:
     name: Build micro bench binary
     if: github.event_name == 'pull_request'
-    runs-on: ferrlabs-k8s
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
@@ -337,7 +337,7 @@ jobs:
     name: Micro Benchmark - ${{ matrix.group }}
     needs: micro-bench-build
     if: github.event_name == 'pull_request'
-    runs-on: ferrlabs-k8s
+    runs-on: ubuntu-latest
     continue-on-error: true
     strategy:
       fail-fast: false
@@ -397,7 +397,7 @@ jobs:
     name: Micro Benchmark (aggregate)
     needs: micro-bench
     if: github.event_name == 'pull_request'
-    runs-on: ferrlabs-k8s
+    runs-on: ubuntu-latest
     permissions:
       pull-requests: write
     steps:
@@ -449,7 +449,7 @@ jobs:
   benchmark:
     name: Benchmark
     needs: test
-    runs-on: ferrlabs-k8s
+    runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v6
@@ -470,7 +470,7 @@ jobs:
   release:
     name: Release
     needs: [test, fixture-monorepo, fixture-single, fixture-config, fixture-advanced, benchmark]
-    runs-on: ferrlabs-k8s
+    runs-on: ubuntu-latest
     concurrency:
       group: release-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: false
