@@ -17,7 +17,17 @@ impl GitLabForge {
 }
 
 impl Forge for GitLabForge {
-    fn create_release(&self, tag: &str, body: &str, prerelease: bool, draft: bool) -> Result<()> {
+    fn create_release(
+        &self,
+        tag: &str,
+        body: &str,
+        prerelease: bool,
+        draft: bool,
+        // GitLab anchors releases to existing tags; the GitHub
+        // target_commitish trick to pre-create before tag-push doesn't
+        // apply. Accept the parameter for trait conformance and ignore it.
+        _target_commitish: Option<&str>,
+    ) -> Result<()> {
         if draft {
             eprintln!(
                 "{}",
