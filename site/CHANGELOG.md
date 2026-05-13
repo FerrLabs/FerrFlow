@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.2.1] - 2026-05-13
+
+### Bug Fixes
+
+- fix(schema): sync ferrflow.json from CLI source of truth (#433) (#494)
+
 ## [6.2.0] - 2026-05-07
 
 ### Features
