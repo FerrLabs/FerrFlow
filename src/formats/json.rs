@@ -50,6 +50,36 @@ mod tests {
         assert_eq!(v["private"], true);
         assert_eq!(v["version"], "2.0.0");
     }
+
+    #[test]
+    fn write_preserves_key_order() {
+        let f = write_temp(
+            r#"{"name":"foo","version":"1.0.0","private":true,"description":"x","scripts":{"build":"tsc"}}"#,
+        );
+        let handler = JsonVersionFile;
+        handler.write_version(f.path(), "2.0.0").unwrap();
+        let content = std::fs::read_to_string(f.path()).unwrap();
+
+        let name_pos = content.find("\"name\"").unwrap();
+        let version_pos = content.find("\"version\"").unwrap();
+        let private_pos = content.find("\"private\"").unwrap();
+        let description_pos = content.find("\"description\"").unwrap();
+        let scripts_pos = content.find("\"scripts\"").unwrap();
+
+        assert!(name_pos < version_pos, "name must come before version");
+        assert!(
+            version_pos < private_pos,
+            "version must come before private"
+        );
+        assert!(
+            private_pos < description_pos,
+            "private must come before description"
+        );
+        assert!(
+            description_pos < scripts_pos,
+            "description must come before scripts"
+        );
+    }
 }
 
 impl VersionFile for JsonVersionFile {
