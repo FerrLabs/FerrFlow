@@ -38,7 +38,7 @@ cli = ["dep:git2", "dep:ureq", "dep:clap", "dep:clap_complete", "dep:colored", "
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde_json = { version = "1", features = ["preserve_order"] }
 json5 = "1.0"
 toml_edit = { version = "0.25", features = ["serde"] }
 semver = "1"
