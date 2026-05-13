@@ -22,7 +22,7 @@ jobs:
     runs-on: ferrlabs-k8s
     steps:
       - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
@@ -65,7 +65,7 @@ jobs:
     runs-on: ferrlabs-k8s
     steps:
       - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Build ferrflow
         run: cargo build --release
@@ -84,7 +84,7 @@ jobs:
     runs-on: ferrlabs-k8s
     steps:
       - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Install cargo-tarpaulin
         run: cargo install cargo-tarpaulin
@@ -302,7 +302,7 @@ jobs:
     runs-on: ferrlabs-k8s
     steps:
       - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Compile bench binary (no run)
         run: cargo bench --bench ferrflow_benchmarks --no-run
@@ -453,7 +453,7 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - uses: actions/setup-node@v6
         with:
@@ -499,7 +499,7 @@ jobs:
           # to GITHUB_TOKEN (i.e. github-actions[bot]) which isn't in the
           # branch-rule bypass list and can't push to main.
           persist-credentials: false
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Build ferrflow
         run: cargo build --release

@@ -36,7 +36,7 @@ jobs:
             archive: ferrflow-windows-x64.zip
     steps:
       - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
@@ -90,7 +90,7 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.FERRFLOW_TOKEN }}
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Build ferrflow
         run: cargo build --release
@@ -134,7 +134,7 @@ jobs:
     runs-on: ferrlabs-k8s
     steps:
       - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@stable
       - run: cargo publish --allow-dirty --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
   publish-npm:
@@ -164,7 +164,7 @@ jobs:
     runs-on: ferrlabs-k8s
     steps:
       - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
       - uses: actions/setup-node@v6
