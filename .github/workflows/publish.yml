@@ -121,21 +121,29 @@ jobs:
         # We poll up to ~5 min, then fall back to creating the draft
         # release ourselves as a self-healing measure.
         #
-        # Why list+filter instead of `gh release view "$TAG"` or `gh api
-        # /releases/tags/$TAG`:
-        # - The REST endpoint `/releases/tags/{tag}` excludes drafts
-        #   entirely (returns 404). Verified locally on v4.7.2.
-        # - `gh release view "$TAG"` finds drafts but in v4.7.2's failed
-        #   Publish run it returned 404 in the runner anyway, possibly
-        #   due to gh-CLI version skew or token scope. We can't pin
-        #   the runner gh version reliably.
-        # - `GET /releases?per_page=100` returns drafts when authed and
-        #   is the most stable surface for "does this draft exist?".
+        # Why list+filter via `GET /releases?per_page=100` and
+        # GITHUB_TOKEN here (vs FERRFLOW_TOKEN used elsewhere in this
+        # job):
+        # - `/releases/tags/{tag}` excludes drafts entirely (404).
+        #   Verified locally on v4.7.2.
+        # - `gh release view "$TAG"` returned 404 in the runner for the
+        #   v4.7.2 draft despite the draft existing in the UI — gh CLI
+        #   version skew, can't pin the runner gh reliably.
+        # - The fine-grained PAT in `secrets.FERRFLOW_TOKEN` lacks
+        #   read scope on `/releases?per_page=100` and returns 403
+        #   "Resource not accessible by personal access token"
+        #   (verified: v4.7.3's failed Publish run, exit 1 at
+        #   self-heal). The default `GITHUB_TOKEN` with `contents:
+        #   write` (granted at the job level above) DOES have that
+        #   scope on the workflow's own repo and lists drafts fine.
+        # - Upload + Publish steps below keep FERRFLOW_TOKEN because
+        #   those need the bot identity for branch-rule bypass and for
+        #   ferrflow's own publish_release API call.
         #
         # Self-heal: if the wait window expires, we attempt to create
         # the release ourselves before failing. Covers the case where
         # ferrflow's create_release call in CI silently warned-and-
-        # continued (see monorepo.rs:1339, follow-up filed at #439-fix).
+        # continued (see monorepo.rs:1339, tracked as a follow-up).
         run: |
           TAG="${{ github.ref_name }}"
           REPO="${{ github.repository }}"
@@ -158,7 +166,7 @@ jobs:
             --target "${{ github.sha }}"
           echo "Created draft release $TAG via self-heal"
         env:
-          GH_TOKEN: ${{ secrets.FERRFLOW_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload assets to draft release
         run: |
           TAG="${{ github.ref_name }}"
