@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [4.7.3] - 2026-05-14
+
+### Bug Fixes
+
+- fix(release): wait via list+filter and self-heal missing draft (#439)
+
 ## [4.7.2] - 2026-05-13
 
 ### Bug Fixes
