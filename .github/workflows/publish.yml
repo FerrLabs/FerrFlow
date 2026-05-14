@@ -40,6 +40,21 @@ jobs:
         with:
           targets: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
+      # macos-15-arm64 ships with a `cargo` shim at /usr/local/bin/cargo
+      # that delegates to rustup-init when no managed toolchain is set —
+      # the dtolnay action installs into ~/.cargo but PATH ordering can
+      # leave the broken shim winning, surfacing as "unexpected argument
+      # 'build' found / Usage: rustup-init" (see v4.7.5 Publish run).
+      # `rustup show` warms up the rustup default and prepending
+      # CARGO_HOME/bin guarantees we hit the real cargo binary in
+      # subsequent steps. No-op on linux/windows.
+      - name: Verify cargo toolchain
+        if: matrix.os != 'ubuntu-latest'
+        run: |
+          rustup show active-toolchain || rustup default stable
+          echo "${CARGO_HOME:-$HOME/.cargo}/bin" >> "$GITHUB_PATH"
+          which cargo
+          cargo --version
       - name: Install cross
         if: matrix.os == 'ubuntu-latest'
         # Download via curl with retries â€” we hit GitHub 504s here from time to
