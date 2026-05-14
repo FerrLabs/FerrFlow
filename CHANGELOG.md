@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [4.7.5] - 2026-05-14
+
+### Bug Fixes
+
+- fix(release): upload + publish steps use GITHUB_TOKEN to access drafts (#441)
+
 ## [4.7.4] - 2026-05-14
 
 ### Bug Fixes
