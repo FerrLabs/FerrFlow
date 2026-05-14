@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [4.7.6] - 2026-05-14
+
+### Bug Fixes
+
+- fix(publish): warm up rustup + prepend cargo bin to PATH on macos-15-arm64 (#442)
+
 ## [4.7.5] - 2026-05-14
 
 ### Bug Fixes
