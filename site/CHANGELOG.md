@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.3.0] - 2026-05-14
+
+### Features
+
+- feat(site): add security / vulnerability disclosure page (EN + FR) (#496)
+
 ## [6.2.1] - 2026-05-13
 
 ### Bug Fixes
