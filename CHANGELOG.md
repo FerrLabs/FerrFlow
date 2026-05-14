@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [4.7.4] - 2026-05-14
+
+### Bug Fixes
+
+- fix(release): wait step uses GITHUB_TOKEN to list drafts (FERRFLOW_TOKEN PAT lacks scope) (#440)
+
 ## [4.7.3] - 2026-05-14
 
 ### Bug Fixes
