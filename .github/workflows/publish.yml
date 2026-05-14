@@ -168,18 +168,34 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload assets to draft release
+        # Same scope reason as the wait step above: FERRFLOW_TOKEN
+        # (fine-grained PAT) lacks the `Releases: write` scope needed
+        # for `gh release upload` against a draft. v4.7.4 failed here
+        # with "release not found" because gh CLI internally hits
+        # /repos/.../releases/tags/<tag> which excludes drafts, and
+        # then falls back to a list call the PAT can't see. The
+        # job-level `permissions: contents: write` grants GITHUB_TOKEN
+        # everything needed to write to draft release assets on the
+        # workflow's own repo.
         run: |
           TAG="${{ github.ref_name }}"
           for file in artifacts/*; do
             gh release upload "$TAG" "$file" --clobber
           done
         env:
-          GH_TOKEN: ${{ secrets.FERRFLOW_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish draft release
+        # Same scope reason as the wait + upload steps above. The
+        # ferrflow release subcommand calls find_draft_release +
+        # publish_release (both GitHub API, no git push) — neither
+        # works with FERRFLOW_TOKEN's PAT scopes against drafts.
+        # GITHUB_TOKEN with the job-level `contents: write` permission
+        # has the necessary release-API access on the workflow's own
+        # repo.
         run: ./target/release/ferrflow release
         env:
-          FERRFLOW_TOKEN: ${{ secrets.FERRFLOW_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.FERRFLOW_TOKEN }}
+          FERRFLOW_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   publish-crate:
     name: Publish crates.io
