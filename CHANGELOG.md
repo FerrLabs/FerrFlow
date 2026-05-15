@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [4.7.7] - 2026-05-15
+
+### Bug Fixes
+
+- fix(git): retry transient push errors with exponential backoff (E2003/E2006/E2008) (#444)
+
 ## [4.7.6] - 2026-05-14
 
 ### Bug Fixes
