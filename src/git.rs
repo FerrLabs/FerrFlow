@@ -1,13 +1,117 @@
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::time::Duration;
 
 use anyhow::{Context, Result};
+use colored::Colorize;
 use git2::{Cred, CredentialType, PushOptions, RemoteCallbacks, Repository, Sort};
 use std::path::{Path, PathBuf};
 
 pub use crate::changelog::GitLog;
 use crate::config::OrphanedTagStrategy;
 use crate::error_code::{self, ErrorCodeExt};
+
+/// Retry a push-like operation with exponential backoff on transient
+/// failures. Transient = network blip, GitHub 5xx, secondary rate limit,
+/// connection reset, etc. Non-transient errors (branch protection, auth,
+/// non-fast-forward) return immediately — retries wouldn't help.
+///
+/// Schedule: attempt #1 immediately; if transient, wait 1s and retry;
+/// 2s; 4s; give up after 4 attempts (~7s total wall time before final
+/// error). Tuned for the most common case of "GitHub 502 on the first try,
+/// resolves on the second".
+fn retry_transient<F>(label: &str, mut op: F) -> Result<()>
+where
+    F: FnMut() -> Result<()>,
+{
+    const MAX_ATTEMPTS: u32 = 4;
+    let mut delay = Duration::from_secs(1);
+    let mut last_err: Option<anyhow::Error> = None;
+
+    for attempt in 1..=MAX_ATTEMPTS {
+        match op() {
+            Ok(()) => {
+                if attempt > 1 {
+                    eprintln!(
+                        "{}",
+                        format!("  ✓ {label} succeeded on attempt {attempt}/{MAX_ATTEMPTS}")
+                            .green()
+                    );
+                }
+                return Ok(());
+            }
+            Err(err) => {
+                let transient = is_transient_git_error(&err);
+                if !transient || attempt == MAX_ATTEMPTS {
+                    return Err(err);
+                }
+                eprintln!(
+                    "{}",
+                    format!(
+                        "  ⚠ {label} attempt {attempt}/{MAX_ATTEMPTS} failed (transient): {err}; \
+                         retrying in {}s",
+                        delay.as_secs()
+                    )
+                    .yellow()
+                );
+                std::thread::sleep(delay);
+                delay = delay.saturating_mul(2);
+                last_err = Some(err);
+            }
+        }
+    }
+    Err(last_err.unwrap_or_else(|| anyhow::anyhow!("retry loop exited without result")))
+}
+
+/// Classify an error as transient (network/server hiccup, retry useful)
+/// or terminal (branch protection, auth, fast-forward conflict — retry is
+/// futile). Checks the full error chain so wrapped errors still surface.
+fn is_transient_git_error(err: &anyhow::Error) -> bool {
+    let chain = err
+        .chain()
+        .map(|e| e.to_string().to_lowercase())
+        .collect::<Vec<_>>()
+        .join(" ");
+    // Network class
+    if chain.contains("connection")
+        || chain.contains("timeout")
+        || chain.contains("timed out")
+        || chain.contains("could not resolve host")
+        || chain.contains("temporarily unavailable")
+        || chain.contains("network")
+        || chain.contains("connection reset")
+        || chain.contains("rst_stream")
+        || chain.contains("broken pipe")
+        || chain.contains("ssl")
+        || chain.contains("tls")
+    {
+        return true;
+    }
+    // GitHub server class
+    if chain.contains("502")
+        || chain.contains("503")
+        || chain.contains("504")
+        || chain.contains("bad gateway")
+        || chain.contains("service unavailable")
+        || chain.contains("gateway timeout")
+        || chain.contains("secondary rate limit")
+        || chain.contains("rate limit exceeded")
+    {
+        return true;
+    }
+    // Terminal class — explicit "do not retry" markers
+    if chain.contains("non-fast-forward")
+        || chain.contains("branch protection")
+        || chain.contains("rejected by remote")
+        || chain.contains("authentication failed")
+        || chain.contains("permission denied")
+        || chain.contains("repository not found")
+    {
+        return false;
+    }
+    // Default: don't retry unknown errors.
+    false
+}
 
 pub fn open_repo(path: &Path) -> Result<Repository> {
     Repository::discover(path)
@@ -635,6 +739,12 @@ pub fn force_push_tags(repo: &Repository, remote_name: &str, tags: &[&str]) -> R
     if tags.is_empty() {
         return Ok(());
     }
+    retry_transient("force-push floating tags", || {
+        try_force_push_tags_once(repo, remote_name, tags)
+    })
+}
+
+fn try_force_push_tags_once(repo: &Repository, remote_name: &str, tags: &[&str]) -> Result<()> {
     let mut remote = get_authenticated_remote(repo, remote_name)?;
 
     let push_errors = Rc::new(RefCell::new(Vec::new()));
@@ -851,6 +961,10 @@ pub fn push_tags(repo: &Repository, remote_name: &str, tags: &[&str]) -> Result<
     if tags.is_empty() {
         return Ok(());
     }
+    retry_transient("push tags", || try_push_tags_once(repo, remote_name, tags))
+}
+
+fn try_push_tags_once(repo: &Repository, remote_name: &str, tags: &[&str]) -> Result<()> {
     let mut remote = get_authenticated_remote(repo, remote_name)?;
 
     let push_errors = Rc::new(RefCell::new(Vec::new()));
@@ -872,6 +986,12 @@ pub fn push_tags(repo: &Repository, remote_name: &str, tags: &[&str]) -> Result<
 }
 
 fn try_push_branch(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
+    retry_transient(&format!("push branch '{branch}'"), || {
+        try_push_branch_once(repo, remote_name, branch)
+    })
+}
+
+fn try_push_branch_once(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
     let mut remote = get_authenticated_remote(repo, remote_name)?;
     let push_errors = Rc::new(RefCell::new(Vec::new()));
     let mut opts = make_push_options(push_errors.clone());
@@ -1154,6 +1274,66 @@ mod tests {
     use crate::config::OrphanedTagStrategy;
     use git2::{Repository, Signature};
     use std::fs;
+
+    #[test]
+    fn is_transient_classifies_network_errors_as_retryable() {
+        let err = anyhow::anyhow!("Failed to push tags").context("connection reset by peer");
+        assert!(is_transient_git_error(&err));
+
+        let err = anyhow::anyhow!("502 Bad Gateway");
+        assert!(is_transient_git_error(&err));
+
+        let err = anyhow::anyhow!("ssl handshake failed");
+        assert!(is_transient_git_error(&err));
+
+        let err = anyhow::anyhow!("secondary rate limit exceeded");
+        assert!(is_transient_git_error(&err));
+    }
+
+    #[test]
+    fn is_transient_does_not_retry_terminal_errors() {
+        let err = anyhow::anyhow!("non-fast-forward update rejected");
+        assert!(!is_transient_git_error(&err));
+
+        let err = anyhow::anyhow!("branch protection rule blocks this push");
+        assert!(!is_transient_git_error(&err));
+
+        let err = anyhow::anyhow!("authentication failed: bad token");
+        assert!(!is_transient_git_error(&err));
+
+        // Unknown error: default to not retrying so we don't mask logic
+        // bugs with infinite retry-attempts.
+        let err = anyhow::anyhow!("something completely unexpected happened");
+        assert!(!is_transient_git_error(&err));
+    }
+
+    #[test]
+    fn retry_transient_succeeds_on_second_attempt() {
+        use std::cell::Cell;
+        let attempts = Cell::new(0);
+        let result = retry_transient("test", || {
+            attempts.set(attempts.get() + 1);
+            if attempts.get() == 1 {
+                Err(anyhow::anyhow!("connection timed out"))
+            } else {
+                Ok(())
+            }
+        });
+        assert!(result.is_ok());
+        assert_eq!(attempts.get(), 2);
+    }
+
+    #[test]
+    fn retry_transient_returns_immediately_on_terminal_error() {
+        use std::cell::Cell;
+        let attempts = Cell::new(0);
+        let result = retry_transient("test", || {
+            attempts.set(attempts.get() + 1);
+            Err(anyhow::anyhow!("non-fast-forward"))
+        });
+        assert!(result.is_err());
+        assert_eq!(attempts.get(), 1);
+    }
 
     fn init_repo() -> (tempfile::TempDir, Repository) {
         let dir = tempfile::tempdir().unwrap();
