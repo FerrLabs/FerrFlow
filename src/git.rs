@@ -99,15 +99,14 @@ fn is_transient_git_error(err: &anyhow::Error) -> bool {
     {
         return true;
     }
-    // libgit2 ODB-staleness class. After a branch push, libgit2's view of
-    // its own object database can lag behind the filesystem (loose objects
-    // recently written, packfile reshuffled by a parallel `gc`, or the
-    // odb_loose backend's negative-lookup cache holding a stale "not found"
-    // for an OID that now exists). The classic symptom is
-    // E2006 "Failed to push tags / object is no commit object;
-    // class=Invalid (3)" firing immediately after a successful branch push
-    // that already shipped the tag's target commit. A fresh attempt with a
-    // refreshed ODB resolves it.
+    // Safety net for libgit2's push revwalk bug — `git_revwalk_hide` is
+    // commit-only and trips over remote-advertised annotated tag OIDs that
+    // happen to be present locally as tag objects, surfacing as E2006
+    // "object is no commit object; class=Invalid (3)". The fix path for
+    // tag pushes is to shell out to `git push` (see `shell_push_tags`).
+    // These patterns are kept transient so that any residual libgit2 push
+    // path that still hits them (or a future regression) at least gets
+    // retried instead of failing the release on the first try.
     if chain.contains("object is no commit object")
         || chain.contains("no commit object")
         || chain.contains("class=invalid")
@@ -128,20 +127,6 @@ fn is_transient_git_error(err: &anyhow::Error) -> bool {
     }
     // Default: don't retry unknown errors.
     false
-}
-
-/// Force libgit2 to re-scan the object database for newly written objects.
-/// Without this, a long-lived `Repository` handle can hold a stale view of
-/// its own ODB after we create commits and tags via the API and then push
-/// the branch: the loose-object backend's cache still says "object X not
-/// found" for an OID that now exists. The next push (typically of tags
-/// pointing to that commit) then fails with
-/// `object is no commit object; class=Invalid (3)`. Best-effort; if
-/// refresh fails we proceed and let the operation surface its own error.
-fn refresh_odb(repo: &Repository) {
-    if let Ok(odb) = repo.odb() {
-        let _ = odb.refresh();
-    }
 }
 
 pub fn open_repo(path: &Path) -> Result<Repository> {
@@ -776,25 +761,7 @@ pub fn force_push_tags(repo: &Repository, remote_name: &str, tags: &[&str]) -> R
 }
 
 fn try_force_push_tags_once(repo: &Repository, remote_name: &str, tags: &[&str]) -> Result<()> {
-    refresh_odb(repo);
-    let mut remote = get_authenticated_remote(repo, remote_name)?;
-
-    let push_errors = Rc::new(RefCell::new(Vec::new()));
-    let mut push_options = make_push_options(push_errors.clone());
-
-    let refspecs: Vec<String> = tags
-        .iter()
-        .map(|tag| format!("+refs/tags/{tag}:refs/tags/{tag}"))
-        .collect();
-    let refspec_refs: Vec<&str> = refspecs.iter().map(String::as_str).collect();
-    remote
-        .push(&refspec_refs, Some(&mut push_options))
-        .with_context(|| "Failed to force-push floating tags")
-        .error_code(error_code::GIT_FLOATING_TAGS)?;
-    check_push_errors(&push_errors)
-        .with_context(|| "Floating tag push rejected")
-        .error_code(error_code::GIT_FLOATING_TAGS)?;
-    Ok(())
+    shell_push_tags(repo, remote_name, tags, true).error_code(error_code::GIT_FLOATING_TAGS)
 }
 
 /// If a tag exists, return its message.
@@ -997,24 +964,63 @@ pub fn push_tags(repo: &Repository, remote_name: &str, tags: &[&str]) -> Result<
 }
 
 fn try_push_tags_once(repo: &Repository, remote_name: &str, tags: &[&str]) -> Result<()> {
-    refresh_odb(repo);
-    let mut remote = get_authenticated_remote(repo, remote_name)?;
+    shell_push_tags(repo, remote_name, tags, false).error_code(error_code::GIT_PUSH_TAGS)
+}
 
-    let push_errors = Rc::new(RefCell::new(Vec::new()));
-    let mut opts = make_push_options(push_errors.clone());
+/// Push tags by spawning `git push`, bypassing the libgit2 native push code
+/// path that triggers E2006.
+///
+/// libgit2's push (`src/libgit2/push.c::calculate_work`) builds a revwalk
+/// and calls `git_revwalk_hide` for every ref the remote currently
+/// advertises. `git_revwalk_hide` is commit-only: when the remote has an
+/// annotated tag whose OID we happen to have locally as a tag object (very
+/// likely on any monorepo with prior tags), the revwalk reads the tag
+/// object from the ODB, sees `type != COMMIT`, and bails with
+/// `object is no commit object; class=Invalid (3)`. The error path tolerates
+/// `GIT_ENOTFOUND`/`GIT_EINVALIDSPEC`/`GIT_EPEEL` but not this one, so the
+/// push aborts before any object is sent — no retry, no ODB refresh, no
+/// remote reconnect rescues this; the bug is structural to libgit2's push.
+///
+/// `git push` (the CLI) computes the negotiation differently and peels tag
+/// refs correctly. Shelling out is the smallest, most reliable workaround
+/// until the upstream libgit2 issue is fixed. Auth still works: we pass
+/// the same `FERRFLOW_TOKEN`-baked URL the libgit2 path used, so the bot
+/// identity is preserved.
+fn shell_push_tags(repo: &Repository, remote_name: &str, tags: &[&str], force: bool) -> Result<()> {
+    let workdir = repo
+        .workdir()
+        .ok_or_else(|| anyhow::anyhow!("bare repos are not supported"))?;
+    let remote = repo
+        .find_remote(remote_name)
+        .with_context(|| format!("Remote '{remote_name}' not found"))?;
+    let raw_url = remote
+        .url()
+        .ok_or_else(|| anyhow::anyhow!("Remote '{remote_name}' has no URL"))?
+        .to_string();
+    let push_url = authenticated_remote_url(&raw_url).unwrap_or(raw_url);
 
-    let tag_refspecs: Vec<String> = tags
-        .iter()
-        .map(|tag| format!("refs/tags/{tag}:refs/tags/{tag}"))
-        .collect();
-    let tag_refs: Vec<&str> = tag_refspecs.iter().map(String::as_str).collect();
-    remote
-        .push(&tag_refs, Some(&mut opts))
-        .with_context(|| "Failed to push tags")
-        .error_code(error_code::GIT_PUSH_TAGS)?;
-    check_push_errors(&push_errors)
-        .with_context(|| "Tag push rejected")
-        .error_code(error_code::GIT_PUSH_TAGS)?;
+    let prefix = if force { "+" } else { "" };
+    let mut cmd = std::process::Command::new("git");
+    cmd.current_dir(workdir).arg("push").arg(&push_url);
+    for tag in tags {
+        cmd.arg(format!("{prefix}refs/tags/{tag}:refs/tags/{tag}"));
+    }
+
+    let output = cmd
+        .output()
+        .with_context(|| "spawn `git push` for tags failed (is git in PATH?)")?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let detail = format!("{stdout}{stderr}").trim().to_string();
+        let label = if force {
+            "Failed to force-push floating tags"
+        } else {
+            "Failed to push tags"
+        };
+        return Err(anyhow::anyhow!("{label}: {detail}"));
+    }
     Ok(())
 }
 
