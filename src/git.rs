@@ -99,6 +99,23 @@ fn is_transient_git_error(err: &anyhow::Error) -> bool {
     {
         return true;
     }
+    // libgit2 ODB-staleness class. After a branch push, libgit2's view of
+    // its own object database can lag behind the filesystem (loose objects
+    // recently written, packfile reshuffled by a parallel `gc`, or the
+    // odb_loose backend's negative-lookup cache holding a stale "not found"
+    // for an OID that now exists). The classic symptom is
+    // E2006 "Failed to push tags / object is no commit object;
+    // class=Invalid (3)" firing immediately after a successful branch push
+    // that already shipped the tag's target commit. A fresh attempt with a
+    // refreshed ODB resolves it.
+    if chain.contains("object is no commit object")
+        || chain.contains("no commit object")
+        || chain.contains("class=invalid")
+        || chain.contains("object not found")
+        || chain.contains("odb")
+    {
+        return true;
+    }
     // Terminal class — explicit "do not retry" markers
     if chain.contains("non-fast-forward")
         || chain.contains("branch protection")
@@ -111,6 +128,20 @@ fn is_transient_git_error(err: &anyhow::Error) -> bool {
     }
     // Default: don't retry unknown errors.
     false
+}
+
+/// Force libgit2 to re-scan the object database for newly written objects.
+/// Without this, a long-lived `Repository` handle can hold a stale view of
+/// its own ODB after we create commits and tags via the API and then push
+/// the branch: the loose-object backend's cache still says "object X not
+/// found" for an OID that now exists. The next push (typically of tags
+/// pointing to that commit) then fails with
+/// `object is no commit object; class=Invalid (3)`. Best-effort; if
+/// refresh fails we proceed and let the operation surface its own error.
+fn refresh_odb(repo: &Repository) {
+    if let Ok(odb) = repo.odb() {
+        let _ = odb.refresh();
+    }
 }
 
 pub fn open_repo(path: &Path) -> Result<Repository> {
@@ -745,6 +776,7 @@ pub fn force_push_tags(repo: &Repository, remote_name: &str, tags: &[&str]) -> R
 }
 
 fn try_force_push_tags_once(repo: &Repository, remote_name: &str, tags: &[&str]) -> Result<()> {
+    refresh_odb(repo);
     let mut remote = get_authenticated_remote(repo, remote_name)?;
 
     let push_errors = Rc::new(RefCell::new(Vec::new()));
@@ -965,6 +997,7 @@ pub fn push_tags(repo: &Repository, remote_name: &str, tags: &[&str]) -> Result<
 }
 
 fn try_push_tags_once(repo: &Repository, remote_name: &str, tags: &[&str]) -> Result<()> {
+    refresh_odb(repo);
     let mut remote = get_authenticated_remote(repo, remote_name)?;
 
     let push_errors = Rc::new(RefCell::new(Vec::new()));
@@ -1287,6 +1320,21 @@ mod tests {
         assert!(is_transient_git_error(&err));
 
         let err = anyhow::anyhow!("secondary rate limit exceeded");
+        assert!(is_transient_git_error(&err));
+    }
+
+    #[test]
+    fn is_transient_classifies_libgit2_odb_staleness_as_retryable() {
+        // E2006 firing immediately after a successful branch push, when
+        // libgit2's ODB cache hasn't caught up with objects we just wrote.
+        let err = anyhow::anyhow!("Failed to push tags")
+            .context("object is no commit object; class=Invalid (3)");
+        assert!(is_transient_git_error(&err));
+
+        let err = anyhow::anyhow!("object not found - no match for id");
+        assert!(is_transient_git_error(&err));
+
+        let err = anyhow::anyhow!("odb read failed");
         assert!(is_transient_git_error(&err));
     }
 
