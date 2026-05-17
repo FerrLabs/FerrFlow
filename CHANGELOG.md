@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [4.7.8] - 2026-05-17
+
+### Bug Fixes
+
+- fix(git): refresh ODB before push_tags and classify stale-ODB errors as transient (E2006) (#445)
+
 ## [4.7.7] - 2026-05-15
 
 ### Bug Fixes
