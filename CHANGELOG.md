@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [4.7.9] - 2026-05-17
+
+### Bug Fixes
+
+- fix(git): shell out to git push for tags to bypass libgit2 push revwalk bug (E2006) (#446)
+
 ## [4.7.8] - 2026-05-17
 
 ### Bug Fixes
