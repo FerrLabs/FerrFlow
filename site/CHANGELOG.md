@@ -1,5 +1,12 @@
 # Changelog
 
+## [6.4.0] - 2026-05-18
+
+### Features
+
+- feat(ci): scheduled workflow to sync FerrFlow version + benchmarks every 6h (#499)
+- feat(site): add /performance page comparing FerrFlow against JS-ecosystem release tools (#498)
+
 ## [6.3.0] - 2026-05-14
 
 ### Features
