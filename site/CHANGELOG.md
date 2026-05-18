@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.4.1] - 2026-05-18
+
+### Bug Fixes
+
+- fix(ci): use sed for hero version bump (python not on Ubuntu runners) (#500)
+
 ## [6.4.0] - 2026-05-18
 
 ### Features
