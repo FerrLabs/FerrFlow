@@ -229,7 +229,6 @@ mod tests {
         assert!(section.contains("### Breaking Changes"));
         assert!(section.contains("### Features"));
         assert!(section.contains("### Bug Fixes"));
-        // chore should not appear in any section
         assert!(!section.contains("chore: update deps"));
     }
 

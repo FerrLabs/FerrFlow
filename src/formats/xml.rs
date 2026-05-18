@@ -1,23 +1,3 @@
-//! XML version-file handler.
-//!
-//! The original implementation used a single `<version>([^<]+)</version>` regex
-//! that matched the **first** occurrence in the file. That broke on every
-//! Maven `pom.xml` whose `<parent>` block precedes the project's own
-//! `<groupId>`/`<artifactId>`/`<version>` — Spring Boot apps and any
-//! multi-module Maven project. FerrFlow would read the parent dependency's
-//! version (e.g. `spring-boot-starter-parent` 3.5.14) instead of the
-//! project version, then rewrite the wrong tag on bump.
-//!
-//! The handler now walks the document with a tiny state machine that
-//! tracks element depth, so it can target a `<version>` that is a direct
-//! child of the document root (`<project>` for Maven). For weirder layouts
-//! (profile blocks, Maven BOM imports, `.csproj` flavours, …) the user can
-//! point at any tag via a slash-delimited selector like `/project/version`.
-//!
-//! No XML parser pulled in — the format is forgiving enough that a small
-//! tokeniser handles everything FerrFlow needs (open / close / self-close
-//! tags, comments, CDATA, processing instructions, `xmlns`/attributes).
-
 use super::VersionFile;
 use crate::error_code::{self, ErrorCodeExt};
 use anyhow::{Context, Result};
@@ -25,15 +5,12 @@ use std::path::Path;
 
 pub struct XmlVersionFile;
 
-/// One match inside the document — byte offsets covering the inner text
-/// between `<tag>` and `</tag>`.
 #[derive(Debug, Clone, Copy)]
 struct InnerRange {
     start: usize,
     end: usize,
 }
 
-/// Tokeniser state.
 struct Scanner<'a> {
     src: &'a [u8],
     i: usize,
@@ -51,9 +28,6 @@ impl<'a> Scanner<'a> {
         self.i >= self.src.len()
     }
 
-    /// Skip a `<!-- ... -->` comment, `<![CDATA[...]]>` block, or
-    /// `<? ... ?>` processing instruction starting at `self.i` (which
-    /// points at the leading `<`). Returns true if one was consumed.
     fn skip_special(&mut self) -> bool {
         let rest = &self.src[self.i..];
         if rest.starts_with(b"<!--") {
@@ -83,7 +57,6 @@ impl<'a> Scanner<'a> {
             }
             return true;
         }
-        // <!DOCTYPE ...> — naive: eat until the matching '>'
         if rest.starts_with(b"<!") {
             self.i += 2;
             while self.i < self.src.len() && self.src[self.i] != b'>' {
@@ -101,8 +74,6 @@ impl<'a> Scanner<'a> {
         find_subslice(&self.src[self.i..], needle).map(|p| self.i + p)
     }
 
-    /// Parse a tag starting at `self.i` (which must point at `<`). Returns
-    /// `(name, kind, end_index_after_close_bracket)`.
     fn read_tag(&mut self) -> Option<(String, TagKind, usize)> {
         debug_assert_eq!(self.src.get(self.i).copied(), Some(b'<'));
         let mut p = self.i + 1;
@@ -113,7 +84,6 @@ impl<'a> Scanner<'a> {
             false
         };
 
-        // Read the name.
         let name_start = p;
         while p < self.src.len() {
             let c = self.src[p];
@@ -129,7 +99,6 @@ impl<'a> Scanner<'a> {
             .ok()?
             .to_string();
 
-        // Skip past attributes to the closing '>'.
         let mut self_close = false;
         let mut in_quote: Option<u8> = None;
         while p < self.src.len() {
@@ -140,7 +109,6 @@ impl<'a> Scanner<'a> {
                 None => match c {
                     b'"' | b'\'' => in_quote = Some(c),
                     b'/' => {
-                        // Could be the self-close marker. Peek next non-space.
                         let mut q = p + 1;
                         while q < self.src.len() && (self.src[q] == b' ' || self.src[q] == b'\t') {
                             q += 1;
@@ -186,16 +154,6 @@ fn find_subslice(haystack: &[u8], needle: &[u8]) -> Option<usize> {
     haystack.windows(needle.len()).position(|w| w == needle)
 }
 
-/// Walk the document and find the inner-text range of the first tag that
-/// matches `selector`. The selector is interpreted as:
-///
-/// - `Some("/a/b/c")` — absolute path of element names from the root. The
-///   first segment must equal the document root element. Empty leading
-///   segment from the leading slash is ignored.
-/// - `Some("//tag")` — first occurrence of `<tag>` at any depth (anywhere).
-/// - `None` — Maven-aware default: first `<version>` that is a direct
-///   child of the document root. Falls back to the first `<version>`
-///   anywhere (preserving legacy behaviour) when none is found at depth 1.
 fn find_target(content: &str, selector: Option<&str>) -> Option<InnerRange> {
     let path: Vec<&str> = match selector {
         Some(sel) if sel.starts_with("//") => {
@@ -204,7 +162,6 @@ fn find_target(content: &str, selector: Option<&str>) -> Option<InnerRange> {
         }
         Some(sel) => sel.trim_start_matches('/').split('/').collect(),
         None => {
-            // Default: try Maven-aware first, then the legacy first-match.
             if let Some(r) = find_root_child_named(content, "version") {
                 return Some(r);
             }
@@ -218,15 +175,11 @@ fn find_target(content: &str, selector: Option<&str>) -> Option<InnerRange> {
     walk_path(content, &path)
 }
 
-/// Find the first `<name>` whose ancestry from the root matches `path`
-/// exactly. `path[0]` is the root element name; subsequent entries are
-/// the nested children.
 fn walk_path(content: &str, path: &[&str]) -> Option<InnerRange> {
     let mut s = Scanner::new(content);
     let mut stack: Vec<String> = Vec::new();
 
     while !s.done() {
-        // Skip text until we hit '<'.
         while s.i < s.src.len() && s.src[s.i] != b'<' {
             s.i += 1;
         }
@@ -246,8 +199,6 @@ fn walk_path(content: &str, path: &[&str]) -> Option<InnerRange> {
                 if stack.len() == path.len()
                     && stack.iter().zip(path.iter()).all(|(a, b)| a.as_str() == *b)
                 {
-                    // Inner text starts at `end`. Find matching close tag
-                    // for `name`, accounting for nested same-name tags.
                     let inner_start = end;
                     let close_idx = find_matching_close(&s.src[end..], &name)?;
                     return Some(InnerRange {
@@ -269,9 +220,6 @@ fn walk_path(content: &str, path: &[&str]) -> Option<InnerRange> {
     None
 }
 
-/// Find first `<name>` element (anywhere, or at depth 1 if `min_depth` is
-/// `Some(1)` — depth here is 0-indexed, so depth 1 means a direct child of
-/// the root element).
 fn find_first_named(content: &str, name: &str, min_depth: Option<usize>) -> Option<InnerRange> {
     let mut s = Scanner::new(content);
     let mut depth: usize = 0;
@@ -318,9 +266,6 @@ fn find_root_child_named(content: &str, name: &str) -> Option<InnerRange> {
     find_first_named(content, name, Some(1))
 }
 
-/// Given bytes starting just after an opening `<tag>`, find the byte
-/// offset of the matching `</tag>` opening `<`. Handles nested same-name
-/// tags by counting depth.
 fn find_matching_close(after_open: &[u8], name: &str) -> Option<usize> {
     let mut s = Scanner {
         src: after_open,
@@ -492,15 +437,11 @@ mod tests {
         XmlVersionFile.write_version(f.path(), "2.0.0").unwrap();
         let content = std::fs::read_to_string(f.path()).unwrap();
         assert!(content.contains("<version>2.0.0</version>"));
-        // The nested dependency version is untouched.
         assert!(content.contains("<version>3.0</version>"));
     }
 
     #[test]
     fn read_skips_parent_block_in_spring_boot_pom() {
-        // Regression: with the legacy first-match regex, this returned
-        // `3.5.14` (Spring Boot parent's version). We now want the
-        // project's own `<version>3.6.0</version>`.
         let f = write_temp(SPRING_BOOT_POM);
         assert_eq!(XmlVersionFile.read_version(f.path()).unwrap(), "3.6.0");
     }
@@ -510,18 +451,13 @@ mod tests {
         let f = write_temp(SPRING_BOOT_POM);
         XmlVersionFile.write_version(f.path(), "3.7.0").unwrap();
         let content = std::fs::read_to_string(f.path()).unwrap();
-        // Project version got bumped.
         assert!(content.contains("<version>3.7.0</version>"));
-        // Parent block was left alone — Spring Boot's version intact.
         assert!(content.contains("<version>3.5.14</version>"));
-        // No duplicate version tags either side of the parent block.
         assert_eq!(content.matches("<version>").count(), 2);
     }
 
     #[test]
     fn explicit_selector_targets_specific_path() {
-        // Force-select the parent's version even when a Maven default
-        // would otherwise prefer the project version.
         let f = write_temp(SPRING_BOOT_POM);
         let v = XmlVersionFile
             .read_version_with_selector(f.path(), Some("/project/parent/version"))
@@ -546,7 +482,6 @@ mod tests {
         let v = XmlVersionFile
             .read_version_with_selector(f.path(), Some("//version"))
             .unwrap();
-        // First <version> in document order — that's the parent's.
         assert_eq!(v, "3.5.14");
     }
 

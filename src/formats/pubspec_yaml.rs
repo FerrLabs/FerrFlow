@@ -1,15 +1,3 @@
-//! `pubspec.yaml` (Dart / Flutter) version handler.
-//!
-//! Matches the top-level `version:` key, regardless of quoting. The regex is
-//! anchored to line start with a multiline flag so inline `version:` values
-//! inside dependency maps or `flutter:` blocks are ignored. Anchors and
-//! comments elsewhere in the file are preserved verbatim — we rewrite only
-//! the captured version substring.
-//!
-//! Pub uses SemVer with an optional `+<build>` suffix (e.g. `1.2.3+42`).
-//! That fits any string the version bumper would produce; no special casing
-//! needed here.
-
 use super::VersionFile;
 use crate::error_code::{self, ErrorCodeExt};
 use anyhow::{Context, Result};
@@ -22,11 +10,6 @@ pub struct PubspecYamlVersionFile;
 static VERSION_RE: OnceLock<Regex> = OnceLock::new();
 
 fn version_re() -> &'static Regex {
-    // `^version:` — top-level YAML key, no indentation. Captures:
-    //   1. prefix including `:` + whitespace
-    //   2. optional opening quote (`'`, `"`, or empty)
-    //   3. version value
-    //   4. optional closing quote (same rule)
     VERSION_RE.get_or_init(|| {
         Regex::new(r#"(?m)^(version:\s*)(["']?)([^"'\s#]+)(["']?)\s*(?:#.*)?$"#).unwrap()
     })

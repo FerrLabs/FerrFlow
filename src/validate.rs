@@ -10,10 +10,6 @@ use crate::error_code::{self, ErrorCodeExt};
 use crate::formats::get_handler;
 use crate::git::{get_repo_root, open_repo};
 
-// ---------------------------------------------------------------------------
-// FileSource trait
-// ---------------------------------------------------------------------------
-
 pub trait FileSource {
     fn read_file(&self, path: &str) -> Result<Option<Vec<u8>>>;
     fn path_exists(&self, path: &str) -> Result<bool>;
@@ -37,10 +33,6 @@ impl FileSource for LocalSource {
         Ok(self.root.join(path).exists())
     }
 }
-
-// ---------------------------------------------------------------------------
-// Remote sources
-// ---------------------------------------------------------------------------
 
 #[derive(Debug, PartialEq)]
 pub enum RemoteProvider {
@@ -153,10 +145,6 @@ impl FileSource for GitLabSource {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Config loading from FileSource
-// ---------------------------------------------------------------------------
-
 const CONFIG_FILENAMES: &[&str] = &[
     "ferrflow.json",
     "ferrflow.json5",
@@ -205,10 +193,6 @@ pub fn load_config_from_source(
     ))
     .error_code(error_code::VALIDATE_NO_CONFIG)?
 }
-
-// ---------------------------------------------------------------------------
-// Validation types
-// ---------------------------------------------------------------------------
 
 #[derive(Debug, PartialEq)]
 pub enum ValidationLevel {
@@ -267,10 +251,6 @@ impl ValidationResult {
         }
     }
 }
-
-// ---------------------------------------------------------------------------
-// Validation passes
-// ---------------------------------------------------------------------------
 
 fn check_duplicate_names(config: &Config) -> Vec<ValidationEntry> {
     let mut seen: HashMap<&str, &str> = HashMap::new();
@@ -537,10 +517,6 @@ fn check_suggestions(config: &Config) -> Vec<ValidationEntry> {
     entries
 }
 
-// ---------------------------------------------------------------------------
-// Output
-// ---------------------------------------------------------------------------
-
 fn output_result(result: &ValidationResult, json: bool) -> Result<()> {
     if json {
         println!("{}", serde_json::to_string_pretty(result)?);
@@ -602,10 +578,6 @@ fn print_text_result(result: &ValidationResult) {
     }
     println!();
 }
-
-// ---------------------------------------------------------------------------
-// Entry point
-// ---------------------------------------------------------------------------
 
 pub fn run(
     config_path: Option<&Path>,
@@ -679,10 +651,6 @@ pub fn run(
     output_result(&result, json)
 }
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -711,8 +679,6 @@ mod tests {
             hooks: None,
         }
     }
-
-    // -- LocalSource --
 
     #[test]
     fn local_source_read_existing_file() {
@@ -749,8 +715,6 @@ mod tests {
         assert!(!source.path_exists("nope.txt").unwrap());
     }
 
-    // -- parse_repo_spec --
-
     #[test]
     fn parse_repo_spec_github_short() {
         let (p, o, r) = parse_repo_spec("owner/repo").unwrap();
@@ -780,8 +744,6 @@ mod tests {
         assert!(parse_repo_spec("just-a-name").is_err());
     }
 
-    // -- ValidationResult --
-
     #[test]
     fn validation_result_valid_when_no_errors() {
         let result = ValidationResult::from_entries(vec![ValidationEntry {
@@ -801,8 +763,6 @@ mod tests {
         }]);
         assert!(!result.valid);
     }
-
-    // -- load_config_from_source --
 
     #[test]
     fn load_config_local() {
@@ -865,8 +825,6 @@ mod tests {
         assert_eq!(config.packages[0].name, "custom");
         assert_eq!(filename, "custom.json");
     }
-
-    // -- Validation passes --
 
     #[test]
     fn pass_duplicate_names() {

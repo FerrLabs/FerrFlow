@@ -1,12 +1,3 @@
-//! `Chart.yaml` (Helm chart top-level manifest) version handler.
-//!
-//! Distinct from the existing [`super::helm::HelmVersionFile`] which targets
-//! `values.yaml` templating (`{{ .Chart.Version }}`-style). Chart.yaml uses a
-//! literal `version:` key at the top level, the same shape as `pubspec.yaml`
-//! but with a different idiomatic layout and separate docs surface. We keep
-//! them as distinct variants so users opting in to either don't need to
-//! understand the internals of the sibling file.
-
 use super::VersionFile;
 use crate::error_code::{self, ErrorCodeExt};
 use anyhow::{Context, Result};
@@ -19,9 +10,6 @@ pub struct ChartYamlVersionFile;
 static VERSION_RE: OnceLock<Regex> = OnceLock::new();
 
 fn version_re() -> &'static Regex {
-    // Top-level `version:` only — charts also define `appVersion:`, which is
-    // a different concept (the app shipped by the chart, not the chart
-    // itself). We leave `appVersion:` strictly alone.
     VERSION_RE.get_or_init(|| {
         Regex::new(r#"(?m)^(version:\s*)(["']?)([^"'\s#]+)(["']?)\s*(?:#.*)?$"#).unwrap()
     })
@@ -103,7 +91,6 @@ mod tests {
             .unwrap();
         let out = std::fs::read_to_string(f.path()).unwrap();
         assert!(out.contains("version: 0.2.0"));
-        // appVersion must stay exactly as it was — different concept.
         assert!(out.contains("appVersion: \"1.16.0\""));
     }
 

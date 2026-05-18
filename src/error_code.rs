@@ -1,34 +1,5 @@
 use std::fmt;
 
-/// A stable error code that can be attached to any `anyhow::Error` as context.
-///
-/// Error codes follow the pattern `E{NNNN}` where the first digit(s) indicate
-/// the domain and the remaining digits identify the specific error.
-///
-/// Ranges:
-/// - E1000–E1099: Configuration
-/// - E1100–E1199: Validation
-/// - E2000–E2099: Git operations
-/// - E3000–E3099: GitHub API
-/// - E3100–E3199: GitLab API
-/// - E4000–E4099: Version files (general)
-/// - E4100–E4199: TOML version files
-/// - E4200–E4299: JSON version files
-/// - E4300–E4399: Helm/YAML version files
-/// - E4400–E4499: XML/CSProj version files
-/// - E4500–E4599: Gradle version files
-/// - E4600–E4699: Go mod version files
-/// - E4700–E4799: Text version files
-/// - E4800–E4809: Pubspec.yaml (Dart / Flutter)
-/// - E4810–E4819: mix.exs (Elixir)
-/// - E4820–E4829: Chart.yaml (Helm chart manifest)
-/// - E4830–E4839: *.gemspec (Ruby)
-/// - E4840–E4849: Package.swift (Swift)
-/// - E5000–E5099: Pre-release / channels
-/// - E5010–E5019: Versioning
-/// - E6000–E6099: Hooks
-/// - E7000–E7099: Query / package lookup
-/// - E8000–E8099: Monorepo operations
 #[derive(Debug, Clone, Copy)]
 pub struct ErrorCode(pub u16);
 
@@ -41,7 +12,6 @@ impl fmt::Display for ErrorCode {
 impl std::error::Error for ErrorCode {}
 
 impl ErrorCode {
-    /// Returns the documentation URL for this error code.
     pub fn doc_url(&self) -> String {
         format!(
             "https://ferrflow.com/docs/reference/errors#{}",
@@ -50,7 +20,6 @@ impl ErrorCode {
     }
 }
 
-/// Extension trait to attach an `ErrorCode` as context to any `anyhow::Result`.
 #[allow(dead_code)]
 pub trait ErrorCodeExt<T> {
     fn error_code(self, code: ErrorCode) -> anyhow::Result<T>;
@@ -62,7 +31,6 @@ impl<T> ErrorCodeExt<T> for anyhow::Result<T> {
     }
 }
 
-// ── Configuration (E1000–E1099) ──────────────────────────────────────────────
 #[allow(dead_code)]
 pub const CONFIG_NOT_FOUND: ErrorCode = ErrorCode(1001);
 #[allow(dead_code)]
@@ -98,7 +66,6 @@ pub const CONFIG_MULTIPLE_FILES: ErrorCode = ErrorCode(1016);
 #[allow(dead_code)]
 pub const CONFIG_ALREADY_EXISTS: ErrorCode = ErrorCode(1017);
 
-// ── Validation (E1100–E1199) ─────────────────────────────────────────────────
 #[allow(dead_code)]
 pub const VALIDATE_INVALID_REPO_SPEC: ErrorCode = ErrorCode(1100);
 #[allow(dead_code)]
@@ -116,7 +83,6 @@ pub const VALIDATE_NO_CONFIG: ErrorCode = ErrorCode(1106);
 #[allow(dead_code)]
 pub const VALIDATE_REF_REQUIRES_REPO: ErrorCode = ErrorCode(1107);
 
-// ── Git operations (E2000–E2099) ─────────────────────────────────────────────
 #[allow(dead_code)]
 pub const GIT_NOT_A_REPO: ErrorCode = ErrorCode(2001);
 #[allow(dead_code)]
@@ -138,7 +104,6 @@ pub const GIT_PUSH_VERIFY_FAILED: ErrorCode = ErrorCode(2009);
 #[allow(dead_code)]
 pub const GIT_REMOTE_BRANCH_NOT_FOUND: ErrorCode = ErrorCode(2010);
 
-// ── GitHub API (E3000–E3099) ─────────────────────────────────────────────────
 #[allow(dead_code)]
 pub const GITHUB_CREATE_RELEASE: ErrorCode = ErrorCode(3001);
 #[allow(dead_code)]
@@ -160,7 +125,6 @@ pub const GITHUB_GRAPHQL_PARSE: ErrorCode = ErrorCode(3009);
 #[allow(dead_code)]
 pub const GITHUB_AUTO_MERGE_FAILED: ErrorCode = ErrorCode(3010);
 
-// ── GitLab API (E3100–E3199) ─────────────────────────────────────────────────
 #[allow(dead_code)]
 pub const GITLAB_CREATE_RELEASE: ErrorCode = ErrorCode(3101);
 #[allow(dead_code)]
@@ -172,7 +136,6 @@ pub const GITLAB_MR_MISSING_FIELD: ErrorCode = ErrorCode(3104);
 #[allow(dead_code)]
 pub const GITLAB_MERGE_MR: ErrorCode = ErrorCode(3105);
 
-// ── Version files — TOML (E4100–E4199) ──────────────────────────────────────
 #[allow(dead_code)]
 pub const TOML_READ: ErrorCode = ErrorCode(4101);
 #[allow(dead_code)]
@@ -184,7 +147,6 @@ pub const TOML_WRITE: ErrorCode = ErrorCode(4104);
 #[allow(dead_code)]
 pub const TOML_INVALID_UTF8: ErrorCode = ErrorCode(4105);
 
-// ── Version files — JSON (E4200–E4299) ──────────────────────────────────────
 #[allow(dead_code)]
 pub const JSON_READ: ErrorCode = ErrorCode(4201);
 #[allow(dead_code)]
@@ -196,7 +158,6 @@ pub const JSON_WRITE: ErrorCode = ErrorCode(4204);
 #[allow(dead_code)]
 pub const JSON_INVALID_UTF8: ErrorCode = ErrorCode(4205);
 
-// ── Version files — Helm/YAML (E4300–E4399) ─────────────────────────────────
 #[allow(dead_code)]
 pub const HELM_READ: ErrorCode = ErrorCode(4301);
 #[allow(dead_code)]
@@ -206,7 +167,6 @@ pub const HELM_WRITE: ErrorCode = ErrorCode(4303);
 #[allow(dead_code)]
 pub const HELM_INVALID_UTF8: ErrorCode = ErrorCode(4304);
 
-// ── Version files — XML/CSProj (E4400–E4499) ────────────────────────────────
 #[allow(dead_code)]
 pub const XML_READ: ErrorCode = ErrorCode(4401);
 #[allow(dead_code)]
@@ -224,7 +184,6 @@ pub const CSPROJ_WRITE: ErrorCode = ErrorCode(4412);
 #[allow(dead_code)]
 pub const CSPROJ_INVALID_UTF8: ErrorCode = ErrorCode(4413);
 
-// ── Version files — Gradle (E4500–E4599) ────────────────────────────────────
 #[allow(dead_code)]
 pub const GRADLE_READ: ErrorCode = ErrorCode(4501);
 #[allow(dead_code)]
@@ -234,7 +193,6 @@ pub const GRADLE_WRITE: ErrorCode = ErrorCode(4503);
 #[allow(dead_code)]
 pub const GRADLE_INVALID_UTF8: ErrorCode = ErrorCode(4504);
 
-// ── Version files — Go mod (E4600–E4699) ────────────────────────────────────
 #[allow(dead_code)]
 pub const GOMOD_GIT_DESCRIBE: ErrorCode = ErrorCode(4601);
 #[allow(dead_code)]
@@ -242,7 +200,6 @@ pub const GOMOD_NO_TAG: ErrorCode = ErrorCode(4602);
 #[allow(dead_code)]
 pub const GOMOD_UNSUPPORTED: ErrorCode = ErrorCode(4603);
 
-// ── Version files — Text (E4700–E4799) ──────────────────────────────────────
 #[allow(dead_code)]
 pub const TXT_READ: ErrorCode = ErrorCode(4701);
 #[allow(dead_code)]
@@ -252,7 +209,6 @@ pub const TXT_WRITE: ErrorCode = ErrorCode(4703);
 #[allow(dead_code)]
 pub const TXT_INVALID_UTF8: ErrorCode = ErrorCode(4704);
 
-// ── Version files — PubspecYaml (E4800–E4809) ────────────────────────────────
 #[allow(dead_code)]
 pub const PUBSPEC_READ: ErrorCode = ErrorCode(4801);
 #[allow(dead_code)]
@@ -262,7 +218,6 @@ pub const PUBSPEC_WRITE: ErrorCode = ErrorCode(4803);
 #[allow(dead_code)]
 pub const PUBSPEC_INVALID_UTF8: ErrorCode = ErrorCode(4804);
 
-// ── Version files — MixExs (E4810–E4819) ─────────────────────────────────────
 #[allow(dead_code)]
 pub const MIX_EXS_READ: ErrorCode = ErrorCode(4811);
 #[allow(dead_code)]
@@ -272,7 +227,6 @@ pub const MIX_EXS_WRITE: ErrorCode = ErrorCode(4813);
 #[allow(dead_code)]
 pub const MIX_EXS_INVALID_UTF8: ErrorCode = ErrorCode(4814);
 
-// ── Version files — ChartYaml (E4820–E4829) ──────────────────────────────────
 #[allow(dead_code)]
 pub const CHART_YAML_READ: ErrorCode = ErrorCode(4821);
 #[allow(dead_code)]
@@ -282,7 +236,6 @@ pub const CHART_YAML_WRITE: ErrorCode = ErrorCode(4823);
 #[allow(dead_code)]
 pub const CHART_YAML_INVALID_UTF8: ErrorCode = ErrorCode(4824);
 
-// ── Version files — Gemspec (E4830–E4839) ────────────────────────────────────
 #[allow(dead_code)]
 pub const GEMSPEC_READ: ErrorCode = ErrorCode(4831);
 #[allow(dead_code)]
@@ -292,7 +245,6 @@ pub const GEMSPEC_WRITE: ErrorCode = ErrorCode(4833);
 #[allow(dead_code)]
 pub const GEMSPEC_INVALID_UTF8: ErrorCode = ErrorCode(4834);
 
-// ── Version files — PackageSwift (E4840–E4849) ───────────────────────────────
 #[allow(dead_code)]
 pub const PACKAGE_SWIFT_READ: ErrorCode = ErrorCode(4841);
 #[allow(dead_code)]
@@ -302,27 +254,22 @@ pub const PACKAGE_SWIFT_WRITE: ErrorCode = ErrorCode(4843);
 #[allow(dead_code)]
 pub const PACKAGE_SWIFT_INVALID_UTF8: ErrorCode = ErrorCode(4844);
 
-// ── Pre-release (E5000–E5099) ────────────────────────────────────────────────
 #[allow(dead_code)]
 pub const PRERELEASE_EMPTY_CHANNEL: ErrorCode = ErrorCode(5001);
 #[allow(dead_code)]
 pub const PRERELEASE_INVALID_CHANNEL: ErrorCode = ErrorCode(5002);
 
-// ── Versioning (E5010–E5019) ─────────────────────────────────────────────────
 #[allow(dead_code)]
 pub const VERSIONING_INVALID_SEMVER: ErrorCode = ErrorCode(5010);
 
-// ── Hooks (E6000–E6099) ──────────────────────────────────────────────────────
 #[allow(dead_code)]
 pub const HOOK_FAILED: ErrorCode = ErrorCode(6001);
 
-// ── Query (E7000–E7099) ──────────────────────────────────────────────────────
 #[allow(dead_code)]
 pub const QUERY_NO_PACKAGES: ErrorCode = ErrorCode(7001);
 #[allow(dead_code)]
 pub const QUERY_PACKAGE_NOT_FOUND: ErrorCode = ErrorCode(7002);
 
-// ── Monorepo (E8000–E8099) ───────────────────────────────────────────────────
 #[allow(dead_code)]
 pub const MONOREPO_PACKAGE_NOT_FOUND: ErrorCode = ErrorCode(8001);
 #[allow(dead_code)]
@@ -352,7 +299,6 @@ mod tests {
         let err = err.error_code(ErrorCode(2001));
         let err = err.unwrap_err();
 
-        // ErrorCode is the outermost context, so downcast_ref on the error itself works
         let code = err.downcast_ref::<ErrorCode>().copied();
         assert!(code.is_some());
         assert_eq!(code.unwrap().0, 2001);

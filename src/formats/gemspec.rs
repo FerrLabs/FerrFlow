@@ -1,16 +1,3 @@
-//! `*.gemspec` (Ruby) version handler.
-//!
-//! Matches assignments of the form `s.version = "x.y.z"` or
-//! `spec.version = 'x.y.z'` inside a `Gem::Specification.new` block. The
-//! receiver name varies by convention (`s`, `spec`, `gem`, …) so we accept
-//! any identifier; the unique bit is the `.version =` suffix.
-//!
-//! A gemspec can also set the version from a constant
-//! (`s.version = MyGem::VERSION`) loaded from `lib/my_gem/version.rb`. That
-//! pattern isn't supported here — users in that setup should version the
-//! `version.rb` file via [`super::txt::TxtVersionFile`] or a
-//! regex-targeted file (follow-up work if the demand shows up).
-
 use super::VersionFile;
 use crate::error_code::{self, ErrorCodeExt};
 use anyhow::{Context, Result};
@@ -23,8 +10,6 @@ pub struct GemspecVersionFile;
 static VERSION_RE: OnceLock<Regex> = OnceLock::new();
 
 fn version_re() -> &'static Regex {
-    // `<ident>.version = "x.y.z"` — accepts single or double quotes, any
-    // amount of whitespace around `=`.
     VERSION_RE.get_or_init(|| Regex::new(r#"(\.version\s*=\s*)(["'])([^"']+)(["'])"#).unwrap())
 }
 
@@ -101,7 +86,6 @@ end
         GemspecVersionFile.write_version(f.path(), "0.2.0").unwrap();
         let out = std::fs::read_to_string(f.path()).unwrap();
         assert!(out.contains("s.version     = \"0.2.0\""));
-        // Sibling assignments untouched.
         assert!(out.contains("s.name        = \"my_gem\""));
     }
 

@@ -23,9 +23,6 @@ impl Forge for GitLabForge {
         body: &str,
         prerelease: bool,
         draft: bool,
-        // GitLab anchors releases to existing tags; the GitHub
-        // target_commitish trick to pre-create before tag-push doesn't
-        // apply. Accept the parameter for trait conformance and ignore it.
         _target_commitish: Option<&str>,
     ) -> Result<()> {
         if draft {
@@ -111,7 +108,6 @@ impl Forge for GitLabForge {
             self.api_base, mr.id
         );
 
-        // Try merge_when_pipeline_succeeds first (requires an active pipeline)
         let payload = serde_json::json!({
             "merge_when_pipeline_succeeds": true,
             "squash": true,
@@ -126,7 +122,6 @@ impl Forge for GitLabForge {
             return Ok(());
         }
 
-        // Fallback: merge directly (pipeline may be skipped or absent)
         let payload = serde_json::json!({
             "squash": true,
             "should_remove_source_branch": true,
@@ -280,7 +275,6 @@ mod tests {
             "name": "v1.0.0",
             "description": "Release notes",
         });
-        // prerelease adds upcoming_release
         payload["upcoming_release"] = serde_json::json!(true);
         assert_eq!(payload["upcoming_release"], true);
         assert_eq!(payload["tag_name"], "v1.0.0");

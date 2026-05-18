@@ -5,10 +5,6 @@ use std::path::Path;
 
 pub struct TxtVersionFile;
 
-/// Compile a user-supplied selector into a regex. The selector must contain
-/// exactly one capture group whose match is the version string. We surface
-/// a clear error rather than panicking on regex compile failures or wrong
-/// arity, since the selector ships from user-authored config.
 fn compile_selector(selector: &str) -> Result<Regex> {
     let re = Regex::new(selector)
         .with_context(|| format!("invalid regex selector: {selector:?}"))
@@ -79,7 +75,6 @@ mod tests {
             .write_version_with_selector(f.path(), "2.0.0", Some(r"(?m)^VERSION=(.+)$"))
             .unwrap();
         let content = std::fs::read_to_string(f.path()).unwrap();
-        // Only the version part of the matched line changes.
         assert_eq!(content, "name=foo\nVERSION=2.0.0\nother=ignored\n");
     }
 
@@ -95,10 +90,8 @@ mod tests {
     fn selector_with_wrong_capture_count_errors() {
         let mut f = NamedTempFile::new().unwrap();
         write!(f, "VERSION=1.0.0").unwrap();
-        // Zero capture groups.
         let result = TxtVersionFile.read_version_with_selector(f.path(), Some(r"VERSION=.+"));
         assert!(result.is_err());
-        // Two capture groups.
         let result = TxtVersionFile.read_version_with_selector(f.path(), Some(r"(VERSION)=(.+)"));
         assert!(result.is_err());
     }
@@ -179,10 +172,6 @@ impl super::VersionFile for TxtVersionFile {
         let content = std::fs::read_to_string(file_path)
             .with_context(|| format!("failed to read {}", file_path.display()))
             .error_code(error_code::TXT_READ)?;
-        // Replace only the capture group, leaving the rest of the matched
-        // line (prefix, suffix, surrounding whitespace) untouched. We need
-        // the absolute byte range of capture group 1 — `replacen` would
-        // operate on the whole match.
         let cap = re
             .captures(&content)
             .ok_or_else(|| {

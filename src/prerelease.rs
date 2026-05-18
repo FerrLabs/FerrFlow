@@ -16,8 +16,6 @@ pub struct ResolvedPrerelease {
 }
 
 impl PrereleaseContext {
-    /// Resolve the pre-release channel.
-    /// Priority: CLI flag > branch config match > None (stable).
     pub fn resolve(
         cli_channel: Option<&str>,
         current_branch: &str,
@@ -63,7 +61,6 @@ impl PrereleaseContext {
         self.channel.is_some()
     }
 
-    /// Compute the pre-release identifier. Returns None for stable releases.
     pub fn compute_identifier(
         &self,
         base_version: &str,
@@ -102,9 +99,6 @@ fn find_matching_branch<'a>(
     branches: &'a [BranchChannelConfig],
 ) -> Option<&'a BranchChannelConfig> {
     branches.iter().find(|b| {
-        // Branch names use `/` as separators (e.g. fix/global, feature/auth),
-        // but glob `*` doesn't cross `/`. Normalize lone `*` segments to `**`
-        // so that `*` matches any branch including those with slashes.
         let pattern = b.name.replace("/*", "/**").replace("/*/", "/**/");
         let pattern = if pattern == "*" {
             "**".to_string()
@@ -125,8 +119,6 @@ fn find_max_prerelease_number(search_prefix: &str, tags: &[String]) -> u64 {
         .unwrap_or(0)
 }
 
-/// Validate that a channel name is a valid semver pre-release identifier segment.
-/// Must be non-empty, alphanumeric + hyphens only.
 pub fn validate_channel_name(name: &str) -> Result<()> {
     if name.is_empty() {
         Err(anyhow::anyhow!("Pre-release channel name cannot be empty"))
@@ -157,8 +149,6 @@ mod tests {
             prerelease_identifier: strategy,
         }
     }
-
-    // --- Channel resolution tests ---
 
     #[test]
     fn cli_flag_takes_priority() {
@@ -290,8 +280,6 @@ mod tests {
         assert_eq!(ctx.identifier_strategy, PrereleaseIdentifier::TimestampHash);
     }
 
-    // --- Identifier computation tests ---
-
     #[test]
     fn increment_no_existing_tags() {
         let ctx = PrereleaseContext {
@@ -395,8 +383,6 @@ mod tests {
         assert_eq!(result.full_suffix, "-beta.4");
     }
 
-    // --- Validation tests ---
-
     #[test]
     fn validate_channel_name_valid() {
         assert!(validate_channel_name("beta").is_ok());
@@ -412,8 +398,6 @@ mod tests {
         assert!(validate_channel_name("my channel").is_err());
         assert!(validate_channel_name("beta_1").is_err());
     }
-
-    // --- find_max_prerelease_number tests ---
 
     #[test]
     fn find_max_prerelease_number_mixed_tags() {

@@ -32,19 +32,14 @@ pub trait Forge {
     fn mr_noun(&self) -> &'static str;
     fn release_noun(&self) -> &'static str;
 
-    /// Find a comment on a PR/MR whose body contains the given marker string.
     fn find_comment(&self, pr_id: u64, marker: &str) -> Result<Option<u64>>;
 
-    /// Create a new comment on a PR/MR.
     fn create_comment(&self, pr_id: u64, body: &str) -> Result<()>;
 
-    /// Update an existing comment by ID.
     fn update_comment(&self, pr_id: u64, comment_id: u64, body: &str) -> Result<()>;
 }
 
-/// Detect the PR/MR number from CI environment variables.
 pub fn detect_pr_number() -> Option<u64> {
-    // GitHub Actions: GITHUB_REF is "refs/pull/123/merge" on pull_request events
     if let Ok(ref_name) = std::env::var("GITHUB_REF")
         && let Some(num) = ref_name
             .strip_prefix("refs/pull/")
@@ -53,7 +48,6 @@ pub fn detect_pr_number() -> Option<u64> {
     {
         return Some(n);
     }
-    // GitLab CI: CI_MERGE_REQUEST_IID is set on merge_request_event pipelines
     if let Ok(iid) = std::env::var("CI_MERGE_REQUEST_IID") {
         return iid.parse().ok();
     }
@@ -70,19 +64,13 @@ pub fn detect_forge_from_url(url: &str) -> Option<ForgeKind> {
     }
 }
 
-/// Extract the hostname from a git remote URL.
-///
-/// Supports HTTPS (`https://host/...`) and SSH (`git@host:...`) formats.
-/// Returns `None` if the URL cannot be parsed.
 pub fn extract_host(url: &str) -> Option<String> {
     if let Some(rest) = url
         .strip_prefix("https://")
         .or_else(|| url.strip_prefix("http://"))
     {
-        // https://host/owner/repo.git or https://host:port/owner/repo.git
         rest.split('/').next().map(|h| h.to_string())
     } else if url.contains('@') && url.contains(':') {
-        // git@host:owner/repo.git
         let after_at = url.split('@').nth(1)?;
         let host = after_at.split(':').next()?;
         Some(host.to_string())
@@ -105,8 +93,6 @@ pub fn extract_repo_slug(url: &str) -> Option<String> {
         }
     }
 
-    // Fallback for custom domains: extract path after host.
-    // Handles both https://custom.host/owner/repo and git@custom.host:owner/repo
     let path = if let Some(rest) = url
         .strip_prefix("https://")
         .or_else(|| url.strip_prefix("http://"))

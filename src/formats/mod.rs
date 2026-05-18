@@ -20,17 +20,11 @@ use crate::config::{FileFormat, VersionedFile};
 pub trait VersionFile {
     fn read_version(&self, file_path: &Path) -> Result<String>;
     fn write_version(&self, file_path: &Path, version: &str) -> Result<()>;
-    /// Returns false if this format tracks versions via git tags only and
-    /// does not write any file. Callers should skip committing the path.
     fn modifies_file(&self) -> bool {
         true
     }
-    /// Parse version from raw file content without filesystem access.
     fn read_version_from_bytes(&self, content: &[u8], filename: &str) -> Result<String>;
 
-    /// Read with an optional per-file selector. Default delegates to the
-    /// selector-less path; formats that support selectors override this.
-    /// See [`crate::config::VersionedFile::selector`] for syntax.
     fn read_version_with_selector(
         &self,
         file_path: &Path,
@@ -39,7 +33,6 @@ pub trait VersionFile {
         self.read_version(file_path)
     }
 
-    /// Write counterpart of [`Self::read_version_with_selector`].
     fn write_version_with_selector(
         &self,
         file_path: &Path,
@@ -87,7 +80,6 @@ mod tests {
 
     #[test]
     fn get_handler_returns_handler_for_each_format() {
-        // Verify get_handler doesn't panic for any format variant
         for format in &[
             FileFormat::Csproj,
             FileFormat::GoMod,
