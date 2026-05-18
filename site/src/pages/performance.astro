@@ -1,0 +1,437 @@
+---
+import Layout from '../layouts/Layout.astro';
+import benchmarks from '../data/benchmarks.json';
+
+type Cell = { median_ms: number; stddev_ms: number; memory_mb: string | number };
+
+const KNOWN_TOOLS = [
+  'commit-and-tag-version',
+  'standard-version',
+  'semantic-release',
+  'release-please',
+  'changesets',
+  'ferrflow',
+];
+
+const FIXTURE_LABELS: Record<string, string> = {
+  single: 'Single package',
+  'mono-small': 'Monorepo · small (5 packages)',
+  'mono-medium': 'Monorepo · medium (20 packages)',
+  'mono-large': 'Monorepo · large (50 packages)',
+  'mono-50-5k': 'Monorepo · 50 packages × 5k commits',
+  'mono-100-1k': 'Monorepo · 100 packages × 1k commits',
+};
+
+const COMMAND_LABELS: Record<string, string> = {
+  check: 'check',
+  'release-dry-run': 'release --dry-run',
+  tag: 'tag',
+  validate: 'validate',
+  version: 'version',
+};
+
+interface Parsed {
+  fixture: string;
+  tool: string;
+  method: string;
+  cmd: string;
+}
+
+function parseKey(key: string): Parsed | null {
+  for (const tool of KNOWN_TOOLS) {
+    const marker = `-${tool}-`;
+    const idx = key.indexOf(marker);
+    if (idx < 0) continue;
+    const fixture = key.slice(0, idx);
+    const rest = key.slice(idx + marker.length);
+    const [method, ...cmdParts] = rest.split('-');
+    return { fixture, tool, method, cmd: cmdParts.join('-') };
+  }
+  return null;
+}
+
+const data = benchmarks.benchmarks as Record<string, Cell>;
+const fixtures = new Set<string>();
+const tools = new Set<string>();
+const commands = new Set<string>();
+const grid: Record<string, Cell> = {};
+
+for (const [key, cell] of Object.entries(data)) {
+  const p = parseKey(key);
+  if (!p) continue;
+  if (p.method !== 'binary') continue;
+  fixtures.add(p.fixture);
+  tools.add(p.tool);
+  if (p.cmd) commands.add(p.cmd);
+  grid[`${p.fixture}|${p.tool}|${p.cmd}`] = cell;
+}
+
+const orderedFixtures = Array.from(fixtures).sort((a, b) => {
+  const order = Object.keys(FIXTURE_LABELS);
+  return order.indexOf(a) - order.indexOf(b);
+});
+const orderedTools = Array.from(tools).sort((a, b) => {
+  if (a === 'ferrflow') return -1;
+  if (b === 'ferrflow') return 1;
+  return a.localeCompare(b);
+});
+const orderedCommands = Array.from(commands).sort();
+
+const hasCompetitors = orderedTools.length > 1;
+
+function fmt(cell: Cell | undefined): string {
+  if (!cell) return '—';
+  if (cell.median_ms < 1) return `${(cell.median_ms * 1000).toFixed(0)} µs`;
+  if (cell.median_ms < 1000) return `${cell.median_ms.toFixed(0)} ms`;
+  return `${(cell.median_ms / 1000).toFixed(2)} s`;
+}
+
+function fmtMem(cell: Cell | undefined): string {
+  if (!cell || cell.memory_mb === 'N/A') return '—';
+  return `${cell.memory_mb} MB`;
+}
+
+const updated = new Date(benchmarks.timestamp).toLocaleDateString('en-US', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+});
+---
+
+<Layout
+  title="Performance — FerrFlow"
+  description="How FerrFlow compares to semantic-release, changesets, standard-version and commit-and-tag-version on real fixtures. Median latency, peak memory, install size — measured with hyperfine in CI."
+  canonical="https://ferrflow.com/performance"
+  pathname="/performance"
+>
+  <main class="perf-main">
+    <header class="perf-header">
+      <p class="eyebrow">Benchmarks</p>
+      <h1>How fast is <em>FerrFlow</em>?</h1>
+      <p class="lead">
+        Side-by-side comparison against the JavaScript ecosystem release tools, measured with
+        <a href="https://github.com/sharkdp/hyperfine">hyperfine</a> on the same hardware, the same commits,
+        and the same fixtures. Numbers refresh on every FerrFlow release.
+      </p>
+      <p class="updated">
+        Last update: <strong>{updated}</strong> · ferrflow <code
+          >{benchmarks.ferrflow_version.replace('ferrflow ', 'v')}</code
+        >
+        · binary size <code>{benchmarks.ferrflow_binary_size_mb} MB</code>
+      </p>
+    </header>
+
+    {
+      !hasCompetitors && (
+        <aside class="perf-note">
+          <strong>Heads up.</strong> The snapshot below was captured before competitor benchmarks
+          landed in CI. Only FerrFlow rows are shown for now. The next release after
+          <a href="https://github.com/FerrLabs/FerrFlow/pull/451"> FerrFlow#451</a> will populate
+          the comparison rows automatically.
+        </aside>
+      )
+    }
+
+    <section class="perf-method">
+      <h2>How we measure</h2>
+      <ul>
+        <li>
+          <strong>Hyperfine</strong> with 3 warmup runs and 10 timed runs per (fixture × tool × command)
+          cell. Median latency reported.
+        </li>
+        <li>
+          <strong>Peak RSS</strong> via <code>/usr/bin/time -v</code> on a single subsequent run.
+        </li>
+        <li>
+          <strong>Fixtures</strong> are generated from
+          <a href="https://github.com/FerrLabs/Fixtures">FerrLabs/Fixtures</a> with deterministic conventional-commit
+          history (no flaky inputs).
+        </li>
+        <li>
+          <strong>All commands</strong> are no-op-ish dry runs: <code>ferrflow check</code>,
+          <code>semantic-release --dry-run --no-ci</code>, <code>changesets status</code>,
+          <code>standard-version --dry-run</code>, etc. So we're comparing the planning cost, not
+          the IO cost of actually mutating files.
+        </li>
+        <li>
+          <strong>Reproducible</strong> — the full pipeline is in
+          <a href="https://github.com/FerrLabs/Benchmarks">FerrLabs/Benchmarks</a>; results land as
+          artifacts on every <code>main</code> push and in each release notes.
+        </li>
+      </ul>
+    </section>
+
+    {
+      orderedCommands.map((cmd) => (
+        <section class="perf-section">
+          <h2>
+            <code>{COMMAND_LABELS[cmd] ?? cmd}</code>
+          </h2>
+          <div class="perf-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Fixture</th>
+                  {orderedTools.map((tool) => (
+                    <th class:list={{ 'is-ours': tool === 'ferrflow' }}>{tool}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {orderedFixtures.map((fix) => (
+                  <tr>
+                    <th class="fix-label">{FIXTURE_LABELS[fix] ?? fix}</th>
+                    {orderedTools.map((tool) => {
+                      const cell = grid[`${fix}|${tool}|${cmd}`];
+                      return (
+                        <td class:list={{ 'is-ours': tool === 'ferrflow', 'is-empty': !cell }}>
+                          <span class="lat">{fmt(cell)}</span>
+                          {cell && <span class="mem">{fmtMem(cell)}</span>}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ))
+    }
+
+    <section class="perf-footnote">
+      <h2>Why FerrFlow ships smaller numbers</h2>
+      <ul>
+        <li>
+          <strong>Native binary.</strong> No Node.js boot, no npm install, no plugin discovery. A <code
+            >ferrflow check</code
+          > on a 50-package monorepo finishes before
+          <code>node --version</code> would have warmed up.
+        </li>
+        <li>
+          <strong>libgit2 in-process.</strong> Tag enumeration and commit walking happen via libgit2 in
+          the same process. Competitors shell out to <code>git</code> per call; process-spawn overhead
+          dominates on dense histories.
+        </li>
+        <li>
+          <strong>Single tool, not a plugin tree.</strong> semantic-release pulls a chain of analyzers,
+          notes generators, npm publishers and changelog writers — each with its own require() cost. FerrFlow's
+          pipeline is one Rust crate.
+        </li>
+      </ul>
+      <p class="cta">
+        Numbers updating every release. See the
+        <a href="https://github.com/FerrLabs/FerrFlow/releases/latest">latest release notes</a>
+        for the full table including baseline delta.
+      </p>
+    </section>
+  </main>
+
+  <style>
+    .perf-main {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 64px 24px 96px;
+      color: #1e293b;
+    }
+    .perf-header {
+      margin-bottom: 56px;
+    }
+    .eyebrow {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin: 0 0 12px;
+    }
+    h1 {
+      font-size: clamp(40px, 5vw, 64px);
+      line-height: 1.05;
+      letter-spacing: -0.025em;
+      margin: 0 0 20px;
+      font-weight: 700;
+    }
+    h1 em {
+      font-style: italic;
+      color: #e8733a;
+      font-weight: 600;
+    }
+    .lead {
+      font-size: 18px;
+      line-height: 1.55;
+      color: #475569;
+      max-width: 680px;
+    }
+    .lead a {
+      color: #b8470f;
+      text-decoration: underline;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+    }
+    .updated {
+      margin-top: 20px;
+      font-size: 13px;
+      color: #64748b;
+    }
+    .updated code {
+      font-size: 12px;
+      background: #f1f5f9;
+      padding: 2px 6px;
+      border-radius: 3px;
+      color: #1e293b;
+    }
+    .perf-note {
+      padding: 18px 22px;
+      background: #fef3c7;
+      border-left: 3px solid #f59e0b;
+      border-radius: 4px;
+      font-size: 14px;
+      color: #78350f;
+      margin: 0 0 48px;
+    }
+    .perf-note a {
+      color: #b45309;
+      font-weight: 600;
+    }
+    .perf-method,
+    .perf-footnote {
+      margin-bottom: 56px;
+    }
+    .perf-method h2,
+    .perf-section h2,
+    .perf-footnote h2 {
+      font-size: 24px;
+      letter-spacing: -0.015em;
+      font-weight: 700;
+      margin: 0 0 18px;
+    }
+    .perf-method h2 code,
+    .perf-section h2 code,
+    .perf-footnote h2 code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 20px;
+      background: #fef3ec;
+      color: #b8470f;
+      padding: 2px 10px;
+      border-radius: 4px;
+    }
+    .perf-method ul,
+    .perf-footnote ul {
+      padding-left: 20px;
+      margin: 0 0 16px;
+    }
+    .perf-method li,
+    .perf-footnote li {
+      margin-bottom: 10px;
+      line-height: 1.6;
+      color: #334155;
+    }
+    .perf-method code,
+    .perf-footnote code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 13px;
+      background: #f1f5f9;
+      padding: 1px 5px;
+      border-radius: 3px;
+      color: #1e293b;
+    }
+    .perf-method a,
+    .perf-footnote a {
+      color: #b8470f;
+      text-decoration: underline;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 2px;
+    }
+    .perf-section {
+      margin-bottom: 40px;
+    }
+    .perf-table-wrap {
+      overflow-x: auto;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    thead th {
+      text-align: left;
+      padding: 12px 14px;
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+      font-weight: 600;
+      color: #475569;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      letter-spacing: 0.02em;
+    }
+    thead th.is-ours {
+      color: #e8733a;
+    }
+    tbody th.fix-label {
+      text-align: left;
+      padding: 12px 14px;
+      font-weight: 500;
+      color: #1e293b;
+      border-bottom: 1px solid #f1f5f9;
+      white-space: nowrap;
+    }
+    tbody td {
+      padding: 12px 14px;
+      border-bottom: 1px solid #f1f5f9;
+      vertical-align: top;
+    }
+    tbody tr:last-child th,
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+    tbody td.is-ours {
+      background: rgba(232, 115, 58, 0.06);
+    }
+    tbody td.is-empty {
+      color: #94a3b8;
+    }
+    .lat {
+      display: block;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-weight: 600;
+      color: #1e293b;
+    }
+    td.is-ours .lat {
+      color: #b8470f;
+    }
+    .mem {
+      display: block;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      color: #94a3b8;
+      margin-top: 2px;
+    }
+    .cta {
+      margin-top: 12px;
+      font-size: 14px;
+      color: #475569;
+    }
+    .cta a {
+      color: #b8470f;
+      font-weight: 600;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    @media (max-width: 720px) {
+      .perf-main {
+        padding: 48px 16px 64px;
+      }
+      table {
+        font-size: 13px;
+      }
+      thead th,
+      tbody th.fix-label,
+      tbody td {
+        padding: 10px 8px;
+      }
+    }
+  </style>
+</Layout>

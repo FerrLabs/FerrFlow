@@ -54,8 +54,10 @@ const legalLinks = [
   { label: t(lang, 'footer.cgu'), href: `${legalBase}/cgu` },
   { label: t(lang, 'footer.cookies'), href: `${legalBase}/cookies` },
 ];
+const perfHref = lang === 'fr' ? '/fr/performance' : '/performance';
 const resourceLinks = [
   { label: t(lang, 'footer.documentation'), href: docsHref },
+  { label: t(lang, 'footer.performance'), href: perfHref },
   { label: t(lang, 'footer.releases'), href: 'https://github.com/FerrLabs/FerrFlow/releases' },
   {
     label: t(lang, 'footer.discussions'),
