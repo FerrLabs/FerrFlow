@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.4.2] - 2026-05-18
+
+### Bug Fixes
+
+- fix(ci): commit sync changes directly to main instead of opening a PR (#501)
+
 ## [6.4.1] - 2026-05-18
 
 ### Bug Fixes
