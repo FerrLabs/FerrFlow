@@ -4,6 +4,8 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [4.8.1] - 2026-05-18
+
 ## [4.8.0] - 2026-05-18
 
 ### Features
