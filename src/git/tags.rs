@@ -1,0 +1,357 @@
+use anyhow::Result;
+use git2::Repository;
+use std::cell::RefCell;
+
+use crate::config::OrphanedTagStrategy;
+use crate::error_code::{self, ErrorCodeExt};
+
+use super::commits::signature;
+
+pub(super) struct TagMatch {
+    pub name: String,
+    pub commit_oid: git2::Oid,
+    pub time: i64,
+}
+
+pub(super) fn find_matching_commit(
+    repo: &Repository,
+    orphaned_commit: &git2::Commit,
+    strategy: &OrphanedTagStrategy,
+) -> Option<git2::Oid> {
+    let mut walk = repo.revwalk().ok()?;
+    walk.push_head().ok()?;
+    walk.set_sorting(git2::Sort::TOPOLOGICAL | git2::Sort::TIME)
+        .ok()?;
+
+    let limit = 1000;
+
+    for (count, oid) in walk.enumerate() {
+        if count >= limit {
+            break;
+        }
+        let oid = match oid {
+            Ok(o) => o,
+            Err(_) => continue,
+        };
+        let candidate = match repo.find_commit(oid) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+        let matched = match strategy {
+            OrphanedTagStrategy::TreeHash => candidate.tree_id() == orphaned_commit.tree_id(),
+            OrphanedTagStrategy::Message => candidate.message() == orphaned_commit.message(),
+            OrphanedTagStrategy::Warn => return None,
+        };
+        if matched {
+            return Some(oid);
+        }
+    }
+    None
+}
+
+pub(super) fn is_floating_tag(tag_name: &str, prefix: &str) -> bool {
+    let version_part = tag_name.strip_prefix(prefix).unwrap_or(tag_name);
+    if version_part.is_empty() {
+        return false;
+    }
+    let is_numeric = version_part.chars().all(|c| c.is_ascii_digit() || c == '.');
+    let dot_count = version_part.chars().filter(|&c| c == '.').count();
+    is_numeric && dot_count <= 1
+}
+
+pub(super) fn is_prerelease_tag(tag_name: &str, prefix: &str) -> bool {
+    let version_part = tag_name.strip_prefix(prefix).unwrap_or(tag_name);
+    version_part.contains('-')
+}
+
+pub(super) fn find_last_tag(
+    repo: &Repository,
+    prefix: &str,
+    strategy: OrphanedTagStrategy,
+) -> Result<Option<TagMatch>> {
+    let head = repo.head()?.peel_to_commit()?.id();
+    let latest: RefCell<Option<TagMatch>> = RefCell::new(None);
+    let warnings: RefCell<Vec<String>> = RefCell::new(Vec::new());
+
+    repo.tag_foreach(|oid, name| {
+        let name = String::from_utf8_lossy(name);
+        let tag_name = name.trim_start_matches("refs/tags/");
+        if !tag_name.starts_with(prefix) || is_floating_tag(tag_name, prefix) {
+            return true;
+        }
+
+        let commit_oid = if let Ok(tag_obj) = repo.find_tag(oid) {
+            tag_obj.target_id()
+        } else {
+            oid
+        };
+
+        let commit = match repo.find_commit(commit_oid) {
+            Ok(c) => c,
+            Err(_) => {
+                warnings.borrow_mut().push(format!(
+                    "Warning: tag '{}' points to missing commit {} (likely garbage-collected). Skipping.\n  \
+                     Hint: set 'orphanedTagStrategy' to 'treeHash' or 'message' for automatic recovery.\n  \
+                     See https://ferrflow.com/docs/configuration/config-file#orphaned-tag-strategy",
+                    tag_name,
+                    &commit_oid.to_string()[..7]
+                ));
+                return true;
+            }
+        };
+
+        let reachable =
+            head == commit_oid || repo.graph_descendant_of(head, commit_oid).unwrap_or(false);
+
+        let (effective_oid, effective_time) = if reachable {
+            (commit_oid, commit.time().seconds())
+        } else {
+            let short = &commit_oid.to_string()[..7];
+            if strategy == OrphanedTagStrategy::Warn {
+                warnings.borrow_mut().push(format!(
+                    "Warning: tag '{}' points to orphaned commit {} (not reachable from HEAD).\n  \
+                     Hint: set 'orphanedTagStrategy' to 'treeHash' or 'message' for automatic recovery.\n  \
+                     See https://ferrflow.com/docs/configuration/config-file#orphaned-tag-strategy",
+                    tag_name, short
+                ));
+                return true;
+            }
+            match find_matching_commit(repo, &commit, &strategy) {
+                Some(matched_oid) => {
+                    let strategy_name = match strategy {
+                        OrphanedTagStrategy::TreeHash => "tree-hash",
+                        OrphanedTagStrategy::Message => "message",
+                        OrphanedTagStrategy::Warn => unreachable!(),
+                    };
+                    warnings.borrow_mut().push(format!(
+                        "Info: tag '{}' was orphaned but matched commit {} on current branch via {}.",
+                        tag_name,
+                        &matched_oid.to_string()[..7],
+                        strategy_name
+                    ));
+                    let matched_commit = match repo.find_commit(matched_oid) {
+                        Ok(c) => c,
+                        Err(_) => return true,
+                    };
+                    (matched_oid, matched_commit.time().seconds())
+                }
+                None => {
+                    let strategy_name = match strategy {
+                        OrphanedTagStrategy::TreeHash => "tree-hash",
+                        OrphanedTagStrategy::Message => "message",
+                        OrphanedTagStrategy::Warn => unreachable!(),
+                    };
+                    warnings.borrow_mut().push(format!(
+                        "Warning: tag '{}' points to orphaned commit {}. No match found via {}. Skipping.\n  \
+                         Hint: re-tag manually with 'git tag -f {} <correct-commit>'",
+                        tag_name, short, strategy_name, tag_name
+                    ));
+                    return true;
+                }
+            }
+        };
+
+        let mut latest_ref = latest.borrow_mut();
+        if latest_ref.is_none() || effective_time > latest_ref.as_ref().unwrap().time {
+            *latest_ref = Some(TagMatch {
+                name: tag_name.to_string(),
+                commit_oid: effective_oid,
+                time: effective_time,
+            });
+        }
+        true
+    })?;
+
+    for w in warnings.borrow().iter() {
+        eprintln!("{}", w);
+    }
+
+    Ok(latest.into_inner())
+}
+
+pub fn find_last_tag_name(
+    repo: &Repository,
+    prefix: &str,
+    strategy: OrphanedTagStrategy,
+) -> Result<Option<String>> {
+    Ok(find_last_tag(repo, prefix, strategy)?.map(|t| t.name))
+}
+
+pub fn find_highest_semver_tag(
+    repo: &Repository,
+    prefix: &str,
+    strategy: OrphanedTagStrategy,
+) -> Result<Option<(String, String)>> {
+    let head = repo.head()?.peel_to_commit()?.id();
+    let highest: RefCell<Option<(String, semver::Version)>> = RefCell::new(None);
+
+    repo.tag_foreach(|oid, name| {
+        let name = String::from_utf8_lossy(name);
+        let tag_name = name.trim_start_matches("refs/tags/");
+        if !tag_name.starts_with(prefix)
+            || is_prerelease_tag(tag_name, prefix)
+            || is_floating_tag(tag_name, prefix)
+        {
+            return true;
+        }
+
+        let version_str = tag_name
+            .strip_prefix(prefix)
+            .map(|s| s.strip_prefix('v').unwrap_or(s))
+            .unwrap_or(tag_name);
+        let parsed = match semver::Version::parse(version_str) {
+            Ok(v) => v,
+            Err(_) => return true,
+        };
+
+        let commit_oid = if let Ok(tag_obj) = repo.find_tag(oid) {
+            tag_obj.target_id()
+        } else {
+            oid
+        };
+        let commit = match repo.find_commit(commit_oid) {
+            Ok(c) => c,
+            Err(_) => return true,
+        };
+        let reachable =
+            head == commit_oid || repo.graph_descendant_of(head, commit_oid).unwrap_or(false);
+        if !reachable {
+            match strategy {
+                OrphanedTagStrategy::Warn => return true,
+                OrphanedTagStrategy::TreeHash | OrphanedTagStrategy::Message => {
+                    if find_matching_commit(repo, &commit, &strategy).is_none() {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        let mut highest_ref = highest.borrow_mut();
+        match highest_ref.as_ref() {
+            Some((_, existing)) if existing >= &parsed => {}
+            _ => {
+                *highest_ref = Some((tag_name.to_string(), parsed));
+            }
+        }
+        true
+    })?;
+
+    Ok(highest
+        .into_inner()
+        .map(|(name, version)| (name, version.to_string())))
+}
+
+pub(super) fn find_last_tag_commit(
+    repo: &Repository,
+    prefix: &str,
+    strategy: OrphanedTagStrategy,
+) -> Result<Option<git2::Oid>> {
+    Ok(find_last_tag(repo, prefix, strategy)?.map(|t| t.commit_oid))
+}
+
+pub(super) fn find_last_stable_tag(
+    repo: &Repository,
+    prefix: &str,
+    strategy: OrphanedTagStrategy,
+) -> Result<Option<TagMatch>> {
+    let head = repo.head()?.peel_to_commit()?.id();
+    let latest: RefCell<Option<TagMatch>> = RefCell::new(None);
+
+    repo.tag_foreach(|oid, name| {
+        let name = String::from_utf8_lossy(name);
+        let tag_name = name.trim_start_matches("refs/tags/");
+        if !tag_name.starts_with(prefix)
+            || is_prerelease_tag(tag_name, prefix)
+            || is_floating_tag(tag_name, prefix)
+        {
+            return true;
+        }
+
+        let commit_oid = if let Ok(tag_obj) = repo.find_tag(oid) {
+            tag_obj.target_id()
+        } else {
+            oid
+        };
+
+        let commit = match repo.find_commit(commit_oid) {
+            Ok(c) => c,
+            Err(_) => return true,
+        };
+
+        let reachable =
+            head == commit_oid || repo.graph_descendant_of(head, commit_oid).unwrap_or(false);
+
+        let (effective_oid, effective_time) = if reachable {
+            (commit_oid, commit.time().seconds())
+        } else {
+            if strategy == OrphanedTagStrategy::Warn {
+                return true;
+            }
+            match find_matching_commit(repo, &commit, &strategy) {
+                Some(matched_oid) => {
+                    let matched_commit = match repo.find_commit(matched_oid) {
+                        Ok(c) => c,
+                        Err(_) => return true,
+                    };
+                    (matched_oid, matched_commit.time().seconds())
+                }
+                None => return true,
+            }
+        };
+
+        let mut latest_ref = latest.borrow_mut();
+        if latest_ref.is_none() || effective_time > latest_ref.as_ref().unwrap().time {
+            *latest_ref = Some(TagMatch {
+                name: tag_name.to_string(),
+                commit_oid: effective_oid,
+                time: effective_time,
+            });
+        }
+        true
+    })?;
+
+    Ok(latest.into_inner())
+}
+
+pub fn collect_all_tags(repo: &Repository) -> Vec<String> {
+    let mut tags = Vec::new();
+    let _ = repo.tag_foreach(|_oid, name| {
+        let name = String::from_utf8_lossy(name);
+        tags.push(name.trim_start_matches("refs/tags/").to_string());
+        true
+    });
+    tags
+}
+
+pub fn tag_exists(repo: &Repository, tag_name: &str) -> bool {
+    repo.refname_to_id(&format!("refs/tags/{tag_name}")).is_ok()
+}
+
+pub fn create_tag(repo: &Repository, tag_name: &str, message: &str) -> Result<()> {
+    if tag_exists(repo, tag_name) {
+        Err(anyhow::anyhow!("tag {tag_name} already exists"))
+            .error_code(error_code::GIT_TAG_EXISTS)?;
+    }
+    let head = repo.head()?.peel_to_commit()?;
+    let sig = signature(repo)?;
+    repo.tag(tag_name, head.as_object(), &sig, message, false)?;
+    Ok(())
+}
+
+pub fn create_or_move_tag(repo: &Repository, tag_name: &str, message: &str) -> Result<bool> {
+    let existed = tag_exists(repo, tag_name);
+    if existed {
+        repo.tag_delete(tag_name)?;
+    }
+    let head = repo.head()?.peel_to_commit()?;
+    let sig = signature(repo)?;
+    repo.tag(tag_name, head.as_object(), &sig, message, false)?;
+    Ok(existed)
+}
+
+pub fn get_tag_message(repo: &Repository, tag_name: &str) -> Option<String> {
+    let oid = repo.refname_to_id(&format!("refs/tags/{tag_name}")).ok()?;
+    let obj = repo.find_object(oid, None).ok()?;
+    let tag = obj.as_tag()?;
+    tag.message().map(String::from)
+}
