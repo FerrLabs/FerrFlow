@@ -213,7 +213,6 @@ mod tests {
 
     #[test]
     fn test_feat_not_in_middle_of_word() {
-        // "featured" should not match feat
         assert_eq!(determine_bump("featured something"), BumpType::None);
     }
 
@@ -244,22 +243,18 @@ mod tests {
 
     #[test]
     fn test_extra_space_after_type() {
-        // "feat : add" has a space before colon — should not match
         assert_eq!(determine_bump("feat : add login"), BumpType::None);
     }
 
     #[test]
     fn test_empty_scope() {
-        // Empty parens don't match the (.+) scope regex — requires at least one char
         assert_eq!(determine_bump("feat(): add login"), BumpType::None);
         assert_eq!(determine_bump("fix(): bug"), BumpType::None);
     }
 
     #[test]
     fn test_breaking_change_not_at_line_start() {
-        // "not BREAKING CHANGE" in body — BREAKING CHANGE must be at start of line
         let msg = "feat: something\n\nnot a BREAKING CHANGE here";
-        // The regex requires ^BREAKING CHANGE at line start, so this should NOT match
         assert_eq!(determine_bump(msg), BumpType::Minor);
     }
 

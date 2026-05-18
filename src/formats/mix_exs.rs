@@ -1,14 +1,3 @@
-//! `mix.exs` (Elixir) version handler.
-//!
-//! Targets the `version: "x.y.z"` literal inside a Mix project definition
-//! (typically `def project do [ ..., version: "x.y.z", ... ] end`). We do a
-//! regex replace rather than parsing Elixir — the idiomatic placement is a
-//! single occurrence in the project keyword list, and a structural parse
-//! would require a full Elixir lexer. Edge cases (version inside a
-//! comment, version inside a dependency tuple) are accepted losses here:
-//! they're extremely rare in the wild, and a misplaced match is a build
-//! failure rather than a silent corruption.
-
 use super::VersionFile;
 use crate::error_code::{self, ErrorCodeExt};
 use anyhow::{Context, Result};
@@ -21,10 +10,6 @@ pub struct MixExsVersionFile;
 static VERSION_RE: OnceLock<Regex> = OnceLock::new();
 
 fn version_re() -> &'static Regex {
-    // Captures `version: "..."` — tolerant of whitespace and either quote
-    // style. We deliberately do **not** match `:version` (which would be an
-    // atom reference inside deps tuples) — the `(?!:)` isn't needed because
-    // Elixir keyword keys end with `:` on the right, not `:` on the left.
     VERSION_RE.get_or_init(|| Regex::new(r#"(?m)(version:\s*)(["'])([^"']+)(["'])"#).unwrap())
 }
 
@@ -47,9 +32,6 @@ impl VersionFile for MixExsVersionFile {
             ))
             .error_code(error_code::MIX_EXS_VERSION_NOT_FOUND)?;
         }
-        // Replace only the first match — a well-formed mix.exs has exactly
-        // one version in the project definition. Matches further down (e.g.
-        // accidental dep tuples) are intentionally left alone.
         let mut replaced = false;
         let new_content = version_re().replace_all(&content, |caps: &regex::Captures| {
             if replaced {
@@ -120,15 +102,12 @@ end
         MixExsVersionFile.write_version(f.path(), "0.2.0").unwrap();
         let out = std::fs::read_to_string(f.path()).unwrap();
         assert!(out.contains("version: \"0.2.0\""));
-        // Sibling keyword entries stay intact.
         assert!(out.contains("app: :my_app"));
         assert!(out.contains("deps: deps()"));
     }
 
     #[test]
     fn write_only_replaces_first_match() {
-        // Contrived: second `version:` lives in a nested config that happens
-        // to share the keyword name. We only touch the first one.
         let src = "version: \"1.0.0\"\n# later:\nconfig: [version: \"2.0.0\"]\n";
         let f = write_temp(src);
         MixExsVersionFile.write_version(f.path(), "1.1.0").unwrap();

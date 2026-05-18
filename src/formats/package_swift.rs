@@ -1,28 +1,3 @@
-//! `Package.swift` (Swift Package Manager) version handler.
-//!
-//! Swift packages declare their own version in a few places; the canonical
-//! spot we target is a top-level constant:
-//!
-//! ```swift
-//! let packageVersion = "1.2.3"
-//! ```
-//!
-//! or a comment sentinel:
-//!
-//! ```swift
-//! // ferrflow:version
-//! let version = "1.2.3"
-//! ```
-//!
-//! Swift PM itself derives a package's version from git tags, so there is
-//! no canonical location inside `Package.swift` for it. We therefore accept
-//! any top-level `let <name>Version? = "x.y.z"` declaration where the
-//! constant name ends with `Version` or is literally `version`. That matches
-//! the conventions we see in real-world Swift packages (`AppVersion`,
-//! `MyPackageVersion`, `version`) without touching dependency `.package(...)`
-//! calls which use their own `from:` / `exact:` string arguments and are
-//! *not* the package's own version.
-
 use super::VersionFile;
 use crate::error_code::{self, ErrorCodeExt};
 use anyhow::{Context, Result};
@@ -35,10 +10,6 @@ pub struct PackageSwiftVersionFile;
 static VERSION_RE: OnceLock<Regex> = OnceLock::new();
 
 fn version_re() -> &'static Regex {
-    // `let <ident>Version = "x.y.z"` or `let version = "x.y.z"` — anchored to
-    // line start to avoid accidentally grabbing similar patterns inside the
-    // `dependencies: [.package(url:..., from: "x.y.z")]` array. Swift
-    // requires let bindings at statement start, so `^\s*let\b` is safe.
     VERSION_RE.get_or_init(|| {
         Regex::new(r#"(?m)^(\s*let\s+(?:[A-Za-z_][A-Za-z0-9_]*[Vv]ersion|version)\s*=\s*)(["'])([^"']+)(["'])"#).unwrap()
     })
@@ -131,7 +102,6 @@ let package = Package(
             .unwrap();
         let out = std::fs::read_to_string(f.path()).unwrap();
         assert!(out.contains("let packageVersion = \"0.2.0\""));
-        // Dep version stays at 1.5.0.
         assert!(out.contains("from: \"1.5.0\""));
     }
 
@@ -165,8 +135,6 @@ let package = Package(
     #[test]
     fn read_ignores_dep_from_arg() {
         let f = write_temp(".package(url: \"https://example.com\", from: \"9.9.9\")\n");
-        // No `let … = "…"` → not found, even though a version-shaped string
-        // exists on the line.
         assert!(PackageSwiftVersionFile.read_version(f.path()).is_err());
     }
 }

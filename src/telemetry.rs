@@ -117,20 +117,16 @@ fn api_url() -> String {
 fn normalize_remote_url(raw: &str) -> String {
     let url = raw.trim();
 
-    // SSH: git@github.com:Owner/Repo.git -> github.com/Owner/Repo
     if let Some(rest) = url.strip_prefix("git@") {
         let normalized = rest.replace(':', "/");
         return normalized.trim_end_matches(".git").to_lowercase();
     }
 
-    // HTTPS: strip scheme, credentials, and .git suffix
-    // https://x-access-token:TOKEN@github.com/Owner/Repo.git -> github.com/Owner/Repo
     let without_scheme = url
         .strip_prefix("https://")
         .or_else(|| url.strip_prefix("http://"))
         .unwrap_or(url);
 
-    // Strip credentials (user:pass@ or token@)
     let without_creds = match without_scheme.find('@') {
         Some(pos) => &without_scheme[pos + 1..],
         None => without_scheme,
@@ -222,7 +218,6 @@ pub fn send_event(
     }
 }
 
-/// Wait for all pending telemetry requests to complete (max 5 seconds total).
 pub fn flush() {
     let handles = match PENDING_HANDLES.lock() {
         Ok(mut h) => std::mem::take(&mut *h),
@@ -239,8 +234,6 @@ pub fn flush() {
         if remaining.is_zero() {
             break;
         }
-        // join() doesn't have a timeout, but the HTTP request itself has a 5s timeout,
-        // so each thread will finish within that window
         let _ = handle.join();
     }
 }
@@ -347,7 +340,6 @@ mod tests {
     fn first_run_marker_path_uses_custom_dir_when_set() {
         let tmp = std::env::temp_dir().join("ferrflow-test-state-marker");
         // SAFETY: tests run under the global CWD_LOCK / single-threaded
-        // env mutation convention used elsewhere in this crate.
         unsafe {
             std::env::set_var("FERRFLOW_STATE_DIR", &tmp);
         }
@@ -446,7 +438,6 @@ mod tests {
 
     #[test]
     fn pending_handles_collects_spawned_threads() {
-        // Spawn a simple thread and add it to PENDING_HANDLES
         let handle = std::thread::spawn(|| {});
         PENDING_HANDLES.lock().unwrap().push(handle);
         flush();

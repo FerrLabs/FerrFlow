@@ -62,7 +62,6 @@ pub fn version(
         return Ok(());
     }
 
-    // No package specified
     if config.packages.len() == 1 {
         let pkg = &config.packages[0];
         let version = pkg
@@ -149,7 +148,6 @@ pub fn tag(config_path: Option<&std::path::Path>, package: Option<&str>, json: b
         return Ok(());
     }
 
-    // No package specified
     if config.packages.len() == 1 {
         let pkg = &config.packages[0];
         let prefix = pkg.tag_prefix(&config.workspace, config.is_monorepo());
@@ -276,10 +274,6 @@ mod tests {
         .unwrap();
     }
 
-    // -----------------------------------------------------------------------
-    // version()
-    // -----------------------------------------------------------------------
-
     #[test]
     fn version_single_package() {
         let (dir, repo) = init_repo();
@@ -351,10 +345,6 @@ mod tests {
         assert!(result.is_err());
         assert!(format!("{:?}", result.unwrap_err()).contains("No packages"));
     }
-
-    // -----------------------------------------------------------------------
-    // tag()
-    // -----------------------------------------------------------------------
 
     #[test]
     fn tag_single_package_no_tags() {

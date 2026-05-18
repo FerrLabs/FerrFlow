@@ -1,26 +1,8 @@
-//! Hosted FerrFlow bot OIDC exchange.
-//!
-//! When the user opts into `bot: true` on the GitHub Action, the composite
-//! action simply forwards the relevant environment variables to this binary.
-//! This module performs the full OIDC exchange in-process, so self-hosted
-//! runners do not need Node.js (or any other runtime) installed.
-//!
-//! Flow:
-//! 1. Read `ACTIONS_ID_TOKEN_REQUEST_URL` and `ACTIONS_ID_TOKEN_REQUEST_TOKEN`
-//!    provided by the GitHub Actions runner (requires `permissions.id-token: write`).
-//! 2. GET `{url}&audience={audience}` with the bearer request token to obtain
-//!    a short-lived OIDC JWT from the runner.
-//! 3. POST that JWT to the hosted bot service, which verifies it and returns
-//!    a short-lived GitHub App installation token.
-//! 4. Export that token into the process environment as both `GITHUB_TOKEN`
-//!    and `FERRFLOW_TOKEN` so the rest of FerrFlow picks it up transparently.
-
 use anyhow::{Context, Result, bail};
 
 const DEFAULT_ENDPOINT: &str = "https://api.ferrlabs.com/api/v1/ferrflow/token";
 const DEFAULT_AUDIENCE: &str = "ferrflow.ferrlabs.com";
 
-/// Returns true when the `FERRFLOW_BOT` env var is set to a truthy value.
 pub fn bot_mode_enabled() -> bool {
     match std::env::var("FERRFLOW_BOT") {
         Ok(value) => {
@@ -73,7 +55,6 @@ struct OidcResponse {
 }
 
 impl BotTokenExchange {
-    /// Runs the full OIDC exchange and returns a short-lived installation token.
     pub fn issue(&self) -> Result<IssuedToken> {
         let req_url = std::env::var("ACTIONS_ID_TOKEN_REQUEST_URL").map_err(|_| {
             anyhow::anyhow!(
@@ -86,7 +67,6 @@ impl BotTokenExchange {
             )
         })?;
 
-        // 1. Fetch the runner OIDC JWT, scoped to the FerrFlow audience.
         let separator = if req_url.contains('?') { '&' } else { '?' };
         let oidc_url = format!(
             "{req_url}{separator}audience={}",
@@ -110,7 +90,6 @@ impl BotTokenExchange {
             bail!("OIDC response from GitHub Actions runner was missing the `value` field");
         }
 
-        // 2. Exchange the JWT with the FerrFlow hosted bot service.
         let payload = serde_json::json!({ "token": oidc_body.value });
         let mut response = match ureq::post(&self.endpoint)
             .header("Content-Type", "application/json")
@@ -167,8 +146,6 @@ fn map_status_error(code: u16) -> anyhow::Error {
     }
 }
 
-/// Minimal RFC 3986 query component encoder — enough for the audience string,
-/// which is almost always a plain hostname. Avoids pulling in a URL crate.
 fn encode_query_component(input: &str) -> String {
     let mut out = String::with_capacity(input.len());
     for b in input.bytes() {
@@ -182,17 +159,11 @@ fn encode_query_component(input: &str) -> String {
     out
 }
 
-/// If `FERRFLOW_BOT` is enabled, perform the OIDC exchange and export the
-/// resulting installation token into the process environment so the rest
-/// of FerrFlow (forge, git push) picks it up via the normal lookup.
-///
-/// Safe to call more than once; the exchange only runs on the first call.
 pub fn ensure_bot_token() -> Result<()> {
     if !bot_mode_enabled() {
         return Ok(());
     }
 
-    // If a previous invocation already exchanged, don't do it again.
     static EXCHANGED: std::sync::OnceLock<()> = std::sync::OnceLock::new();
     if EXCHANGED.get().is_some() {
         return Ok(());
@@ -204,16 +175,11 @@ pub fn ensure_bot_token() -> Result<()> {
         .context("failed to obtain FerrFlow bot token")?;
 
     // SAFETY: set_var is marked unsafe in edition 2024. This is single-threaded
-    // initialization at the top of a command, before any spawned threads read
-    // these variables. Same pattern as the rest of FerrFlow's env handling
-    // (see git.rs tests).
     unsafe {
         std::env::set_var("GITHUB_TOKEN", &issued.token);
         std::env::set_var("FERRFLOW_TOKEN", &issued.token);
     }
 
-    // Mask the token for any downstream log sinks that honor GitHub's
-    // `::add-mask::` workflow command.
     println!("::add-mask::{}", issued.token);
 
     let repo_note = if issued.repository.is_empty() {
@@ -228,46 +194,21 @@ pub fn ensure_bot_token() -> Result<()> {
     };
     println!("Authenticated as ferrflow[bot]{repo_note}{expires_note}.");
 
-    // Configure the local git identity so subsequent commits authored by
-    // ferrflow attribute correctly to the bot user. Workflows used to do
-    // this themselves with two `git config` lines, but the values are an
-    // implementation detail of the hosted App that the binary already
-    // owns — keeping them out of every consuming workflow means
-    // self-hosters don't have to remember to override both `user.name`
-    // *and* `user.email` to match their own App.
-    //
-    // Self-hosted overrides: set `FERRFLOW_BOT_LOGIN` and
-    // `FERRFLOW_BOT_USER_ID` in the calling workflow. Both default to
-    // the FerrLabs hosted ferrflow App identity when unset.
     configure_bot_git_identity();
 
     let _ = EXCHANGED.set(());
     Ok(())
 }
 
-/// Default identity for the FerrLabs-hosted FerrFlow GitHub App
-/// (https://github.com/apps/ferrflow). Self-hosters running their own
-/// App override these via environment variables — see
-/// [`configure_bot_git_identity`].
 const DEFAULT_BOT_LOGIN: &str = "ferrflow[bot]";
 const DEFAULT_BOT_USER_ID: &str = "278126555";
 
-/// Resolve the bot's git identity from the environment, falling back to
-/// the FerrLabs hosted App, and write it into the local repo's git
-/// config. Best-effort: failures (no repo, git binary missing) are
-/// swallowed so this never blocks the release path.
-///
-/// The email follows GitHub's noreply convention
-/// `<id>+<login>@users.noreply.github.com`, which links commits to the
-/// bot user's profile in the GitHub UI.
 fn configure_bot_git_identity() {
     if let Ok(cwd) = std::env::current_dir() {
         configure_bot_git_identity_in(&cwd);
     }
 }
 
-/// Inner form that takes an explicit working directory, used by tests so
-/// they don't race other tests on the process's cwd.
 fn configure_bot_git_identity_in(repo_dir: &std::path::Path) {
     let login = std::env::var("FERRFLOW_BOT_LOGIN")
         .ok()
@@ -419,10 +360,6 @@ mod tests {
         assert_eq!(encode_query_component("a b&c=d"), "a%20b%26c%3Dd");
     }
 
-    /// `configure_bot_git_identity` writes via `git config --local`, which
-    /// only does anything inside a git repo. Init a fresh tempdir repo,
-    /// run the helper, and read the values back. Default path uses the
-    /// FerrLabs hosted identity; explicit env overrides take effect.
     fn read_local_git_config(repo_dir: &std::path::Path, key: &str) -> Option<String> {
         let out = std::process::Command::new("git")
             .args(["config", "--local", "--get", key])
@@ -521,9 +458,6 @@ mod tests {
 
         with_env(
             &[
-                // Empty string must NOT win over the default — protects
-                // against a workflow declaring the env var but leaving
-                // it blank.
                 ("FERRFLOW_BOT_LOGIN", Some("")),
                 ("FERRFLOW_BOT_USER_ID", Some("")),
             ],

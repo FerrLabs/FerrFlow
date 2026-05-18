@@ -28,12 +28,6 @@ impl VersionFile for GoModVersionFile {
             .error_code(error_code::GOMOD_GIT_DESCRIBE)?;
 
         if !output.status.success() {
-            // Bootstrap case: no matching tag yet. We error with the
-            // dedicated `GOMOD_NO_TAG` code so the caller in `monorepo.rs`
-            // can distinguish "no version available on disk" from a genuine
-            // failure. The caller then picks the right bootstrap value for
-            // the package's versioning strategy (semver → `0.0.0`,
-            // sequential → `0`, calver → today's date, …).
             Err(anyhow::anyhow!(
                 "No git tag matching '*@v*' or 'v*' found for this package"
             ))
@@ -43,7 +37,6 @@ impl VersionFile for GoModVersionFile {
         let tag = String::from_utf8_lossy(&output.stdout);
         let tag = tag.trim();
 
-        // FerrFlow convention: <package>@v<version> — extract version after last "@v".
         let version = if let Some(idx) = tag.rfind("@v") {
             &tag[idx + 2..]
         } else if let Some(stripped) = tag.strip_prefix('v') {
@@ -56,7 +49,6 @@ impl VersionFile for GoModVersionFile {
     }
 
     fn write_version(&self, _file_path: &Path, _version: &str) -> Result<()> {
-        // Go modules are versioned via git tags only — no file to update.
         Ok(())
     }
 

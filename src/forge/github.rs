@@ -28,10 +28,6 @@ impl Forge for GitHubForge {
             "prerelease": prerelease,
         });
         if let Some(sha) = target_commitish.filter(|s| !s.is_empty()) {
-            // Anchors the tag to a specific commit SHA. Lets us call
-            // create_release BEFORE pushing the tag ref to the remote —
-            // eliminates the race where push:tags triggers the Publish
-            // workflow before the GitHub API has created the release.
             payload["target_commitish"] = serde_json::Value::String(sha.to_string());
         }
 
@@ -268,7 +264,6 @@ mod tests {
 
     #[test]
     fn find_draft_release_parses_empty_array() {
-        // Simulate parsing logic used in find_draft_release
         let response: serde_json::Value = serde_json::json!([]);
         let releases = response.as_array().unwrap();
         let found = releases.iter().find(|r| {

@@ -40,7 +40,6 @@ impl VersionFile for HelmVersionFile {
                 lines.push(format!("version: {version}"));
                 found_version = true;
             } else if line.starts_with("appVersion:") {
-                // Preserve quoting style: appVersion is typically quoted
                 let old = line.strip_prefix("appVersion:").unwrap().trim();
                 if old.starts_with('"') {
                     lines.push(format!("appVersion: \"{version}\""));

@@ -1,328 +1,33 @@
+use anyhow::Result;
+use colored::Colorize;
+use std::collections::{HashMap, HashSet};
+use std::path::Path;
+
 use crate::changelog::{build_section, update_changelog};
-use crate::config::ReleaseCommitMode;
-use crate::config::ReleaseCommitScope;
-use crate::config::{Config, PackageConfig, VersioningStrategy};
+use crate::config::{Config, ReleaseCommitMode, ReleaseCommitScope, VersioningStrategy};
 use crate::conventional_commits::{BumpType, determine_bump};
 use crate::error_code::{self, ErrorCodeExt};
-use crate::forge::{self, ForgeKind};
 use crate::formats::{get_handler, read_version, write_version};
 use crate::git::{
     collect_all_tags, create_branch_and_commit, create_branch_and_commits, create_commit,
     create_or_move_tag, create_tag, fetch_tags, force_push_tags, get_changed_files,
     get_changed_files_since_tag, get_commits_since_last_stable_tag, get_commits_since_last_tag,
-    get_remote_url, get_repo_root, get_tag_message, open_repo, push, push_branch, push_tags,
-    tag_exists,
+    get_tag_message, open_repo, push, push_branch, push_tags, tag_exists,
 };
 use crate::hooks::{HookContext, HookPoint, resolve_hook, resolve_on_failure, run_hook};
 use crate::prerelease::PrereleaseContext;
 use crate::telemetry;
 use crate::versioning::{compute_next_version, truncate_version};
-use anyhow::Result;
-use colored::Colorize;
-use git2::Repository;
-use std::collections::{HashMap, HashSet};
-use std::path::Path;
 
-/// Collect the subset of `all_tags` whose names start with the package's
-/// configured tag prefix. Used to feed per-package versioning auto-detection
-/// so that unrelated packages' tags don't pollute the result.
-fn tags_for_package<'a>(all_tags: &'a [String], prefix: &str) -> Vec<&'a str> {
-    all_tags
-        .iter()
-        .filter(|t| t.starts_with(prefix))
-        .map(|t| t.as_str())
-        .collect()
-}
-
-fn build_forge_instance(repo: &Repository, config: &Config) -> Option<Box<dyn forge::Forge>> {
-    let remote_url = get_remote_url(repo, &config.workspace.remote)?;
-    let slug = forge::extract_repo_slug(&remote_url)?;
-    let host = forge::extract_host(&remote_url)?;
-
-    let kind = match config.workspace.forge {
-        ForgeKind::Auto => forge::detect_forge_from_url(&remote_url)?,
-        explicit => explicit,
-    };
-
-    let token = forge::resolve_token(kind)?;
-    Some(forge::build_forge(kind, token, slug, host))
-}
-
-#[derive(serde::Serialize, serde::Deserialize)]
-struct CheckCommit {
-    hash: String,
-    message: String,
-}
-
-#[derive(serde::Serialize, serde::Deserialize)]
-struct CheckPackage {
-    name: String,
-    current_version: String,
-    next_version: String,
-    bump_type: String,
-    tag: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    channel: Option<String>,
-    prerelease: bool,
-    commits: Vec<CheckCommit>,
-}
-
-#[derive(serde::Serialize, serde::Deserialize)]
-struct CheckResult {
-    packages: Vec<CheckPackage>,
-}
-
-pub fn check(
-    config_path: Option<&Path>,
-    verbose: bool,
-    json: bool,
-    channel: Option<&str>,
-    comment: bool,
-) -> Result<()> {
-    crate::bot_token::ensure_bot_token()?;
-    let repo = open_repo(&std::env::current_dir()?)?;
-    let root = get_repo_root(&repo)?;
-    let config = Config::load(&root, config_path)?;
-
-    if !json {
-        println!("{}", "FerrFlow — Check (dry run)".bold().blue());
-        println!();
-    }
-
-    let result = run_release_logic(
-        &root, &config, true, verbose, json, false, None, channel, false,
-    );
-
-    // Post a preview comment on the PR/MR if requested
-    if comment {
-        post_preview_comment(&repo, &config, &root);
-    }
-
-    if config.workspace.anonymous_telemetry {
-        telemetry::send_event(telemetry::EventType::Check, None, None, None, None);
-    }
-
-    result
-}
-
-/// Run `check` in JSON mode silently, parse the result, and post a preview comment.
-fn post_preview_comment(repo: &git2::Repository, config: &Config, root: &Path) {
-    let pr_id = match forge::detect_pr_number() {
-        Some(id) => id,
-        None => return, // Not in a PR context, skip silently
-    };
-
-    let forge_instance = match build_forge_instance(repo, config) {
-        Some(f) => f,
-        None => return, // No forge detected or no token, skip silently
-    };
-
-    // Re-run the check logic in JSON mode to capture structured output
-    let json_result = capture_check_json(root);
-    let body = format_preview_comment(&json_result);
-    let marker = "<!-- ferrflow-preview -->";
-
-    let result = (|| -> anyhow::Result<()> {
-        match forge_instance.find_comment(pr_id, marker)? {
-            Some(comment_id) => forge_instance.update_comment(pr_id, comment_id, &body)?,
-            None => forge_instance.create_comment(pr_id, &body)?,
-        }
-        Ok(())
-    })();
-
-    if let Err(e) = result {
-        eprintln!("Warning: failed to post preview comment: {e}");
-    }
-}
-
-fn capture_check_json(root: &Path) -> Vec<CheckPackage> {
-    let exe = std::env::current_exe().unwrap_or_else(|_| "ferrflow".into());
-    let output = std::process::Command::new(exe)
-        .args(["check", "--json"])
-        .current_dir(root)
-        .output();
-
-    match output {
-        Ok(out) if out.status.success() => {
-            let stdout = String::from_utf8_lossy(&out.stdout);
-            serde_json::from_str::<CheckResult>(&stdout)
-                .map(|r| r.packages)
-                .unwrap_or_default()
-        }
-        _ => Vec::new(),
-    }
-}
-
-fn format_preview_comment(packages: &[CheckPackage]) -> String {
-    let mut body = String::from("<!-- ferrflow-preview -->\n**FerrFlow Release Preview**\n\n");
-    if packages.is_empty() {
-        body.push_str("No releasable changes detected.");
-        return body;
-    }
-    body.push_str("| Package | Current | Next | Bump |\n");
-    body.push_str("|---------|---------|------|------|\n");
-    for pkg in packages {
-        body.push_str(&format!(
-            "| {} | `{}` | `{}` | {} |\n",
-            pkg.name, pkg.current_version, pkg.next_version, pkg.bump_type
-        ));
-    }
-    let commit_count: usize = packages.iter().map(|p| p.commits.len()).sum();
-    body.push_str(&format!("\nBased on {} commit(s).", commit_count));
-    body
-}
-
-/// How many times we'll fully regenerate the release commit if a push gets
-/// rejected because `main` (or whatever target branch) advanced under us.
-///
-/// Each retry resets the working tree to the latest remote tip and re-runs
-/// [`run_release_logic`] from scratch — the changelog entry, the version
-/// bump, post-bump hooks, the lot — so the resulting commit is computed
-/// against fresh state instead of trying to rebase a now-conflicting one.
-/// See [`FerrLabs/FerrFlow#393`](https://github.com/FerrLabs/FerrFlow/issues/393)
-/// for the rationale.
-const MAX_RELEASE_REGENERATE_ATTEMPTS: usize = 3;
-
-pub fn release(
-    config_path: Option<&Path>,
-    dry_run: bool,
-    verbose: bool,
-    force: bool,
-    force_version: Option<&str>,
-    channel: Option<&str>,
-    draft: bool,
-) -> Result<()> {
-    crate::bot_token::ensure_bot_token()?;
-    let repo = open_repo(&std::env::current_dir()?)?;
-    let root = get_repo_root(&repo)?;
-    let config = Config::load(&root, config_path)?;
-    drop(repo);
-
-    if dry_run {
-        println!("{}", "FerrFlow — Release (dry run)".bold().blue());
-    } else {
-        println!("{}", "FerrFlow — Release".bold().green());
-    }
-    println!();
-
-    // Dry-run never pushes, so the regenerate retry is unnecessary noise.
-    // PR mode also doesn't fast-forward main, so the rejection class we
-    // care about can't happen there either.
-    let single_shot = dry_run
-        || matches!(
-            config.workspace.release_commit_mode,
-            crate::config::ReleaseCommitMode::Pr | crate::config::ReleaseCommitMode::None
-        );
-
-    if single_shot {
-        return run_release_logic(
-            &root,
-            &config,
-            dry_run,
-            verbose,
-            false,
-            force,
-            force_version,
-            channel,
-            draft,
-        );
-    }
-
-    let mut last_err: Option<anyhow::Error> = None;
-    for attempt in 1..=MAX_RELEASE_REGENERATE_ATTEMPTS {
-        // Snapshot tags BEFORE the attempt so we can clean up any tags the
-        // failed attempt created locally. If we don't, the next attempt's
-        // `create_tag` would refuse to overwrite (or worse, double-create
-        // a different tag for the recomputed version).
-        let pre_attempt_tags: std::collections::HashSet<String> = {
-            let repo = open_repo(&root)?;
-            crate::git::collect_all_tags(&repo).into_iter().collect()
-        };
-
-        let result = run_release_logic(
-            &root,
-            &config,
-            dry_run,
-            verbose,
-            false,
-            force,
-            force_version,
-            channel,
-            draft,
-        );
-
-        match result {
-            Ok(()) => return Ok(()),
-            Err(e)
-                if attempt < MAX_RELEASE_REGENERATE_ATTEMPTS
-                    && crate::git::is_push_rejected_error(&e) =>
-            {
-                eprintln!();
-                eprintln!(
-                    "{}",
-                    format!(
-                        "Release attempt {attempt}/{MAX_RELEASE_REGENERATE_ATTEMPTS} \
-                         pushed onto a stale '{}': {e}",
-                        config.workspace.branch,
-                    )
-                    .yellow()
-                );
-                eprintln!(
-                    "{}",
-                    "Resetting working tree to remote tip and regenerating the release commit \
-                     against the latest history…"
-                        .dimmed()
-                );
-
-                // Roll back local-only state from the failed attempt:
-                //   - delete tags created during the attempt (their version
-                //     may not match the recomputed bump on the next try);
-                //   - reset HEAD/working tree to the remote tip so the
-                //     re-run plans against current upstream state.
-                cleanup_failed_release_attempt(&root, &config, &pre_attempt_tags)?;
-                last_err = Some(e);
-            }
-            Err(e) => return Err(e),
-        }
-    }
-    Err(last_err.unwrap_or_else(|| {
-        anyhow::anyhow!(
-            "release failed after {MAX_RELEASE_REGENERATE_ATTEMPTS} regenerate attempts"
-        )
-    }))
-}
-
-/// Undo the side effects of a failed release attempt that we know how to
-/// reverse locally: drop any tags created during the attempt, then reset
-/// the branch to the remote tip. Working-tree edits from the bump and any
-/// post-bump hook output are wiped by the reset.
-///
-/// Hooks rerun from scratch on the next attempt; the convention for
-/// post-bump hooks (e.g. lockfile regeneration) is to be deterministic
-/// against the package files they read, so the rerun is normally a no-op
-/// when nothing has changed and a re-derivation when something has.
-fn cleanup_failed_release_attempt(
-    root: &Path,
-    config: &Config,
-    pre_attempt_tags: &std::collections::HashSet<String>,
-) -> Result<()> {
-    let repo = open_repo(root)?;
-    let after: std::collections::HashSet<String> =
-        crate::git::collect_all_tags(&repo).into_iter().collect();
-    for tag in after.difference(pre_attempt_tags) {
-        // Best-effort: if a tag delete fails (e.g. it was already pushed
-        // somehow), continue — the next attempt's tag-creation will surface
-        // a clearer error if it really matters.
-        let _ = repo.tag_delete(tag);
-    }
-
-    let target_branch = crate::git::resolve_current_branch(&repo, &config.workspace.branch);
-    crate::git::reset_branch_to_remote(&repo, &config.workspace.remote, &target_branch)?;
-    Ok(())
-}
+use super::preview::build_forge_instance;
+use super::types::{CheckCommit, CheckPackage, CheckResult};
+use super::util::{
+    auto_stage_new_files, collect_dirty_files, is_package_touched, pick_higher_semver,
+    tags_for_package,
+};
 
 #[allow(clippy::too_many_arguments)]
-fn run_release_logic(
+pub(super) fn run_release_logic(
     root: &Path,
     config: &Config,
     dry_run: bool,
@@ -374,8 +79,6 @@ fn run_release_logic(
 
     let all_tags = collect_all_tags(&repo);
 
-    // For pre-releases, commit/push/PR target the current branch (e.g. develop),
-    // not the configured stable branch (e.g. main).
     let target_branch = if prerelease_ctx.is_prerelease() {
         current_branch.clone()
     } else {
@@ -396,17 +99,13 @@ fn run_release_logic(
     let mut json_packages: Vec<CheckPackage> = Vec::new();
     let mut files_to_commit: Vec<String> = Vec::new();
     let mut files_per_package: HashMap<String, Vec<String>> = HashMap::new();
-    // (tag_name, tag_msg, body, pkg_name, version, commits_count, is_prerelease)
     let mut tags_to_create: Vec<(String, String, String, String, String, i32, bool)> = Vec::new();
     let mut hook_contexts: Vec<(HookContext, usize)> = Vec::new(); // (ctx, pkg_index)
     let mut bumped_names: HashSet<String> = HashSet::new();
 
-    // Buffered output: per-package lines and shared (commit/push) lines.
-    // Each entry is (pkg_name, lines) in insertion order.
     let mut pkg_outputs: Vec<(String, Vec<String>)> = Vec::new();
     let mut shared_outputs: Vec<String> = Vec::new();
 
-    // Parse --force-version: "VERSION" (single repo) or "NAME@VERSION" (monorepo)
     let forced: Option<(Option<&str>, &str)> = if let Some(fv) = force_version {
         if let Some(at_pos) = fv.find('@') {
             let name = &fv[..at_pos];
@@ -427,7 +126,6 @@ fn run_release_logic(
         None
     };
 
-    // Validate forced version is valid semver (strip leading 'v' if present)
     if let Some((_, ver)) = &forced {
         let clean = ver.strip_prefix('v').unwrap_or(ver);
         if semver::Version::parse(clean).is_err() {
@@ -438,7 +136,6 @@ fn run_release_logic(
     for (pkg_idx, pkg) in config.packages.iter().enumerate() {
         let tag_search_prefix = pkg.tag_prefix(&config.workspace, config.is_monorepo());
 
-        // Check if this package is the target of --force-version
         let forced_ver_for_pkg = forced.and_then(|(name, ver)| {
             if let Some(target_name) = name {
                 if pkg.name == target_name {
@@ -447,7 +144,6 @@ fn run_release_logic(
                     None
                 }
             } else {
-                // Single repo: applies to the first (only) package
                 Some(ver)
             }
         });
@@ -494,38 +190,11 @@ fn run_release_logic(
             continue;
         };
 
-        // Source of truth for the version we're bumping FROM.
-        //
-        // We intentionally prefer the highest-semver matching git tag over the
-        // version in the versioned file (`Cargo.toml`, `package.json`, …). Two
-        // scenarios make the file untrustworthy:
-        //
-        //   1. Two release workflows racing back-to-back — the second job
-        //      checks out main at the pre-release state and would double-bump
-        //      to the same version as the first.
-        //   2. The file diverges from the tags (merge of an old branch,
-        //      revert, manual edit). The file says `2.0.0` but tags go up to
-        //      `3.0.0`; bumping from `2.0.0` produces tags that collide with
-        //      history and the release gets silently skipped.
-        //
-        // The file stays the canonical write target (so downstream consumers
-        // see a coherent version), but it is not the bump baseline.
-        //
-        // If the file happens to be ahead of the tags (human pre-published a
-        // version manually before tagging), we honour that by taking the max
-        // of the two.
-        // Pre-compute the package strategy so we can bootstrap a baseline
-        // when neither a git tag nor an on-disk version is available (fresh
-        // go.mod-only package being released for the first time).
         let pkg_strategy = pkg.effective_versioning(
             &config.workspace,
             &tags_for_package(&all_tags, &tag_search_prefix),
         );
 
-        // `read_version` fails for `go.mod` when no matching tag exists yet
-        // — and potentially for other formats in edge cases. Fall back to
-        // the strategy bootstrap further down rather than blocking the whole
-        // release on a zero-tag repo.
         let file_version = read_version(vf, root).ok();
         let tag_version = crate::git::find_highest_semver_tag(
             &repo,
@@ -540,7 +209,6 @@ fn run_release_logic(
             (None, None) => crate::versioning::bootstrap_version(pkg_strategy),
         };
 
-        // Determine new version: forced or computed from commits
         let (new_version, is_prerelease, commits, bump) = if let Some(fv) = forced_ver_for_pkg {
             let clean = fv.strip_prefix('v').unwrap_or(fv);
             let commits = if !prerelease_ctx.is_prerelease() {
@@ -706,7 +374,6 @@ fn run_release_logic(
                 }
             }
 
-            // Floating tags (e.g. v1, v1.2) — skip for pre-releases.
             if !is_prerelease {
                 let levels = pkg.effective_floating_tags(&config.workspace);
                 for level in levels {
@@ -773,7 +440,6 @@ fn run_release_logic(
                 continue;
             }
 
-            // --- pre_bump hook ---
             if let Some(cmd) = resolve_hook(pkg_hooks, ws_hooks, HookPoint::PreBump) {
                 run_hook(
                     HookPoint::PreBump,
@@ -819,7 +485,6 @@ fn run_release_logic(
                     .push(changelog_rel.clone());
             }
 
-            // --- post_bump hook ---
             if let Some(cmd) = resolve_hook(pkg_hooks, ws_hooks, HookPoint::PostBump) {
                 let before = collect_dirty_files(&repo);
                 run_hook(
@@ -866,7 +531,6 @@ fn run_release_logic(
         any_bumped = true;
     }
 
-    // --- Dependency cascade: auto-bump packages that depend on bumped packages ---
     if config.is_monorepo() {
         let mut cascade_round = 0;
         loop {
@@ -998,7 +662,6 @@ fn run_release_logic(
     }
 
     if any_bumped && !tags_to_create.is_empty() {
-        // --- pre_commit hooks (per released package) ---
         for (ctx, pkg_idx) in &hook_contexts {
             let pkg = &config.packages[*pkg_idx];
             let ws_hooks = config.workspace.hooks.as_ref();
@@ -1030,7 +693,6 @@ fn run_release_logic(
         let mode = config.workspace.release_commit_mode;
         let scope = config.workspace.release_commit_scope;
 
-        // Build the release commit message.
         let release_parts: Vec<String> = tags_to_create
             .iter()
             .map(|(_, _, _, name, ver, _, _)| format!("{name} v{ver}"))
@@ -1143,7 +805,6 @@ fn run_release_logic(
                 ReleaseCommitMode::None => {}
             }
 
-            // Tags are always created on the current HEAD.
             for (tag_name, tag_msg, _, pkg_name, _, _, _) in &tags_to_create {
                 create_tag(&repo, tag_name, tag_msg)?;
                 if let Some((_, lines)) = pkg_outputs.iter_mut().rev().find(|(n, _)| n == pkg_name)
@@ -1152,8 +813,6 @@ fn run_release_logic(
                 }
             }
 
-            // Floating tags (e.g. v1, v1.2) point to the latest release.
-            // Pre-releases never move floating tags.
             for (_, _, _, pkg_name, new_version, _, is_pre) in &tags_to_create {
                 if *is_pre {
                     continue;
@@ -1172,8 +831,6 @@ fn run_release_logic(
                             config.is_monorepo(),
                             &truncated,
                         );
-                        // Backward detection: if the floating tag already exists,
-                        // check whether the new version is actually newer.
                         if tag_exists(&repo, &float_tag)
                             && let Some(old_msg) = get_tag_message(&repo, &float_tag)
                             && let Some(old_ver) = old_msg.strip_prefix("Release ")
@@ -1217,7 +874,6 @@ fn run_release_logic(
             }
         }
 
-        // --- pre_publish hooks (per released package) ---
         for (ctx, pkg_idx) in &hook_contexts {
             let pkg = &config.packages[*pkg_idx];
             let ws_hooks = config.workspace.hooks.as_ref();
@@ -1242,16 +898,6 @@ fn run_release_logic(
                 .map(|(t, _, _, _, _, _, _)| t.as_str())
                 .collect();
 
-            // Step 1: push the bump commit (branch only, no tags yet).
-            // This lands the chore(release): ... commit on the remote so
-            // the upcoming GitHub Release API call has a real SHA to
-            // anchor against via target_commitish.
-            //
-            // We deliberately split the branch push from the tag push so
-            // we can create the GitHub Releases BEFORE the tag refs hit
-            // the remote. Otherwise the push:tags event fires the Publish
-            // workflow, which races against the create-release API call
-            // and frequently sees `release not found` on upload-assets.
             if let ReleaseCommitMode::Commit = mode {
                 push(&repo, &config.workspace.remote, &target_branch, &[])?;
                 shared_outputs.push(format!(
@@ -1260,22 +906,15 @@ fn run_release_logic(
                 ));
             }
 
-            // Resolve the target SHA — HEAD now matches what's on the
-            // remote (in Commit mode after step 1; in Pr/None modes the
-            // caller is responsible for the commit already being upstream).
             let target_sha = repo
                 .head()
                 .ok()
                 .and_then(|h| h.peel_to_commit().ok())
                 .map(|c| c.id().to_string());
 
-            // Step 2: create GitHub Releases anchored to the SHA. When
-            // this returns, the releases exist server-side and the Publish
-            // workflow (when it fires in step 3) finds them immediately.
             if let Some(forge_instance) = build_forge_instance(&repo, config) {
                 for (tag_name, _, body, pkg_name, _, _, is_pre) in &tags_to_create {
                     if !draft {
-                        // Check for existing draft release and publish it
                         match forge_instance.find_draft_release(tag_name) {
                             Ok(Some(release_id)) => {
                                 match forge_instance.publish_release(release_id) {
@@ -1348,19 +987,11 @@ fn run_release_logic(
                 }
             }
 
-            // Step 3: push the version tag refs. This fires push:tags
-            // which triggers the Publish workflow — releases already
-            // exist from step 2, so upload-assets finds them on first
-            // try. No race.
             if !tag_refs.is_empty() {
                 push_tags(&repo, &config.workspace.remote, &tag_refs)?;
                 shared_outputs.push("✓ Pushed tags".to_string());
             }
 
-            // Step 4: floating tags last. These overwrite existing refs
-            // (v4 -> v4.7.1 etc.). Doing them after the version tag push
-            // means consumers using @v4 only see the new version once
-            // the underlying tag is pinned.
             if !floating_tag_names.is_empty() {
                 let float_refs: Vec<&str> = floating_tag_names.iter().map(String::as_str).collect();
                 force_push_tags(&repo, &config.workspace.remote, &float_refs)?;
@@ -1395,7 +1026,6 @@ fn run_release_logic(
             }
         }
 
-        // --- post_publish hooks (per released package) ---
         for (ctx, pkg_idx) in &hook_contexts {
             let pkg = &config.packages[*pkg_idx];
             let ws_hooks = config.workspace.hooks.as_ref();
@@ -1414,7 +1044,6 @@ fn run_release_logic(
             }
         }
     } else if dry_run && any_bumped {
-        // Dry-run: print pre_commit/pre_publish/post_publish hooks.
         for (ctx, pkg_idx) in &hook_contexts {
             let pkg = &config.packages[*pkg_idx];
             let ws_hooks = config.workspace.hooks.as_ref();
@@ -1432,9 +1061,6 @@ fn run_release_logic(
         }
     }
 
-    // Publish orphaned draft releases when nothing was bumped.
-    // This handles the case where `ferrflow release` runs after the
-    // tag and release commit already exist (e.g. in a publish workflow).
     if !any_bumped
         && !draft
         && !dry_run
@@ -1476,7 +1102,6 @@ fn run_release_logic(
         }
     }
 
-    // Print grouped output: per-package sections, then shared operations.
     for (i, (_, lines)) in pkg_outputs.iter().enumerate() {
         if i > 0 {
             println!();
@@ -1497,296 +1122,4 @@ fn run_release_logic(
     }
 
     Ok(())
-}
-
-/// Collect the set of dirty (modified/new) file paths in the working tree.
-/// Return whichever of the two inputs parses to the higher semver version.
-/// Falls back to `tag` when `file` is not a valid semver; falls back to `file`
-/// when `tag` is not. When both fail to parse, returns `file` (the behaviour
-/// before this helper existed).
-fn pick_higher_semver(file: &str, tag: &str) -> String {
-    let file_clean = file.trim_start_matches('v');
-    let tag_clean = tag.trim_start_matches('v');
-    match (
-        semver::Version::parse(file_clean),
-        semver::Version::parse(tag_clean),
-    ) {
-        (Ok(f), Ok(t)) => {
-            if t >= f {
-                tag.to_string()
-            } else {
-                file.to_string()
-            }
-        }
-        (Ok(_), Err(_)) => file.to_string(),
-        (Err(_), Ok(_)) => tag.to_string(),
-        (Err(_), Err(_)) => file.to_string(),
-    }
-}
-
-fn collect_dirty_files(repo: &git2::Repository) -> HashSet<String> {
-    let mut files = HashSet::new();
-    if let Ok(statuses) = repo.statuses(None) {
-        for entry in statuses.iter() {
-            let status = entry.status();
-            if status.intersects(
-                git2::Status::WT_MODIFIED
-                    | git2::Status::WT_NEW
-                    | git2::Status::WT_TYPECHANGE
-                    | git2::Status::INDEX_NEW
-                    | git2::Status::INDEX_MODIFIED,
-            ) && let Some(path) = entry.path()
-            {
-                files.insert(path.to_string());
-            }
-        }
-    }
-    files
-}
-
-/// Auto-stage files that became dirty after a hook ran.
-fn auto_stage_new_files(
-    repo: &git2::Repository,
-    before: &HashSet<String>,
-    files_to_commit: &mut Vec<String>,
-) {
-    let after = collect_dirty_files(repo);
-    for path in after.difference(before) {
-        if !files_to_commit.contains(path) {
-            files_to_commit.push(path.clone());
-        }
-    }
-}
-
-fn is_package_touched(pkg: &PackageConfig, changed_files: &[String], is_monorepo: bool) -> bool {
-    // In single-package mode, always consider it touched
-    if !is_monorepo {
-        return true;
-    }
-
-    let pkg_path = pkg.path.trim_start_matches("./").trim_end_matches('/');
-
-    // Root package
-    if pkg_path == "." || pkg_path.is_empty() {
-        return true;
-    }
-
-    let prefix = format!("{pkg_path}/");
-    if changed_files.iter().any(|f| f.starts_with(&prefix)) {
-        return true;
-    }
-
-    // Check shared paths
-    for shared in &pkg.shared_paths {
-        let shared = shared.trim_end_matches('/');
-        if changed_files
-            .iter()
-            .any(|f| f.starts_with(shared) || f == shared)
-        {
-            return true;
-        }
-    }
-
-    false
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::config::PackageConfig;
-
-    #[test]
-    fn pick_higher_semver_prefers_tag_when_tag_is_higher() {
-        assert_eq!(pick_higher_semver("2.0.0", "3.0.0"), "3.0.0");
-    }
-
-    #[test]
-    fn pick_higher_semver_prefers_file_when_file_is_higher() {
-        // Human bumped Cargo.toml ahead of any existing tag — honour intent.
-        assert_eq!(pick_higher_semver("5.0.0", "2.0.0"), "5.0.0");
-    }
-
-    #[test]
-    fn pick_higher_semver_returns_tag_on_equality() {
-        // Doesn't matter which one we pick when equal — returning the tag
-        // means callers print a consistent value in logs.
-        assert_eq!(pick_higher_semver("2.1.0", "2.1.0"), "2.1.0");
-    }
-
-    #[test]
-    fn pick_higher_semver_falls_back_to_tag_when_file_is_invalid() {
-        assert_eq!(pick_higher_semver("garbage", "2.0.0"), "2.0.0");
-    }
-
-    #[test]
-    fn pick_higher_semver_falls_back_to_file_when_tag_is_invalid() {
-        assert_eq!(pick_higher_semver("2.0.0", "garbage"), "2.0.0");
-    }
-
-    #[test]
-    fn pick_higher_semver_strips_leading_v() {
-        assert_eq!(pick_higher_semver("v2.0.0", "v3.0.0"), "v3.0.0");
-    }
-
-    fn make_pkg(name: &str, path: &str, shared: &[&str]) -> PackageConfig {
-        PackageConfig {
-            name: name.into(),
-            path: path.into(),
-            versioned_files: vec![],
-            changelog: None,
-            shared_paths: shared.iter().map(|s| s.to_string()).collect(),
-            depends_on: vec![],
-            versioning: None,
-            tag_template: None,
-            hooks: None,
-            floating_tags: None,
-        }
-    }
-
-    #[test]
-    fn single_package_always_touched() {
-        let pkg = make_pkg("app", ".", &[]);
-        let files = vec!["README.md".to_string()];
-        assert!(is_package_touched(&pkg, &files, false));
-    }
-
-    #[test]
-    fn monorepo_root_package_always_touched() {
-        let pkg = make_pkg("root", ".", &[]);
-        let files = vec!["something.rs".to_string()];
-        assert!(is_package_touched(&pkg, &files, true));
-    }
-
-    #[test]
-    fn monorepo_package_touched_by_own_files() {
-        let pkg = make_pkg("api", "packages/api", &[]);
-        let files = vec!["packages/api/src/main.rs".to_string()];
-        assert!(is_package_touched(&pkg, &files, true));
-    }
-
-    #[test]
-    fn monorepo_package_not_touched_by_other_files() {
-        let pkg = make_pkg("api", "packages/api", &[]);
-        let files = vec!["packages/site/index.ts".to_string()];
-        assert!(!is_package_touched(&pkg, &files, true));
-    }
-
-    #[test]
-    fn monorepo_package_touched_by_shared_path() {
-        let pkg = make_pkg("api", "packages/api", &["packages/shared/"]);
-        let files = vec!["packages/shared/types.ts".to_string()];
-        assert!(is_package_touched(&pkg, &files, true));
-    }
-
-    #[test]
-    fn monorepo_shared_path_trailing_slash_trimmed() {
-        let pkg = make_pkg("api", "packages/api", &["lib/"]);
-        let files = vec!["lib/utils.rs".to_string()];
-        assert!(is_package_touched(&pkg, &files, true));
-    }
-
-    #[test]
-    fn monorepo_no_changed_files() {
-        let pkg = make_pkg("api", "packages/api", &[]);
-        let files: Vec<String> = vec![];
-        assert!(!is_package_touched(&pkg, &files, true));
-    }
-
-    #[test]
-    fn monorepo_path_with_dot_slash_prefix() {
-        let pkg = make_pkg("api", "./packages/api", &[]);
-        let files = vec!["packages/api/src/main.rs".to_string()];
-        assert!(is_package_touched(&pkg, &files, true));
-    }
-
-    #[test]
-    fn single_package_mode_always_touched() {
-        let pkg = make_pkg("api", "packages/api", &[]);
-        let files = vec!["unrelated/file.rs".to_string()];
-        assert!(is_package_touched(&pkg, &files, false));
-    }
-
-    #[test]
-    fn monorepo_empty_path_is_root() {
-        let pkg = make_pkg("root", "", &[]);
-        let files = vec!["anything.rs".to_string()];
-        assert!(is_package_touched(&pkg, &files, true));
-    }
-
-    #[test]
-    fn monorepo_exact_shared_path_file() {
-        let pkg = make_pkg("api", "packages/api", &["shared-config.json"]);
-        let files = vec!["shared-config.json".to_string()];
-        assert!(is_package_touched(&pkg, &files, true));
-    }
-
-    #[test]
-    fn monorepo_multiple_shared_paths() {
-        let pkg = make_pkg("api", "packages/api", &["lib/", "proto/"]);
-        let files = vec!["proto/schema.proto".to_string()];
-        assert!(is_package_touched(&pkg, &files, true));
-    }
-
-    #[test]
-    fn monorepo_similar_prefix_no_false_positive() {
-        let pkg = make_pkg("api", "packages/api", &[]);
-        // "packages/api-docs" should NOT match "packages/api/"
-        let files = vec!["packages/api-docs/README.md".to_string()];
-        assert!(!is_package_touched(&pkg, &files, true));
-    }
-
-    #[test]
-    fn monorepo_shared_path_with_trailing_slash() {
-        let pkg = make_pkg("api", "packages/api", &["packages/shared/"]);
-        let files = vec!["packages/shared/types.ts".to_string()];
-        assert!(is_package_touched(&pkg, &files, true));
-    }
-
-    #[test]
-    fn monorepo_empty_changed_files_single_package() {
-        let pkg = make_pkg("app", "packages/app", &[]);
-        let files: Vec<String> = vec![];
-        // Even single-package mode returns true regardless of changed files
-        assert!(is_package_touched(&pkg, &files, false));
-    }
-
-    #[test]
-    fn parse_force_version_single_repo() {
-        let fv = "1.2.3";
-        let result: Option<(Option<&str>, &str)> = if let Some(at_pos) = fv.find('@') {
-            let name = &fv[..at_pos];
-            let version = &fv[at_pos + 1..];
-            Some((Some(name), version))
-        } else {
-            Some((None, fv))
-        };
-        assert_eq!(result, Some((None, "1.2.3")));
-    }
-
-    #[test]
-    fn parse_force_version_monorepo() {
-        let fv = "api@2.0.0";
-        let result: Option<(Option<&str>, &str)> = if let Some(at_pos) = fv.find('@') {
-            let name = &fv[..at_pos];
-            let version = &fv[at_pos + 1..];
-            Some((Some(name), version))
-        } else {
-            Some((None, fv))
-        };
-        assert_eq!(result, Some((Some("api"), "2.0.0")));
-    }
-
-    #[test]
-    fn parse_force_version_with_v_prefix() {
-        let fv = "v3.0.0";
-        let clean = fv.strip_prefix('v').unwrap_or(fv);
-        assert!(semver::Version::parse(clean).is_ok());
-    }
-
-    #[test]
-    fn parse_force_version_invalid_semver() {
-        let fv = "not-a-version";
-        let clean = fv.strip_prefix('v').unwrap_or(fv);
-        assert!(semver::Version::parse(clean).is_err());
-    }
 }
