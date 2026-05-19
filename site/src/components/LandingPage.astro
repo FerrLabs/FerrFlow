@@ -1,10 +1,21 @@
 ---
 import { t, type Lang } from '../i18n/translations';
+import benchmarks from '../data/benchmarks.json';
 
 interface Props {
   lang: Lang;
 }
 const { lang } = Astro.props;
+
+const ferrflowSemver = benchmarks.ferrflow_version.replace(/^ferrflow\s+/, '');
+const ferrflowVersion = `v${ferrflowSemver}`;
+const ferrflowMajor = `v${ferrflowSemver.split('.')[0]}`;
+
+const releaseSizeMb = (benchmarks as unknown as { ferrflow_release_size_mb?: string })
+  .ferrflow_release_size_mb;
+const ferrflowBinarySize = releaseSizeMb
+  ? `~${Math.round(parseFloat(releaseSizeMb))} MB`
+  : `~${Math.round(parseFloat(benchmarks.ferrflow_binary_size_mb))} MB`;
 
 const features = ['01', '02', '03', '04', '05', '06'] as const;
 
@@ -12,7 +23,7 @@ const installCells = [
   { k: 'Cargo', cmd: 'cargo install ferrflow' },
   { k: 'npm', cmd: 'npm install -D ferrflow' },
   { k: 'Docker', cmd: 'docker run ghcr.io/ferrlabs/ferrflow' },
-  { k: 'GitHub', cmd: 'uses: FerrLabs/FerrFlow@v4' },
+  { k: 'GitHub', cmd: `uses: FerrLabs/FerrFlow@${ferrflowMajor}` },
 ];
 
 const formats = [
@@ -32,10 +43,10 @@ const formats = [
 ];
 
 const heroStats = [
-  { k: t(lang, 'hero.stat.latest'), v: 'v4.9.0' },
+  { k: t(lang, 'hero.stat.latest'), v: ferrflowVersion },
   { k: t(lang, 'hero.stat.license'), v: 'MPL-2.0' },
   { k: t(lang, 'hero.stat.lang'), v: 'Rust' },
-  { k: t(lang, 'hero.stat.size'), v: '~8 MB' },
+  { k: t(lang, 'hero.stat.size'), v: ferrflowBinarySize },
 ];
 
 const docsHref = lang === 'fr' ? '/fr/docs/introduction/' : '/docs/introduction/';
@@ -43,11 +54,6 @@ const docsHref = lang === 'fr' ? '/fr/docs/introduction/' : '/docs/introduction/
 
 <section class="hero-section">
   <div class="container">
-    <div class="hero-badge">
-      <span class="hero-badge-dot" aria-hidden></span>
-      <span class="mono hero-badge-text">{t(lang, 'hero.badge')}</span>
-    </div>
-
     <div class="hero-grid">
       <div class="hero-left">
         <h1 class="hero-title">
@@ -98,19 +104,22 @@ const docsHref = lang === 'fr' ? '/fr/docs/introduction/' : '/docs/introduction/
           </div>
           <div class="terminal-line is-ok">
             <span class="terminal-prompt is-ok">✓</span><span
-              >bump api v4.1.7 → v5.0.0 (breaking)</span>
+              >bump api v4.1.7 → v5.0.0 (breaking)</span
+            >
+          </div>
+          <div class="terminal-line is-ok">
+            <span class="terminal-prompt is-ok">✓</span><span>bump app v4.1.4 → v4.2.0 (minor)</span
+            >
           </div>
           <div class="terminal-line is-ok">
             <span class="terminal-prompt is-ok">✓</span><span
-              >bump app v4.1.4 → v4.2.0 (minor)</span>
+              >bump site v1.3.9 → v1.4.0 (minor)</span
+            >
           </div>
           <div class="terminal-line is-ok">
             <span class="terminal-prompt is-ok">✓</span><span
-              >bump site v1.3.9 → v1.4.0 (minor)</span>
-          </div>
-          <div class="terminal-line is-ok">
-            <span class="terminal-prompt is-ok">✓</span><span
-              >bump admin v0.8.2 → v0.8.3 (patch)</span>
+              >bump admin v0.8.2 → v0.8.3 (patch)</span
+            >
           </div>
           <div class="terminal-line is-dim">
             <span class="terminal-prompt">→</span><span>{t(lang, 'terminal.generating')}</span>
@@ -202,30 +211,6 @@ const docsHref = lang === 'fr' ? '/fr/docs/introduction/' : '/docs/introduction/
 <style>
   .hero-section {
     padding: 80px 0 96px;
-  }
-
-  .hero-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    padding: 6px 14px;
-    border-radius: 999px;
-    background: var(--accent-soft);
-    border: 1px solid color-mix(in oklab, var(--accent) 30%, transparent);
-    margin-bottom: 32px;
-  }
-  .hero-badge-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 4px;
-    background: var(--accent);
-    box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 20%, transparent);
-  }
-  .hero-badge-text {
-    font-size: 11px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: #8f4315;
   }
 
   .hero-grid {

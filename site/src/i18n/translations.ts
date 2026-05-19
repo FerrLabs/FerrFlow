@@ -28,7 +28,6 @@ const ui = {
     'nav.cta': 'Get FerrFlow',
     'lang.unavailable': 'Not yet translated',
 
-    'hero.badge': 'Open source · v4',
     'hero.h1': 'Release.',
     'hero.h2': 'Automatically.',
     'hero.sub':
@@ -104,7 +103,6 @@ const ui = {
     'nav.cta': 'Obtenir FerrFlow',
     'lang.unavailable': 'Pas encore traduit',
 
-    'hero.badge': 'Open source · v4',
     'hero.h1': 'Publiez.',
     'hero.h2': 'Automatiquement.',
     'hero.sub':
