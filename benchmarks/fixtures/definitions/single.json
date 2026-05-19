@@ -10,6 +10,14 @@
   "tool_configs": {
     "ferrflow": {
       "ferrflow.json": "{\"package\":[{\"name\":\"myapp\",\"path\":\".\",\"changelog\":\"CHANGELOG.md\",\"versioned_files\":[{\"path\":\"package.json\",\"format\":\"json\"}]}]}"
+    },
+    "changesets": {
+      "package.json": "{\"name\":\"myapp\",\"version\":\"0.1.0\",\"private\":true}",
+      ".changeset/config.json": "{\"$schema\":\"https://unpkg.com/@changesets/config@3.0.0/schema.json\",\"changelog\":\"@changesets/cli/changelog\",\"commit\":false,\"fixed\":[],\"linked\":[],\"access\":\"restricted\",\"baseBranch\":\"main\",\"updateInternalDependencies\":\"patch\",\"ignore\":[]}"
+    },
+    "semantic-release": {
+      "package.json": "{\"name\":\"myapp\",\"version\":\"0.1.0\",\"private\":true,\"repository\":{\"type\":\"git\",\"url\":\"git+https://github.com/example/example.git\"}}",
+      ".releaserc.json": "{\"branches\":[\"main\"],\"plugins\":[\"@semantic-release/commit-analyzer\",\"@semantic-release/release-notes-generator\"]}"
     }
   }
 }
