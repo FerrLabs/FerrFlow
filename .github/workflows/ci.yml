@@ -520,6 +520,7 @@ jobs:
         continue-on-error: true
       - name: Append benchmark results to draft release
         if: needs.benchmark.result == 'success'
+        id: append-bench
         run: |
           BENCH_FILE="benchmark-summary/release-summary.md"
           if [[ ! -f "$BENCH_FILE" ]]; then
@@ -537,5 +538,21 @@ jobs:
           CLEAN_BODY=$(echo "$CURRENT_BODY" | sed '/^## Performance$/,$d')
           printf -v NEW_BODY '%s\n\n%s' "$CLEAN_BODY" "$BENCH"
           gh release edit "$TAG" --notes "$NEW_BODY"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Notify FerrFlow-Cloud of new release
+        if: steps.append-bench.outputs.tag != '' && inputs.dry_run != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.FERRFLOW_DISPATCH_TOKEN }}
+          TAG: ${{ steps.append-bench.outputs.tag }}
+        run: |
+          if [[ -z "${GH_TOKEN:-}" ]]; then
+            echo "::warning::FERRFLOW_DISPATCH_TOKEN not set — skipping cross-repo dispatch. Site sync will fire on its 6h schedule instead."
+            exit 0
+          fi
+          gh api -X POST repos/FerrLabs/FerrFlow-Cloud/dispatches \
+            -f event_type="ferrflow-released" \
+            -F client_payload[tag]="$TAG"
+          echo "Dispatched ferrflow-released ($TAG) to FerrLabs/FerrFlow-Cloud"
