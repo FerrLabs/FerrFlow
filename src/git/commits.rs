@@ -13,32 +13,7 @@ pub fn get_commits_since_last_tag(
     strategy: OrphanedTagStrategy,
 ) -> Result<Vec<GitLog>> {
     let last_tag_oid = find_last_tag_commit(repo, tag_prefix, strategy)?;
-
-    let mut walk = repo.revwalk()?;
-    walk.push_head()?;
-    walk.set_sorting(Sort::TOPOLOGICAL | Sort::TIME)?;
-
-    let mut commits = Vec::new();
-    for oid in walk {
-        let oid = oid?;
-        if let Some(stop) = last_tag_oid
-            && oid == stop
-        {
-            break;
-        }
-        if let Ok(commit) = repo.find_commit(oid) {
-            let message = commit.message().unwrap_or("").to_string();
-            if message.contains("[skip ci]") {
-                continue;
-            }
-            commits.push(GitLog {
-                hash: oid.to_string()[..8].to_string(),
-                message,
-            });
-        }
-    }
-
-    Ok(commits)
+    get_commits_since_oid(repo, last_tag_oid)
 }
 
 pub fn get_commits_since_last_stable_tag(
@@ -47,7 +22,17 @@ pub fn get_commits_since_last_stable_tag(
     strategy: OrphanedTagStrategy,
 ) -> Result<Vec<GitLog>> {
     let last_tag_oid = find_last_stable_tag(repo, tag_prefix, strategy)?.map(|t| t.commit_oid);
+    get_commits_since_oid(repo, last_tag_oid)
+}
 
+/// Walk commits from HEAD back to `last_tag_oid` (exclusive). Callers in
+/// the multi-package monorepo loop resolve the OID once via `TagIndex`
+/// and reuse this helper, sparing the per-package `tag_foreach` scan
+/// that `find_last_tag_commit` would otherwise re-run.
+pub fn get_commits_since_oid(
+    repo: &Repository,
+    last_tag_oid: Option<git2::Oid>,
+) -> Result<Vec<GitLog>> {
     let mut walk = repo.revwalk()?;
     walk.push_head()?;
     walk.set_sorting(Sort::TOPOLOGICAL | Sort::TIME)?;
