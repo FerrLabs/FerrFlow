@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.5.0] - 2026-05-19
+
+### Features
+
+- feat(site): add Layout-level bold pre-footer CTA (#511)
+
 ## [6.4.4] - 2026-05-19
 
 ### Bug Fixes
