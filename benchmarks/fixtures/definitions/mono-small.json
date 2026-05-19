@@ -17,7 +17,7 @@
       ".changeset/config.json": "{\"$schema\":\"https://unpkg.com/@changesets/config@3.0.0/schema.json\",\"changelog\":\"@changesets/cli/changelog\",\"commit\":false,\"fixed\":[],\"linked\":[],\"access\":\"restricted\",\"baseBranch\":\"main\",\"updateInternalDependencies\":\"patch\",\"ignore\":[]}"
     },
     "semantic-release": {
-      "package.json": "{\"name\":\"root\",\"version\":\"0.1.0\",\"private\":true,\"repository\":{\"type\":\"git\",\"url\":\"git+https://github.com/example/example.git\"}}",
+      "package.json": "{\"name\":\"root\",\"version\":\"0.1.0\",\"private\":true}",
       ".releaserc.json": "{\"branches\":[\"main\"],\"plugins\":[\"@semantic-release/commit-analyzer\",\"@semantic-release/release-notes-generator\"]}"
     },
     "standard-version": {
