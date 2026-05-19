@@ -3,6 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import benchmarks from '../data/benchmarks.json';
 
 type Cell = { median_ms: number; stddev_ms: number; memory_mb: string | number };
+type InstallSize = { npm?: string; binary?: string };
 
 const KNOWN_TOOLS = [
   'commit-and-tag-version',
@@ -78,6 +79,20 @@ const orderedTools = Array.from(tools).sort((a, b) => {
 const orderedCommands = Array.from(commands).sort();
 
 const hasCompetitors = orderedTools.length > 1;
+
+const installSizes =
+  (benchmarks as unknown as { install_sizes?: Record<string, InstallSize> }).install_sizes ?? {};
+const installSizeTools = Object.keys(installSizes).sort((a, b) => {
+  if (a === 'ferrflow') return -1;
+  if (b === 'ferrflow') return 1;
+  return a.localeCompare(b);
+});
+const hasInstallSizes = installSizeTools.length > 0;
+
+function fmtSize(v: string | undefined): string {
+  if (!v || v === 'N/A') return '—';
+  return `${v} MB`;
+}
 
 function fmt(cell: Cell | undefined): string {
   if (!cell) return '—';
@@ -197,6 +212,43 @@ const updated = new Date(benchmarks.timestamp).toLocaleDateString('en-US', {
           </div>
         </section>
       ))
+    }
+
+    {
+      hasInstallSizes && (
+        <section class="perf-section">
+          <h2>Install footprint</h2>
+          <p class="perf-footprint-lead">
+            Disk size after install. <code>release-please</code> appears here only — its runtime
+            can't be benched offline (it needs the GitHub API to resolve the latest release), so
+            footprint is the fair comparison we can publish.
+          </p>
+          <div class="perf-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tool</th>
+                  <th>npm install</th>
+                  <th>Native binary</th>
+                </tr>
+              </thead>
+              <tbody>
+                {installSizeTools.map((tool) => (
+                  <tr>
+                    <th class="fix-label">{tool}</th>
+                    <td class:list={{ 'is-ours': tool === 'ferrflow' }}>
+                      <span class="lat">{fmtSize(installSizes[tool].npm)}</span>
+                    </td>
+                    <td class:list={{ 'is-ours': tool === 'ferrflow' }}>
+                      <span class="lat">{fmtSize(installSizes[tool].binary)}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )
     }
 
     <section class="perf-footnote">
@@ -345,6 +397,21 @@ const updated = new Date(benchmarks.timestamp).toLocaleDateString('en-US', {
     }
     .perf-section {
       margin-bottom: 40px;
+    }
+    .perf-footprint-lead {
+      font-size: 14px;
+      line-height: 1.55;
+      color: #475569;
+      margin: 0 0 16px;
+      max-width: 720px;
+    }
+    .perf-footprint-lead code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      background: #f1f5f9;
+      padding: 1px 5px;
+      border-radius: 3px;
+      color: #1e293b;
     }
     .perf-table-wrap {
       overflow-x: auto;

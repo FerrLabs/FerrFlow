@@ -3,6 +3,7 @@ import Layout from '../../layouts/Layout.astro';
 import benchmarks from '../../data/benchmarks.json';
 
 type Cell = { median_ms: number; stddev_ms: number; memory_mb: string | number };
+type InstallSize = { npm?: string; binary?: string };
 
 const KNOWN_TOOLS = [
   'commit-and-tag-version',
@@ -77,6 +78,20 @@ const orderedTools = Array.from(tools).sort((a, b) => {
 });
 const orderedCommands = Array.from(commands).sort();
 const hasCompetitors = orderedTools.length > 1;
+
+const installSizes =
+  (benchmarks as unknown as { install_sizes?: Record<string, InstallSize> }).install_sizes ?? {};
+const installSizeTools = Object.keys(installSizes).sort((a, b) => {
+  if (a === 'ferrflow') return -1;
+  if (b === 'ferrflow') return 1;
+  return a.localeCompare(b);
+});
+const hasInstallSizes = installSizeTools.length > 0;
+
+function fmtSize(v: string | undefined): string {
+  if (!v || v === 'N/A') return '—';
+  return `${v} Mo`;
+}
 
 function fmt(cell: Cell | undefined): string {
   if (!cell) return '—';
@@ -197,6 +212,44 @@ const updated = new Date(benchmarks.timestamp).toLocaleDateString('fr-FR', {
           </div>
         </section>
       ))
+    }
+
+    {
+      hasInstallSizes && (
+        <section class="perf-section">
+          <h2>Empreinte d'installation</h2>
+          <p class="perf-footprint-lead">
+            Taille sur disque après installation. <code>release-please</code> n'apparaît qu'ici —
+            son runtime ne peut pas être benché offline (il a besoin de l'API GitHub pour résoudre
+            la dernière release), donc l'empreinte est la seule comparaison équitable qu'on peut
+            publier.
+          </p>
+          <div class="perf-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Outil</th>
+                  <th>npm install</th>
+                  <th>Binaire natif</th>
+                </tr>
+              </thead>
+              <tbody>
+                {installSizeTools.map((tool) => (
+                  <tr>
+                    <th class="fix-label">{tool}</th>
+                    <td class:list={{ 'is-ours': tool === 'ferrflow' }}>
+                      <span class="lat">{fmtSize(installSizes[tool].npm)}</span>
+                    </td>
+                    <td class:list={{ 'is-ours': tool === 'ferrflow' }}>
+                      <span class="lat">{fmtSize(installSizes[tool].binary)}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )
     }
 
     <section class="perf-footnote">
