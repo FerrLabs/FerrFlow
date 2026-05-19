@@ -1,7 +1,8 @@
 {
   "meta": {
     "name": "single",
-    "description": "Single package, 100 commits"
+    "description": "Single package, 100 commits",
+    "default_branch": "main"
   },
   "generate": {
     "packages": 1,

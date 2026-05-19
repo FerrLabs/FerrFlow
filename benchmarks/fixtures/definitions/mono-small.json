@@ -1,7 +1,8 @@
 {
   "meta": {
     "name": "mono-small",
-    "description": "10 packages, 100 commits"
+    "description": "10 packages, 100 commits",
+    "default_branch": "main"
   },
   "generate": {
     "packages": 10,

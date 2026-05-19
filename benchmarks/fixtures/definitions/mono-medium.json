@@ -1,7 +1,8 @@
 {
   "meta": {
     "name": "mono-medium",
-    "description": "50 packages, 500 commits"
+    "description": "50 packages, 500 commits",
+    "default_branch": "main"
   },
   "generate": {
     "packages": 50,
