@@ -1,6 +1,8 @@
 use anyhow::{Context, Result};
 use git2::{PushOptions, RemoteCallbacks, Repository, Sort};
 use std::cell::RefCell;
+use std::collections::HashMap;
+use std::path::Path;
 use std::rc::Rc;
 
 use crate::error_code::{self, ErrorCodeExt};
@@ -8,6 +10,70 @@ use crate::error_code::{self, ErrorCodeExt};
 use super::auth::{authenticated_remote_url, credentials_callback, get_authenticated_remote};
 use super::fetch::make_fetch_options;
 use super::retry::retry_transient;
+
+fn local_tag_target_sha(repo: &Repository, tag: &str) -> Result<String> {
+    let tag_ref = repo
+        .find_reference(&format!("refs/tags/{tag}"))
+        .with_context(|| format!("local tag '{tag}' not found"))?;
+    let commit = tag_ref
+        .peel_to_commit()
+        .with_context(|| format!("could not resolve tag '{tag}' to a commit"))?;
+    Ok(commit.id().to_string())
+}
+
+pub(super) fn parse_ls_remote_tags(stdout: &str) -> HashMap<String, String> {
+    let mut tag_objects: HashMap<String, String> = HashMap::new();
+    let mut dereferenced: HashMap<String, String> = HashMap::new();
+    for line in stdout.lines() {
+        let Some((sha, refname)) = line.split_once('\t') else {
+            continue;
+        };
+        let Some(name) = refname.strip_prefix("refs/tags/") else {
+            continue;
+        };
+        if let Some(base) = name.strip_suffix("^{}") {
+            dereferenced.insert(base.to_string(), sha.trim().to_string());
+        } else {
+            tag_objects.insert(name.to_string(), sha.trim().to_string());
+        }
+    }
+    let mut out = tag_objects;
+    for (name, sha) in dereferenced {
+        out.insert(name, sha);
+    }
+    out
+}
+
+pub(super) fn remote_tag_target_shas(
+    workdir: &Path,
+    push_url: &str,
+    tags: &[&str],
+) -> Result<HashMap<String, String>> {
+    if tags.is_empty() {
+        return Ok(HashMap::new());
+    }
+    let mut cmd = std::process::Command::new("git");
+    cmd.current_dir(workdir)
+        .arg("ls-remote")
+        .arg("--tags")
+        .arg(push_url);
+    for tag in tags {
+        cmd.arg(format!("refs/tags/{tag}"));
+    }
+    let output = cmd
+        .output()
+        .with_context(|| "spawn `git ls-remote --tags` failed (is git in PATH?)")?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(anyhow::anyhow!(
+            "git ls-remote --tags failed: {}",
+            stderr.trim()
+        ));
+    }
+    Ok(parse_ls_remote_tags(&String::from_utf8_lossy(
+        &output.stdout,
+    )))
+}
 
 pub fn force_push_tags(repo: &Repository, remote_name: &str, tags: &[&str]) -> Result<()> {
     if tags.is_empty() {
@@ -121,10 +187,59 @@ fn shell_push_tags(repo: &Repository, remote_name: &str, tags: &[&str], force: b
         .to_string();
     let push_url = authenticated_remote_url(&raw_url).unwrap_or(raw_url);
 
+    let remote_shas = remote_tag_target_shas(workdir, &push_url, tags).unwrap_or_else(|err| {
+        eprintln!(
+            "  Warning: could not enumerate remote tag state ({err}); falling back to a plain push"
+        );
+        HashMap::new()
+    });
+
+    let mut to_push: Vec<&str> = Vec::with_capacity(tags.len());
+    let mut already_synced: Vec<&str> = Vec::new();
+    let mut diverged: Vec<(String, String, String)> = Vec::new();
+    for tag in tags {
+        let local_sha = local_tag_target_sha(repo, tag)?;
+        match remote_shas.get(*tag) {
+            Some(remote_sha) if remote_sha == &local_sha => already_synced.push(*tag),
+            Some(remote_sha) if !force => {
+                diverged.push(((*tag).to_string(), local_sha, remote_sha.clone()));
+            }
+            _ => to_push.push(*tag),
+        }
+    }
+
+    if !already_synced.is_empty() {
+        eprintln!(
+            "  ↻ Already on remote at the same commit: {}",
+            already_synced.join(", ")
+        );
+    }
+    if !diverged.is_empty() {
+        let joined = diverged
+            .iter()
+            .map(|(t, l, r)| {
+                format!(
+                    "{t} (local {} != remote {})",
+                    &l[..7.min(l.len())],
+                    &r[..7.min(r.len())]
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        return Err(anyhow::anyhow!(
+            "Tag(s) already exist on remote pointing to a different commit: {joined}. \
+             This usually means a previous release run partially succeeded — \
+             delete the divergent remote tag(s) and retry, or use --force if you really want to overwrite."
+        ));
+    }
+    if to_push.is_empty() {
+        return Ok(());
+    }
+
     let prefix = if force { "+" } else { "" };
     let mut cmd = std::process::Command::new("git");
     cmd.current_dir(workdir).arg("push").arg(&push_url);
-    for tag in tags {
+    for tag in &to_push {
         cmd.arg(format!("{prefix}refs/tags/{tag}:refs/tags/{tag}"));
     }
 
