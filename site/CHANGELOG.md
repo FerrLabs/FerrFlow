@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.4.4] - 2026-05-19
+
+### Bug Fixes
+
+- fix(docker): trigger on v* tags too (single-package repo emits v6.4.x not site@v6.4.x) (#509)
+
 ## [6.4.3] - 2026-05-19
 
 ### Bug Fixes
