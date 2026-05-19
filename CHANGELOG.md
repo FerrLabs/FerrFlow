@@ -4,6 +4,14 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [4.10.2] - 2026-05-19
+
+### Bug Fixes
+
+- fix(bench): let semantic-release fall back to origin remote (#463)
+- fix(bench): set default_branch=main on all bench fixtures (#461)
+- fix(release): make push_tags idempotent against pre-existing remote tags (#459)
+
 ## [4.10.1] - 2026-05-19
 
 ### Bug Fixes
