@@ -1,7 +1,7 @@
 use super::auth::{credentials_callback, extract_url_password};
 use super::push::{fetch_and_rebase, parse_ls_remote_tags};
 use super::retry::{is_transient_git_error, retry_transient};
-use super::tags::{find_last_tag, is_floating_tag, is_prerelease_tag};
+use super::tags::{find_highest_semver_tag, find_last_tag, is_floating_tag, is_prerelease_tag};
 use super::*;
 use crate::config::OrphanedTagStrategy;
 use crate::error_code;

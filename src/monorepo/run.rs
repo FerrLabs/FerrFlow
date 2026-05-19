@@ -78,6 +78,12 @@ pub(super) fn run_release_logic(
         .unwrap_or_default();
 
     let all_tags = collect_all_tags(&repo);
+    // Build the HEAD ancestor set once so the per-package find_*_tag calls
+    // below can skip their per-tag graph_descendant_of walk. On dense
+    // monorepos (mono-large: 200 pkg × 10k commits) this is the
+    // difference between 1.8 s and a couple hundred ms for the tag-bound
+    // commands.
+    let head_ancestors = crate::git::build_head_ancestors(&repo).ok();
 
     let target_branch = if prerelease_ctx.is_prerelease() {
         current_branch.clone()
@@ -196,10 +202,11 @@ pub(super) fn run_release_logic(
         );
 
         let file_version = read_version(vf, root).ok();
-        let tag_version = crate::git::find_highest_semver_tag(
+        let tag_version = crate::git::find_highest_semver_tag_with_cache(
             &repo,
             &tag_search_prefix,
             config.workspace.orphaned_tag_strategy,
+            head_ancestors.as_ref(),
         )?
         .map(|(_tag, version)| version);
         let current_version = match (tag_version, file_version) {
