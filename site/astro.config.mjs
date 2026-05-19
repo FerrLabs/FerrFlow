@@ -37,6 +37,10 @@ export default defineConfig({
         { tag: 'meta', attrs: { name: 'twitter:image', content: 'https://ferrflow.com/og.png' } },
         {
           tag: 'script',
+          content: `document.documentElement.dataset.theme='light';try{localStorage.setItem('starlight-theme','light');}catch(e){}`,
+        },
+        {
+          tag: 'script',
           content: `(function(){try{if(localStorage.getItem("lang-pref"))return;var p=location.pathname;if(p.startsWith("/fr/")||p==="/fr")return;var b=(navigator.language||"en").slice(0,2).toLowerCase();if(b==="fr")location.replace("/fr"+(p==="/"?"/":p)+location.search+location.hash);}catch(e){}})();`,
         },
       ],

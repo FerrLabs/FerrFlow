@@ -4,7 +4,6 @@ import Search from '@astrojs/starlight/components/Search.astro';
 import LanguageSelect from '@astrojs/starlight/components/LanguageSelect.astro';
 import VersionSelect from 'starlight-versions/components/VersionSelect.astro';
 import SharedNavbar from '@ferrlabs/ui-astro/Navbar.astro';
-import ThemeSelect from '@astrojs/starlight/components/ThemeSelect.astro';
 import { t, getLocalizedPath } from '../i18n/translations';
 import type { Lang } from '../i18n/translations';
 
@@ -13,47 +12,61 @@ const lang: Lang = Astro.url.pathname.startsWith('/fr/') ? 'fr' : 'en';
 const docsPath = getLocalizedPath('/docs/introduction', lang);
 
 const currentPath = Astro.url.pathname;
-const enEquiv =
-  currentPath.startsWith('/fr/') ? currentPath.slice(3) || '/'
-  : currentPath === '/fr' ? '/'
-  : currentPath;
+const enEquiv = currentPath.startsWith('/fr/')
+  ? currentPath.slice(3) || '/'
+  : currentPath === '/fr'
+    ? '/'
+    : currentPath;
 const frEquiv = enEquiv === '/' ? '/fr/' : `/fr${enEquiv.startsWith('/') ? '' : '/'}${enEquiv}`;
 ---
 
 <div class="docs-header">
-  {/* `hideLanguageToggle` suppresses the shared Navbar's own switcher so
+  {
+    /* `hideLanguageToggle` suppresses the shared Navbar's own switcher so
       Starlight's native `<LanguageSelect />` (passed through the default
       slot below) takes over — Starlight resolves the localised URL of
       the current docs page via its route context, which a manual toggle
-      can't see. */}
+      can't see. */
+  }
+  {
+    /* Standard (non-editorial) Navbar mode — keeps the search/version/lang
+      slots that editorial mode drops. The brand mark is provided via
+      logoSrc since the standard branch of @ferrlabs/ui-astro/Navbar.astro
+      doesn't honor a `logo` slot. */
+  }
   <SharedNavbar
     lang={lang}
     currentProduct="ferrflow"
     accent="orange"
-    brand={{ name: 'FerrFlow', href: lang === 'fr' ? '/fr/' : '/' }}
-    links={[
-      { label: t(lang, 'nav.docs') ?? 'Docs', href: docsPath },
-    ]}
+    brand={{
+      name: 'ferrflow',
+      href: lang === 'fr' ? '/fr/' : '/',
+      logoSrc: '/brand-mark.svg',
+    }}
+    links={[{ label: t(lang, 'nav.docs') ?? 'Docs', href: docsPath }]}
     activePage="docs"
     hideLanguageToggle
     enEquiv={enEquiv}
     frEquiv={frEquiv}
   >
-    {/* Default slot — rendered LEFT of the (hidden) LanguageSelect + CTA.
+    {
+      /* Default slot — rendered LEFT of the (hidden) LanguageSelect + CTA.
         VersionSelect is Starlight-specific; LanguageSelect is the native
-        Starlight one which knows per-doc localisation. */}
+        Starlight one which knows per-doc localisation. */
+    }
     <div class="docs-controls">
       <VersionSelect />
       <LanguageSelect {...Astro.props as StarlightProps} />
     </div>
-    {/* Centered search trigger. Starlight's Search owns its own modal +
+    {
+      /* Centered search trigger. Starlight's Search owns its own modal +
         Ctrl/Cmd+K keyboard shortcut; we just relocate its trigger to the
-        visual middle of the header for the usual docs affordance. */}
+        visual middle of the header for the usual docs affordance. */
+    }
     <div slot="center" class="docs-center">
       <Search {...Astro.props as StarlightProps} />
     </div>
   </SharedNavbar>
-  <ThemeSelect {...Astro.props as StarlightProps} />
 </div>
 
 <style>
@@ -72,6 +85,17 @@ const frEquiv = enEquiv === '/' ? '/fr/' : `/fr${enEquiv.startsWith('/') ? '' : 
 
   .docs-center {
     width: clamp(18rem, 32vw, 28rem);
+  }
+
+  /* Below md (768px) Starlight ships its own hamburger that opens a
+   * sidebar with search + nav + lang + version selects. Hide the
+   * duplicates we surface in the desktop header — they overflow the
+   * viewport and are already reachable from the Starlight menu. */
+  @media (max-width: 767.98px) {
+    .docs-controls,
+    .docs-center {
+      display: none;
+    }
   }
 </style>
 

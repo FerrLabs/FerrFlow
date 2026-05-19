@@ -14,10 +14,17 @@
 
 :root {
   --sl-font:
-    'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
-    'Helvetica Neue', Arial, sans-serif;
+    'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
   --sl-font-mono: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --sl-font-display: 'Fraunces', Georgia, serif;
+
+  /* Aliases for the shared @ferrlabs/ui-astro Navbar — it reads --font-serif
+   * for the editorial brand name ("ferrflow") and --font-mono for the
+   * "by ferrlabs" tag. Without these, the Navbar's var(--font-serif, Georgia)
+   * fallback kicks in and the docs nav drifts away from the landing. */
+  --font-serif: 'Fraunces', Georgia, ui-serif, serif;
+  --font-mono: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   --sl-content-width: 48rem;
   --sl-sidebar-width: 17.5rem;
@@ -84,45 +91,6 @@
   --sl-color-text: #18181b;
   --sl-color-text-accent: var(--ferr-accent);
   --sl-color-text-invert: #fafafa;
-}
-
-:root[data-theme='dark'] {
-  --sl-color-accent-low: #3a1d0f;
-  --sl-color-accent: #ef8a55;
-  --sl-color-accent-high: #ffb07a;
-
-  --sl-color-white: #fafafa;
-  --sl-color-gray-1: #f4f4f5;
-  --sl-color-gray-2: #d4d4d8;
-  --sl-color-gray-3: #a1a1aa;
-  --sl-color-gray-4: #52525b;
-  --sl-color-gray-5: #3f3f46;
-  --sl-color-gray-6: #27272a;
-  --sl-color-gray-7: #1c1c1f;
-  --sl-color-black: #0a0a0a;
-
-  --sl-color-bg: #0a0a0a;
-  --sl-color-bg-nav: #0a0a0af2;
-  --sl-color-bg-sidebar: #0a0a0a;
-  --sl-color-bg-inline-code: #1f1f22;
-  --sl-color-bg-accent: #2a160b;
-
-  --sl-color-hairline: #1f1f22;
-  --sl-color-hairline-light: #1a1a1d;
-  --sl-color-hairline-shade: #2a2a2e;
-
-  --sl-color-text: #e4e4e7;
-  --sl-color-text-accent: #ef8a55;
-  --sl-color-text-invert: #0a0a0a;
-
-  --ferr-note-bg: #161e2e;
-  --ferr-note-text: #cfd8ee;
-  --ferr-tip-bg: #112318;
-  --ferr-tip-text: #c4e7d3;
-  --ferr-warn-bg: #2a1c0a;
-  --ferr-warn-text: #f3d8a8;
-  --ferr-danger-bg: #2a1212;
-  --ferr-danger-text: #f0c0c0;
 }
 
 body,
@@ -258,7 +226,27 @@ h1#_top {
 }
 
 starlight-theme-select {
-  display: inline-flex !important;
+  display: none !important;
+}
+
+/* In standard (non-editorial) Navbar mode the brand text uses Inter; the
+ * landing's editorial mode uses Fraunces for the same word. Match the
+ * landing so the cross-product nav reads identically on both. */
+.docs-header .ferrlabs-nav-brand-name {
+  font-family: var(--font-serif);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* On mobile, hide the shared Navbar's hamburger + its full-screen menu
+ * portal. Inside the docs Starlight already ships its own hamburger that
+ * opens the sidebar (chapters, search, version picker) — exposing a
+ * second one that only links to "Docs" and "GitHub" is pure noise and
+ * confuses users about which menu to use. */
+.docs-header .edi-mobile-toggle,
+.docs-header ~ .edi-mobile-menu,
+body > .edi-mobile-menu {
+  display: none !important;
 }
 
 /* Scoped to Starlight's own .header class. Without this scope the rule
