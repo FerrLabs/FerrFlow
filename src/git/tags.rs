@@ -32,6 +32,162 @@ pub fn build_head_ancestors(repo: &Repository) -> Result<HashSet<git2::Oid>> {
     Ok(set)
 }
 
+/// Pre-collected tag index with HEAD reachability information.
+///
+/// Built once at the start of a multi-package operation (monorepo
+/// release, `ferrflow tag` listing, etc.), then queried per package.
+/// Avoids both the per-tag `graph_descendant_of` walk (already addressed
+/// by `build_head_ancestors`) AND the per-call `tag_foreach` scan that
+/// was still dominating on dense histories: 200 packages × ~200 tags ×
+/// callback overhead ≈ several hundred ms on mono-large.
+///
+/// The fast path covers `OrphanedTagStrategy::Warn` (default and most
+/// common). Callers needing tree-hash or message recovery for orphan
+/// tags fall back to the per-call `find_*_tag_with_cache` path which
+/// still uses the ancestor set but doesn't benefit from the pre-scan.
+pub struct TagIndex {
+    entries: Vec<TagIndexEntry>,
+    pub ancestors: HashSet<git2::Oid>,
+}
+
+struct TagIndexEntry {
+    name: String,
+    commit_oid: git2::Oid,
+    time: i64,
+    reachable: bool,
+}
+
+impl TagIndex {
+    pub fn build(repo: &Repository) -> Result<Self> {
+        let head = repo.head()?.peel_to_commit()?.id();
+        let mut walk = repo.revwalk()?;
+        walk.push(head)?;
+        let mut ancestors: HashSet<git2::Oid> = HashSet::new();
+        for oid in walk.flatten() {
+            ancestors.insert(oid);
+        }
+
+        let entries: RefCell<Vec<TagIndexEntry>> = RefCell::new(Vec::new());
+        repo.tag_foreach(|oid, name| {
+            let name = String::from_utf8_lossy(name);
+            let tag_name = name.trim_start_matches("refs/tags/").to_string();
+            let commit_oid = if let Ok(tag_obj) = repo.find_tag(oid) {
+                tag_obj.target_id()
+            } else {
+                oid
+            };
+            if let Ok(commit) = repo.find_commit(commit_oid) {
+                let reachable = head == commit_oid || ancestors.contains(&commit_oid);
+                entries.borrow_mut().push(TagIndexEntry {
+                    name: tag_name,
+                    commit_oid,
+                    time: commit.time().seconds(),
+                    reachable,
+                });
+            }
+            true
+        })?;
+        Ok(Self {
+            entries: entries.into_inner(),
+            ancestors,
+        })
+    }
+
+    /// Fast-path version of `find_last_tag_name` for the Warn strategy.
+    /// Returns None when the caller asked for orphan recovery — caller
+    /// should fall back to `find_last_tag_name_with_cache` in that case.
+    pub fn find_last_tag_name(
+        &self,
+        prefix: &str,
+        strategy: OrphanedTagStrategy,
+    ) -> Option<String> {
+        if !matches!(strategy, OrphanedTagStrategy::Warn) {
+            return None;
+        }
+        self.entries
+            .iter()
+            .filter(|e| {
+                e.reachable && e.name.starts_with(prefix) && !is_floating_tag(&e.name, prefix)
+            })
+            .max_by_key(|e| e.time)
+            .map(|e| e.name.clone())
+    }
+
+    /// Fast-path version of `find_highest_semver_tag` for the Warn strategy.
+    pub fn find_highest_semver_tag(
+        &self,
+        prefix: &str,
+        strategy: OrphanedTagStrategy,
+    ) -> Option<(String, String)> {
+        if !matches!(strategy, OrphanedTagStrategy::Warn) {
+            return None;
+        }
+        let mut best: Option<(&str, semver::Version)> = None;
+        for entry in &self.entries {
+            if !entry.reachable
+                || !entry.name.starts_with(prefix)
+                || is_prerelease_tag(&entry.name, prefix)
+                || is_floating_tag(&entry.name, prefix)
+            {
+                continue;
+            }
+            let version_str = entry
+                .name
+                .strip_prefix(prefix)
+                .map(|s| s.strip_prefix('v').unwrap_or(s))
+                .unwrap_or(&entry.name);
+            let parsed = match semver::Version::parse(version_str) {
+                Ok(v) => v,
+                Err(_) => continue,
+            };
+            match &best {
+                Some((_, existing)) if *existing >= parsed => {}
+                _ => best = Some((entry.name.as_str(), parsed)),
+            }
+        }
+        best.map(|(name, version)| (name.to_string(), version.to_string()))
+    }
+
+    /// Fast-path lookup of the commit OID of the most recent matching tag.
+    pub fn find_last_tag_commit(
+        &self,
+        prefix: &str,
+        strategy: OrphanedTagStrategy,
+    ) -> Option<git2::Oid> {
+        if !matches!(strategy, OrphanedTagStrategy::Warn) {
+            return None;
+        }
+        self.entries
+            .iter()
+            .filter(|e| {
+                e.reachable && e.name.starts_with(prefix) && !is_floating_tag(&e.name, prefix)
+            })
+            .max_by_key(|e| e.time)
+            .map(|e| e.commit_oid)
+    }
+
+    /// Fast-path lookup of the most recent stable (non-prerelease) tag's commit.
+    pub fn find_last_stable_tag_commit(
+        &self,
+        prefix: &str,
+        strategy: OrphanedTagStrategy,
+    ) -> Option<git2::Oid> {
+        if !matches!(strategy, OrphanedTagStrategy::Warn) {
+            return None;
+        }
+        self.entries
+            .iter()
+            .filter(|e| {
+                e.reachable
+                    && e.name.starts_with(prefix)
+                    && !is_prerelease_tag(&e.name, prefix)
+                    && !is_floating_tag(&e.name, prefix)
+            })
+            .max_by_key(|e| e.time)
+            .map(|e| e.commit_oid)
+    }
+}
+
 fn is_reachable(
     repo: &Repository,
     head: git2::Oid,

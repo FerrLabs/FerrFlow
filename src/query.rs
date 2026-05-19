@@ -2,8 +2,7 @@ use crate::config::Config;
 use crate::error_code::{self, ErrorCodeExt};
 use crate::formats::read_version;
 use crate::git::{
-    build_head_ancestors, find_last_tag_name, find_last_tag_name_with_cache, get_repo_root,
-    open_repo,
+    TagIndex, find_last_tag_name, find_last_tag_name_with_cache, get_repo_root, open_repo,
 };
 use anyhow::Result;
 use serde::Serialize;
@@ -168,24 +167,39 @@ pub fn tag(config_path: Option<&std::path::Path>, package: Option<&str>, json: b
             println!("{}", last_tag.unwrap_or_else(|| "none".to_string()));
         }
     } else {
-        // Build the HEAD ancestor set ONCE across the multi-package loop.
-        // Without this, each find_last_tag_name call did its own
-        // graph_descendant_of against HEAD per matching tag — on a dense
-        // monorepo (200 pkg × 10k commits) that turned `ferrflow tag` into
-        // a 1.8 s walk-fest. A single revwalk amortizes to O(pkg) hash hits.
-        let ancestors = build_head_ancestors(&repo).ok();
+        // Build the tag index ONCE across the multi-package loop. Without
+        // it, each find_last_tag_name call ran tag_foreach independently
+        // (200 pkg × 200 tag callbacks ≈ 40k invocations) plus per-tag
+        // graph_descendant_of (now O(1) via the embedded ancestor set).
+        // The index pre-resolves both, leaving per-package work as a
+        // linear scan over already-resolved entries.
+        let strategy = config.workspace.orphaned_tag_strategy;
+        let index = TagIndex::build(&repo).ok();
         let entries: Vec<TagEntry> = config
             .packages
             .iter()
             .map(|pkg| {
                 let prefix = pkg.tag_prefix(&config.workspace, config.is_monorepo());
-                let tag = find_last_tag_name_with_cache(
-                    &repo,
-                    &prefix,
-                    config.workspace.orphaned_tag_strategy,
-                    ancestors.as_ref(),
-                )
-                .unwrap_or(None);
+                // Fast path via the index for the Warn strategy; tree-hash /
+                // message recovery falls back to the slow per-call form
+                // which still uses the embedded ancestor set.
+                let tag = match index.as_ref().and_then(|idx| {
+                    idx.find_last_tag_name(&prefix, strategy)
+                        .map(Some)
+                        .or_else(|| {
+                            // Non-Warn strategy: index returns None, fall back
+                            find_last_tag_name_with_cache(
+                                &repo,
+                                &prefix,
+                                strategy,
+                                Some(&idx.ancestors),
+                            )
+                            .ok()
+                        })
+                }) {
+                    Some(t) => t,
+                    None => find_last_tag_name(&repo, &prefix, strategy).unwrap_or(None),
+                };
                 TagEntry {
                     name: pkg.name.clone(),
                     tag,

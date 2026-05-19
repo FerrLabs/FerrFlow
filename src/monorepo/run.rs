@@ -4,15 +4,18 @@ use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 use crate::changelog::{build_section, update_changelog};
-use crate::config::{Config, ReleaseCommitMode, ReleaseCommitScope, VersioningStrategy};
+use crate::config::{
+    Config, OrphanedTagStrategy, ReleaseCommitMode, ReleaseCommitScope, VersioningStrategy,
+};
 use crate::conventional_commits::{BumpType, determine_bump};
 use crate::error_code::{self, ErrorCodeExt};
 use crate::formats::{get_handler, read_version, write_version};
 use crate::git::{
     collect_all_tags, create_branch_and_commit, create_branch_and_commits, create_commit,
     create_or_move_tag, create_tag, fetch_tags, force_push_tags, get_changed_files,
-    get_changed_files_since_tag, get_commits_since_last_stable_tag, get_commits_since_last_tag,
-    get_tag_message, open_repo, push, push_branch, push_tags, tag_exists,
+    get_changed_files_since_oid, get_changed_files_since_tag, get_commits_since_last_stable_tag,
+    get_commits_since_last_tag, get_commits_since_oid, get_tag_message, open_repo, push,
+    push_branch, push_tags, tag_exists,
 };
 use crate::hooks::{HookContext, HookPoint, resolve_hook, resolve_on_failure, run_hook};
 use crate::prerelease::PrereleaseContext;
@@ -84,6 +87,12 @@ pub(super) fn run_release_logic(
     // difference between 1.8 s and a couple hundred ms for the tag-bound
     // commands.
     let head_ancestors = crate::git::build_head_ancestors(&repo).ok();
+    // Pre-collect all tags + their commit OIDs in one tag_foreach scan
+    // so the per-package find_*_tag / get_*_since_tag calls below don't
+    // each repeat that scan. Coupled with the ancestor set, the per-pkg
+    // lookups collapse from O(tags) callbacks + O(commits) walk to O(1)
+    // hash hits.
+    let tag_index = crate::git::TagIndex::build(&repo).ok();
 
     let target_branch = if prerelease_ctx.is_prerelease() {
         current_branch.clone()
@@ -157,11 +166,14 @@ pub(super) fn run_release_logic(
         let mut touched = is_package_touched(pkg, &changed_files, config.is_monorepo());
 
         if !touched && config.workspace.recover_missed_releases && config.is_monorepo() {
-            let files_since_tag = get_changed_files_since_tag(
-                &repo,
-                &tag_search_prefix,
-                config.workspace.orphaned_tag_strategy,
-            )?;
+            let strategy = config.workspace.orphaned_tag_strategy;
+            let files_since_tag =
+                if let (Some(idx), OrphanedTagStrategy::Warn) = (tag_index.as_ref(), strategy) {
+                    let last_oid = idx.find_last_tag_commit(&tag_search_prefix, strategy);
+                    get_changed_files_since_oid(&repo, last_oid)?
+                } else {
+                    get_changed_files_since_tag(&repo, &tag_search_prefix, strategy)?
+                };
             if is_package_touched(pkg, &files_since_tag, true) {
                 touched = true;
                 if verbose && !json {
@@ -202,13 +214,22 @@ pub(super) fn run_release_logic(
         );
 
         let file_version = read_version(vf, root).ok();
-        let tag_version = crate::git::find_highest_semver_tag_with_cache(
-            &repo,
-            &tag_search_prefix,
-            config.workspace.orphaned_tag_strategy,
-            head_ancestors.as_ref(),
-        )?
-        .map(|(_tag, version)| version);
+        let strategy = config.workspace.orphaned_tag_strategy;
+        // Fast path via the pre-built TagIndex for Warn (default); otherwise
+        // fall back to the per-call form that still uses the ancestor cache.
+        let tag_version =
+            if let (Some(idx), OrphanedTagStrategy::Warn) = (tag_index.as_ref(), strategy) {
+                idx.find_highest_semver_tag(&tag_search_prefix, strategy)
+                    .map(|(_tag, version)| version)
+            } else {
+                crate::git::find_highest_semver_tag_with_cache(
+                    &repo,
+                    &tag_search_prefix,
+                    strategy,
+                    head_ancestors.as_ref(),
+                )?
+                .map(|(_tag, version)| version)
+            };
         let current_version = match (tag_version, file_version) {
             (Some(tag), Some(file)) => pick_higher_semver(&file, &tag),
             (Some(tag), None) => tag,
@@ -216,37 +237,39 @@ pub(super) fn run_release_logic(
             (None, None) => crate::versioning::bootstrap_version(pkg_strategy),
         };
 
+        // Helpers that route through TagIndex when the strategy allows it,
+        // falling back to the per-call slow path. Returns commits walked
+        // back to the last (stable or any) tag for the current package.
+        let commits_since_stable = || -> Result<Vec<crate::git::GitLog>> {
+            if let (Some(idx), OrphanedTagStrategy::Warn) = (tag_index.as_ref(), strategy) {
+                let stop = idx.find_last_stable_tag_commit(&tag_search_prefix, strategy);
+                get_commits_since_oid(&repo, stop)
+            } else {
+                get_commits_since_last_stable_tag(&repo, &tag_search_prefix, strategy)
+            }
+        };
+        let commits_since_any = || -> Result<Vec<crate::git::GitLog>> {
+            if let (Some(idx), OrphanedTagStrategy::Warn) = (tag_index.as_ref(), strategy) {
+                let stop = idx.find_last_tag_commit(&tag_search_prefix, strategy);
+                get_commits_since_oid(&repo, stop)
+            } else {
+                get_commits_since_last_tag(&repo, &tag_search_prefix, strategy)
+            }
+        };
+
         let (new_version, is_prerelease, commits, bump) = if let Some(fv) = forced_ver_for_pkg {
             let clean = fv.strip_prefix('v').unwrap_or(fv);
             let commits = if !prerelease_ctx.is_prerelease() {
-                get_commits_since_last_stable_tag(
-                    &repo,
-                    &tag_search_prefix,
-                    config.workspace.orphaned_tag_strategy,
-                )
-                .unwrap_or_default()
+                commits_since_stable().unwrap_or_default()
             } else {
-                get_commits_since_last_tag(
-                    &repo,
-                    &tag_search_prefix,
-                    config.workspace.orphaned_tag_strategy,
-                )
-                .unwrap_or_default()
+                commits_since_any().unwrap_or_default()
             };
             (clean.to_string(), false, commits, BumpType::None)
         } else {
             let commits = if !prerelease_ctx.is_prerelease() {
-                get_commits_since_last_stable_tag(
-                    &repo,
-                    &tag_search_prefix,
-                    config.workspace.orphaned_tag_strategy,
-                )?
+                commits_since_stable()?
             } else {
-                get_commits_since_last_tag(
-                    &repo,
-                    &tag_search_prefix,
-                    config.workspace.orphaned_tag_strategy,
-                )?
+                commits_since_any()?
             };
 
             if commits.is_empty() {

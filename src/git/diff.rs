@@ -47,13 +47,25 @@ pub fn get_changed_files_since_tag(
     tag_prefix: &str,
     strategy: OrphanedTagStrategy,
 ) -> Result<Vec<String>> {
+    let last_tag_oid = find_last_tag_commit(repo, tag_prefix, strategy)?;
+    get_changed_files_since_oid(repo, last_tag_oid)
+}
+
+/// Same as [`get_changed_files_since_tag`] but skips the tag lookup —
+/// callers in the multi-package monorepo loop resolve the OID once via
+/// `TagIndex` instead of paying for an independent `tag_foreach` per
+/// package.
+pub fn get_changed_files_since_oid(
+    repo: &Repository,
+    last_tag_oid: Option<git2::Oid>,
+) -> Result<Vec<String>> {
     let head = match repo.head() {
         Ok(h) => h.peel_to_commit()?,
         Err(_) => return Ok(vec![]),
     };
     let head_tree = head.tree()?;
 
-    let old_tree = if let Some(tag_oid) = find_last_tag_commit(repo, tag_prefix, strategy)? {
+    let old_tree = if let Some(tag_oid) = last_tag_oid {
         let tag_commit = repo.find_commit(tag_oid)?;
         Some(tag_commit.tree()?)
     } else {
