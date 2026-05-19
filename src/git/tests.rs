@@ -1,5 +1,5 @@
 use super::auth::{credentials_callback, extract_url_password};
-use super::push::fetch_and_rebase;
+use super::push::{fetch_and_rebase, parse_ls_remote_tags};
 use super::retry::{is_transient_git_error, retry_transient};
 use super::tags::{find_last_tag, is_floating_tag, is_prerelease_tag};
 use super::*;
@@ -82,6 +82,56 @@ fn retry_transient_returns_immediately_on_terminal_error() {
     });
     assert!(result.is_err());
     assert_eq!(attempts.get(), 1);
+}
+
+#[test]
+fn parse_ls_remote_tags_returns_empty_for_empty_input() {
+    let map = parse_ls_remote_tags("");
+    assert!(map.is_empty());
+}
+
+#[test]
+fn parse_ls_remote_tags_extracts_lightweight_tag_sha() {
+    // Lightweight tag — only the bare line, no ^{} deref entry.
+    let input = "0123456789abcdef0123456789abcdef01234567\trefs/tags/site@v0.13.0\n";
+    let map = parse_ls_remote_tags(input);
+    assert_eq!(
+        map.get("site@v0.13.0").map(String::as_str),
+        Some("0123456789abcdef0123456789abcdef01234567")
+    );
+}
+
+#[test]
+fn parse_ls_remote_tags_prefers_dereferenced_commit_for_annotated_tag() {
+    // Annotated tags: ls-remote emits two lines — the tag object SHA, and
+    // the commit it points to with `^{}`. We must prefer the commit so it
+    // can be compared with the local commit SHA from peel_to_commit().
+    let input = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\trefs/tags/site@v0.13.0\n\
+                 bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\trefs/tags/site@v0.13.0^{}\n";
+    let map = parse_ls_remote_tags(input);
+    assert_eq!(
+        map.get("site@v0.13.0").map(String::as_str),
+        Some("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+    );
+}
+
+#[test]
+fn parse_ls_remote_tags_handles_multiple_tags_mixed_types() {
+    let input = "1111111111111111111111111111111111111111\trefs/tags/lightweight-tag\n\
+                 2222222222222222222222222222222222222222\trefs/tags/annotated-tag\n\
+                 3333333333333333333333333333333333333333\trefs/tags/annotated-tag^{}\n\
+                 4444444444444444444444444444444444444444\trefs/heads/main\n";
+    let map = parse_ls_remote_tags(input);
+    assert_eq!(map.len(), 2);
+    assert_eq!(
+        map.get("lightweight-tag").map(String::as_str),
+        Some("1111111111111111111111111111111111111111")
+    );
+    assert_eq!(
+        map.get("annotated-tag").map(String::as_str),
+        Some("3333333333333333333333333333333333333333"),
+        "annotated tag should resolve to the dereferenced commit, not the tag object"
+    );
 }
 
 fn init_repo() -> (tempfile::TempDir, Repository) {
