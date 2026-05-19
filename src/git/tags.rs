@@ -1,11 +1,48 @@
 use anyhow::Result;
 use git2::Repository;
 use std::cell::RefCell;
+use std::collections::HashSet;
 
 use crate::config::OrphanedTagStrategy;
 use crate::error_code::{self, ErrorCodeExt};
 
 use super::commits::signature;
+
+/// Build the set of commit OIDs reachable from HEAD via a single revwalk.
+///
+/// On a monorepo with N packages, `find_last_tag` (and its siblings) is
+/// called once per package. Each call used to invoke
+/// `repo.graph_descendant_of(head, oid)` per matching tag, which itself
+/// walks the commit graph until it hits the target. On dense histories
+/// (mono-large: 200 pkgs × 10k commits), this turns into N independent
+/// O(commits) walks — 1815 ms for `ferrflow tag` was almost all this.
+///
+/// Building the ancestor set up front collapses that into one walk +
+/// O(1) hash lookups per tag. Callers in the per-package loop pass
+/// `Some(&set)`; single-shot callers (status, query, single-package
+/// release) pass `None` and pay the original cost.
+pub fn build_head_ancestors(repo: &Repository) -> Result<HashSet<git2::Oid>> {
+    let head_oid = repo.head()?.peel_to_commit()?.id();
+    let mut walk = repo.revwalk()?;
+    walk.push(head_oid)?;
+    let mut set: HashSet<git2::Oid> = HashSet::new();
+    for oid in walk.flatten() {
+        set.insert(oid);
+    }
+    Ok(set)
+}
+
+fn is_reachable(
+    repo: &Repository,
+    head: git2::Oid,
+    commit_oid: git2::Oid,
+    cache: Option<&HashSet<git2::Oid>>,
+) -> bool {
+    if let Some(set) = cache {
+        return set.contains(&commit_oid);
+    }
+    head == commit_oid || repo.graph_descendant_of(head, commit_oid).unwrap_or(false)
+}
 
 pub(super) struct TagMatch {
     pub name: String,
@@ -69,6 +106,15 @@ pub(super) fn find_last_tag(
     prefix: &str,
     strategy: OrphanedTagStrategy,
 ) -> Result<Option<TagMatch>> {
+    find_last_tag_with_cache(repo, prefix, strategy, None)
+}
+
+pub(super) fn find_last_tag_with_cache(
+    repo: &Repository,
+    prefix: &str,
+    strategy: OrphanedTagStrategy,
+    ancestors: Option<&HashSet<git2::Oid>>,
+) -> Result<Option<TagMatch>> {
     let head = repo.head()?.peel_to_commit()?.id();
     let latest: RefCell<Option<TagMatch>> = RefCell::new(None);
     let warnings: RefCell<Vec<String>> = RefCell::new(Vec::new());
@@ -100,8 +146,7 @@ pub(super) fn find_last_tag(
             }
         };
 
-        let reachable =
-            head == commit_oid || repo.graph_descendant_of(head, commit_oid).unwrap_or(false);
+        let reachable = is_reachable(repo, head, commit_oid, ancestors);
 
         let (effective_oid, effective_time) = if reachable {
             (commit_oid, commit.time().seconds())
@@ -177,10 +222,31 @@ pub fn find_last_tag_name(
     Ok(find_last_tag(repo, prefix, strategy)?.map(|t| t.name))
 }
 
+pub fn find_last_tag_name_with_cache(
+    repo: &Repository,
+    prefix: &str,
+    strategy: OrphanedTagStrategy,
+    ancestors: Option<&HashSet<git2::Oid>>,
+) -> Result<Option<String>> {
+    Ok(find_last_tag_with_cache(repo, prefix, strategy, ancestors)?.map(|t| t.name))
+}
+
+// Kept as a public no-cache convenience for single-shot callers (and the
+// existing test suite). The cached variant below is the perf path.
+#[allow(dead_code)]
 pub fn find_highest_semver_tag(
     repo: &Repository,
     prefix: &str,
     strategy: OrphanedTagStrategy,
+) -> Result<Option<(String, String)>> {
+    find_highest_semver_tag_with_cache(repo, prefix, strategy, None)
+}
+
+pub fn find_highest_semver_tag_with_cache(
+    repo: &Repository,
+    prefix: &str,
+    strategy: OrphanedTagStrategy,
+    ancestors: Option<&HashSet<git2::Oid>>,
 ) -> Result<Option<(String, String)>> {
     let head = repo.head()?.peel_to_commit()?.id();
     let highest: RefCell<Option<(String, semver::Version)>> = RefCell::new(None);
@@ -213,8 +279,7 @@ pub fn find_highest_semver_tag(
             Ok(c) => c,
             Err(_) => return true,
         };
-        let reachable =
-            head == commit_oid || repo.graph_descendant_of(head, commit_oid).unwrap_or(false);
+        let reachable = is_reachable(repo, head, commit_oid, ancestors);
         if !reachable {
             match strategy {
                 OrphanedTagStrategy::Warn => return true,
@@ -254,6 +319,15 @@ pub(super) fn find_last_stable_tag(
     prefix: &str,
     strategy: OrphanedTagStrategy,
 ) -> Result<Option<TagMatch>> {
+    find_last_stable_tag_with_cache(repo, prefix, strategy, None)
+}
+
+pub(super) fn find_last_stable_tag_with_cache(
+    repo: &Repository,
+    prefix: &str,
+    strategy: OrphanedTagStrategy,
+    ancestors: Option<&HashSet<git2::Oid>>,
+) -> Result<Option<TagMatch>> {
     let head = repo.head()?.peel_to_commit()?.id();
     let latest: RefCell<Option<TagMatch>> = RefCell::new(None);
 
@@ -278,8 +352,7 @@ pub(super) fn find_last_stable_tag(
             Err(_) => return true,
         };
 
-        let reachable =
-            head == commit_oid || repo.graph_descendant_of(head, commit_oid).unwrap_or(false);
+        let reachable = is_reachable(repo, head, commit_oid, ancestors);
 
         let (effective_oid, effective_time) = if reachable {
             (commit_oid, commit.time().seconds())

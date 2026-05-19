@@ -22,7 +22,8 @@ pub use push::{
 pub use repo::{get_repo_root, open_repo, resolve_current_branch};
 pub use retry::is_push_rejected_error;
 pub use tags::{
-    collect_all_tags, create_or_move_tag, create_tag, find_highest_semver_tag, find_last_tag_name,
+    build_head_ancestors, collect_all_tags, create_or_move_tag, create_tag,
+    find_highest_semver_tag_with_cache, find_last_tag_name, find_last_tag_name_with_cache,
     get_tag_message, tag_exists,
 };
 
