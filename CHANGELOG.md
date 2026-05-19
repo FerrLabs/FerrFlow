@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [4.10.0] - 2026-05-19
+
+### Features
+
+- feat(ci): dispatch ferrflow-released to FerrFlow-Cloud after release (#455)
+
 ## [4.9.0] - 2026-05-19
 
 ### Features
