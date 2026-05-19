@@ -65,3 +65,17 @@ tempfile = "3"
 [[bench]]
 name = "ferrflow_benchmarks"
 harness = false
+
+[profile.release]
+# Strip debug symbols. Cuts cargo build --release output from ~17 MB to
+# ~5 MB. The release tarballs we ship were already stripped by the
+# packager step, but the unstripped local build was what the bench
+# runner reported as ferrflow_binary_size_mb, overstating the real
+# download by ~3x on /performance.
+strip = "symbols"
+# Thin LTO: cross-crate inlining + dead code elimination. ~30 s extra
+# compile on CI for a measurable runtime win on the commit-walking and
+# git2 plumbing hot paths.
+lto = "thin"
+# One codegen unit per crate so LTO can see across modules.
+codegen-units = 1
