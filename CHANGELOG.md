@@ -4,6 +4,15 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [4.10.5] - 2026-05-19
+
+### Bug Fixes
+
+- perf(tags): pre-collect tags into TagIndex to amortize tag_foreach across packages (#474)
+- fix(bench): seed .changeset/initial.md so changesets/single benches like the others (#473)
+- perf(tags): amortize HEAD reachability across multi-package callers (#466)
+- perf(release): enable strip + thin LTO + single codegen-unit (#464)
+
 ## [4.10.4] - 2026-05-19
 
 ### Bug Fixes
