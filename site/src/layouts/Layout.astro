@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import Navbar from '@ferrlabs/ui-astro/Navbar.astro';
 import Footer from '@ferrlabs/ui-astro/Footer.astro';
+import PreFooterCTA from '@ferrlabs/ui-astro/PreFooterCTA.astro';
 import { t, type Lang } from '../i18n/translations';
 
 interface Props {
@@ -188,6 +189,25 @@ const resourceLinks = [
     <main>
       <slot />
     </main>
+    <PreFooterCTA
+      lang={lang}
+      accent="orange"
+      variant="bold"
+      eyebrow={t(lang, 'cta.eyebrow')}
+      title={t(lang, 'cta.title1')}
+      subtitle={t(lang, 'cta.title2')}
+      description={t(lang, 'cta.subtitle')}
+      action={{
+        type: 'cta',
+        label: `★ ${t(lang, 'cta.button')} →`,
+        href: 'https://github.com/FerrLabs/FerrFlow',
+        external: true,
+      }}
+      secondaryAction={{
+        label: `${t(lang, 'cta.installShort')} →`,
+        href: '/docs/installation',
+      }}
+    />
     <Footer
       lang={lang}
       accent="#e8733a"

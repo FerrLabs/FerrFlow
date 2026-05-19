@@ -186,28 +186,6 @@ const docsHref = lang === 'fr' ? '/fr/docs/introduction/' : '/docs/introduction/
   </div>
 </section>
 
-<section class="cta-section">
-  <div class="container">
-    <div class="cta-block">
-      <div>
-        <p class="mono cta-eyebrow">{t(lang, 'cta.eyebrow')}</p>
-        <h2 class="cta-title">
-          {t(lang, 'cta.title1')}
-          <br />
-          <span class="cta-italic">{t(lang, 'cta.title2')}</span>
-        </h2>
-        <p class="cta-sub">{t(lang, 'cta.subtitle')}</p>
-      </div>
-      <div class="cta-actions">
-        <a href="https://github.com/FerrLabs/FerrFlow" class="cta-btn cta-btn-primary mono"
-          >★ {t(lang, 'cta.button')} →</a
-        >
-        <a href="#install" class="cta-btn cta-btn-ghost mono">{t(lang, 'cta.installShort')} →</a>
-      </div>
-    </div>
-  </div>
-</section>
-
 <style>
   .hero-section {
     padding: 80px 0 96px;
@@ -534,75 +512,6 @@ const docsHref = lang === 'fr' ? '/fr/docs/introduction/' : '/docs/introduction/
   }
   @media (max-width: 540px) {
     .install-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  .cta-section {
-    padding: 32px 0 80px;
-  }
-  .cta-block {
-    background: var(--fg);
-    color: var(--bg);
-    border-radius: 24px;
-    padding: clamp(40px, 6vw, 80px);
-    display: grid;
-    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
-    gap: 32px;
-    align-items: center;
-  }
-  .cta-eyebrow {
-    font-size: 11px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    opacity: 0.6;
-    margin: 0 0 24px;
-  }
-  .cta-title {
-    font-family: var(--font-serif);
-    font-weight: 900;
-    font-size: clamp(36px, 5vw, 72px);
-    line-height: 0.96;
-    letter-spacing: -0.04em;
-    margin: 0;
-  }
-  .cta-italic {
-    font-style: italic;
-    font-weight: 400;
-  }
-  .cta-sub {
-    font-size: 17px;
-    opacity: 0.7;
-    margin: 20px 0 0;
-    max-width: 480px;
-  }
-  .cta-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    align-items: flex-start;
-  }
-  .cta-btn {
-    padding: 18px 28px;
-    border-radius: 999px;
-    font-size: 13px;
-    letter-spacing: 0.04em;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .cta-btn-primary {
-    background: var(--accent);
-    color: #fff;
-  }
-  .cta-btn-ghost {
-    background: transparent;
-    color: var(--bg);
-    border: 1px solid color-mix(in oklab, var(--bg) 30%, transparent);
-  }
-  @media (max-width: 760px) {
-    .cta-block {
       grid-template-columns: 1fr;
     }
   }
