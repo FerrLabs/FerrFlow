@@ -238,6 +238,15 @@ starlight-theme-select {
   letter-spacing: -0.02em;
 }
 
+/* Hide the shared Navbar's "Products" dropdown when used inside Starlight
+ * docs. Users on /docs/* came specifically for FerrFlow content — surfacing
+ * the cross-product switcher there mostly leads to people clicking away by
+ * accident. The dropdown is still available on the landing where it makes
+ * more sense. */
+.docs-header .ferrlabs-nav-products {
+  display: none !important;
+}
+
 /* On mobile, hide the shared Navbar's hamburger + its full-screen menu
  * portal. Inside the docs Starlight already ships its own hamburger that
  * opens the sidebar (chapters, search, version picker) — exposing a

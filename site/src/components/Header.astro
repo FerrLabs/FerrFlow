@@ -4,12 +4,9 @@ import Search from '@astrojs/starlight/components/Search.astro';
 import LanguageSelect from '@astrojs/starlight/components/LanguageSelect.astro';
 import VersionSelect from 'starlight-versions/components/VersionSelect.astro';
 import SharedNavbar from '@ferrlabs/ui-astro/Navbar.astro';
-import { t, getLocalizedPath } from '../i18n/translations';
 import type { Lang } from '../i18n/translations';
 
 const lang: Lang = Astro.url.pathname.startsWith('/fr/') ? 'fr' : 'en';
-
-const docsPath = getLocalizedPath('/docs/introduction', lang);
 
 const currentPath = Astro.url.pathname;
 const enEquiv = currentPath.startsWith('/fr/')
@@ -43,7 +40,7 @@ const frEquiv = enEquiv === '/' ? '/fr/' : `/fr${enEquiv.startsWith('/') ? '' : 
       href: lang === 'fr' ? '/fr/' : '/',
       logoSrc: '/brand-mark.svg',
     }}
-    links={[{ label: t(lang, 'nav.docs') ?? 'Docs', href: docsPath }]}
+    links={[]}
     activePage="docs"
     hideLanguageToggle
     enEquiv={enEquiv}
