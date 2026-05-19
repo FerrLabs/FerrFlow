@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.4.3] - 2026-05-19
+
+### Bug Fixes
+
+- fix(docs): align Starlight with landing design (light-only, brand mark) (#507)
+
 ## [6.4.2] - 2026-05-18
 
 ### Bug Fixes
