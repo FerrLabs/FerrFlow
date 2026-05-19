@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.5.2] - 2026-05-19
+
+### Bug Fixes
+
+- fix(docs): drop Docs link and hide Products dropdown from navbar (#512)
+
 ## [6.5.1] - 2026-05-19
 
 ### Bug Fixes
