@@ -14,7 +14,8 @@
     },
     "changesets": {
       "package.json": "{\"name\":\"myapp\",\"version\":\"0.1.0\",\"private\":true}",
-      ".changeset/config.json": "{\"$schema\":\"https://unpkg.com/@changesets/config@3.0.0/schema.json\",\"changelog\":\"@changesets/cli/changelog\",\"commit\":false,\"fixed\":[],\"linked\":[],\"access\":\"restricted\",\"baseBranch\":\"main\",\"updateInternalDependencies\":\"patch\",\"ignore\":[]}"
+      ".changeset/config.json": "{\"$schema\":\"https://unpkg.com/@changesets/config@3.0.0/schema.json\",\"changelog\":\"@changesets/cli/changelog\",\"commit\":false,\"fixed\":[],\"linked\":[],\"access\":\"restricted\",\"baseBranch\":\"main\",\"updateInternalDependencies\":\"patch\",\"ignore\":[]}",
+      ".changeset/initial.md": "---\n\"myapp\": patch\n---\n\nseed changeset so `changesets status` exits 0 on this single-package fixture\n"
     },
     "semantic-release": {
       "package.json": "{\"name\":\"myapp\",\"version\":\"0.1.0\",\"private\":true}",
