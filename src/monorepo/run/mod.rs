@@ -29,6 +29,13 @@ use super::util::{
     tags_for_package,
 };
 
+mod drafts;
+mod forced;
+mod summary;
+use drafts::publish_pending_drafts;
+use forced::{Forced, forced_version_for, parse_forced_version};
+use summary::{TagToCreate, print_outputs, write_github_step_summary};
+
 #[allow(clippy::too_many_arguments)]
 pub(super) fn run_release_logic(
     root: &Path,
@@ -114,54 +121,19 @@ pub(super) fn run_release_logic(
     let mut json_packages: Vec<CheckPackage> = Vec::new();
     let mut files_to_commit: Vec<String> = Vec::new();
     let mut files_per_package: HashMap<String, Vec<String>> = HashMap::new();
-    let mut tags_to_create: Vec<(String, String, String, String, String, i32, bool)> = Vec::new();
+    let mut tags_to_create: Vec<TagToCreate> = Vec::new();
     let mut hook_contexts: Vec<(HookContext, usize)> = Vec::new(); // (ctx, pkg_index)
     let mut bumped_names: HashSet<String> = HashSet::new();
 
     let mut pkg_outputs: Vec<(String, Vec<String>)> = Vec::new();
     let mut shared_outputs: Vec<String> = Vec::new();
 
-    let forced: Option<(Option<&str>, &str)> = if let Some(fv) = force_version {
-        if let Some(at_pos) = fv.find('@') {
-            let name = &fv[..at_pos];
-            let version = &fv[at_pos + 1..];
-            if name.is_empty() || version.is_empty() {
-                anyhow::bail!("Invalid --force-version format: expected NAME@VERSION, got {fv:?}");
-            }
-            Some((Some(name), version))
-        } else {
-            if config.is_monorepo() {
-                anyhow::bail!(
-                    "In a monorepo, --force-version requires NAME@VERSION format (e.g. api@1.2.3)"
-                );
-            }
-            Some((None, fv))
-        }
-    } else {
-        None
-    };
-
-    if let Some((_, ver)) = &forced {
-        let clean = ver.strip_prefix('v').unwrap_or(ver);
-        if semver::Version::parse(clean).is_err() {
-            anyhow::bail!("Invalid version in --force-version: {ver:?} is not valid semver");
-        }
-    }
+    let forced: Option<Forced<'_>> = parse_forced_version(force_version, config.is_monorepo())?;
 
     for (pkg_idx, pkg) in config.packages.iter().enumerate() {
         let tag_search_prefix = pkg.tag_prefix(&config.workspace, config.is_monorepo());
 
-        let forced_ver_for_pkg = forced.and_then(|(name, ver)| {
-            if let Some(target_name) = name {
-                if pkg.name == target_name {
-                    Some(ver)
-                } else {
-                    None
-                }
-            } else {
-                Some(ver)
-            }
-        });
+        let forced_ver_for_pkg = forced_version_for(&forced, &pkg.name);
 
         let mut touched = is_package_touched(pkg, &changed_files, config.is_monorepo());
 
@@ -1028,20 +1000,7 @@ pub(super) fn run_release_logic(
                 shared_outputs.push("✓ Pushed floating tags".to_string());
             }
 
-            if let Ok(summary_path) = std::env::var("GITHUB_STEP_SUMMARY") {
-                use std::io::Write;
-                if let Ok(mut file) = std::fs::OpenOptions::new()
-                    .create(true)
-                    .append(true)
-                    .open(&summary_path)
-                {
-                    let _ = writeln!(file, "## Released\n");
-                    for (tag_name, _, body, _, _, _, _) in &tags_to_create {
-                        let _ = writeln!(file, "### {tag_name}\n");
-                        let _ = writeln!(file, "{body}");
-                    }
-                }
-            }
+            write_github_step_summary(&tags_to_create);
         }
 
         if config.workspace.anonymous_telemetry {
@@ -1091,61 +1050,11 @@ pub(super) fn run_release_logic(
         }
     }
 
-    if !any_bumped
-        && !draft
-        && !dry_run
-        && let Some(forge_instance) = build_forge_instance(&repo, config)
-    {
-        for pkg in &config.packages {
-            let Some(vf) = pkg.versioned_files.first() else {
-                continue;
-            };
-            let Ok(version) = read_version(vf, root) else {
-                continue;
-            };
-            let tag = pkg.tag_for_version(&config.workspace, config.is_monorepo(), &version);
-            match forge_instance.find_draft_release(&tag) {
-                Ok(Some(release_id)) => match forge_instance.publish_release(release_id) {
-                    Ok(()) => {
-                        shared_outputs.push(format!(
-                            "✓ Published draft {} {}",
-                            forge_instance.release_noun(),
-                            tag.cyan()
-                        ));
-                    }
-                    Err(err) => eprintln!(
-                        "{}",
-                        format!("  Warning: failed to publish draft for {tag}: {err}").yellow()
-                    ),
-                },
-                Ok(None) => {}
-                Err(err) => {
-                    if verbose {
-                        eprintln!(
-                            "{}",
-                            format!("  Warning: failed to check draft release {tag}: {err}")
-                                .yellow()
-                        );
-                    }
-                }
-            }
-        }
+    if !any_bumped && !draft && !dry_run {
+        publish_pending_drafts(&repo, config, root, verbose, &mut shared_outputs)?;
     }
 
-    for (i, (_, lines)) in pkg_outputs.iter().enumerate() {
-        if i > 0 {
-            println!();
-        }
-        for line in lines {
-            println!("{line}");
-        }
-    }
-    if !shared_outputs.is_empty() {
-        println!();
-        for line in &shared_outputs {
-            println!("{line}");
-        }
-    }
+    print_outputs(&pkg_outputs, &shared_outputs);
 
     if !any_bumped && !verbose {
         println!("{}", "Nothing to release.".dimmed());
