@@ -1,7 +1,8 @@
 {
   "meta": {
     "name": "mono-50-5k",
-    "description": "50 packages, 5000 commits — stress test git log parsing"
+    "description": "50 packages, 5000 commits — stress test git log parsing",
+    "default_branch": "main"
   },
   "generate": {
     "packages": 50,
