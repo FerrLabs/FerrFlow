@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [4.10.3] - 2026-05-19
+
+### Bug Fixes
+
+- perf(release): enable strip + thin LTO + single codegen-unit (#464)
+
 ## [4.10.2] - 2026-05-19
 
 ### Bug Fixes
