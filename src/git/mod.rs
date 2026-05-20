@@ -26,6 +26,11 @@ pub use tags::{
     find_highest_semver_tag_with_cache, find_last_tag_name, find_last_tag_name_with_cache,
     get_tag_message, tag_exists,
 };
+// Re-exported for the cross-crate parity test in tests/gix_parity.rs.
+// Library consumers should use `collect_all_tags` which auto-routes
+// through gix with a libgit2 fallback.
+#[allow(unused_imports)]
+pub use tags::{collect_all_tags_gix, collect_all_tags_libgit2};
 
 #[cfg(test)]
 mod tests;
