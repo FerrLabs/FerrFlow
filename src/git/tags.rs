@@ -58,7 +58,25 @@ struct TagIndexEntry {
 }
 
 impl TagIndex {
+    /// Build the per-package tag index.
+    ///
+    /// Intentionally stays on libgit2 even though `collect_all_tags`
+    /// migrated to gix. Local benches in
+    /// `tests/gix_parity.rs::tag_index_smoke_perf_200_tags` showed the
+    /// gix variant at **22 ms vs 14 ms libgit2** on 200 tags — because
+    /// `TagIndex::build` does many per-tag object lookups (peel + read
+    /// time) on top of the enumeration, and gix's object DB lookups
+    /// were slower than libgit2's batched equivalents in this shape,
+    /// AND we'd pay a second `gix::open()` per call.
+    ///
+    /// The gix implementation is preserved as [`build_gix`] for the
+    /// parity suite and ready to flip back once a long-lived
+    /// `gix::ThreadSafeRepository` is cached across the run.
     pub fn build(repo: &Repository) -> Result<Self> {
+        Self::build_libgit2(repo)
+    }
+
+    pub fn build_libgit2(repo: &Repository) -> Result<Self> {
         let head = repo.head()?.peel_to_commit()?.id();
         let mut walk = repo.revwalk()?;
         walk.push(head)?;
@@ -563,6 +581,91 @@ pub fn collect_all_tags_libgit2(repo: &Repository) -> Vec<String> {
         true
     });
     tags
+}
+
+/// gitoxide-backed `TagIndex::build`. Kept for reference + the parity
+/// suite even though it's currently NOT wired into the production
+/// build path — see the comment on [`TagIndex::build`]. The 22 ms vs
+/// 14 ms slowdown on 200 tags is preserved here for the parity tests
+/// in `tests/gix_parity.rs`, and ready to be re-enabled once we cache
+/// a long-lived gix::Repository across the run.
+#[allow(dead_code)]
+pub fn build_gix(workdir: &std::path::Path) -> anyhow::Result<TagIndex> {
+    let repo = gix::open(workdir).map_err(|e| anyhow::anyhow!("gix open: {e}"))?;
+    let head_id = repo
+        .head_id()
+        .map_err(|e| anyhow::anyhow!("gix head_id: {e}"))?
+        .detach();
+
+    // Build ancestor set via a single rev_walk from HEAD.
+    let mut ancestors_gix: HashSet<gix::ObjectId> = HashSet::new();
+    let walk = repo
+        .rev_walk([head_id])
+        .all()
+        .map_err(|e| anyhow::anyhow!("gix rev_walk: {e}"))?;
+    for info in walk {
+        match info {
+            Ok(info) => {
+                ancestors_gix.insert(info.id);
+            }
+            Err(_) => continue,
+        }
+    }
+    let ancestors: HashSet<git2::Oid> = ancestors_gix
+        .iter()
+        .filter_map(|o| git2::Oid::from_bytes(o.as_slice()).ok())
+        .collect();
+
+    // Iterate refs/tags/* and resolve each to its target commit.
+    let refs = repo
+        .references()
+        .map_err(|e| anyhow::anyhow!("gix references: {e}"))?;
+    let iter = refs
+        .tags()
+        .map_err(|e| anyhow::anyhow!("gix tags iter: {e}"))?;
+    let mut entries = Vec::new();
+    for r in iter {
+        let mut r = match r {
+            Ok(r) => r,
+            Err(_) => continue,
+        };
+        let tag_name = r
+            .name()
+            .as_bstr()
+            .to_string()
+            .trim_start_matches("refs/tags/")
+            .to_string();
+        // peel_to_id walks annotated tag objects down to the commit
+        // they point at; lightweight tags resolve to themselves.
+        let commit_id = match r.peel_to_id() {
+            Ok(id) => id.detach(),
+            Err(_) => continue,
+        };
+        let commit = match repo.find_object(commit_id) {
+            Ok(obj) => match obj.try_into_commit() {
+                Ok(c) => c,
+                Err(_) => continue,
+            },
+            Err(_) => continue,
+        };
+        let time = match commit.time() {
+            Ok(t) => t.seconds,
+            Err(_) => continue,
+        };
+        let commit_oid = match git2::Oid::from_bytes(commit_id.as_slice()) {
+            Ok(o) => o,
+            Err(_) => continue,
+        };
+        let reachable = ancestors_gix.contains(&commit_id);
+        entries.push(TagIndexEntry {
+            name: tag_name,
+            commit_oid,
+            time,
+            reachable,
+        });
+    }
+
+    Ok(TagIndex { entries, ancestors })
 }
 
 pub fn collect_all_tags_gix(workdir: &std::path::Path) -> anyhow::Result<Vec<String>> {

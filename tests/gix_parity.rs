@@ -9,7 +9,9 @@
 //! Run with `cargo test --test gix_parity -- --nocapture` to see the
 //! perf delta line at the end.
 
-use ferrflow::git::{collect_all_tags_gix, collect_all_tags_libgit2};
+use ferrflow::git::{
+    TagIndex, collect_all_tags_gix, collect_all_tags_libgit2, tag_index_build_gix,
+};
 use git2::{Repository, Signature};
 use std::collections::HashSet;
 use std::time::Instant;
@@ -112,6 +114,90 @@ fn parity_at_scale_200_tags() {
         .collect();
     assert_eq!(g2, gx);
     assert_eq!(g2.len(), 200);
+}
+
+/// Compare TagIndex outputs between the gix path (default) and the
+/// libgit2 fallback. The struct's `entries` field is private, so we
+/// probe via the public query methods on a few prefixes.
+fn extract_index_view(idx: &TagIndex) -> (Vec<String>, usize) {
+    use ferrflow::config::OrphanedTagStrategy;
+    let mut names = Vec::new();
+    for prefix in &["", "v", "pkg-001@v", "pkg-100@v", "site@v", "api@v"] {
+        if let Some(n) = idx.find_last_tag_name(prefix, OrphanedTagStrategy::Warn) {
+            names.push(format!("{prefix}|{n}"));
+        }
+    }
+    (names, idx.ancestors.len())
+}
+
+/// Parity between the libgit2 and gix implementations of TagIndex.
+/// `TagIndex::build` currently routes through libgit2 (gix was slower
+/// on per-tag commit lookups — see [`TagIndex::build`] comment), but
+/// both implementations exist and must agree on the query results.
+#[test]
+fn tag_index_parity_mixed() {
+    let (dir, repo) = init_repo();
+    add_lightweight_tag(&repo, "v0.1.0");
+    add_annotated_tag(&repo, "v0.2.0");
+    add_lightweight_tag(&repo, "api@v1.0.0");
+    add_annotated_tag(&repo, "site@v2.3.0");
+    add_lightweight_tag(&repo, "pkg-001@v0.5.0");
+
+    let g2 = TagIndex::build_libgit2(&Repository::open(dir.path()).unwrap()).unwrap();
+    let gx = tag_index_build_gix(dir.path()).unwrap();
+
+    let (g2_names, g2_anc) = extract_index_view(&g2);
+    let (gx_names, gx_anc) = extract_index_view(&gx);
+    let g2_set: HashSet<_> = g2_names.iter().collect();
+    let gx_set: HashSet<_> = gx_names.iter().collect();
+    assert_eq!(g2_set, gx_set, "tag query results diverge");
+    assert_eq!(g2_anc, gx_anc, "ancestor set sizes diverge");
+}
+
+#[test]
+fn tag_index_parity_at_scale_200_tags() {
+    let (dir, repo) = init_repo();
+    for i in 0..200 {
+        add_lightweight_tag(&repo, &format!("pkg-{i:03}@v0.1.0"));
+    }
+    let g2 = TagIndex::build_libgit2(&Repository::open(dir.path()).unwrap()).unwrap();
+    let gx = tag_index_build_gix(dir.path()).unwrap();
+    let (g2_names, g2_anc) = extract_index_view(&g2);
+    let (gx_names, gx_anc) = extract_index_view(&gx);
+    assert_eq!(
+        g2_names.iter().collect::<HashSet<_>>(),
+        gx_names.iter().collect::<HashSet<_>>()
+    );
+    assert_eq!(g2_anc, gx_anc);
+}
+
+/// Why TagIndex::build stays on libgit2: this bench documents the
+/// regression that would have shipped if we'd flipped it to gix.
+#[test]
+fn tag_index_smoke_perf_200_tags() {
+    let (dir, repo) = init_repo();
+    for i in 0..200 {
+        add_lightweight_tag(&repo, &format!("pkg-{i:03}@v0.1.0"));
+    }
+    let _ = TagIndex::build_libgit2(&Repository::open(dir.path()).unwrap()).unwrap();
+    let _ = tag_index_build_gix(dir.path()).unwrap();
+
+    let runs = 20;
+    let t = Instant::now();
+    for _ in 0..runs {
+        let _ = TagIndex::build_libgit2(&Repository::open(dir.path()).unwrap()).unwrap();
+    }
+    let g2_each = t.elapsed() / runs;
+
+    let t = Instant::now();
+    for _ in 0..runs {
+        let _ = tag_index_build_gix(dir.path()).unwrap();
+    }
+    let gx_each = t.elapsed() / runs;
+
+    println!("TagIndex::build_libgit2(200 tags) median {g2_each:?}");
+    println!("tag_index_build_gix   (200 tags) median {gx_each:?}");
+    // Not asserted: this is documentation, not a regression gate.
 }
 
 /// Cheap wall-clock comparison printed under `--nocapture`. Not a
