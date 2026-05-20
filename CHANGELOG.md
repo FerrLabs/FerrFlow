@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [4.10.7] - 2026-05-20
+
+### Bug Fixes
+
+- perf(tags): document why TagIndex::build stays on libgit2 (gix is 2.4x slower) (#482)
+
 ## [4.10.6] - 2026-05-20
 
 ### Bug Fixes
