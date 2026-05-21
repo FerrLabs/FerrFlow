@@ -1,4 +1,6 @@
-use super::auth::{credentials_callback, extract_url_password};
+use super::auth::{
+    configure_git_command, credentials_callback, extract_url_password, token_for_url,
+};
 use super::push::{fetch_and_rebase, parse_ls_remote_tags};
 use super::retry::{is_transient_git_error, retry_transient};
 use super::tags::{find_highest_semver_tag, find_last_tag, is_floating_tag, is_prerelease_tag};
@@ -671,6 +673,131 @@ fn extract_url_password_empty_password() {
 #[test]
 fn extract_url_password_ssh_url() {
     assert_eq!(extract_url_password("git@github.com:owner/repo.git"), None);
+}
+
+#[test]
+fn token_for_url_uses_ferrflow_token_when_set() {
+    let _guard = EnvGuard::new().set("FERRFLOW_TOKEN", "ff_secret");
+    let (user, token) =
+        token_for_url("https://github.com/owner/repo.git").expect("should find token");
+    assert_eq!(user, "x-access-token");
+    assert_eq!(token, "ff_secret");
+}
+
+#[test]
+fn token_for_url_picks_gitlab_user_for_gitlab_urls() {
+    let _guard = EnvGuard::new().set("FERRFLOW_TOKEN", "gl_secret");
+    let (user, _) =
+        token_for_url("https://gitlab.com/group/project.git").expect("should find token");
+    assert_eq!(user, "oauth2");
+}
+
+#[test]
+fn token_for_url_falls_back_to_provider_env() {
+    let _guard = EnvGuard::new()
+        .unset("FERRFLOW_TOKEN")
+        .set("GITHUB_TOKEN", "gh_secret");
+    let (user, token) =
+        token_for_url("https://github.com/owner/repo.git").expect("should find token");
+    assert_eq!(user, "x-access-token");
+    assert_eq!(token, "gh_secret");
+}
+
+#[test]
+fn token_for_url_returns_none_without_env() {
+    let _guard = EnvGuard::new()
+        .unset("FERRFLOW_TOKEN")
+        .unset("GITHUB_TOKEN")
+        .unset("GITLAB_TOKEN");
+    assert_eq!(token_for_url("https://github.com/owner/repo.git"), None);
+}
+
+#[test]
+fn configure_git_command_injects_credential_helper_inline() {
+    let _guard = EnvGuard::new().set("FERRFLOW_TOKEN", "ff_secret");
+    let mut cmd = std::process::Command::new("git");
+    configure_git_command(&mut cmd, "https://github.com/owner/repo.git");
+    let args: Vec<String> = cmd
+        .get_args()
+        .map(|a| a.to_string_lossy().into_owned())
+        .collect();
+    assert!(
+        args.iter().any(|a| a == "-c"),
+        "expected -c flag, got {args:?}"
+    );
+    let helper_arg = args
+        .iter()
+        .find(|a| a.starts_with("credential.helper="))
+        .expect("expected credential.helper config");
+    assert!(helper_arg.contains("username=x-access-token"));
+    assert!(helper_arg.contains("password=ff_secret"));
+    assert!(
+        !args.iter().any(|a| a.contains("ff_secret@")),
+        "token must NOT be embedded in URL"
+    );
+}
+
+#[test]
+fn configure_git_command_skips_helper_without_token() {
+    let _guard = EnvGuard::new()
+        .unset("FERRFLOW_TOKEN")
+        .unset("GITHUB_TOKEN")
+        .unset("GITLAB_TOKEN");
+    let mut cmd = std::process::Command::new("git");
+    configure_git_command(&mut cmd, "https://github.com/owner/repo.git");
+    let args: Vec<String> = cmd
+        .get_args()
+        .map(|a| a.to_string_lossy().into_owned())
+        .collect();
+    assert!(args.is_empty(), "no flags should be added, got {args:?}");
+}
+
+static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+struct EnvGuard {
+    _lock: std::sync::MutexGuard<'static, ()>,
+    keys: Vec<(String, Option<String>)>,
+}
+
+impl EnvGuard {
+    fn new() -> Self {
+        let lock = ENV_LOCK.lock().unwrap_or_else(|poison| poison.into_inner());
+        Self {
+            _lock: lock,
+            keys: Vec::new(),
+        }
+    }
+
+    fn set(mut self, key: &str, value: &str) -> Self {
+        let previous = std::env::var(key).ok();
+        unsafe {
+            std::env::set_var(key, value);
+        }
+        self.keys.push((key.to_string(), previous));
+        self
+    }
+
+    fn unset(mut self, key: &str) -> Self {
+        let previous = std::env::var(key).ok();
+        unsafe {
+            std::env::remove_var(key);
+        }
+        self.keys.push((key.to_string(), previous));
+        self
+    }
+}
+
+impl Drop for EnvGuard {
+    fn drop(&mut self) {
+        for (key, previous) in self.keys.iter().rev() {
+            unsafe {
+                match previous {
+                    Some(v) => std::env::set_var(key, v),
+                    None => std::env::remove_var(key),
+                }
+            }
+        }
+    }
 }
 
 fn temp_repo_with_commit() -> (Repository, tempfile::TempDir) {
