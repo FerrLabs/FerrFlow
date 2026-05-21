@@ -4,6 +4,16 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.0.0] - 2026-05-21
+
+### Breaking Changes
+
+- refactor(git)!: replace URL token injection with credential helper protocol (#486)
+
+### Bug Fixes
+
+- perf(tags): show shared gix::Repository handle doesn't fix the TagIndex slowdown (#483)
+
 ## [4.10.8] - 2026-05-21
 
 ### Bug Fixes
