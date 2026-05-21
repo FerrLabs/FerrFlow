@@ -1400,7 +1400,7 @@ export default config;"#,
     .unwrap();
     let config = match Config::load_explicit(&path) {
         Ok(c) => c,
-        Err(e) => panic!("load_explicit failed: {e}"),
+        Err(e) => panic!("load_explicit failed: {e:?}"),
     };
     assert!(
         !config.packages.is_empty(),

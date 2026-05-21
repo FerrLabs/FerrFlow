@@ -20,7 +20,7 @@ echo "Downloading release binaries for v${VERSION}..."
 
 for archive in "${!ARCHIVES[@]}"; do
   platform="${ARCHIVES[$archive]}"
-  echo "  ${archive} -> @ferrflow/${platform}"
+  echo "  ${archive} -> @ferrlabs/ferrflow-${platform}"
 
   gh release download "v${VERSION}" -p "$archive" -D "$WORK_DIR"
 

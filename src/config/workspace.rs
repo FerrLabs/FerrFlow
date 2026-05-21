@@ -63,12 +63,15 @@ fn default_branch() -> String {
     #[cfg(feature = "cli")]
     {
         let detected = (|| {
-            let repo = git2::Repository::discover(".").ok()?;
+            let repo = gix::discover(".").ok()?;
             let reference = repo.find_reference("refs/remotes/origin/HEAD").ok()?;
-            let target = reference.symbolic_target().map(String::from)?;
-            let branch = target
-                .strip_prefix("refs/remotes/origin/")
-                .unwrap_or(&target);
+            let target = reference.target();
+            let target_name = match target {
+                gix::refs::TargetRef::Symbolic(name) => name,
+                _ => return None,
+            };
+            let full = target_name.as_bstr().to_string();
+            let branch = full.strip_prefix("refs/remotes/origin/").unwrap_or(&full);
             if branch.is_empty() {
                 None
             } else {

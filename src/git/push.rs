@@ -1,24 +1,25 @@
-use anyhow::{Context, Result};
-use git2::{PushOptions, RemoteCallbacks, Repository, Sort};
-use std::cell::RefCell;
+use anyhow::{Context, Result, anyhow};
+use gix::ObjectId;
 use std::collections::HashMap;
 use std::path::Path;
-use std::rc::Rc;
 
 use crate::error_code::{self, ErrorCodeExt};
 
-use super::auth::{configure_git_command, credentials_callback, get_remote};
-use super::fetch::make_fetch_options;
+use super::auth::{configure_git_command, get_remote_url};
+use super::repo::Repository;
 use super::retry::retry_transient;
+use super::shell::run_git;
 
 fn local_tag_target_sha(repo: &Repository, tag: &str) -> Result<String> {
-    let tag_ref = repo
-        .find_reference(&format!("refs/tags/{tag}"))
-        .with_context(|| format!("local tag '{tag}' not found"))?;
-    let commit = tag_ref
-        .peel_to_commit()
-        .with_context(|| format!("could not resolve tag '{tag}' to a commit"))?;
-    Ok(commit.id().to_string())
+    let workdir = repo
+        .workdir()
+        .ok_or_else(|| anyhow!("Bare repositories are not supported"))?;
+    let out = run_git(
+        workdir,
+        &["rev-list", "-n", "1", &format!("refs/tags/{tag}")],
+    )
+    .with_context(|| format!("could not resolve tag '{tag}' to a commit"))?;
+    Ok(out.trim().to_string())
 }
 
 pub(super) fn parse_ls_remote_tags(stdout: &str) -> HashMap<String, String> {
@@ -64,10 +65,7 @@ pub(super) fn remote_tag_target_shas(
         .with_context(|| "spawn `git ls-remote --tags` failed (is git in PATH?)")?;
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(anyhow::anyhow!(
-            "git ls-remote --tags failed: {}",
-            stderr.trim()
-        ));
+        return Err(anyhow!("git ls-remote --tags failed: {}", stderr.trim()));
     }
     Ok(parse_ls_remote_tags(&String::from_utf8_lossy(
         &output.stdout,
@@ -87,65 +85,59 @@ fn try_force_push_tags_once(repo: &Repository, remote_name: &str, tags: &[&str])
     shell_push_tags(repo, remote_name, tags, true).error_code(error_code::GIT_FLOATING_TAGS)
 }
 
-fn make_push_options(push_errors: Rc<RefCell<Vec<String>>>) -> PushOptions<'static> {
-    let mut callbacks = RemoteCallbacks::new();
-    callbacks.credentials(credentials_callback);
-    let errors = push_errors.clone();
-    callbacks.push_update_reference(move |refname, status| {
-        if let Some(msg) = status {
-            errors.borrow_mut().push(format!("{refname}: {msg}"));
-        }
-        Ok(())
-    });
-    let mut push_options = PushOptions::new();
-    push_options.remote_callbacks(callbacks);
-    push_options
-}
-
-fn check_push_errors(errors: &RefCell<Vec<String>>) -> Result<()> {
-    let errs = errors.borrow();
-    if errs.is_empty() {
-        return Ok(());
-    }
-    let joined = errs.join("; ");
-    Err(anyhow::anyhow!("Push rejected by remote: {joined}"))
-        .error_code(error_code::GIT_PUSH_REJECTED)?;
-    Ok(())
-}
-
 pub fn verify_remote_branch(
     repo: &Repository,
     remote_name: &str,
     branch: &str,
-    expected_oid: git2::Oid,
+    expected_oid: ObjectId,
 ) -> Result<()> {
-    let mut remote = get_remote(repo, remote_name)?;
+    let workdir = repo
+        .workdir()
+        .ok_or_else(|| anyhow!("Bare repositories are not supported"))?;
+    let url = get_remote_url(repo, remote_name)
+        .ok_or_else(|| anyhow!("Remote '{remote_name}' has no URL"))?;
 
-    let mut callbacks = RemoteCallbacks::new();
-    callbacks.credentials(credentials_callback);
+    let mut cmd = std::process::Command::new("git");
+    cmd.current_dir(workdir);
+    configure_git_command(&mut cmd, &url);
+    cmd.args([
+        "ls-remote",
+        "--heads",
+        &url,
+        &format!("refs/heads/{branch}"),
+    ]);
 
-    let connection = remote.connect_auth(git2::Direction::Fetch, Some(callbacks), None)?;
+    let output = cmd
+        .output()
+        .with_context(|| "spawn `git ls-remote --heads` failed (is git in PATH?)")?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(anyhow!("git ls-remote --heads failed: {}", stderr.trim()));
+    }
 
     let expected_ref = format!("refs/heads/{branch}");
-    for head in connection.list()? {
-        if head.name() == expected_ref {
-            if head.oid() == expected_oid {
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    for line in stdout.lines() {
+        let Some((sha, refname)) = line.split_once('\t') else {
+            continue;
+        };
+        if refname.trim() == expected_ref {
+            let actual = ObjectId::from_hex(sha.trim().as_bytes())
+                .with_context(|| format!("invalid sha from remote: {sha}"))?;
+            if actual == expected_oid {
                 return Ok(());
             }
-            Err(anyhow::anyhow!(
+            Err(anyhow!(
                 "Remote branch '{}' points to {} but expected {}",
                 branch,
-                head.oid(),
+                actual,
                 expected_oid,
             ))
             .error_code(error_code::GIT_PUSH_VERIFY_FAILED)?;
         }
     }
-    Err(anyhow::anyhow!(
-        "Remote branch '{}' not found after push",
-        branch
-    ))
-    .error_code(error_code::GIT_REMOTE_BRANCH_NOT_FOUND)?;
+    Err(anyhow!("Remote branch '{}' not found after push", branch))
+        .error_code(error_code::GIT_REMOTE_BRANCH_NOT_FOUND)?;
     Ok(())
 }
 
@@ -176,14 +168,9 @@ fn try_push_tags_once(repo: &Repository, remote_name: &str, tags: &[&str]) -> Re
 fn shell_push_tags(repo: &Repository, remote_name: &str, tags: &[&str], force: bool) -> Result<()> {
     let workdir = repo
         .workdir()
-        .ok_or_else(|| anyhow::anyhow!("bare repos are not supported"))?;
-    let remote = repo
-        .find_remote(remote_name)
-        .with_context(|| format!("Remote '{remote_name}' not found"))?;
-    let push_url = remote
-        .url()
-        .ok_or_else(|| anyhow::anyhow!("Remote '{remote_name}' has no URL"))?
-        .to_string();
+        .ok_or_else(|| anyhow!("bare repos are not supported"))?;
+    let push_url = get_remote_url(repo, remote_name)
+        .ok_or_else(|| anyhow!("Remote '{remote_name}' has no URL"))?;
 
     let remote_shas = remote_tag_target_shas(workdir, &push_url, tags).unwrap_or_else(|err| {
         eprintln!(
@@ -224,7 +211,7 @@ fn shell_push_tags(repo: &Repository, remote_name: &str, tags: &[&str], force: b
             })
             .collect::<Vec<_>>()
             .join(", ");
-        return Err(anyhow::anyhow!(
+        return Err(anyhow!(
             "Tag(s) already exist on remote pointing to a different commit: {joined}. \
              This usually means a previous release run partially succeeded — \
              delete the divergent remote tag(s) and retry, or use --force if you really want to overwrite."
@@ -256,7 +243,7 @@ fn shell_push_tags(repo: &Repository, remote_name: &str, tags: &[&str], force: b
         } else {
             "Failed to push tags"
         };
-        return Err(anyhow::anyhow!("{label}: {detail}"));
+        return Err(anyhow!("{label}: {detail}"));
     }
     Ok(())
 }
@@ -268,165 +255,190 @@ fn try_push_branch(repo: &Repository, remote_name: &str, branch: &str) -> Result
 }
 
 fn try_push_branch_once(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
-    let mut remote = get_remote(repo, remote_name)?;
-    let push_errors = Rc::new(RefCell::new(Vec::new()));
-    let mut opts = make_push_options(push_errors.clone());
+    let workdir = repo
+        .workdir()
+        .ok_or_else(|| anyhow!("bare repos are not supported"))?;
+    let push_url = get_remote_url(repo, remote_name)
+        .ok_or_else(|| anyhow!("Remote '{remote_name}' has no URL"))?;
     let source = resolve_push_source(repo, branch);
-    let branch_refspec = format!("{source}:refs/heads/{branch}");
-    remote
-        .push(&[&branch_refspec], Some(&mut opts))
-        .with_context(|| format!("Failed to push branch '{branch}'"))
-        .error_code(error_code::GIT_PUSH_BRANCH)?;
-    check_push_errors(&push_errors)
-        .with_context(|| format!("Branch push rejected for '{branch}'"))
-        .error_code(error_code::GIT_PUSH_REJECTED)?;
+    let refspec = format!("{source}:refs/heads/{branch}");
+
+    let mut cmd = std::process::Command::new("git");
+    cmd.current_dir(workdir);
+    configure_git_command(&mut cmd, &push_url);
+    cmd.arg("push").arg(&push_url).arg(&refspec);
+
+    let output = cmd
+        .output()
+        .with_context(|| format!("spawn `git push` for branch '{branch}' failed"))?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let detail = format!("{stdout}{stderr}").trim().to_string();
+        return Err(anyhow!("Failed to push branch '{branch}': {detail}"))
+            .error_code(error_code::GIT_PUSH_BRANCH);
+    }
     Ok(())
 }
 
 pub(super) fn fetch_and_rebase(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
-    let mut remote = get_remote(repo, remote_name)?;
-    let mut opts = make_fetch_options();
-    remote.fetch(
-        &[&format!(
-            "refs/heads/{branch}:refs/remotes/{remote_name}/{branch}"
-        )],
-        Some(&mut opts),
-        None,
-    )?;
-    drop(remote);
+    let workdir = repo
+        .workdir()
+        .ok_or_else(|| anyhow!("bare repos are not supported"))?;
+    let push_url = get_remote_url(repo, remote_name)
+        .ok_or_else(|| anyhow!("Remote '{remote_name}' has no URL"))?;
 
-    let remote_ref = format!("refs/remotes/{remote_name}/{branch}");
-    let remote_oid = repo
-        .refname_to_id(&remote_ref)
-        .with_context(|| format!("Could not find remote ref {remote_ref} after fetch"))?;
+    let mut fetch_cmd = std::process::Command::new("git");
+    fetch_cmd.current_dir(workdir);
+    configure_git_command(&mut fetch_cmd, &push_url);
+    fetch_cmd.arg("fetch").arg(remote_name).arg(format!(
+        "+refs/heads/{branch}:refs/remotes/{remote_name}/{branch}"
+    ));
+    let fetch_out = fetch_cmd
+        .output()
+        .with_context(|| "spawn `git fetch` failed")?;
+    if !fetch_out.status.success() {
+        let stderr = String::from_utf8_lossy(&fetch_out.stderr);
+        return Err(anyhow!("git fetch failed: {}", stderr.trim()));
+    }
 
-    let local_commit = repo.head()?.peel_to_commit()?;
-    let local_oid = local_commit.id();
+    let remote_oid_str = run_git(
+        workdir,
+        &["rev-parse", &format!("refs/remotes/{remote_name}/{branch}")],
+    )
+    .with_context(|| format!("could not resolve refs/remotes/{remote_name}/{branch}"))?
+    .trim()
+    .to_string();
+    let local_oid_str = run_git(workdir, &["rev-parse", "HEAD"])
+        .with_context(|| "could not resolve HEAD")?
+        .trim()
+        .to_string();
 
-    if remote_oid == local_oid || repo.graph_descendant_of(local_oid, remote_oid)? {
+    if remote_oid_str == local_oid_str {
         return Ok(());
     }
 
-    let merge_base = repo
-        .merge_base(local_oid, remote_oid)
-        .with_context(|| "No common ancestor between local and remote branch")?;
-
-    let mut local_commits = Vec::new();
-    let mut walk = repo.revwalk()?;
-    walk.push(local_oid)?;
-    walk.hide(merge_base)?;
-    walk.set_sorting(Sort::TOPOLOGICAL | Sort::REVERSE)?;
-    for oid in walk {
-        local_commits.push(oid?);
-    }
-
-    if local_commits.is_empty() {
+    if run_git(
+        workdir,
+        &[
+            "merge-base",
+            "--is-ancestor",
+            &remote_oid_str,
+            &local_oid_str,
+        ],
+    )
+    .is_ok()
+    {
         return Ok(());
-    }
-
-    let mut current_parent = repo.find_commit(remote_oid)?;
-    for commit_oid in &local_commits {
-        let commit = repo.find_commit(*commit_oid)?;
-        let commit_parent_tree = commit.parent(0)?.tree()?;
-        let commit_tree = commit.tree()?;
-        let new_base_tree = current_parent.tree()?;
-
-        let mut merge_index =
-            repo.merge_trees(&commit_parent_tree, &new_base_tree, &commit_tree, None)?;
-        if merge_index.has_conflicts() {
-            let paths: Vec<String> = merge_index
-                .conflicts()
-                .ok()
-                .into_iter()
-                .flatten()
-                .filter_map(|c| c.ok())
-                .filter_map(|c| {
-                    c.our
-                        .as_ref()
-                        .or(c.their.as_ref())
-                        .or(c.ancestor.as_ref())
-                        .map(|e| String::from_utf8_lossy(&e.path).into_owned())
-                })
-                .collect();
-            let path_list = if paths.is_empty() {
-                String::new()
-            } else {
-                format!("\nConflicting paths:\n  - {}", paths.join("\n  - "))
-            };
-            anyhow::bail!(
-                "Rebase conflict: cannot rebase release commits on top of remote '{branch}'. \
-                 Run manually or use releaseCommitMode = \"pr\".{path_list}"
-            );
-        }
-
-        let new_tree_oid = merge_index.write_tree_to(repo)?;
-        let new_tree = repo.find_tree(new_tree_oid)?;
-
-        let new_oid = repo.commit(
-            None,
-            &commit.author(),
-            &commit.committer(),
-            commit.message().unwrap_or(""),
-            &new_tree,
-            &[&current_parent],
-        )?;
-        current_parent = repo.find_commit(new_oid)?;
     }
 
     let local_ref = format!("refs/heads/{branch}");
-    if repo.find_reference(&local_ref).is_ok() {
-        repo.reference(
-            &local_ref,
-            current_parent.id(),
-            true,
-            "ferrflow: rebase on push",
+    let on_branch = run_git(workdir, &["symbolic-ref", "-q", "HEAD"])
+        .ok()
+        .map(|s| s.trim().to_string())
+        .unwrap_or_default()
+        == local_ref;
+
+    if on_branch {
+        let rebase_result = run_git(
+            workdir,
+            &["rebase", &format!("refs/remotes/{remote_name}/{branch}")],
+        );
+        if let Err(err) = rebase_result {
+            let _ = run_git(workdir, &["rebase", "--abort"]);
+            return Err(anyhow!(
+                "Rebase conflict: cannot rebase release commits on top of remote '{branch}'. \
+                 Run manually or use releaseCommitMode = \"pr\".\n{err}"
+            ));
+        }
+    } else {
+        let _ = run_git(workdir, &["update-ref", &local_ref, &remote_oid_str]);
+        let merge_base = run_git(workdir, &["merge-base", &local_oid_str, &remote_oid_str])
+            .with_context(|| "No common ancestor between local and remote branch")?
+            .trim()
+            .to_string();
+
+        let revs_output = run_git(
+            workdir,
+            &[
+                "rev-list",
+                "--reverse",
+                "--topo-order",
+                &format!("{merge_base}..{local_oid_str}"),
+            ],
         )?;
+        let revs: Vec<&str> = revs_output.lines().filter(|l| !l.is_empty()).collect();
+        let mut current_parent = remote_oid_str.clone();
+        for rev in revs {
+            let tree_sha = run_git(workdir, &["rev-parse", &format!("{rev}^{{tree}}")])?
+                .trim()
+                .to_string();
+            let msg = run_git(workdir, &["log", "-1", "--format=%B", rev])?;
+            let new_sha = run_git(
+                workdir,
+                &[
+                    "commit-tree",
+                    &tree_sha,
+                    "-p",
+                    &current_parent,
+                    "-m",
+                    msg.trim_end(),
+                ],
+            )?
+            .trim()
+            .to_string();
+            current_parent = new_sha;
+        }
+        run_git(workdir, &["update-ref", &local_ref, &current_parent])?;
+        run_git(workdir, &["checkout", "--detach", &current_parent])?;
+        run_git(workdir, &["checkout", "-f", branch]).ok();
     }
-    repo.set_head_detached(current_parent.id())?;
-    repo.checkout_head(Some(git2::build::CheckoutBuilder::new().force()))?;
 
     Ok(())
 }
 
 pub fn reset_branch_to_remote(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
-    let mut remote = get_remote(repo, remote_name)?;
-    let mut opts = make_fetch_options();
-    remote
-        .fetch(
-            &[&format!(
-                "refs/heads/{branch}:refs/remotes/{remote_name}/{branch}"
-            )],
-            Some(&mut opts),
-            None,
-        )
-        .with_context(|| format!("Failed to fetch '{remote_name}/{branch}' for reset"))?;
-    drop(remote);
+    let workdir = repo
+        .workdir()
+        .ok_or_else(|| anyhow!("bare repos are not supported"))?;
+    let push_url = get_remote_url(repo, remote_name)
+        .ok_or_else(|| anyhow!("Remote '{remote_name}' has no URL"))?;
 
-    let remote_ref = format!("refs/remotes/{remote_name}/{branch}");
-    let remote_oid = repo
-        .refname_to_id(&remote_ref)
-        .with_context(|| format!("Could not find remote ref {remote_ref} after fetch"))?;
+    let mut fetch_cmd = std::process::Command::new("git");
+    fetch_cmd.current_dir(workdir);
+    configure_git_command(&mut fetch_cmd, &push_url);
+    fetch_cmd.arg("fetch").arg(remote_name).arg(format!(
+        "+refs/heads/{branch}:refs/remotes/{remote_name}/{branch}"
+    ));
+    let fetch_out = fetch_cmd
+        .output()
+        .with_context(|| format!("Failed to fetch '{remote_name}/{branch}' for reset"))?;
+    if !fetch_out.status.success() {
+        let stderr = String::from_utf8_lossy(&fetch_out.stderr);
+        return Err(anyhow!(
+            "Failed to fetch '{remote_name}/{branch}' for reset: {}",
+            stderr.trim()
+        ));
+    }
+
+    let remote_oid = run_git(
+        workdir,
+        &["rev-parse", &format!("refs/remotes/{remote_name}/{branch}")],
+    )
+    .with_context(|| {
+        format!("Could not find remote ref refs/remotes/{remote_name}/{branch} after fetch")
+    })?
+    .trim()
+    .to_string();
 
     let local_ref = format!("refs/heads/{branch}");
     if repo.find_reference(&local_ref).is_ok() {
-        repo.reference(
-            &local_ref,
-            remote_oid,
-            true,
-            "ferrflow: reset to remote for release retry",
-        )?;
+        run_git(workdir, &["update-ref", &local_ref, &remote_oid])?;
+        run_git(workdir, &["checkout", "-f", branch])?;
+    } else {
+        run_git(workdir, &["checkout", "-f", &remote_oid])?;
     }
-
-    repo.set_head_detached(remote_oid)?;
-    repo.checkout_head(Some(
-        git2::build::CheckoutBuilder::new()
-            .force()
-            .remove_untracked(true),
-    ))?;
-
-    if repo.find_reference(&local_ref).is_ok() {
-        repo.set_head(&local_ref)?;
-    }
+    run_git(workdir, &["clean", "-fd"]).ok();
 
     Ok(())
 }
@@ -444,6 +456,7 @@ pub fn push(repo: &Repository, remote_name: &str, branch: &str, tags: &[&str]) -
                         || msg.contains("not fast forward")
                         || msg.contains("non-fast-forward")
                         || msg.contains("push rejected")
+                        || msg.contains("rejected")
                 });
 
                 if !is_non_ff || attempt == MAX_PUSH_RETRIES {
@@ -462,7 +475,12 @@ pub fn push(repo: &Repository, remote_name: &str, branch: &str, tags: &[&str]) -
         }
     }
 
-    let head_oid = repo.head()?.peel_to_commit()?.id();
+    let workdir = repo
+        .workdir()
+        .ok_or_else(|| anyhow!("bare repos are not supported"))?;
+    let head_str = run_git(workdir, &["rev-parse", "HEAD"])?.trim().to_string();
+    let head_oid = ObjectId::from_hex(head_str.as_bytes())
+        .with_context(|| format!("invalid HEAD sha: {head_str}"))?;
     verify_remote_branch(repo, remote_name, branch, head_oid)
         .with_context(|| "Post-push verification failed: release commit not on remote branch")
         .error_code(error_code::GIT_PUSH_VERIFY_FAILED)?;

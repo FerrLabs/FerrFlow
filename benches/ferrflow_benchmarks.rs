@@ -177,56 +177,100 @@ fn bench_config_loading(c: &mut Criterion) {
 
 /// Create a git repo with `num_commits` commits and a tag at `tag_at` position.
 /// Returns the TempDir (must be kept alive) and the opened Repository.
-fn create_bench_repo(num_commits: usize, tag_at: usize) -> (TempDir, git2::Repository) {
+fn run_git(dir: &std::path::Path, args: &[&str]) -> String {
+    run_git_with_stdin(dir, args, None)
+}
+
+fn run_git_with_stdin(dir: &std::path::Path, args: &[&str], stdin: Option<&[u8]>) -> String {
+    use std::io::Write;
+    let mut cmd = std::process::Command::new("git");
+    cmd.current_dir(dir).args(args);
+    cmd.env("GIT_AUTHOR_NAME", "bench");
+    cmd.env("GIT_AUTHOR_EMAIL", "bench@test.com");
+    cmd.env("GIT_AUTHOR_DATE", "1700000000 +0000");
+    cmd.env("GIT_COMMITTER_NAME", "bench");
+    cmd.env("GIT_COMMITTER_EMAIL", "bench@test.com");
+    cmd.env("GIT_COMMITTER_DATE", "1700000000 +0000");
+    if stdin.is_some() {
+        cmd.stdin(std::process::Stdio::piped());
+    }
+    cmd.stdout(std::process::Stdio::piped());
+    cmd.stderr(std::process::Stdio::piped());
+    let mut child = cmd
+        .spawn()
+        .unwrap_or_else(|e| panic!("git {} failed to spawn: {}", args.join(" "), e));
+    if let Some(data) = stdin {
+        child
+            .stdin
+            .as_mut()
+            .unwrap()
+            .write_all(data)
+            .expect("write stdin");
+    }
+    let out = child
+        .wait_with_output()
+        .unwrap_or_else(|e| panic!("git {} wait failed: {}", args.join(" "), e));
+    if !out.status.success() {
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        let stdout = String::from_utf8_lossy(&out.stdout);
+        panic!("git {} failed: {}{}", args.join(" "), stdout, stderr);
+    }
+    String::from_utf8_lossy(&out.stdout).into_owned()
+}
+
+fn create_bench_repo(num_commits: usize, tag_at: usize) -> (TempDir, gix::Repository) {
     let dir = TempDir::new().unwrap();
-    let repo = git2::Repository::init(dir.path()).unwrap();
+    let path = dir.path();
+    run_git(path, &["init", "-b", "main"]);
+    run_git(path, &["config", "user.name", "bench"]);
+    run_git(path, &["config", "user.email", "bench@test.com"]);
+    run_git(path, &["config", "commit.gpgsign", "false"]);
 
-    // Configure committer identity
-    let mut config = repo.config().unwrap();
-    config.set_str("user.name", "bench").unwrap();
-    config.set_str("user.email", "bench@test.com").unwrap();
-
-    let sig = git2::Signature::now("bench", "bench@test.com").unwrap();
     let types = ["feat", "fix", "refactor", "perf", "chore"];
     let scopes = ["api", "auth", "db"];
 
-    let mut parent_oid: Option<git2::Oid> = None;
-
+    let mut parent: Option<String> = None;
     for i in 0..num_commits {
         let t = types[i % types.len()];
         let s = scopes[i % scopes.len()];
         let breaking = if i % 20 == 0 && i > 0 { "!" } else { "" };
         let msg = format!("{t}({s}){breaking}: change {i}");
 
-        // Create a file change per commit
         let file_name = format!("src/file_{i}.rs");
-        let file_path = dir.path().join(&file_name);
-        std::fs::create_dir_all(file_path.parent().unwrap()).unwrap();
-        std::fs::write(&file_path, format!("// commit {i}\n")).unwrap();
-
-        let mut index = repo.index().unwrap();
-        index.add_path(std::path::Path::new(&file_name)).unwrap();
-        index.write().unwrap();
-        let tree_oid = index.write_tree().unwrap();
-        let tree = repo.find_tree(tree_oid).unwrap();
-
-        let oid = if let Some(parent) = parent_oid {
-            let parent_commit = repo.find_commit(parent).unwrap();
-            repo.commit(Some("HEAD"), &sig, &sig, &msg, &tree, &[&parent_commit])
-                .unwrap()
-        } else {
-            repo.commit(Some("HEAD"), &sig, &sig, &msg, &tree, &[])
-                .unwrap()
-        };
+        let content = format!("// commit {i}\n");
+        let blob_sha = run_git_with_stdin(
+            path,
+            &["hash-object", "-w", "--stdin"],
+            Some(content.as_bytes()),
+        )
+        .trim()
+        .to_string();
+        run_git(
+            path,
+            &[
+                "update-index",
+                "--add",
+                "--cacheinfo",
+                &format!("100644,{blob_sha},{file_name}"),
+            ],
+        );
+        let tree_sha = run_git(path, &["write-tree"]).trim().to_string();
+        let mut commit_args: Vec<String> = vec!["commit-tree".into(), tree_sha, "-m".into(), msg];
+        if let Some(p) = &parent {
+            commit_args.push("-p".into());
+            commit_args.push(p.clone());
+        }
+        let arg_refs: Vec<&str> = commit_args.iter().map(String::as_str).collect();
+        let commit_sha = run_git(path, &arg_refs).trim().to_string();
+        run_git(path, &["update-ref", "refs/heads/main", &commit_sha]);
+        parent = Some(commit_sha.clone());
 
         if i == tag_at {
-            let obj = repo.find_object(oid, None).unwrap();
-            repo.tag_lightweight("v1.0.0", &obj, false).unwrap();
+            run_git(path, &["tag", "v1.0.0", &commit_sha]);
         }
-
-        parent_oid = Some(oid);
     }
 
+    let repo = gix::discover(path).unwrap();
     (dir, repo)
 }
 

@@ -7,18 +7,17 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 WASM_DIR="${REPO_DIR}/ferrflow-wasm"
 
-echo "Building @ferrflow/wasm@${VERSION}..."
+echo "Building @ferrlabs/ferrflow-wasm@${VERSION}..."
 
 cd "$WASM_DIR"
-wasm-pack build --target bundler --scope ferrflow
+wasm-pack build --target bundler --scope ferrlabs
 
 cd pkg
 
-# Rename package from @ferrflow/ferrflow-wasm to @ferrflow/wasm
 node -e "
   const fs = require('fs');
   const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-  pkg.name = '@ferrflow/wasm';
+  pkg.name = '@ferrlabs/ferrflow-wasm';
   pkg.version = '${VERSION}';
   pkg.repository = {
     type: 'git',
@@ -29,7 +28,7 @@ node -e "
   fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
 "
 
-echo "Publishing @ferrflow/wasm@${VERSION}..."
+echo "Publishing @ferrlabs/ferrflow-wasm@${VERSION}..."
 npm publish --access public
 
-echo "Published @ferrflow/wasm@${VERSION}"
+echo "Published @ferrlabs/ferrflow-wasm@${VERSION}"

@@ -1,45 +1,51 @@
 use anyhow::Result;
-use git2::Repository;
+use gix::ObjectId;
 
 use crate::config::OrphanedTagStrategy;
 
+use super::repo::Repository;
+use super::shell::run_git;
 use super::tags::find_last_tag_commit;
 
 pub fn get_changed_files(repo: &Repository) -> Result<Vec<String>> {
-    let head = match repo.head() {
-        Ok(h) => h.peel_to_commit()?,
+    let workdir = match repo.workdir() {
+        Some(p) => p,
+        None => return Ok(vec![]),
+    };
+    let head = match repo.head_id() {
+        Ok(id) => id.detach(),
         Err(_) => return Ok(vec![]),
     };
-    let head_tree = head.tree()?;
 
-    let files = if let Ok(parent) = head.parent(0) {
-        let parent_tree = parent.tree()?;
-        let diff = repo.diff_tree_to_tree(Some(&parent_tree), Some(&head_tree), None)?;
-        let mut files = Vec::new();
-        diff.foreach(
-            &mut |delta, _| {
-                if let Some(path) = delta.new_file().path() {
-                    files.push(path.to_string_lossy().to_string());
-                }
-                true
-            },
-            None,
-            None,
-            None,
-        )?;
-        files
+    let has_parent = repo
+        .find_commit(head)
+        .ok()
+        .and_then(|c| c.parent_ids().next())
+        .is_some();
+
+    let args: Vec<String> = if has_parent {
+        vec![
+            "diff-tree".into(),
+            "--no-commit-id".into(),
+            "--name-only".into(),
+            "-r".into(),
+            head.to_string(),
+        ]
     } else {
-        let mut files = Vec::new();
-        head_tree.walk(git2::TreeWalkMode::PreOrder, |_, entry| {
-            if let Some(name) = entry.name() {
-                files.push(name.to_string());
-            }
-            git2::TreeWalkResult::Ok
-        })?;
-        files
+        vec![
+            "ls-tree".into(),
+            "-r".into(),
+            "--name-only".into(),
+            head.to_string(),
+        ]
     };
-
-    Ok(files)
+    let arg_refs: Vec<&str> = args.iter().map(String::as_str).collect();
+    let out = run_git(workdir, &arg_refs)?;
+    Ok(out
+        .lines()
+        .filter(|l| !l.is_empty())
+        .map(String::from)
+        .collect())
 }
 
 pub fn get_changed_files_since_tag(
@@ -51,40 +57,39 @@ pub fn get_changed_files_since_tag(
     get_changed_files_since_oid(repo, last_tag_oid)
 }
 
-/// Same as [`get_changed_files_since_tag`] but skips the tag lookup —
-/// callers in the multi-package monorepo loop resolve the OID once via
-/// `TagIndex` instead of paying for an independent `tag_foreach` per
-/// package.
 pub fn get_changed_files_since_oid(
     repo: &Repository,
-    last_tag_oid: Option<git2::Oid>,
+    last_tag_oid: Option<ObjectId>,
 ) -> Result<Vec<String>> {
-    let head = match repo.head() {
-        Ok(h) => h.peel_to_commit()?,
+    let workdir = match repo.workdir() {
+        Some(p) => p,
+        None => return Ok(vec![]),
+    };
+    let head = match repo.head_id() {
+        Ok(id) => id.detach(),
         Err(_) => return Ok(vec![]),
     };
-    let head_tree = head.tree()?;
 
-    let old_tree = if let Some(tag_oid) = last_tag_oid {
-        let tag_commit = repo.find_commit(tag_oid)?;
-        Some(tag_commit.tree()?)
-    } else {
-        None
+    let head_str = head.to_string();
+    let args: Vec<String> = match last_tag_oid {
+        Some(tag_oid) => vec![
+            "diff".into(),
+            "--name-only".into(),
+            tag_oid.to_string(),
+            head_str,
+        ],
+        None => vec![
+            "ls-tree".into(),
+            "-r".into(),
+            "--name-only".into(),
+            head_str,
+        ],
     };
-
-    let diff = repo.diff_tree_to_tree(old_tree.as_ref(), Some(&head_tree), None)?;
-    let mut files = Vec::new();
-    diff.foreach(
-        &mut |delta, _| {
-            if let Some(path) = delta.new_file().path() {
-                files.push(path.to_string_lossy().to_string());
-            }
-            true
-        },
-        None,
-        None,
-        None,
-    )?;
-
-    Ok(files)
+    let arg_refs: Vec<&str> = args.iter().map(String::as_str).collect();
+    let out = run_git(workdir, &arg_refs)?;
+    Ok(out
+        .lines()
+        .filter(|l| !l.is_empty())
+        .map(String::from)
+        .collect())
 }

@@ -3,7 +3,7 @@
 [![Latest release](https://img.shields.io/github/v/release/FerrLabs/FerrFlow)](https://github.com/FerrLabs/FerrFlow/releases/latest)
 [![Coverage](https://codecov.io/gh/FerrLabs/FerrFlow/graph/badge.svg)](https://codecov.io/gh/FerrLabs/FerrFlow)
 [![License](https://img.shields.io/github/license/FerrLabs/FerrFlow)](LICENSE)
-[![Socket Badge](https://badge.socket.dev/npm/package/ferrflow/latest)](https://badge.socket.dev/npm/package/ferrflow/latest)
+[![Socket Badge](https://badge.socket.dev/npm/package/@ferrlabs/ferrflow/latest)](https://badge.socket.dev/npm/package/@ferrlabs/ferrflow/latest)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/FerrLabs/FerrFlow/badge)](https://scorecard.dev/viewer/?uri=github.com/FerrLabs/FerrFlow)
 
 Universal semantic versioning for monorepos and classic repos.
@@ -44,7 +44,7 @@ cargo install ferrflow
 **npm**
 
 ```bash
-npm install -D ferrflow
+npm install -D @ferrlabs/ferrflow
 ```
 
 **Docker**

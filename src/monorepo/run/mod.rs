@@ -81,10 +81,9 @@ pub(super) fn run_release_logic(
     )?;
 
     let short_hash = repo
-        .head()
+        .head_id()
         .ok()
-        .and_then(|h| h.peel_to_commit().ok())
-        .map(|c| c.id().to_string()[..7].to_string())
+        .map(|id| id.to_string()[..7].to_string())
         .unwrap_or_default();
 
     let all_tags = collect_all_tags(&repo);
@@ -429,7 +428,7 @@ pub(super) fn run_release_logic(
                 }
             }
         } else {
-            if repo.refname_to_id(&format!("refs/tags/{tag}")).is_ok() {
+            if crate::git::tag_exists(&repo, &tag) {
                 if let Some((_, lines)) = pkg_outputs.iter_mut().rev().find(|(n, _)| n == &pkg.name)
                 {
                     lines.push(format!(
@@ -908,11 +907,7 @@ pub(super) fn run_release_logic(
                 ));
             }
 
-            let target_sha = repo
-                .head()
-                .ok()
-                .and_then(|h| h.peel_to_commit().ok())
-                .map(|c| c.id().to_string());
+            let target_sha = repo.head_id().ok().map(|id| id.to_string());
 
             if let Some(forge_instance) = build_forge_instance(&repo, config) {
                 for (tag_name, _, body, pkg_name, _, _, is_pre) in &tags_to_create {

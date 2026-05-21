@@ -114,8 +114,13 @@ fn cleanup_failed_release_attempt(
     let repo = open_repo(root)?;
     let after: std::collections::HashSet<String> =
         crate::git::collect_all_tags(&repo).into_iter().collect();
-    for tag in after.difference(pre_attempt_tags) {
-        let _ = repo.tag_delete(tag);
+    if let Some(workdir) = repo.workdir() {
+        for tag in after.difference(pre_attempt_tags) {
+            let _ = std::process::Command::new("git")
+                .current_dir(workdir)
+                .args(["tag", "-d", tag])
+                .output();
+        }
     }
 
     let target_branch = crate::git::resolve_current_branch(&repo, &config.workspace.branch);

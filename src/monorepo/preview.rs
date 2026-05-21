@@ -1,9 +1,8 @@
-use git2::Repository;
 use std::path::Path;
 
 use crate::config::Config;
 use crate::forge::{self, ForgeKind};
-use crate::git::get_remote_url;
+use crate::git::{Repository, get_remote_url};
 
 use super::types::{CheckPackage, CheckResult};
 
@@ -24,7 +23,7 @@ pub(super) fn build_forge_instance(
     Some(forge::build_forge(kind, token, slug, host))
 }
 
-pub(super) fn post_preview_comment(repo: &git2::Repository, config: &Config, root: &Path) {
+pub(super) fn post_preview_comment(repo: &Repository, config: &Config, root: &Path) {
     let pr_id = match forge::detect_pr_number() {
         Some(id) => id,
         None => return, // Not in a PR context, skip silently
