@@ -58,25 +58,7 @@ struct TagIndexEntry {
 }
 
 impl TagIndex {
-    /// Build the per-package tag index.
-    ///
-    /// Intentionally stays on libgit2 even though `collect_all_tags`
-    /// migrated to gix. Local benches in
-    /// `tests/gix_parity.rs::tag_index_smoke_perf_200_tags` showed the
-    /// gix variant at **22 ms vs 14 ms libgit2** on 200 tags — because
-    /// `TagIndex::build` does many per-tag object lookups (peel + read
-    /// time) on top of the enumeration, and gix's object DB lookups
-    /// were slower than libgit2's batched equivalents in this shape,
-    /// AND we'd pay a second `gix::open()` per call.
-    ///
-    /// The gix implementation is preserved as [`build_gix`] for the
-    /// parity suite and ready to flip back once a long-lived
-    /// `gix::ThreadSafeRepository` is cached across the run.
     pub fn build(repo: &Repository) -> Result<Self> {
-        Self::build_libgit2(repo)
-    }
-
-    pub fn build_libgit2(repo: &Repository) -> Result<Self> {
         let head = repo.head()?.peel_to_commit()?.id();
         let mut walk = repo.revwalk()?;
         walk.push(head)?;
@@ -560,20 +542,7 @@ pub(super) fn find_last_stable_tag_with_cache(
     Ok(latest.into_inner())
 }
 
-/// Route through gitoxide for ~2.7× faster tag enumeration on dense
-/// repos. Falls back to libgit2 if gix can't open the workdir (e.g. a
-/// transient partial-config state during a release commit). See
-/// `tests/gix_parity.rs` for the byte-for-byte equivalence test suite.
 pub fn collect_all_tags(repo: &Repository) -> Vec<String> {
-    if let Some(workdir) = repo.workdir()
-        && let Ok(tags) = collect_all_tags_gix(workdir)
-    {
-        return tags;
-    }
-    collect_all_tags_libgit2(repo)
-}
-
-pub fn collect_all_tags_libgit2(repo: &Repository) -> Vec<String> {
     let mut tags = Vec::new();
     let _ = repo.tag_foreach(|_oid, name| {
         let name = String::from_utf8_lossy(name);
@@ -581,126 +550,6 @@ pub fn collect_all_tags_libgit2(repo: &Repository) -> Vec<String> {
         true
     });
     tags
-}
-
-/// gitoxide-backed `TagIndex::build`. Kept for reference + the parity
-/// suite even though it's currently NOT wired into the production
-/// build path — see the comment on [`TagIndex::build`]. The 22 ms vs
-/// 14 ms slowdown on 200 tags is preserved here for the parity tests
-/// in `tests/gix_parity.rs`, and ready to be re-enabled once we cache
-/// a long-lived gix::Repository across the run.
-#[allow(dead_code)]
-pub fn build_gix(workdir: &std::path::Path) -> anyhow::Result<TagIndex> {
-    let repo = gix::open(workdir).map_err(|e| anyhow::anyhow!("gix open: {e}"))?;
-    build_gix_with(&repo)
-}
-
-/// Same as [`build_gix`] but reuses a caller-provided `gix::Repository`
-/// handle. This is the architectural unlock referenced in #479: when
-/// the open cost is amortized across multiple calls (or just paid once
-/// at the CLI entry), the gix path stops carrying the open penalty
-/// that made [`TagIndex::build`] a net loss vs libgit2 in slice 2.
-#[allow(dead_code)]
-pub fn build_gix_with(repo: &gix::Repository) -> anyhow::Result<TagIndex> {
-    let head_id = repo
-        .head_id()
-        .map_err(|e| anyhow::anyhow!("gix head_id: {e}"))?
-        .detach();
-
-    // Build ancestor set via a single rev_walk from HEAD.
-    let mut ancestors_gix: HashSet<gix::ObjectId> = HashSet::new();
-    let walk = repo
-        .rev_walk([head_id])
-        .all()
-        .map_err(|e| anyhow::anyhow!("gix rev_walk: {e}"))?;
-    // The remainder of the function mirrors build_gix exactly — kept inline
-    // because closures over the gix repo borrow rules add more noise than
-    // they save.
-    for info in walk {
-        match info {
-            Ok(info) => {
-                ancestors_gix.insert(info.id);
-            }
-            Err(_) => continue,
-        }
-    }
-    let ancestors: HashSet<git2::Oid> = ancestors_gix
-        .iter()
-        .filter_map(|o| git2::Oid::from_bytes(o.as_slice()).ok())
-        .collect();
-
-    // Iterate refs/tags/* and resolve each to its target commit.
-    let refs = repo
-        .references()
-        .map_err(|e| anyhow::anyhow!("gix references: {e}"))?;
-    let iter = refs
-        .tags()
-        .map_err(|e| anyhow::anyhow!("gix tags iter: {e}"))?;
-    let mut entries = Vec::new();
-    for r in iter {
-        let mut r = match r {
-            Ok(r) => r,
-            Err(_) => continue,
-        };
-        let tag_name = r
-            .name()
-            .as_bstr()
-            .to_string()
-            .trim_start_matches("refs/tags/")
-            .to_string();
-        // peel_to_id walks annotated tag objects down to the commit
-        // they point at; lightweight tags resolve to themselves.
-        let commit_id = match r.peel_to_id() {
-            Ok(id) => id.detach(),
-            Err(_) => continue,
-        };
-        let commit = match repo.find_object(commit_id) {
-            Ok(obj) => match obj.try_into_commit() {
-                Ok(c) => c,
-                Err(_) => continue,
-            },
-            Err(_) => continue,
-        };
-        let time = match commit.time() {
-            Ok(t) => t.seconds,
-            Err(_) => continue,
-        };
-        let commit_oid = match git2::Oid::from_bytes(commit_id.as_slice()) {
-            Ok(o) => o,
-            Err(_) => continue,
-        };
-        let reachable = ancestors_gix.contains(&commit_id);
-        entries.push(TagIndexEntry {
-            name: tag_name,
-            commit_oid,
-            time,
-            reachable,
-        });
-    }
-
-    Ok(TagIndex { entries, ancestors })
-}
-
-pub fn collect_all_tags_gix(workdir: &std::path::Path) -> anyhow::Result<Vec<String>> {
-    let repo = gix::open(workdir).map_err(|e| anyhow::anyhow!("gix open: {e}"))?;
-    let refs = repo
-        .references()
-        .map_err(|e| anyhow::anyhow!("gix references: {e}"))?;
-    let iter = refs
-        .tags()
-        .map_err(|e| anyhow::anyhow!("gix tags iter: {e}"))?;
-    let mut tags = Vec::new();
-    for r in iter {
-        let r = r.map_err(|e| anyhow::anyhow!("gix tag ref: {e}"))?;
-        tags.push(
-            r.name()
-                .as_bstr()
-                .to_string()
-                .trim_start_matches("refs/tags/")
-                .to_string(),
-        );
-    }
-    Ok(tags)
 }
 
 pub fn tag_exists(repo: &Repository, tag_name: &str) -> bool {
