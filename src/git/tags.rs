@@ -592,6 +592,16 @@ pub fn collect_all_tags_libgit2(repo: &Repository) -> Vec<String> {
 #[allow(dead_code)]
 pub fn build_gix(workdir: &std::path::Path) -> anyhow::Result<TagIndex> {
     let repo = gix::open(workdir).map_err(|e| anyhow::anyhow!("gix open: {e}"))?;
+    build_gix_with(&repo)
+}
+
+/// Same as [`build_gix`] but reuses a caller-provided `gix::Repository`
+/// handle. This is the architectural unlock referenced in #479: when
+/// the open cost is amortized across multiple calls (or just paid once
+/// at the CLI entry), the gix path stops carrying the open penalty
+/// that made [`TagIndex::build`] a net loss vs libgit2 in slice 2.
+#[allow(dead_code)]
+pub fn build_gix_with(repo: &gix::Repository) -> anyhow::Result<TagIndex> {
     let head_id = repo
         .head_id()
         .map_err(|e| anyhow::anyhow!("gix head_id: {e}"))?
@@ -603,6 +613,9 @@ pub fn build_gix(workdir: &std::path::Path) -> anyhow::Result<TagIndex> {
         .rev_walk([head_id])
         .all()
         .map_err(|e| anyhow::anyhow!("gix rev_walk: {e}"))?;
+    // The remainder of the function mirrors build_gix exactly — kept inline
+    // because closures over the gix repo borrow rules add more noise than
+    // they save.
     for info in walk {
         match info {
             Ok(info) => {

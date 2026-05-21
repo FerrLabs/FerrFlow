@@ -30,7 +30,10 @@ pub use tags::{
 // Library consumers should use `collect_all_tags` which auto-routes
 // through gix with a libgit2 fallback.
 #[allow(unused_imports)]
-pub use tags::{build_gix as tag_index_build_gix, collect_all_tags_gix, collect_all_tags_libgit2};
+pub use tags::{
+    build_gix as tag_index_build_gix, build_gix_with as tag_index_build_gix_with,
+    collect_all_tags_gix, collect_all_tags_libgit2,
+};
 
 #[cfg(test)]
 mod tests;

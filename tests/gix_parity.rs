@@ -11,6 +11,7 @@
 
 use ferrflow::git::{
     TagIndex, collect_all_tags_gix, collect_all_tags_libgit2, tag_index_build_gix,
+    tag_index_build_gix_with,
 };
 use git2::{Repository, Signature};
 use std::collections::HashSet;
@@ -169,6 +170,41 @@ fn tag_index_parity_at_scale_200_tags() {
         gx_names.iter().collect::<HashSet<_>>()
     );
     assert_eq!(g2_anc, gx_anc);
+}
+
+/// Architectural unlock probe: does sharing the gix::Repository
+/// handle across calls flip the perf back to gix-winning?
+///
+/// Compared to `tag_index_smoke_perf_200_tags` below which opens gix
+/// fresh per call, this variant opens once. The delta tells us how
+/// much of the gix slowdown was just the per-call open cost vs how
+/// much is the per-tag object lookup overhead.
+#[test]
+fn tag_index_smoke_perf_200_tags_shared_handle() {
+    let (dir, repo) = init_repo();
+    for i in 0..200 {
+        add_lightweight_tag(&repo, &format!("pkg-{i:03}@v0.1.0"));
+    }
+    let gix_repo = gix::open(dir.path()).unwrap();
+
+    let _ = TagIndex::build_libgit2(&Repository::open(dir.path()).unwrap()).unwrap();
+    let _ = tag_index_build_gix_with(&gix_repo).unwrap();
+
+    let runs = 20;
+    let t = Instant::now();
+    for _ in 0..runs {
+        let _ = TagIndex::build_libgit2(&Repository::open(dir.path()).unwrap()).unwrap();
+    }
+    let g2_each = t.elapsed() / runs;
+
+    let t = Instant::now();
+    for _ in 0..runs {
+        let _ = tag_index_build_gix_with(&gix_repo).unwrap();
+    }
+    let gx_each = t.elapsed() / runs;
+
+    println!("TagIndex::build_libgit2          (200 tags) median {g2_each:?}");
+    println!("tag_index_build_gix_with (shared, 200 tags) median {gx_each:?}");
 }
 
 /// Why TagIndex::build stays on libgit2: this bench documents the
