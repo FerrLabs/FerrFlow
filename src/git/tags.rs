@@ -543,6 +543,29 @@ pub(super) fn find_last_stable_tag_with_cache(
 }
 
 pub fn collect_all_tags(repo: &Repository) -> Vec<String> {
+    let workdir = match repo.workdir() {
+        Some(p) => p,
+        None => return collect_all_tags_libgit2(repo),
+    };
+    match gix::open(workdir) {
+        Ok(gix_repo) => {
+            collect_all_tags_gix(&gix_repo).unwrap_or_else(|_| collect_all_tags_libgit2(repo))
+        }
+        Err(_) => collect_all_tags_libgit2(repo),
+    }
+}
+
+fn collect_all_tags_gix(repo: &gix::Repository) -> Result<Vec<String>> {
+    let references = repo.references()?;
+    let mut tags = Vec::new();
+    for reference in references.tags()?.flatten() {
+        let name = reference.name().shorten();
+        tags.push(String::from_utf8_lossy(name.as_ref()).into_owned());
+    }
+    Ok(tags)
+}
+
+fn collect_all_tags_libgit2(repo: &Repository) -> Vec<String> {
     let mut tags = Vec::new();
     let _ = repo.tag_foreach(|_oid, name| {
         let name = String::from_utf8_lossy(name);

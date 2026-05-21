@@ -7,7 +7,7 @@ use std::rc::Rc;
 
 use crate::error_code::{self, ErrorCodeExt};
 
-use super::auth::{authenticated_remote_url, credentials_callback, get_authenticated_remote};
+use super::auth::{configure_git_command, credentials_callback, get_remote};
 use super::fetch::make_fetch_options;
 use super::retry::retry_transient;
 
@@ -53,10 +53,9 @@ pub(super) fn remote_tag_target_shas(
         return Ok(HashMap::new());
     }
     let mut cmd = std::process::Command::new("git");
-    cmd.current_dir(workdir)
-        .arg("ls-remote")
-        .arg("--tags")
-        .arg(push_url);
+    cmd.current_dir(workdir);
+    configure_git_command(&mut cmd, push_url);
+    cmd.arg("ls-remote").arg("--tags").arg(push_url);
     for tag in tags {
         cmd.arg(format!("refs/tags/{tag}"));
     }
@@ -120,7 +119,7 @@ pub fn verify_remote_branch(
     branch: &str,
     expected_oid: git2::Oid,
 ) -> Result<()> {
-    let mut remote = get_authenticated_remote(repo, remote_name)?;
+    let mut remote = get_remote(repo, remote_name)?;
 
     let mut callbacks = RemoteCallbacks::new();
     callbacks.credentials(credentials_callback);
@@ -181,11 +180,10 @@ fn shell_push_tags(repo: &Repository, remote_name: &str, tags: &[&str], force: b
     let remote = repo
         .find_remote(remote_name)
         .with_context(|| format!("Remote '{remote_name}' not found"))?;
-    let raw_url = remote
+    let push_url = remote
         .url()
         .ok_or_else(|| anyhow::anyhow!("Remote '{remote_name}' has no URL"))?
         .to_string();
-    let push_url = authenticated_remote_url(&raw_url).unwrap_or(raw_url);
 
     let remote_shas = remote_tag_target_shas(workdir, &push_url, tags).unwrap_or_else(|err| {
         eprintln!(
@@ -238,7 +236,9 @@ fn shell_push_tags(repo: &Repository, remote_name: &str, tags: &[&str], force: b
 
     let prefix = if force { "+" } else { "" };
     let mut cmd = std::process::Command::new("git");
-    cmd.current_dir(workdir).arg("push").arg(&push_url);
+    cmd.current_dir(workdir);
+    configure_git_command(&mut cmd, &push_url);
+    cmd.arg("push").arg(&push_url);
     for tag in &to_push {
         cmd.arg(format!("{prefix}refs/tags/{tag}:refs/tags/{tag}"));
     }
@@ -268,7 +268,7 @@ fn try_push_branch(repo: &Repository, remote_name: &str, branch: &str) -> Result
 }
 
 fn try_push_branch_once(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
-    let mut remote = get_authenticated_remote(repo, remote_name)?;
+    let mut remote = get_remote(repo, remote_name)?;
     let push_errors = Rc::new(RefCell::new(Vec::new()));
     let mut opts = make_push_options(push_errors.clone());
     let source = resolve_push_source(repo, branch);
@@ -284,7 +284,7 @@ fn try_push_branch_once(repo: &Repository, remote_name: &str, branch: &str) -> R
 }
 
 pub(super) fn fetch_and_rebase(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
-    let mut remote = get_authenticated_remote(repo, remote_name)?;
+    let mut remote = get_remote(repo, remote_name)?;
     let mut opts = make_fetch_options();
     remote.fetch(
         &[&format!(
@@ -389,7 +389,7 @@ pub(super) fn fetch_and_rebase(repo: &Repository, remote_name: &str, branch: &st
 }
 
 pub fn reset_branch_to_remote(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
-    let mut remote = get_authenticated_remote(repo, remote_name)?;
+    let mut remote = get_remote(repo, remote_name)?;
     let mut opts = make_fetch_options();
     remote
         .fetch(

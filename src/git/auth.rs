@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use git2::{Cred, CredentialType, Repository};
+use std::process::Command;
 
 use crate::error_code::{self, ErrorCodeExt};
 
@@ -13,6 +14,25 @@ pub(super) fn extract_url_password(url: &str) -> Option<(String, String)> {
     Some((user.to_string(), password.to_string()))
 }
 
+pub(super) fn token_for_url(url: &str) -> Option<(String, String)> {
+    if let Ok(token) = std::env::var("FERRFLOW_TOKEN") {
+        let user = if url.contains("gitlab") {
+            "oauth2"
+        } else {
+            "x-access-token"
+        };
+        return Some((user.to_string(), token));
+    }
+    if url.contains("gitlab") {
+        if let Ok(token) = std::env::var("GITLAB_TOKEN") {
+            return Some(("oauth2".to_string(), token));
+        }
+    } else if let Ok(token) = std::env::var("GITHUB_TOKEN") {
+        return Some(("x-access-token".to_string(), token));
+    }
+    None
+}
+
 pub(super) fn credentials_callback(
     url: &str,
     username_from_url: Option<&str>,
@@ -22,21 +42,8 @@ pub(super) fn credentials_callback(
         return Cred::ssh_key_from_agent(username_from_url.unwrap_or("git"));
     }
     if allowed_types.contains(CredentialType::USER_PASS_PLAINTEXT) {
-        if let Ok(token) = std::env::var("FERRFLOW_TOKEN").or_else(|_| {
-            if url.contains("gitlab") {
-                std::env::var("GITLAB_TOKEN")
-            } else {
-                std::env::var("GITHUB_TOKEN")
-            }
-        }) {
-            let user = username_from_url.unwrap_or_else(|| {
-                if url.contains("gitlab") {
-                    "oauth2"
-                } else {
-                    "x-access-token"
-                }
-            });
-            return Cred::userpass_plaintext(user, &token);
+        if let Some((user, token)) = token_for_url(url) {
+            return Cred::userpass_plaintext(&user, &token);
         }
         if let Some((user, password)) = extract_url_password(url) {
             return Cred::userpass_plaintext(&user, &password);
@@ -47,48 +54,33 @@ pub(super) fn credentials_callback(
             return Ok(cred);
         }
         eprintln!(
-            "Warning: No git credentials found. Set FERRFLOW_TOKEN (or GITHUB_TOKEN/GITLAB_TOKEN) or embed credentials in the remote URL."
+            "Warning: No git credentials found. Set FERRFLOW_TOKEN (or GITHUB_TOKEN/GITLAB_TOKEN), \
+             configure a git credential helper, or embed credentials in the remote URL."
         );
     }
     Cred::default()
 }
 
-pub(super) fn authenticated_remote_url(url: &str) -> Option<String> {
-    let token = std::env::var("FERRFLOW_TOKEN").ok()?;
-    let user = if url.contains("gitlab") {
-        "oauth2"
-    } else {
-        "x-access-token"
-    };
-    if let Some(scheme_end) = url.find("://") {
-        let scheme = &url[..scheme_end];
-        let rest = &url[scheme_end + 3..];
-        let host_and_path = if let Some(at) = rest.find('@') {
-            &rest[at + 1..]
-        } else {
-            rest
-        };
-        Some(format!("{scheme}://{user}:{token}@{host_and_path}"))
-    } else {
-        None
+pub(super) fn configure_git_command(cmd: &mut Command, url: &str) {
+    if let Some((user, token)) = token_for_url(url) {
+        let escaped_user = shell_escape(&user);
+        let escaped_token = shell_escape(&token);
+        let helper = format!(
+            "!f() {{ echo username={}; echo password={}; }}; f",
+            escaped_user, escaped_token
+        );
+        cmd.arg("-c").arg(format!("credential.helper={}", helper));
     }
 }
 
-pub(super) fn get_authenticated_remote<'a>(
-    repo: &'a Repository,
-    remote_name: &str,
-) -> Result<git2::Remote<'a>> {
-    let remote = repo
-        .find_remote(remote_name)
+fn shell_escape(value: &str) -> String {
+    value.replace('\\', "\\\\").replace('"', "\\\"")
+}
+
+pub(super) fn get_remote<'a>(repo: &'a Repository, remote_name: &str) -> Result<git2::Remote<'a>> {
+    repo.find_remote(remote_name)
         .with_context(|| format!("Remote '{}' not found", remote_name))
-        .error_code(error_code::GIT_REMOTE_NOT_FOUND)?;
-    if let Some(url) = remote.url()
-        && let Some(authed_url) = authenticated_remote_url(url)
-    {
-        drop(remote);
-        return Ok(repo.remote_anonymous(&authed_url)?);
-    }
-    Ok(remote)
+        .error_code(error_code::GIT_REMOTE_NOT_FOUND)
 }
 
 pub fn get_remote_url(repo: &Repository, remote_name: &str) -> Option<String> {
