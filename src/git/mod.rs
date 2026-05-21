@@ -5,6 +5,7 @@ mod fetch;
 mod push;
 mod repo;
 mod retry;
+mod shell;
 mod tags;
 
 pub use auth::get_remote_url;
@@ -19,7 +20,7 @@ pub use fetch::fetch_tags;
 pub use push::{
     force_push_tags, push, push_branch, push_tags, reset_branch_to_remote, verify_remote_branch,
 };
-pub use repo::{get_repo_root, open_repo, resolve_current_branch};
+pub use repo::{Repository, get_repo_root, open_repo, resolve_current_branch};
 pub use retry::is_push_rejected_error;
 pub use tags::{
     TagIndex, build_head_ancestors, collect_all_tags, create_or_move_tag, create_tag,

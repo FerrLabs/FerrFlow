@@ -104,45 +104,30 @@ fn print_json(statuses: &[PackageStatus]) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::with_cwd;
-    use git2::{Repository, Signature};
+    use crate::test_utils::{commit_file, git, init_repo, with_cwd};
     use std::fs;
+    use std::path::Path;
 
     static COMMIT_TIME: std::sync::atomic::AtomicI64 =
         std::sync::atomic::AtomicI64::new(1_900_000_000);
 
-    fn init_repo() -> (tempfile::TempDir, Repository) {
-        let dir = tempfile::tempdir().unwrap();
-        let repo = Repository::init(dir.path()).unwrap();
-        let mut config = repo.config().unwrap();
-        config.set_str("user.name", "Test").unwrap();
-        config.set_str("user.email", "test@test.com").unwrap();
-        (dir, repo)
+    fn next_ts() -> i64 {
+        COMMIT_TIME.fetch_add(1, std::sync::atomic::Ordering::SeqCst)
     }
 
-    fn create_commit(repo: &Repository, dir: &std::path::Path, filename: &str, message: &str) {
-        let file_path = dir.join(filename);
-        fs::write(&file_path, format!("content of {filename}")).unwrap();
-        let mut index = repo.index().unwrap();
-        index.add_path(std::path::Path::new(filename)).unwrap();
-        index.write().unwrap();
-        let tree_id = index.write_tree().unwrap();
-        let tree = repo.find_tree(tree_id).unwrap();
-        let ts = COMMIT_TIME.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-        let sig = Signature::new("Test", "test@test.com", &git2::Time::new(ts, 0)).unwrap();
-        let parents: Vec<git2::Commit> = match repo.head() {
-            Ok(head) => vec![head.peel_to_commit().unwrap()],
-            Err(_) => vec![],
-        };
-        let parent_refs: Vec<&git2::Commit> = parents.iter().collect();
-        repo.commit(Some("HEAD"), &sig, &sig, message, &tree, &parent_refs)
-            .unwrap();
+    fn create_commit(_repo: &crate::git::Repository, dir: &Path, filename: &str, message: &str) {
+        commit_file(
+            dir,
+            filename,
+            &format!("content of {filename}"),
+            message,
+            next_ts(),
+        );
     }
 
-    fn create_tag(repo: &Repository, tag_name: &str) {
-        let head = repo.head().unwrap().peel_to_commit().unwrap();
-        repo.tag_lightweight(tag_name, head.as_object(), false)
-            .unwrap();
+    fn create_tag(repo: &crate::git::Repository, tag_name: &str) {
+        let workdir = repo.workdir().expect("workdir");
+        git(workdir, &["tag", tag_name]);
     }
 
     fn setup_single_package(dir: &std::path::Path) {

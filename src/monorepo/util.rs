@@ -30,28 +30,39 @@ pub(super) fn pick_higher_semver(file: &str, tag: &str) -> String {
     }
 }
 
-pub(super) fn collect_dirty_files(repo: &git2::Repository) -> HashSet<String> {
+pub(super) fn collect_dirty_files(repo: &crate::git::Repository) -> HashSet<String> {
     let mut files = HashSet::new();
-    if let Ok(statuses) = repo.statuses(None) {
-        for entry in statuses.iter() {
-            let status = entry.status();
-            if status.intersects(
-                git2::Status::WT_MODIFIED
-                    | git2::Status::WT_NEW
-                    | git2::Status::WT_TYPECHANGE
-                    | git2::Status::INDEX_NEW
-                    | git2::Status::INDEX_MODIFIED,
-            ) && let Some(path) = entry.path()
-            {
-                files.insert(path.to_string());
-            }
+    let workdir = match repo.workdir() {
+        Some(p) => p,
+        None => return files,
+    };
+    let output = std::process::Command::new("git")
+        .current_dir(workdir)
+        .args(["status", "--porcelain=v1", "-z", "--no-renames"])
+        .output();
+    let output = match output {
+        Ok(o) if o.status.success() => o,
+        _ => return files,
+    };
+    let raw = String::from_utf8_lossy(&output.stdout);
+    for entry in raw.split('\0') {
+        if entry.len() < 4 {
+            continue;
+        }
+        let xy = &entry[..2];
+        let path = entry[3..].to_string();
+        let x = xy.as_bytes()[0];
+        let y = xy.as_bytes()[1];
+        let modified = matches!(y, b'M' | b'?' | b'T' | b'A') || matches!(x, b'A' | b'M');
+        if modified {
+            files.insert(path);
         }
     }
     files
 }
 
 pub(super) fn auto_stage_new_files(
-    repo: &git2::Repository,
+    repo: &crate::git::Repository,
     before: &HashSet<String>,
     files_to_commit: &mut Vec<String>,
 ) {

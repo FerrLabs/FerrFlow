@@ -1,11 +1,12 @@
 use anyhow::{Context, Result};
-use git2::Repository;
 use std::path::{Path, PathBuf};
 
 use crate::error_code::{self, ErrorCodeExt};
 
+pub type Repository = gix::Repository;
+
 pub fn open_repo(path: &Path) -> Result<Repository> {
-    Repository::discover(path)
+    gix::discover(path)
         .with_context(|| format!("Not a git repository: {}", path.display()))
         .error_code(error_code::GIT_NOT_A_REPO)
 }
@@ -19,10 +20,13 @@ pub fn get_repo_root(repo: &Repository) -> Result<PathBuf> {
 
 pub fn resolve_current_branch(repo: &Repository, fallback: &str) -> String {
     if let Ok(head) = repo.head()
-        && head.is_branch()
-        && let Some(name) = head.shorthand()
+        && let Some(name) = head.referent_name()
     {
-        return name.to_string();
+        let full = name.as_bstr().to_string();
+        if let Some(short) = full.strip_prefix("refs/heads/") {
+            return short.to_string();
+        }
+        return full;
     }
 
     let ci_vars = [

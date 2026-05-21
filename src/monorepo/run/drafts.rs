@@ -1,6 +1,6 @@
+use crate::git::Repository;
 use anyhow::Result;
 use colored::Colorize;
-use git2::Repository;
 use std::path::Path;
 
 use crate::config::Config;

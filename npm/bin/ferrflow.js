@@ -9,11 +9,11 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 
 const PLATFORMS = {
-  "linux-x64": "@ferrflow/linux-x64",
-  "linux-arm64": "@ferrflow/linux-arm64",
-  "darwin-x64": "@ferrflow/darwin-x64",
-  "darwin-arm64": "@ferrflow/darwin-arm64",
-  "win32-x64": "@ferrflow/win32-x64",
+  "linux-x64": "@ferrlabs/ferrflow-linux-x64",
+  "linux-arm64": "@ferrlabs/ferrflow-linux-arm64",
+  "darwin-x64": "@ferrlabs/ferrflow-darwin-x64",
+  "darwin-arm64": "@ferrlabs/ferrflow-darwin-arm64",
+  "win32-x64": "@ferrlabs/ferrflow-win32-x64",
 };
 
 function getBinaryPath() {

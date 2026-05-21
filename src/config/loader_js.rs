@@ -95,12 +95,14 @@ pub(crate) fn load_js_ts_config(path: &Path) -> Result<Config> {
 
         let result = Command::new("tsx")
             .arg(&wrapper_path)
+            .current_dir(wrapper_dir)
             .output()
             .or_else(|e| {
                 if e.kind() == std::io::ErrorKind::NotFound {
                     Command::new("npx")
                         .args(["tsx"])
                         .arg(&wrapper_path)
+                        .current_dir(wrapper_dir)
                         .output()
                 } else {
                     Err(e)
@@ -124,8 +126,10 @@ pub(crate) fn load_js_ts_config(path: &Path) -> Result<Config> {
         // .js — use node with inline script
         let script = loader_body(&file_url, "node");
 
+        let parent = path.parent().unwrap_or(Path::new("."));
         Command::new("node")
             .args(["--input-type=module", "-e", &script])
+            .current_dir(parent)
             .output()
             .map_err(|e| {
                 if e.kind() == std::io::ErrorKind::NotFound {
