@@ -700,12 +700,57 @@ fn configure_git_command_injects_credential_helper_inline() {
         .iter()
         .find(|a| a.starts_with("credential.helper="))
         .expect("expected credential.helper config");
-    assert!(helper_arg.contains("username=x-access-token"));
-    assert!(helper_arg.contains("password=ff_secret"));
+    assert!(helper_arg.contains("username='x-access-token'"));
+    assert!(helper_arg.contains("password='ff_secret'"));
     assert!(
         !args.iter().any(|a| a.contains("ff_secret@")),
         "token must NOT be embedded in URL"
     );
+}
+
+#[test]
+fn configure_git_command_single_quote_escapes_dangerous_token_chars() {
+    // Single-quoted shell strings only need ' escaping. A token containing
+    // ' must become '\'' (close-quote, escaped-quote, re-open-quote). The
+    // payload string itself can still contain `;rm -rf /;#` as literal text,
+    // but the surrounding quotes guarantee the shell never interprets it.
+    let _guard = EnvGuard::new().set("FERRFLOW_TOKEN", "evil';rm -rf /;#");
+    let mut cmd = std::process::Command::new("git");
+    configure_git_command(&mut cmd, "https://github.com/owner/repo.git");
+    let helper_arg = cmd
+        .get_args()
+        .map(|a| a.to_string_lossy().into_owned())
+        .find(|a| a.starts_with("credential.helper="))
+        .expect("expected credential.helper config");
+
+    // The expected substring once embedded:
+    //   password='evil'\'';rm -rf /;#'
+    // = sh-parsed as literal "evil" + literal "'" + literal ";rm -rf /;#".
+    // The `\'` outside the surrounding `'...'` is a literal apostrophe,
+    // not a quote-state toggle — so the odd `'` count is by design.
+    assert!(
+        helper_arg.contains(r"password='evil'\'';rm -rf /;#'"),
+        "expected single-quote escape, got: {helper_arg}"
+    );
+}
+
+#[test]
+fn configure_git_command_strips_git_trace_env() {
+    let _guard = EnvGuard::new().set("FERRFLOW_TOKEN", "ff_secret");
+    let mut cmd = std::process::Command::new("git");
+    cmd.env("GIT_TRACE", "1");
+    cmd.env("GIT_CURL_VERBOSE", "1");
+    cmd.env("GIT_TRACE_CURL", "1");
+    configure_git_command(&mut cmd, "https://github.com/owner/repo.git");
+    // get_envs returns Some(None) for env_remove'd vars.
+    let removed: std::collections::HashSet<String> = cmd
+        .get_envs()
+        .filter(|(_, v)| v.is_none())
+        .map(|(k, _)| k.to_string_lossy().into_owned())
+        .collect();
+    assert!(removed.contains("GIT_TRACE"));
+    assert!(removed.contains("GIT_CURL_VERBOSE"));
+    assert!(removed.contains("GIT_TRACE_CURL"));
 }
 
 #[test]

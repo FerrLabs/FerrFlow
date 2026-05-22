@@ -69,10 +69,29 @@ pub fn extract_host(url: &str) -> Option<String> {
         .strip_prefix("https://")
         .or_else(|| url.strip_prefix("http://"))
     {
-        rest.split('/').next().map(|h| h.to_string())
+        // Strip the authority (everything up to the first '/').
+        let authority = rest.split('/').next()?;
+        // If userinfo is present (`user[:password]@host`), take what's
+        // after the LAST '@'. The previous implementation returned the
+        // whole `userinfo@host` substring, which a) couldn't match
+        // detect_forge_from_url's hostname allow-list and b) could be
+        // used to confuse downstream forge-host construction when a
+        // malicious remote URL embeds a fake userinfo segment.
+        let host_port = authority.rsplit('@').next()?;
+        // Drop the optional `:port` suffix.
+        let host = host_port.split(':').next()?;
+        if host.is_empty() {
+            return None;
+        }
+        Some(host.to_string())
     } else if url.contains('@') && url.contains(':') {
-        let after_at = url.split('@').nth(1)?;
+        // SSH form: `user@host:owner/repo`. Take what's after the LAST '@'
+        // and before the first ':'.
+        let after_at = url.rsplit('@').next()?;
         let host = after_at.split(':').next()?;
+        if host.is_empty() {
+            return None;
+        }
         Some(host.to_string())
     } else {
         None

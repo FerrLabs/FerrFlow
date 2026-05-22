@@ -83,8 +83,16 @@ pub(crate) fn load_js_ts_config(path: &Path) -> Result<Config> {
     let output = if ext == "ts" {
         // For TS: write a temporary .mjs loader that dynamically imports the .ts
         // file via file URL. tsx handles the TS→JS transpilation at import time.
-        let wrapper_dir = path.parent().unwrap_or(Path::new("."));
-        let wrapper_path = wrapper_dir.join(".ferrflow-loader.mjs");
+        //
+        // The wrapper lives in `tempfile::tempdir()` rather than next to the
+        // user's .ts: writing into a directory we don't own opens a symlink
+        // TOCTOU (a cohabiting process can create the path pointing at e.g.
+        // ~/.bashrc, and `fs::write` follows it). Tsx still resolves the .ts
+        // via absolute `file://` URL, so its CWD doesn't matter.
+        let wrapper_tempdir = tempfile::tempdir()
+            .with_context(|| "Failed to create temporary directory for TS loader")
+            .error_code(error_code::CONFIG_WRITE_LOADER)?;
+        let wrapper_path = wrapper_tempdir.path().join("loader.mjs");
         let tsx_available = Command::new("tsx").arg("--version").output().is_ok();
         let runtime = if tsx_available { "tsx" } else { "npx tsx" };
 
@@ -95,14 +103,14 @@ pub(crate) fn load_js_ts_config(path: &Path) -> Result<Config> {
 
         let result = Command::new("tsx")
             .arg(&wrapper_path)
-            .current_dir(wrapper_dir)
+            .current_dir(wrapper_tempdir.path())
             .output()
             .or_else(|e| {
                 if e.kind() == std::io::ErrorKind::NotFound {
                     Command::new("npx")
                         .args(["tsx"])
                         .arg(&wrapper_path)
-                        .current_dir(wrapper_dir)
+                        .current_dir(wrapper_tempdir.path())
                         .output()
                 } else {
                     Err(e)
@@ -120,7 +128,8 @@ pub(crate) fn load_js_ts_config(path: &Path) -> Result<Config> {
             })
             .error_code(error_code::CONFIG_EVAL_TS);
 
-        let _ = std::fs::remove_file(&wrapper_path);
+        // tempdir auto-deletes on drop — no manual remove_file needed.
+        drop(wrapper_tempdir);
         result?
     } else {
         // .js — use node with inline script

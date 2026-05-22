@@ -17,9 +17,15 @@ impl VersionFile for GoModVersionFile {
             "v*",
             "--abbrev=0",
         ]);
-        if let Some(parent) = file_path.parent()
-            && !parent.as_os_str().is_empty()
-        {
+        let parent = file_path.parent().ok_or_else(|| {
+            anyhow::anyhow!(
+                "go.mod file path has no parent directory: {}",
+                file_path.display()
+            )
+        })?;
+        if parent.as_os_str().is_empty() {
+            cmd.current_dir(".");
+        } else {
             cmd.current_dir(parent);
         }
         let output = cmd
