@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.5.8] - 2026-05-22
+
+### Bug Fixes
+
+- fix(site): refresh FerrFlow v5.0.1 release data
+
 ## [6.5.7] - 2026-05-22
 
 ### Bug Fixes
