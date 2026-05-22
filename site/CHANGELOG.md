@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.5.7] - 2026-05-22
+
+### Bug Fixes
+
+- fix(ci): listen for ferrflow-released dispatch from FerrFlow CI (#517)
+
 ## [6.5.6] - 2026-05-21
 
 ### Bug Fixes
