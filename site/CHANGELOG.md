@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.5.9] - 2026-05-23
+
+### Bug Fixes
+
+- fix(ci): run Security scan on the in-cluster runner so private-repo scans no longer skip (#519)
+
 ## [6.5.8] - 2026-05-22
 
 ### Bug Fixes
