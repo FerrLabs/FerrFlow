@@ -586,6 +586,7 @@ pub fn tag_exists(repo: &Repository, tag_name: &str) -> bool {
 }
 
 pub fn create_tag(repo: &Repository, tag_name: &str, message: &str) -> Result<()> {
+    super::validate::ensure_safe_refname_fragment(tag_name, "tag name")?;
     if tag_exists(repo, tag_name) {
         Err(anyhow::anyhow!("tag {tag_name} already exists"))
             .error_code(error_code::GIT_TAG_EXISTS)?;
@@ -593,21 +594,22 @@ pub fn create_tag(repo: &Repository, tag_name: &str, message: &str) -> Result<()
     let workdir = repo
         .workdir()
         .ok_or_else(|| anyhow::anyhow!("Bare repositories are not supported"))?;
-    run_git(workdir, &["tag", "-a", tag_name, "-m", message])
+    run_git(workdir, &["tag", "-a", "-m", message, "--", tag_name])
         .with_context(|| format!("git tag -a {tag_name} failed"))?;
     Ok(())
 }
 
 pub fn create_or_move_tag(repo: &Repository, tag_name: &str, message: &str) -> Result<bool> {
+    super::validate::ensure_safe_refname_fragment(tag_name, "tag name")?;
     let workdir = repo
         .workdir()
         .ok_or_else(|| anyhow::anyhow!("Bare repositories are not supported"))?;
     let existed = tag_exists(repo, tag_name);
     if existed {
-        run_git(workdir, &["tag", "-d", tag_name])
+        run_git(workdir, &["tag", "-d", "--", tag_name])
             .with_context(|| format!("git tag -d {tag_name} failed"))?;
     }
-    run_git(workdir, &["tag", "-a", tag_name, "-m", message])
+    run_git(workdir, &["tag", "-a", "-m", message, "--", tag_name])
         .with_context(|| format!("git tag -a {tag_name} failed"))?;
     Ok(existed)
 }
