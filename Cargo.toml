@@ -34,7 +34,7 @@ workspace = true
 
 [features]
 default = ["cli"]
-cli = ["dep:gix", "dep:gix-traverse", "dep:ureq", "dep:clap", "dep:clap_complete", "dep:colored", "dep:hmac"]
+cli = ["dep:gix", "dep:gix-traverse", "dep:ureq", "dep:clap", "dep:clap_complete", "dep:colored", "dep:hmac", "dep:mimalloc"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
@@ -57,6 +57,10 @@ ureq = { version = "3", features = ["json"], optional = true }
 sha2 = "0.11.0"
 hex = "0.4.3"
 hmac = { version = "0.13", optional = true }
+# mimalloc: faster allocator for the CLI hot paths (TagIndex::build,
+# revwalk, regex captures). Typical 5-15% wall-time win on alloc-heavy
+# workloads — see #507. CLI-only (no value for the wasm build).
+mimalloc = { version = "0.1", default-features = false, optional = true }
 # tempfile is used at runtime by the TS config loader to drop the
 # generated wrapper script in a directory we own (security: writing into
 # the user's config directory is a symlink TOCTOU). Tests also use it.
