@@ -129,6 +129,58 @@ jobs:
         uses: actions/attest-build-provenance@v4
         with:
           subject-path: artifacts/*
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: v2.4.1
+
+      - name: Sign release artifacts with cosign (keyless)
+        # Keyless Sigstore signing — no private key to manage. Identity
+        # is the workflow's OIDC token, recorded in the Rekor transparency
+        # log. Verify with:
+        #   cosign verify-blob \
+        #     --certificate ferrflow-linux-x64.tar.gz.crt \
+        #     --signature   ferrflow-linux-x64.tar.gz.sig \
+        #     --certificate-identity-regexp "https://github.com/FerrLabs/FerrFlow/.*" \
+        #     --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+        #     ferrflow-linux-x64.tar.gz
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          for artifact in artifacts/ferrflow-*.tar.gz artifacts/ferrflow-*.zip; do
+            [ -f "$artifact" ] || continue
+            echo "Signing $artifact"
+            cosign sign-blob --yes \
+              --output-signature "${artifact}.sig" \
+              --output-certificate "${artifact}.crt" \
+              "$artifact"
+          done
+
+      - name: Install cyclonedx-cli for SBOM
+        run: cargo install --locked cargo-cyclonedx
+
+      - name: Generate SBOM (CycloneDX)
+        # One SBOM per build (the same dependency tree ships in every
+        # platform binary). Attached to the GitHub Release as a sidecar
+        # so downstream supply-chain scanners (grype, trivy, JFrog Xray,
+        # Anchore) can ingest it at intake.
+        run: |
+          set -euo pipefail
+          cargo cyclonedx --format json --override-filename sbom
+          mv sbom.cdx.json artifacts/sbom.cdx.json
+          echo "SBOM size: $(wc -c < artifacts/sbom.cdx.json) bytes"
+
+      - name: Sign SBOM with cosign (keyless)
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+        run: |
+          cosign sign-blob --yes \
+            --output-signature artifacts/sbom.cdx.json.sig \
+            --output-certificate artifacts/sbom.cdx.json.crt \
+            artifacts/sbom.cdx.json
       - name: Wait for draft release to be visible
         # Defense against the race where this workflow (push:tags) fires
         # before `ferrflow release --draft` (running in the CI workflow
@@ -326,3 +378,24 @@ jobs:
           subject-digest: ${{ steps.docker-push.outputs.digest }}
           push-to-registry: true
         continue-on-error: true
+
+      - name: Install cosign for Docker signing
+        uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: v2.4.1
+
+      - name: Sign Docker image with cosign (keyless)
+        # Sigstore signature stored alongside the image in GHCR. Verify
+        # with:
+        #   cosign verify ghcr.io/ferrlabs/ferrflow:vX.Y.Z \
+        #     --certificate-identity-regexp "https://github.com/FerrLabs/FerrFlow/.*" \
+        #     --certificate-oidc-issuer https://token.actions.githubusercontent.com
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+          DIGEST: ${{ steps.docker-push.outputs.digest }}
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          set -euo pipefail
+          cosign sign --yes "ghcr.io/ferrlabs/ferrflow@${DIGEST}"
+          cosign sign --yes "ghcr.io/ferrlabs/ferrflow:${VERSION}"
+          cosign sign --yes "ghcr.io/ferrlabs/ferrflow:latest"
