@@ -140,6 +140,13 @@ pub fn resolve_token(kind: ForgeKind) -> Option<String> {
 }
 
 pub fn build_forge(kind: ForgeKind, token: String, slug: String, host: String) -> Box<dyn Forge> {
+    // One Agent per Forge instance, shared across every HTTP call this
+    // forge performs during a release. ureq's bare module-level helpers
+    // (`ureq::get`, `ureq::post`, ...) create a fresh agent + TLS
+    // handshake per call. A 50-pkg release does ~150 HTTPS round-trips
+    // against api.github.com — reusing the agent saves 2-8 seconds via
+    // HTTP keep-alive. See #509.
+    let agent = ureq::Agent::new_with_defaults();
     match kind {
         ForgeKind::Github => {
             let api_base = if host == "github.com" {
@@ -151,6 +158,7 @@ pub fn build_forge(kind: ForgeKind, token: String, slug: String, host: String) -
                 token,
                 slug,
                 api_base,
+                agent,
             })
         }
         ForgeKind::Gitlab => {
@@ -159,6 +167,7 @@ pub fn build_forge(kind: ForgeKind, token: String, slug: String, host: String) -
                 token,
                 slug,
                 api_base,
+                agent,
             })
         }
         ForgeKind::Auto => unreachable!("ForgeKind::Auto must be resolved before building"),
