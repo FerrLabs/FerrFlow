@@ -91,6 +91,8 @@ pub fn verify_remote_branch(
     branch: &str,
     expected_oid: ObjectId,
 ) -> Result<()> {
+    super::validate::ensure_safe_refname_fragment(remote_name, "remote name")?;
+    super::validate::ensure_safe_refname_fragment(branch, "branch name")?;
     let workdir = repo
         .workdir()
         .ok_or_else(|| anyhow!("Bare repositories are not supported"))?;
@@ -151,12 +153,18 @@ fn resolve_push_source(repo: &Repository, branch: &str) -> String {
 }
 
 pub fn push_branch(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
+    super::validate::ensure_safe_refname_fragment(remote_name, "remote name")?;
+    super::validate::ensure_safe_refname_fragment(branch, "branch name")?;
     try_push_branch(repo, remote_name, branch)
 }
 
 pub fn push_tags(repo: &Repository, remote_name: &str, tags: &[&str]) -> Result<()> {
     if tags.is_empty() {
         return Ok(());
+    }
+    super::validate::ensure_safe_refname_fragment(remote_name, "remote name")?;
+    for tag in tags {
+        super::validate::ensure_safe_refname_fragment(tag, "tag name")?;
     }
     retry_transient("push tags", || try_push_tags_once(repo, remote_name, tags))
 }
@@ -374,6 +382,8 @@ pub(super) fn fetch_and_rebase(repo: &Repository, remote_name: &str, branch: &st
 }
 
 pub fn reset_branch_to_remote(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
+    super::validate::ensure_safe_refname_fragment(remote_name, "remote name")?;
+    super::validate::ensure_safe_refname_fragment(branch, "branch name")?;
     let workdir = repo
         .workdir()
         .ok_or_else(|| anyhow!("bare repos are not supported"))?;

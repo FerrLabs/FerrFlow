@@ -7,6 +7,9 @@ mod repo;
 mod retry;
 mod shell;
 mod tags;
+mod validate;
+#[allow(unused_imports)]
+pub use validate::ensure_safe_refname_fragment;
 
 pub use auth::get_remote_url;
 #[allow(unused_imports)]
