@@ -31,6 +31,7 @@ use super::util::{
 
 mod drafts;
 mod forced;
+mod lock;
 mod summary;
 use drafts::publish_pending_drafts;
 use forced::{Forced, forced_version_for, parse_forced_version};
@@ -64,6 +65,16 @@ pub(super) fn run_release_logic(
     }
 
     let repo = open_repo(root)?;
+
+    // Acquire the release lock before any mutating step. Dropped at the
+    // end of run_release_logic via RAII. Skipped on dry-run (no writes).
+    // The lockfile lives at .git/ferrflow.lock; concurrent invocations
+    // get a clear error instead of racing on git refs. See #514.
+    let _release_lock = if dry_run {
+        None
+    } else {
+        Some(lock::ReleaseLock::acquire(root)?)
+    };
 
     if !dry_run
         && let Err(e) = fetch_tags(&repo, &config.workspace.remote)
