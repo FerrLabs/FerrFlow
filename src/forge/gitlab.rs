@@ -8,6 +8,7 @@ pub struct GitLabForge {
     pub token: String,
     pub slug: String,
     pub api_base: String,
+    pub agent: ureq::Agent,
 }
 
 impl GitLabForge {
@@ -44,7 +45,8 @@ impl Forge for GitLabForge {
             payload["upcoming_release"] = serde_json::json!(true);
         }
 
-        ureq::post(&url)
+        self.agent
+            .post(&url)
             .header("PRIVATE-TOKEN", &self.token)
             .header("User-Agent", "ferrflow")
             .send_json(payload)
@@ -79,7 +81,9 @@ impl Forge for GitLabForge {
             "description": body,
         });
 
-        let response: serde_json::Value = ureq::post(&url)
+        let response: serde_json::Value = self
+            .agent
+            .post(&url)
             .header("PRIVATE-TOKEN", &self.token)
             .header("User-Agent", "ferrflow")
             .send_json(payload)
@@ -113,7 +117,9 @@ impl Forge for GitLabForge {
             "squash": true,
         });
 
-        let result = ureq::put(&url)
+        let result = self
+            .agent
+            .put(&url)
             .header("PRIVATE-TOKEN", &self.token)
             .header("User-Agent", "ferrflow")
             .send_json(payload);
@@ -127,7 +133,8 @@ impl Forge for GitLabForge {
             "should_remove_source_branch": true,
         });
 
-        ureq::put(&url)
+        self.agent
+            .put(&url)
             .header("PRIVATE-TOKEN", &self.token)
             .header("User-Agent", "ferrflow")
             .send_json(payload)
@@ -152,7 +159,9 @@ impl Forge for GitLabForge {
             self.encoded_project_id(),
             mr_id
         );
-        let notes: Vec<serde_json::Value> = ureq::get(&url)
+        let notes: Vec<serde_json::Value> = self
+            .agent
+            .get(&url)
             .header("PRIVATE-TOKEN", &self.token)
             .header("User-Agent", "ferrflow")
             .call()
@@ -179,7 +188,8 @@ impl Forge for GitLabForge {
             self.encoded_project_id(),
             mr_id
         );
-        ureq::post(&url)
+        self.agent
+            .post(&url)
             .header("PRIVATE-TOKEN", &self.token)
             .header("User-Agent", "ferrflow")
             .send_json(serde_json::json!({ "body": body }))
@@ -195,7 +205,8 @@ impl Forge for GitLabForge {
             mr_id,
             comment_id
         );
-        ureq::put(&url)
+        self.agent
+            .put(&url)
             .header("PRIVATE-TOKEN", &self.token)
             .header("User-Agent", "ferrflow")
             .send_json(serde_json::json!({ "body": body }))
@@ -214,6 +225,7 @@ mod tests {
             token: String::new(),
             slug: "owner/repo".to_string(),
             api_base: "https://gitlab.com/api/v4".to_string(),
+            agent: ureq::Agent::new_with_defaults(),
         };
         assert_eq!(forge.encoded_project_id(), "owner%2Frepo");
     }
@@ -224,6 +236,7 @@ mod tests {
             token: String::new(),
             slug: "group/subgroup/repo".to_string(),
             api_base: "https://gitlab.com/api/v4".to_string(),
+            agent: ureq::Agent::new_with_defaults(),
         };
         assert_eq!(forge.encoded_project_id(), "group%2Fsubgroup%2Frepo");
     }
@@ -234,6 +247,7 @@ mod tests {
             token: String::new(),
             slug: "owner/repo".to_string(),
             api_base: "https://gitlab.com/api/v4".to_string(),
+            agent: ureq::Agent::new_with_defaults(),
         };
         assert_eq!(forge.mr_noun(), "MR");
     }
@@ -244,6 +258,7 @@ mod tests {
             token: String::new(),
             slug: "owner/repo".to_string(),
             api_base: "https://gitlab.com/api/v4".to_string(),
+            agent: ureq::Agent::new_with_defaults(),
         };
         assert_eq!(forge.release_noun(), "GitLab Release");
     }
@@ -254,6 +269,7 @@ mod tests {
             token: String::new(),
             slug: "owner/repo".to_string(),
             api_base: "https://gitlab.com/api/v4".to_string(),
+            agent: ureq::Agent::new_with_defaults(),
         };
         assert_eq!(forge.find_draft_release("v1.0.0").unwrap(), None);
     }
@@ -264,6 +280,7 @@ mod tests {
             token: String::new(),
             slug: "owner/repo".to_string(),
             api_base: "https://gitlab.com/api/v4".to_string(),
+            agent: ureq::Agent::new_with_defaults(),
         };
         assert!(forge.publish_release(123).is_ok());
     }
@@ -303,6 +320,7 @@ mod tests {
             token: String::new(),
             slug: "team/project".to_string(),
             api_base: "https://gitlab.internal/api/v4".to_string(),
+            agent: ureq::Agent::new_with_defaults(),
         };
         assert_eq!(forge.api_base, "https://gitlab.internal/api/v4");
     }
