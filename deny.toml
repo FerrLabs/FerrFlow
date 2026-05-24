@@ -34,7 +34,18 @@ exceptions = []
 multiple-versions = "warn"
 wildcards = "deny"
 allow-wildcard-paths = true
-deny = []
+deny = [
+    # We migrated off libgit2 in #487. Reintroducing git2 / libgit2-sys
+    # silently re-adds ~3 MB to the release binary plus libgit2's CVE
+    # surface. Keep them banned.
+    { crate = "git2", reason = "Use gix (gitoxide) — see #487." },
+    { crate = "libgit2-sys", reason = "Pulled in only via git2 which is banned." },
+    # OpenSSL was vendored via the libgit2 chain. The gix migration
+    # removed it; if someone reintroduces it the binary jumps from
+    # ~5 MB to ~9 MB and we inherit OpenSSL's CVE cadence. Use rustls.
+    { crate = "openssl-sys", reason = "Use rustls (via gix / ureq) instead." },
+    { crate = "openssl-src", reason = "Vendoring OpenSSL bloats the binary." },
+]
 skip = []
 skip-tree = []
 
