@@ -103,6 +103,8 @@ pub const GIT_REMOTE_NOT_FOUND: ErrorCode = ErrorCode(2008);
 pub const GIT_PUSH_VERIFY_FAILED: ErrorCode = ErrorCode(2009);
 #[allow(dead_code)]
 pub const GIT_REMOTE_BRANCH_NOT_FOUND: ErrorCode = ErrorCode(2010);
+#[allow(dead_code)]
+pub const GIT_LOCKED: ErrorCode = ErrorCode(2011);
 
 #[allow(dead_code)]
 pub const GITHUB_CREATE_RELEASE: ErrorCode = ErrorCode(3001);
