@@ -33,19 +33,38 @@ pub(super) fn token_for_url(url: &str) -> Option<(String, String)> {
 }
 
 pub(super) fn configure_git_command(cmd: &mut Command, url: &str) {
+    scrub_trace_env(cmd);
     if let Some((user, token)) = token_for_url(url) {
-        let escaped_user = shell_escape(&user);
-        let escaped_token = shell_escape(&token);
+        let escaped_user = single_quote_escape(&user);
+        let escaped_token = single_quote_escape(&token);
         let helper = format!(
-            "!f() {{ echo username={}; echo password={}; }}; f",
+            "!f() {{ echo username='{}'; echo password='{}'; }}; f",
             escaped_user, escaped_token
         );
         cmd.arg("-c").arg(format!("credential.helper={}", helper));
     }
 }
 
-fn shell_escape(value: &str) -> String {
-    value.replace('\\', "\\\\").replace('"', "\\\"")
+pub(super) fn scrub_trace_env(cmd: &mut Command) {
+    for var in [
+        "GIT_TRACE",
+        "GIT_TRACE_PACK_ACCESS",
+        "GIT_TRACE_PACKET",
+        "GIT_TRACE_PACKFILE",
+        "GIT_TRACE_PERFORMANCE",
+        "GIT_TRACE_SETUP",
+        "GIT_TRACE_SHALLOW",
+        "GIT_TRACE_CURL",
+        "GIT_TRACE_CURL_NO_DATA",
+        "GIT_CURL_VERBOSE",
+        "GCM_TRACE",
+    ] {
+        cmd.env_remove(var);
+    }
+}
+
+fn single_quote_escape(value: &str) -> String {
+    value.replace('\'', "'\\''")
 }
 
 pub fn get_remote_url(repo: &Repository, remote_name: &str) -> Option<String> {

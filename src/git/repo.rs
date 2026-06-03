@@ -29,17 +29,29 @@ pub fn resolve_current_branch(repo: &Repository, fallback: &str) -> String {
         return full;
     }
 
-    let ci_vars = [
-        "GITHUB_REF_NAME",
-        "CI_COMMIT_BRANCH",
+    if let Ok(full_ref) = std::env::var("GITHUB_REF")
+        && let Some(branch) = full_ref.strip_prefix("refs/heads/")
+        && !branch.is_empty()
+    {
+        return branch.to_string();
+    }
+    if let Ok(full_ref) = std::env::var("CI_COMMIT_REF_NAME")
+        && std::env::var("CI_COMMIT_TAG").is_err()
+        && !full_ref.is_empty()
+    {
+        return full_ref;
+    }
+
+    let branch_only_ci_vars = [
         "BRANCH_NAME",
         "CIRCLE_BRANCH",
         "BITBUCKET_BRANCH",
         "BUILDKITE_BRANCH",
         "TRAVIS_BRANCH",
+        "CI_COMMIT_BRANCH",
     ];
 
-    for var in ci_vars {
+    for var in branch_only_ci_vars {
         if let Ok(val) = std::env::var(var)
             && !val.is_empty()
         {

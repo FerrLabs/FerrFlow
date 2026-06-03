@@ -57,11 +57,14 @@ ureq = { version = "3", features = ["json"], optional = true }
 sha2 = "0.11.0"
 hex = "0.4.3"
 hmac = { version = "0.13", optional = true }
+# tempfile is used at runtime by the TS config loader to drop the
+# generated wrapper script in a directory we own (security: writing into
+# the user's config directory is a symlink TOCTOU). Tests also use it.
+tempfile = "3"
 
 [dev-dependencies]
 cargo-husky = { version = "1", default-features = false, features = ["user-hooks"] }
 criterion = { version = "0.8", features = ["html_reports"] }
-tempfile = "3"
 
 [[bench]]
 name = "ferrflow_benchmarks"

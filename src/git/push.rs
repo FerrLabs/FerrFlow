@@ -333,65 +333,41 @@ pub(super) fn fetch_and_rebase(repo: &Repository, remote_name: &str, branch: &st
     }
 
     let local_ref = format!("refs/heads/{branch}");
-    let on_branch = run_git(workdir, &["symbolic-ref", "-q", "HEAD"])
+    // Distinguish "detached HEAD" (legit state — bail with a clear error
+    // instead of silently rewriting a branch we may not even be tracking)
+    // from "on a different branch" (still a hard error: we shouldn't try
+    // to fast-forward a branch the user isn't on). The previous code
+    // collapsed both into a destructive `update-ref` + `checkout -f`.
+    let current_head = run_git(workdir, &["symbolic-ref", "-q", "HEAD"])
         .ok()
-        .map(|s| s.trim().to_string())
-        .unwrap_or_default()
-        == local_ref;
-
-    if on_branch {
-        let rebase_result = run_git(
-            workdir,
-            &["rebase", &format!("refs/remotes/{remote_name}/{branch}")],
-        );
-        if let Err(err) = rebase_result {
-            let _ = run_git(workdir, &["rebase", "--abort"]);
+        .map(|s| s.trim().to_string());
+    match current_head.as_deref() {
+        Some(r) if r == local_ref => {
+            let rebase_result = run_git(
+                workdir,
+                &["rebase", &format!("refs/remotes/{remote_name}/{branch}")],
+            );
+            if let Err(err) = rebase_result {
+                let _ = run_git(workdir, &["rebase", "--abort"]);
+                return Err(anyhow!(
+                    "Rebase conflict: cannot rebase release commits on top of remote '{branch}'. \
+                     Run manually or use releaseCommitMode = \"pr\".\n{err}"
+                ));
+            }
+        }
+        Some(other) => {
             return Err(anyhow!(
-                "Rebase conflict: cannot rebase release commits on top of remote '{branch}'. \
-                 Run manually or use releaseCommitMode = \"pr\".\n{err}"
+                "Refusing to rebase: HEAD is on '{other}', not '{local_ref}'. \
+                 Check out '{branch}' before retrying."
             ));
         }
-    } else {
-        let _ = run_git(workdir, &["update-ref", &local_ref, &remote_oid_str]);
-        let merge_base = run_git(workdir, &["merge-base", &local_oid_str, &remote_oid_str])
-            .with_context(|| "No common ancestor between local and remote branch")?
-            .trim()
-            .to_string();
-
-        let revs_output = run_git(
-            workdir,
-            &[
-                "rev-list",
-                "--reverse",
-                "--topo-order",
-                &format!("{merge_base}..{local_oid_str}"),
-            ],
-        )?;
-        let revs: Vec<&str> = revs_output.lines().filter(|l| !l.is_empty()).collect();
-        let mut current_parent = remote_oid_str.clone();
-        for rev in revs {
-            let tree_sha = run_git(workdir, &["rev-parse", &format!("{rev}^{{tree}}")])?
-                .trim()
-                .to_string();
-            let msg = run_git(workdir, &["log", "-1", "--format=%B", rev])?;
-            let new_sha = run_git(
-                workdir,
-                &[
-                    "commit-tree",
-                    &tree_sha,
-                    "-p",
-                    &current_parent,
-                    "-m",
-                    msg.trim_end(),
-                ],
-            )?
-            .trim()
-            .to_string();
-            current_parent = new_sha;
+        None => {
+            return Err(anyhow!(
+                "Refusing to rebase: HEAD is detached. Check out '{branch}' before retrying. \
+                 (To recover an in-progress release, use `ferrflow release --recover` or reset \
+                 the branch manually.)"
+            ));
         }
-        run_git(workdir, &["update-ref", &local_ref, &current_parent])?;
-        run_git(workdir, &["checkout", "--detach", &current_parent])?;
-        run_git(workdir, &["checkout", "-f", branch]).ok();
     }
 
     Ok(())
