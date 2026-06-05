@@ -1,7 +1,7 @@
 {
   "meta": {
     "name": "no-versioned-files",
-    "description": "Package with empty versioned_files list still gets detected and reported"
+    "description": "Tag-only package (no versioned_files) gets released from git tags + conventional commits — see #531. Previously these packages were silently skipped."
   },
   "config": {
     "content": "{\n  \"package\": [\n    {\"name\": \"app\", \"path\": \".\", \"versioned_files\": []}\n  ]\n}\n"
@@ -13,7 +13,11 @@
     { "message": "feat: add feature", "files": ["src/main.rs"] }
   ],
   "expect": {
-    "check_contains": ["app"],
-    "packages_released": 0
+    "check_contains": ["app", "1.1.0"],
+    "check_not_contains": [
+      "Nothing to release",
+      "no versioned files configured"
+    ],
+    "packages_released": 1
   }
 }
