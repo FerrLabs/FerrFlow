@@ -1,0 +1,24 @@
+{
+  "meta": {
+    "name": "tag-only-package-no-versioned-files",
+    "description": "A package without versionedFiles should still be released purely from git tags + commits (issue #531). The schema marks versionedFiles as optional; tag-only repos (Docker images, content repos) need this path to work."
+  },
+  "config": {
+    "content": "{\n  \"workspace\": {\"skipCi\": true},\n  \"package\": [\n    {\"name\": \"tag-only\", \"path\": \".\", \"changelog\": \"CHANGELOG.md\"}\n  ]\n}\n"
+  },
+  "packages": [
+    { "name": "tag-only", "path": ".", "tag": "v0.1.0" }
+  ],
+  "commits": [
+    { "message": "feat: add the thing", "files": ["src/feature.rs"] },
+    { "message": "fix: handle the edge case", "files": ["src/lib.rs"] }
+  ],
+  "expect": {
+    "check_contains": ["tag-only", "0.2.0"],
+    "check_not_contains": [
+      "Nothing to release",
+      "no versioned files configured"
+    ],
+    "packages_released": 1
+  }
+}

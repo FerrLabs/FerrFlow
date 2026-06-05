@@ -2,10 +2,27 @@ use crate::config::Config;
 use crate::error_code::{self, ErrorCodeExt};
 use crate::formats::read_version;
 use crate::git::{
-    TagIndex, find_last_tag_name, find_last_tag_name_with_cache, get_repo_root, open_repo,
+    Repository, TagIndex, find_highest_semver_tag_with_cache, find_last_tag_name,
+    find_last_tag_name_with_cache, get_repo_root, open_repo,
 };
 use anyhow::Result;
 use serde::Serialize;
+
+/// Resolve a package's current version when no `versioned_files` entry
+/// is configured (tag-only package — see #531). Returns the latest
+/// matching semver tag if any, otherwise `None`.
+fn version_from_tags(
+    repo: &Repository,
+    pkg: &crate::config::PackageConfig,
+    workspace: &crate::config::WorkspaceConfig,
+    is_monorepo: bool,
+) -> Option<String> {
+    let prefix = pkg.tag_prefix(workspace, is_monorepo);
+    find_highest_semver_tag_with_cache(repo, &prefix, workspace.orphaned_tag_strategy, None)
+        .ok()
+        .flatten()
+        .map(|(_, version)| version)
+}
 
 #[derive(Serialize)]
 struct VersionEntry {
@@ -48,6 +65,7 @@ pub fn version(
             .first()
             .map(|vf| read_version(vf, &root))
             .transpose()?
+            .or_else(|| version_from_tags(&repo, pkg, &config.workspace, config.is_monorepo()))
             .unwrap_or_else(|| "unknown".to_string());
 
         if json {
@@ -71,6 +89,7 @@ pub fn version(
             .first()
             .map(|vf| read_version(vf, &root))
             .transpose()?
+            .or_else(|| version_from_tags(&repo, pkg, &config.workspace, config.is_monorepo()))
             .unwrap_or_else(|| "unknown".to_string());
 
         if json {
@@ -93,6 +112,9 @@ pub fn version(
                     .versioned_files
                     .first()
                     .and_then(|vf| read_version(vf, &root).ok())
+                    .or_else(|| {
+                        version_from_tags(&repo, pkg, &config.workspace, config.is_monorepo())
+                    })
                     .unwrap_or_else(|| "unknown".to_string());
                 VersionEntry {
                     name: pkg.name.clone(),
@@ -383,6 +405,48 @@ mod tests {
         setup_single_package(dir.path());
         create_commit(&repo, dir.path(), "init.txt", "initial");
         create_tag(&repo, "v1.2.3");
+        let config_path = dir.path().join(".ferrflow");
+        with_cwd(dir.path(), || tag(Some(&config_path), None, true)).unwrap();
+    }
+
+    // Issue #531: a package without `versionedFiles` must still resolve a
+    // current version (from tag history, or 0.0.0 bootstrap) and a next
+    // version. Today's behaviour skipped the package entirely, which made
+    // Docker-image / content repos unreleasable.
+    fn setup_tag_only_package(dir: &std::path::Path) {
+        fs::write(
+            dir.join(".ferrflow"),
+            r#"{"package": [{"name": "img", "path": ".", "changelog": "CHANGELOG.md"}]}"#,
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn version_tag_only_package_bootstraps_at_zero() {
+        let (dir, repo) = init_repo();
+        setup_tag_only_package(dir.path());
+        create_commit(&repo, dir.path(), "init.txt", "initial");
+        let config_path = dir.path().join(".ferrflow");
+        with_cwd(dir.path(), || version(Some(&config_path), None, true)).unwrap();
+    }
+
+    #[test]
+    fn version_tag_only_package_uses_existing_tag_as_basis() {
+        let (dir, repo) = init_repo();
+        setup_tag_only_package(dir.path());
+        create_commit(&repo, dir.path(), "init.txt", "initial");
+        create_tag(&repo, "img@v1.0.0");
+        create_commit(&repo, dir.path(), "feature.txt", "feat: add the thing");
+        let config_path = dir.path().join(".ferrflow");
+        with_cwd(dir.path(), || version(Some(&config_path), None, true)).unwrap();
+    }
+
+    #[test]
+    fn tag_tag_only_package_reports_existing_tag() {
+        let (dir, repo) = init_repo();
+        setup_tag_only_package(dir.path());
+        create_commit(&repo, dir.path(), "init.txt", "initial");
+        create_tag(&repo, "img@v1.0.0");
         let config_path = dir.path().join(".ferrflow");
         with_cwd(dir.path(), || tag(Some(&config_path), None, true)).unwrap();
     }
