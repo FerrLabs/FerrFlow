@@ -1,0 +1,47 @@
+name: SonarQube
+
+# Static analysis on the self-hosted SonarQube (https://sonar.ferrlabs.com),
+# via the org-wide reusable workflow. Every run pins sonar.projectVersion to
+# the latest release tag so each analysis is attributed to the version it
+# belongs to (and SonarQube's new-code period lines up with releases).
+#
+# Runs on a GitHub-hosted runner: this repo is public and the self-hosted
+# `ferrlabs-k8s` group has allows_public_repositories=false.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    name: Resolve latest release tag
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.tag.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - id: tag
+        # Highest semver release tag (vX.Y.Z), independent of branch
+        # reachability — `git describe` would return the nearest ancestor
+        # tag, which goes stale on feature branches and PRs. The floating
+        # major tag (v5) is excluded by requiring the two dots.
+        run: |
+          TAG=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)
+          VERSION="${TAG#v}"
+          echo "version=${VERSION:-0.0.0}" >> "$GITHUB_OUTPUT"
+          echo "Latest release tag: ${TAG:-<none>} -> projectVersion=${VERSION:-0.0.0}"
+
+  scan:
+    needs: version
+    uses: FerrLabs/.github/.github/workflows/reusable-sonarqube-scan.yml@main
+    with:
+      runner: ubuntu-latest
+      project-key: ferrflow
+      args: -Dsonar.projectVersion=${{ needs.version.outputs.version }}
+    secrets: inherit
