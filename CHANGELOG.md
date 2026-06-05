@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.1.0] - 2026-06-05
+
+### Features
+
+- feat: support tag-only packages (versionedFiles really optional) (#533)
+
 ## [5.0.2] - 2026-06-03
 
 ## [5.0.1] - 2026-05-21
