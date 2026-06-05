@@ -7,6 +7,7 @@ pub struct GitHubForge {
     pub token: String,
     pub slug: String,
     pub api_base: String,
+    pub agent: ureq::Agent,
 }
 
 impl Forge for GitHubForge {
@@ -31,7 +32,8 @@ impl Forge for GitHubForge {
             payload["target_commitish"] = serde_json::Value::String(sha.to_string());
         }
 
-        ureq::post(&url)
+        self.agent
+            .post(&url)
             .header("Authorization", &format!("Bearer {}", self.token))
             .header("Accept", "application/vnd.github+json")
             .header("X-GitHub-Api-Version", "2022-11-28")
@@ -46,7 +48,9 @@ impl Forge for GitHubForge {
     fn find_draft_release(&self, tag: &str) -> Result<Option<u64>> {
         let url = format!("{}/repos/{}/releases", self.api_base, self.slug);
 
-        let response: serde_json::Value = ureq::get(&url)
+        let response: serde_json::Value = self
+            .agent
+            .get(&url)
             .header("Authorization", &format!("Bearer {}", self.token))
             .header("Accept", "application/vnd.github+json")
             .header("X-GitHub-Api-Version", "2022-11-28")
@@ -83,7 +87,8 @@ impl Forge for GitHubForge {
             "draft": false,
         });
 
-        ureq::patch(&url)
+        self.agent
+            .patch(&url)
             .header("Authorization", &format!("Bearer {}", self.token))
             .header("Accept", "application/vnd.github+json")
             .header("X-GitHub-Api-Version", "2022-11-28")
@@ -111,7 +116,9 @@ impl Forge for GitHubForge {
             "base": base,
         });
 
-        let response: serde_json::Value = ureq::post(&url)
+        let response: serde_json::Value = self
+            .agent
+            .post(&url)
             .header("Authorization", &format!("Bearer {}", self.token))
             .header("Accept", "application/vnd.github+json")
             .header("X-GitHub-Api-Version", "2022-11-28")
@@ -148,7 +155,9 @@ impl Forge for GitHubForge {
         });
 
         let graphql_url = format!("{}/graphql", self.api_base);
-        let response: serde_json::Value = ureq::post(&graphql_url)
+        let response: serde_json::Value = self
+            .agent
+            .post(&graphql_url)
             .header("Authorization", &format!("Bearer {}", self.token))
             .header("User-Agent", "ferrflow")
             .send_json(query)
@@ -183,7 +192,9 @@ impl Forge for GitHubForge {
             "{}/repos/{}/issues/{}/comments?per_page=100",
             self.api_base, self.slug, pr_id
         );
-        let comments: Vec<serde_json::Value> = ureq::get(&url)
+        let comments: Vec<serde_json::Value> = self
+            .agent
+            .get(&url)
             .header("Authorization", &format!("Bearer {}", self.token))
             .header("Accept", "application/vnd.github+json")
             .header("User-Agent", "ferrflow")
@@ -209,7 +220,8 @@ impl Forge for GitHubForge {
             "{}/repos/{}/issues/{}/comments",
             self.api_base, self.slug, pr_id
         );
-        ureq::post(&url)
+        self.agent
+            .post(&url)
             .header("Authorization", &format!("Bearer {}", self.token))
             .header("Accept", "application/vnd.github+json")
             .header("User-Agent", "ferrflow")
@@ -223,7 +235,8 @@ impl Forge for GitHubForge {
             "{}/repos/{}/issues/comments/{}",
             self.api_base, self.slug, comment_id
         );
-        ureq::patch(&url)
+        self.agent
+            .patch(&url)
             .header("Authorization", &format!("Bearer {}", self.token))
             .header("Accept", "application/vnd.github+json")
             .header("User-Agent", "ferrflow")
@@ -242,6 +255,7 @@ mod tests {
             token: "test-token".to_string(),
             slug: "owner/repo".to_string(),
             api_base: "https://api.github.com".to_string(),
+            agent: ureq::Agent::new_with_defaults(),
         }
     }
 
@@ -423,6 +437,7 @@ mod tests {
             token: "tok".to_string(),
             slug: "owner/repo".to_string(),
             api_base: "https://github.corp.com/api/v3".to_string(),
+            agent: ureq::Agent::new_with_defaults(),
         };
         assert_eq!(forge.api_base, "https://github.corp.com/api/v3");
     }
