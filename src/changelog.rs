@@ -14,7 +14,9 @@ pub struct GitLog {
 pub fn generate_only(config_path: Option<&Path>, dry_run: bool) -> Result<()> {
     use crate::config::Config;
     use crate::formats::read_version;
-    use crate::git::{get_commits_since_last_tag, get_repo_root, open_repo};
+    use crate::git::{
+        find_highest_semver_tag_with_cache, get_commits_since_last_tag, get_repo_root, open_repo,
+    };
     use crate::versioning::bump_version;
     use colored::Colorize;
     let repo = open_repo(&std::env::current_dir()?)?;
@@ -48,19 +50,20 @@ pub fn generate_only(config_path: Option<&Path>, dry_run: bool) -> Result<()> {
             continue;
         }
 
-        let Some(vf) = pkg.versioned_files.first() else {
-            println!(
-                "{}",
-                format!(
-                    "  Skipping {}: no versioned files configured, cannot determine version.",
-                    pkg.name
-                )
-                .yellow()
-            );
-            continue;
+        // `versionedFiles` is optional — see #531. If no file is
+        // configured, fall back to the highest existing tag, then to
+        // 0.0.0 if there are no tags yet.
+        let current_version = match pkg.versioned_files.first() {
+            Some(vf) => read_version(vf, &root)?,
+            None => find_highest_semver_tag_with_cache(
+                &repo,
+                &tag_prefix,
+                config.workspace.orphaned_tag_strategy,
+                None,
+            )?
+            .map(|(_tag, version)| version)
+            .unwrap_or_else(|| "0.0.0".to_string()),
         };
-
-        let current_version = read_version(vf, &root)?;
         let new_version = bump_version(&current_version, bump)?;
 
         let changelog_path = match &pkg.changelog {

@@ -169,23 +169,22 @@ pub(super) fn run_release_logic(
             continue;
         }
 
-        let Some(vf) = pkg.versioned_files.first() else {
-            if !json {
-                println!(
-                    "{} {} — no versioned files configured",
-                    "!".yellow(),
-                    pkg.name.yellow()
-                );
-            }
-            continue;
-        };
-
+        // `versionedFiles` is optional (schema says so, and #531
+        // requested tag-only releases for Docker-image / content repos
+        // that have no version field to bump). Resolve the file-derived
+        // version only when at least one is configured; otherwise let
+        // the tag history alone drive the version computation. The
+        // file-write loop below is already a `for vf in
+        // &pkg.versioned_files` so it naturally no-ops when empty.
         let pkg_strategy = pkg.effective_versioning(
             &config.workspace,
             &tags_for_package(&all_tags, &tag_search_prefix),
         );
 
-        let file_version = read_version(vf, root).ok();
+        let file_version = pkg
+            .versioned_files
+            .first()
+            .and_then(|vf| read_version(vf, root).ok());
         let strategy = config.workspace.orphaned_tag_strategy;
         // Fast path via the pre-built TagIndex for Warn (default); otherwise
         // fall back to the per-call form that still uses the ancestor cache.
