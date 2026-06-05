@@ -4,25 +4,19 @@ use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 use crate::changelog::{build_section, update_changelog};
-use crate::config::{
-    Config, OrphanedTagStrategy, ReleaseCommitMode, ReleaseCommitScope, VersioningStrategy,
-};
+use crate::config::{Config, OrphanedTagStrategy, VersioningStrategy};
 use crate::conventional_commits::{BumpType, determine_bump};
-use crate::error_code::{self, ErrorCodeExt};
 use crate::formats::{get_handler, read_version, write_version};
 use crate::git::{
-    collect_all_tags, create_branch_and_commit, create_branch_and_commits, create_commit,
-    create_or_move_tag, create_tag, fetch_tags, force_push_tags, get_changed_files,
-    get_changed_files_since_oid, get_changed_files_since_tag, get_commits_since_last_stable_tag,
-    get_commits_since_last_tag, get_commits_since_oid, get_tag_message, open_repo, push,
-    push_branch, push_tags, tag_exists,
+    collect_all_tags, fetch_tags, get_changed_files, get_changed_files_since_oid,
+    get_changed_files_since_tag, get_commits_since_last_stable_tag, get_commits_since_last_tag,
+    get_commits_since_oid, open_repo, tag_exists,
 };
 use crate::hooks::{HookContext, HookPoint, resolve_hook, resolve_on_failure, run_hook};
 use crate::prerelease::PrereleaseContext;
 use crate::telemetry;
 use crate::versioning::{compute_next_version, truncate_version};
 
-use super::preview::build_forge_instance;
 use super::types::{CheckCommit, CheckPackage, CheckResult};
 use super::util::{
     auto_stage_new_files, collect_dirty_files, is_package_touched, pick_higher_semver,
@@ -31,12 +25,14 @@ use super::util::{
 
 mod cascade;
 mod drafts;
+mod execute;
 mod forced;
 mod lock;
 mod summary;
 use drafts::publish_pending_drafts;
+use execute::{ReleasePlan, execute_release, print_dry_run_hooks};
 use forced::{Forced, forced_version_for, parse_forced_version};
-use summary::{TagToCreate, print_outputs, write_github_step_summary};
+use summary::{TagToCreate, print_outputs};
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn run_release_logic(
@@ -575,386 +571,41 @@ pub(super) fn run_release_logic(
     }
 
     if any_bumped && !tags_to_create.is_empty() {
-        for (ctx, pkg_idx) in &hook_contexts {
-            let pkg = &config.packages[*pkg_idx];
-            let ws_hooks = config.workspace.hooks.as_ref();
-            let pkg_hooks = pkg.hooks.as_ref();
-            let on_failure = resolve_on_failure(pkg_hooks, ws_hooks);
-            if let Some(cmd) = resolve_hook(pkg_hooks, ws_hooks, HookPoint::PreCommit) {
-                let before = collect_dirty_files(&repo);
-                run_hook(
-                    HookPoint::PreCommit,
-                    &cmd,
-                    ctx,
-                    on_failure,
-                    dry_run,
-                    verbose,
-                    root,
-                )?;
-                if !dry_run {
-                    let len_before = files_to_commit.len();
-                    auto_stage_new_files(&repo, &before, &mut files_to_commit);
-                    let pkg_files = files_per_package.entry(pkg.name.clone()).or_default();
-                    for f in &files_to_commit[len_before..] {
-                        pkg_files.push(f.clone());
-                    }
-                }
-            }
-        }
-
-        let file_refs: Vec<&str> = files_to_commit.iter().map(String::as_str).collect();
-        let mode = config.workspace.release_commit_mode;
-        let scope = config.workspace.release_commit_scope;
-
-        let release_parts: Vec<String> = tags_to_create
-            .iter()
-            .map(|(_, _, _, name, ver, _, _)| format!("{name} v{ver}"))
-            .collect();
-        let skip_ci = if config.workspace.effective_skip_ci() {
-            " [skip ci]"
-        } else {
-            ""
+        let mut plan = ReleasePlan {
+            repo: &repo,
+            config,
+            root,
+            target_branch: &target_branch,
+            dry_run,
+            verbose,
+            force,
+            draft,
+            tags_to_create: &tags_to_create,
+            hook_contexts: &hook_contexts,
+            files_to_commit: &mut files_to_commit,
+            files_per_package: &mut files_per_package,
+            pkg_outputs: &mut pkg_outputs,
+            shared_outputs: &mut shared_outputs,
         };
-        let commit_msg = format!("chore(release): {}{skip_ci}", release_parts.join(", "));
-        let mut floating_tag_names: Vec<String> = Vec::new();
-
-        if !dry_run {
-            match mode {
-                ReleaseCommitMode::Commit => {
-                    if scope == ReleaseCommitScope::PerPackage && tags_to_create.len() > 1 {
-                        for (_, _, _, pkg_name, ver, _, _) in &tags_to_create {
-                            if let Some(pkg_files) = files_per_package.get(pkg_name) {
-                                let refs: Vec<&str> =
-                                    pkg_files.iter().map(String::as_str).collect();
-                                let msg = format!("chore(release): {pkg_name} v{ver}{skip_ci}");
-                                create_commit(&repo, &refs, &msg)?;
-                            }
-                        }
-                        shared_outputs
-                            .push("✓ Committed release changes (per-package)".to_string());
-                    } else {
-                        create_commit(&repo, &file_refs, &commit_msg)?;
-                        shared_outputs.push("✓ Committed release changes".to_string());
-                    }
-                }
-                ReleaseCommitMode::Pr => {
-                    let branch_name = format!(
-                        "release/{}",
-                        release_parts
-                            .first()
-                            .map(|s| s.replace(' ', "-"))
-                            .unwrap_or_else(|| "bump".to_string())
-                    );
-                    if scope == ReleaseCommitScope::PerPackage && tags_to_create.len() > 1 {
-                        let commit_list: Vec<(Vec<&str>, String)> = tags_to_create
-                            .iter()
-                            .filter_map(|(_, _, _, pkg_name, ver, _, _)| {
-                                files_per_package.get(pkg_name).map(|pf| {
-                                    let refs: Vec<&str> = pf.iter().map(String::as_str).collect();
-                                    let msg = format!("chore(release): {pkg_name} v{ver}{skip_ci}");
-                                    (refs, msg)
-                                })
-                            })
-                            .collect();
-                        let commit_refs: Vec<(&[&str], &str)> = commit_list
-                            .iter()
-                            .map(|(f, m)| (f.as_slice(), m.as_str()))
-                            .collect();
-                        create_branch_and_commits(&repo, &branch_name, &commit_refs)?;
-                    } else {
-                        create_branch_and_commit(&repo, &branch_name, &file_refs, &commit_msg)?;
-                    }
-                    push_branch(&repo, &config.workspace.remote, &branch_name)?;
-                    shared_outputs.push(format!("✓ Pushed branch {}", branch_name.cyan()));
-
-                    if let Some(forge_instance) = build_forge_instance(&repo, config) {
-                        let pr_title = format!("chore(release): {}", release_parts.join(", "));
-                        let pr_body = format!(
-                            "Automated release commit.\n\n{}",
-                            tags_to_create
-                                .iter()
-                                .map(|(tag, _, _, _, _, _, _)| format!("- `{tag}`"))
-                                .collect::<Vec<_>>()
-                                .join("\n")
-                        );
-                        match forge_instance.create_merge_request(
-                            &branch_name,
-                            &target_branch,
-                            &pr_title,
-                            &pr_body,
-                        ) {
-                            Ok(mr) => {
-                                shared_outputs.push(format!(
-                                    "✓ Created {} #{}",
-                                    forge_instance.mr_noun(),
-                                    mr.id.to_string().cyan()
-                                ));
-                                if config.workspace.auto_merge_releases {
-                                    match forge_instance.enable_auto_merge(&mr) {
-                                        Ok(()) => {
-                                            shared_outputs.push("✓ Auto-merge enabled".to_string())
-                                        }
-                                        Err(err) => eprintln!(
-                                            "{}",
-                                            format!(
-                                                "  Warning: failed to enable auto-merge: {err}"
-                                            )
-                                            .yellow()
-                                        ),
-                                    }
-                                }
-                            }
-                            Err(err) => eprintln!(
-                                "{}",
-                                format!(
-                                    "  Warning: failed to create {}: {err}",
-                                    forge_instance.mr_noun()
-                                )
-                                .yellow()
-                            ),
-                        }
-                    }
-                }
-                ReleaseCommitMode::None => {}
-            }
-
-            for (tag_name, tag_msg, _, pkg_name, _, _, _) in &tags_to_create {
-                create_tag(&repo, tag_name, tag_msg)?;
-                if let Some((_, lines)) = pkg_outputs.iter_mut().rev().find(|(n, _)| n == pkg_name)
-                {
-                    lines.push(format!("  ✓ Created tag {}", tag_name.cyan()));
-                }
-            }
-
-            for (_, _, _, pkg_name, new_version, _, is_pre) in &tags_to_create {
-                if *is_pre {
-                    continue;
-                }
-                let pkg = config
-                    .packages
-                    .iter()
-                    .find(|p| &p.name == pkg_name)
-                    .ok_or_else(|| anyhow::anyhow!("package '{pkg_name}' not found in config"))
-                    .error_code(error_code::MONOREPO_PACKAGE_NOT_FOUND)?;
-                let levels = pkg.effective_floating_tags(&config.workspace);
-                for level in levels {
-                    if let Some(truncated) = truncate_version(new_version, *level) {
-                        let float_tag = pkg.tag_for_version(
-                            &config.workspace,
-                            config.is_monorepo(),
-                            &truncated,
-                        );
-                        if tag_exists(&repo, &float_tag)
-                            && let Some(old_msg) = get_tag_message(&repo, &float_tag)
-                            && let Some(old_ver) = old_msg.strip_prefix("Release ")
-                            && semver::Version::parse(old_ver.trim_start_matches('v'))
-                                .ok()
-                                .zip(
-                                    semver::Version::parse(new_version.trim_start_matches('v'))
-                                        .ok(),
-                                )
-                                .is_some_and(|(old, new)| new < old)
-                        {
-                            if !force {
-                                Err(anyhow::anyhow!(
-                                    "Floating tag {} would move backward ({} → {}). Use --force to override.",
-                                    float_tag,
-                                    old_ver,
-                                    new_version,
-                                ))
-                                .error_code(error_code::MONOREPO_PUSH_FAILED)?;
-                            }
-                            eprintln!(
-                                "{}",
-                                format!(
-                                    "  ⚠ Floating tag {} moves backward ({} → {})",
-                                    float_tag, old_ver, new_version,
-                                )
-                                .yellow()
-                            );
-                        }
-                        let msg = format!("Release {new_version}");
-                        let moved = create_or_move_tag(&repo, &float_tag, &msg)?;
-                        let verb = if moved { "Moved" } else { "Created" };
-                        if let Some((_, lines)) =
-                            pkg_outputs.iter_mut().rev().find(|(n, _)| n == pkg_name)
-                        {
-                            lines.push(format!("  ✓ {} floating tag {}", verb, float_tag.cyan()));
-                        }
-                        floating_tag_names.push(float_tag);
-                    }
-                }
-            }
-        }
-
-        for (ctx, pkg_idx) in &hook_contexts {
-            let pkg = &config.packages[*pkg_idx];
-            let ws_hooks = config.workspace.hooks.as_ref();
-            let pkg_hooks = pkg.hooks.as_ref();
-            let on_failure = resolve_on_failure(pkg_hooks, ws_hooks);
-            if let Some(cmd) = resolve_hook(pkg_hooks, ws_hooks, HookPoint::PrePublish) {
-                run_hook(
-                    HookPoint::PrePublish,
-                    &cmd,
-                    ctx,
-                    on_failure,
-                    dry_run,
-                    verbose,
-                    root,
-                )?;
-            }
-        }
-
-        if !dry_run {
-            let tag_refs: Vec<&str> = tags_to_create
-                .iter()
-                .map(|(t, _, _, _, _, _, _)| t.as_str())
-                .collect();
-
-            if let ReleaseCommitMode::Commit = mode {
-                push(&repo, &config.workspace.remote, &target_branch, &[])?;
-                shared_outputs.push(format!(
-                    "✓ Pushed and verified on {}/{}",
-                    config.workspace.remote, target_branch
-                ));
-            }
-
-            let target_sha = repo.head_id().ok().map(|id| id.to_string());
-
-            if let Some(forge_instance) = build_forge_instance(&repo, config) {
-                for (tag_name, _, body, pkg_name, _, _, is_pre) in &tags_to_create {
-                    if !draft {
-                        match forge_instance.find_draft_release(tag_name) {
-                            Ok(Some(release_id)) => {
-                                match forge_instance.publish_release(release_id) {
-                                    Ok(()) => {
-                                        if let Some((_, lines)) = pkg_outputs
-                                            .iter_mut()
-                                            .rev()
-                                            .find(|(n, _)| n == pkg_name)
-                                        {
-                                            lines.push(format!(
-                                                "  ✓ Published draft {} {}",
-                                                forge_instance.release_noun(),
-                                                tag_name.cyan()
-                                            ));
-                                        }
-                                        continue;
-                                    }
-                                    Err(err) => eprintln!(
-                                        "{}",
-                                        format!(
-                                            "  Warning: failed to publish draft for {tag_name}: {err}"
-                                        )
-                                        .yellow()
-                                    ),
-                                }
-                            }
-                            Ok(None) => {}
-                            Err(err) => {
-                                if verbose {
-                                    eprintln!(
-                                        "{}",
-                                        format!(
-                                            "  Warning: failed to check for draft release {tag_name}: {err}"
-                                        )
-                                        .yellow()
-                                    );
-                                }
-                            }
-                        }
-                    }
-
-                    match forge_instance.create_release(
-                        tag_name,
-                        body,
-                        *is_pre,
-                        draft,
-                        target_sha.as_deref(),
-                    ) {
-                        Ok(()) => {
-                            if let Some((_, lines)) =
-                                pkg_outputs.iter_mut().rev().find(|(n, _)| n == pkg_name)
-                            {
-                                let noun = forge_instance.release_noun();
-                                if draft {
-                                    lines.push(format!("  ✓ Draft {} {}", noun, tag_name.cyan()));
-                                } else {
-                                    lines.push(format!("  ✓ {} {}", noun, tag_name.cyan()));
-                                }
-                            }
-                        }
-                        Err(err) => eprintln!(
-                            "{}",
-                            format!(
-                                "  Warning: failed to create {} for {tag_name}: {err}",
-                                forge_instance.release_noun()
-                            )
-                            .yellow()
-                        ),
-                    }
-                }
-            }
-
-            if !tag_refs.is_empty() {
-                push_tags(&repo, &config.workspace.remote, &tag_refs)?;
-                shared_outputs.push("✓ Pushed tags".to_string());
-            }
-
-            if !floating_tag_names.is_empty() {
-                let float_refs: Vec<&str> = floating_tag_names.iter().map(String::as_str).collect();
-                force_push_tags(&repo, &config.workspace.remote, &float_refs)?;
-                shared_outputs.push("✓ Pushed floating tags".to_string());
-            }
-
-            write_github_step_summary(&tags_to_create);
-        }
-
-        if config.workspace.anonymous_telemetry {
-            for (_, _, _, pkg_name, version, commit_count, _) in &tags_to_create {
-                telemetry::send_event(
-                    telemetry::EventType::Release,
-                    None,
-                    Some(*commit_count),
-                    Some(pkg_name.clone()),
-                    Some(version.clone()),
-                );
-            }
-        }
-
-        for (ctx, pkg_idx) in &hook_contexts {
-            let pkg = &config.packages[*pkg_idx];
-            let ws_hooks = config.workspace.hooks.as_ref();
-            let pkg_hooks = pkg.hooks.as_ref();
-            let on_failure = resolve_on_failure(pkg_hooks, ws_hooks);
-            if let Some(cmd) = resolve_hook(pkg_hooks, ws_hooks, HookPoint::PostPublish) {
-                run_hook(
-                    HookPoint::PostPublish,
-                    &cmd,
-                    ctx,
-                    on_failure,
-                    dry_run,
-                    verbose,
-                    root,
-                )?;
-            }
-        }
+        execute_release(&mut plan)?;
     } else if dry_run && any_bumped {
-        for (ctx, pkg_idx) in &hook_contexts {
-            let pkg = &config.packages[*pkg_idx];
-            let ws_hooks = config.workspace.hooks.as_ref();
-            let pkg_hooks = pkg.hooks.as_ref();
-            let on_failure = resolve_on_failure(pkg_hooks, ws_hooks);
-            for point in [
-                HookPoint::PreCommit,
-                HookPoint::PrePublish,
-                HookPoint::PostPublish,
-            ] {
-                if let Some(cmd) = resolve_hook(pkg_hooks, ws_hooks, point) {
-                    run_hook(point, &cmd, ctx, on_failure, true, verbose, root)?;
-                }
-            }
-        }
+        let plan = ReleasePlan {
+            repo: &repo,
+            config,
+            root,
+            target_branch: &target_branch,
+            dry_run,
+            verbose,
+            force,
+            draft,
+            tags_to_create: &tags_to_create,
+            hook_contexts: &hook_contexts,
+            files_to_commit: &mut files_to_commit,
+            files_per_package: &mut files_per_package,
+            pkg_outputs: &mut pkg_outputs,
+            shared_outputs: &mut shared_outputs,
+        };
+        print_dry_run_hooks(&plan)?;
     }
 
     if !any_bumped && !draft && !dry_run {
