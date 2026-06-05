@@ -4,6 +4,13 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.2.0] - 2026-06-05
+
+### Features
+
+- feat: release concurrency lock, mimalloc, cargo-deny bans, ref validation, markdown escape, ureq Agent reuse
+- feat: support tag-only packages (versionedFiles really optional) (#533)
+
 ## [5.1.0] - 2026-06-05
 
 ### Features
