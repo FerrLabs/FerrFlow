@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.2.1] - 2026-06-06
+
+### Bug Fixes
+
+- fix(ci): discover cargo-cyclonedx output by glob, target ferrflow package (#537)
+
 ## [5.2.0] - 2026-06-05
 
 ### Features
