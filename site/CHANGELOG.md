@@ -1,5 +1,13 @@
 # Changelog
 
+## [6.5.10] - 2026-06-06
+
+### Bug Fixes
+
+- fix(site): refresh FerrFlow v5.1.0 release data
+- fix(site): refresh FerrFlow v5.0.2 release data
+- fix(deps): update dependency starlight-versions to ^0.9.0 (#515)
+
 ## [6.5.9] - 2026-05-23
 
 ### Bug Fixes
