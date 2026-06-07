@@ -42,7 +42,23 @@ pub(super) fn configure_git_command(cmd: &mut Command, url: &str) {
             escaped_user, escaped_token
         );
         cmd.arg("-c").arg(format!("credential.helper={}", helper));
+        if let Some(server) = server_config_url(url) {
+            cmd.arg("-c").arg(format!("http.{server}.extraheader="));
+        }
     }
+}
+
+pub(super) fn server_config_url(url: &str) -> Option<String> {
+    let (scheme, rest) = url.split_once("://")?;
+    if scheme.is_empty() {
+        return None;
+    }
+    let authority = rest.split(['/', '?', '#']).next()?;
+    let host = authority.rsplit('@').next().unwrap_or(authority);
+    if host.is_empty() {
+        return None;
+    }
+    Some(format!("{scheme}://{host}/"))
 }
 
 pub(super) fn scrub_trace_env(cmd: &mut Command) {
