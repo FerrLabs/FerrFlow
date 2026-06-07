@@ -1,4 +1,4 @@
-use super::auth::{configure_git_command, extract_url_password, token_for_url};
+use super::auth::{configure_git_command, extract_url_password, server_config_url, token_for_url};
 use super::push::{fetch_and_rebase, parse_ls_remote_tags};
 use super::repo::Repository;
 use super::retry::{is_transient_git_error, retry_transient};
@@ -751,6 +751,51 @@ fn configure_git_command_strips_git_trace_env() {
     assert!(removed.contains("GIT_TRACE"));
     assert!(removed.contains("GIT_CURL_VERBOSE"));
     assert!(removed.contains("GIT_TRACE_CURL"));
+}
+
+#[test]
+fn configure_git_command_resets_checkout_extraheader_when_authenticated() {
+    let _guard = EnvGuard::new().set("FERRFLOW_TOKEN", "ff_secret");
+    let mut cmd = std::process::Command::new("git");
+    configure_git_command(&mut cmd, "https://github.com/owner/repo.git");
+    let args: Vec<String> = cmd
+        .get_args()
+        .map(|a| a.to_string_lossy().into_owned())
+        .collect();
+    assert!(
+        args.iter()
+            .any(|a| a == "http.https://github.com/.extraheader="),
+        "expected the persisted checkout extraheader to be reset to empty, got {args:?}"
+    );
+}
+
+#[test]
+fn configure_git_command_does_not_reset_extraheader_without_token() {
+    let _guard = EnvGuard::new()
+        .unset("FERRFLOW_TOKEN")
+        .unset("GITHUB_TOKEN")
+        .unset("GITLAB_TOKEN");
+    let mut cmd = std::process::Command::new("git");
+    configure_git_command(&mut cmd, "https://github.com/owner/repo.git");
+    assert!(
+        !cmd.get_args()
+            .any(|a| a.to_string_lossy().contains("extraheader")),
+        "must not touch extraheader when ferrflow has no token of its own"
+    );
+}
+
+#[test]
+fn server_config_url_derives_the_checkout_key() {
+    assert_eq!(
+        server_config_url("https://github.com/owner/repo.git").as_deref(),
+        Some("https://github.com/")
+    );
+    assert_eq!(
+        server_config_url("https://x-access-token:tok@ghe.acme.dev:8443/o/r.git").as_deref(),
+        Some("https://ghe.acme.dev:8443/")
+    );
+    assert_eq!(server_config_url("git@github.com:owner/repo.git"), None);
+    assert_eq!(server_config_url("not a url"), None);
 }
 
 #[test]
