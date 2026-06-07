@@ -164,29 +164,21 @@ jobs:
 
       - name: Generate SBOM (CycloneDX)
         # One SBOM per build (the same dependency tree ships in every
-        # platform binary). Attached to the GitHub Release as a sidecar
-        # so downstream supply-chain scanners (grype, trivy, JFrog Xray,
-        # Anchore) can ingest it at intake.
+        # platform binary), attached to the Release as a sidecar for
+        # downstream supply-chain scanners (grype, trivy, Xray, Anchore).
         #
-        # We target only the `ferrflow` package (not the `ferrflow-wasm`
-        # workspace member) and discover whatever file cargo-cyclonedx
-        # produced — its default output filename changed in 0.6+ (was
-        # configurable via --override-filename, now via --output-pattern
-        # with a different default).
+        # cargo-cyclonedx 0.5.x has no package selector (`-p` is rejected)
+        # and writes one SBOM next to every workspace Cargo.toml. The root
+        # manifest is the `ferrflow` package, so `./sbom.json` is the file
+        # we keep; the `ferrflow-wasm` member's SBOM is left unused.
         run: |
           set -euo pipefail
-          cargo cyclonedx --format json -p ferrflow
-          sbom=$(find . -maxdepth 2 -name '*.cdx.json' \
-            -not -path './artifacts/*' -not -path './target/*' \
-            -type f -print -quit)
-          if [ -z "$sbom" ]; then
-            echo "ERROR: cargo cyclonedx produced no .cdx.json file" >&2
-            find . -maxdepth 3 -name '*.json' -newer Cargo.toml \
-              -not -path './target/*' 2>/dev/null || true
+          cargo cyclonedx --format json --override-filename sbom
+          if [ ! -f sbom.json ]; then
+            echo "ERROR: cargo cyclonedx produced no root sbom.json" >&2
             exit 1
           fi
-          echo "Found SBOM at $sbom"
-          mv "$sbom" artifacts/sbom.cdx.json
+          mv sbom.json artifacts/sbom.cdx.json
           echo "SBOM size: $(wc -c < artifacts/sbom.cdx.json) bytes"
 
       - name: Sign SBOM with cosign (keyless)
