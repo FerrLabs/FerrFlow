@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.2.2] - 2026-06-07
+
+### Bug Fixes
+
+- fix(git): reset checkout-persisted extraheader so bot token pushes the release (#539)
+
 ## [5.2.1] - 2026-06-06
 
 ### Bug Fixes
