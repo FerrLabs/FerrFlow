@@ -50,7 +50,7 @@ npm install -D @ferrlabs/ferrflow
 **Docker**
 
 ```bash
-docker run ghcr.io/ferrflow/ferrflow:latest check
+docker run ghcr.io/ferrlabs/ferrflow:latest check
 ```
 
 **Pre-built binaries**
@@ -509,7 +509,7 @@ FerrFlow follows the [Conventional Commits](https://www.conventionalcommits.org/
 
 ```yaml
 release:
-  image: ghcr.io/ferrflow/ferrflow:latest
+  image: ghcr.io/ferrlabs/ferrflow:latest
   script:
     - ferrflow release
   rules:
