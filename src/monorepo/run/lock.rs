@@ -91,7 +91,6 @@ impl ReleaseLock {
 
     /// Force-acquire the lock, ignoring any existing one. Used by
     /// `--force-unlock` for manual recovery.
-    #[allow(dead_code)]
     pub fn acquire_force(repo_root: &Path) -> Result<Self> {
         let path = repo_root.join(".git").join("ferrflow.lock");
         if path.exists() {

@@ -45,6 +45,7 @@ pub(super) fn run_release_logic(
     force_version: Option<&str>,
     channel: Option<&str>,
     draft: bool,
+    force_unlock: bool,
 ) -> Result<()> {
     if config.packages.is_empty() {
         if json {
@@ -69,6 +70,8 @@ pub(super) fn run_release_logic(
     // get a clear error instead of racing on git refs. See #514.
     let _release_lock = if dry_run {
         None
+    } else if force_unlock {
+        Some(lock::ReleaseLock::acquire_force(root)?)
     } else {
         Some(lock::ReleaseLock::acquire(root)?)
     };
