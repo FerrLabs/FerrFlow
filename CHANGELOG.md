@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.2.4] - 2026-06-08
+
+### Bug Fixes
+
+- fix(release): wire --force-unlock CLI flag (#514) (#545)
+
 ## [5.2.3] - 2026-06-07
 
 ### Bug Fixes
