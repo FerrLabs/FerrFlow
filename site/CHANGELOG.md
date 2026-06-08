@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.5.12] - 2026-06-08
+
+### Bug Fixes
+
+- fix(site): stop leaking internal :8080 port in trailing-slash redirects (#531)
+
 ## [6.5.11] - 2026-06-07
 
 ### Bug Fixes
