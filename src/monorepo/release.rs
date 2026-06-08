@@ -9,6 +9,7 @@ use super::run::run_release_logic;
 
 const MAX_RELEASE_REGENERATE_ATTEMPTS: usize = 3;
 
+#[allow(clippy::too_many_arguments)]
 pub fn release(
     config_path: Option<&Path>,
     dry_run: bool,
@@ -17,6 +18,7 @@ pub fn release(
     force_version: Option<&str>,
     channel: Option<&str>,
     draft: bool,
+    force_unlock: bool,
 ) -> Result<()> {
     crate::bot_token::ensure_bot_token()?;
     let repo = open_repo(&std::env::current_dir()?)?;
@@ -48,6 +50,7 @@ pub fn release(
             force_version,
             channel,
             draft,
+            force_unlock,
         );
     }
 
@@ -68,6 +71,7 @@ pub fn release(
             force_version,
             channel,
             draft,
+            force_unlock,
         );
 
         match result {

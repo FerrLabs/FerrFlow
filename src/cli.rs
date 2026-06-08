@@ -58,6 +58,11 @@ pub enum Commands {
         /// without --draft will detect and publish existing drafts automatically.
         #[arg(long)]
         draft: bool,
+        /// Break an existing `.git/ferrflow.lock` before acquiring it.
+        /// Use only when you're sure no other `ferrflow release` is running —
+        /// for example, after a crash that left the lockfile behind.
+        #[arg(long)]
+        force_unlock: bool,
     },
     /// Generate/update CHANGELOG.md only
     Changelog,
@@ -143,6 +148,7 @@ impl Cli {
                 force_version,
                 channel,
                 draft,
+                force_unlock,
             } => crate::monorepo::release(
                 self.config.as_deref(),
                 self.dry_run,
@@ -151,6 +157,7 @@ impl Cli {
                 force_version.as_deref(),
                 channel.as_deref(),
                 draft,
+                force_unlock,
             ),
             Commands::Changelog => {
                 crate::changelog::generate_only(self.config.as_deref(), self.dry_run)
@@ -232,9 +239,19 @@ mod tests {
                 force: false,
                 force_version: None,
                 channel: None,
-                draft: false
+                draft: false,
+                force_unlock: false,
             }
         ));
+    }
+
+    #[test]
+    fn parse_release_force_unlock() {
+        let cli = parse(&["ferrflow", "release", "--force-unlock"]);
+        match cli.command {
+            Commands::Release { force_unlock, .. } => assert!(force_unlock),
+            _ => panic!("expected Release"),
+        }
     }
 
     #[test]

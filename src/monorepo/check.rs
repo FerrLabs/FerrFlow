@@ -27,7 +27,7 @@ pub fn check(
     }
 
     let result = run_release_logic(
-        &root, &config, true, verbose, json, false, None, channel, false,
+        &root, &config, true, verbose, json, false, None, channel, false, false,
     );
 
     if comment {
