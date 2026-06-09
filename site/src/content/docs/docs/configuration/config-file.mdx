@@ -545,6 +545,61 @@ Files where the version number should be updated.
 | `gomod` | `go.mod` | No file update — version comes from git tags only |
 | `txt` | `VERSION`, `VERSION.txt` | Entire file content replaced |
 
+### Tag-only packages
+
+`versionedFiles` is optional. Omit it (or set it to `[]`) for packages whose version is communicated entirely through git tags and GitHub Releases — Go modules, Docker images, GitHub Actions, infrastructure repos.
+
+<Tabs syncKey="config-format">
+  <TabItem label="JSON">
+    ```json title="ferrflow.json"
+    {
+      "package": [
+        {
+          "name": "my-action",
+          "path": ".",
+          "versionedFiles": []
+        }
+      ]
+    }
+    ```
+  </TabItem>
+  <TabItem label="TOML">
+    ```toml title="ferrflow.toml"
+    [[package]]
+    name = "my-action"
+    path = "."
+    versioned_files = []
+    ```
+  </TabItem>
+  <TabItem label="JSON5">
+    ```json5 title="ferrflow.json5"
+    {
+      package: [
+        {
+          name: "my-action",
+          path: ".",
+          versionedFiles: [],
+        },
+      ],
+    }
+    ```
+  </TabItem>
+  <TabItem label="YAML">
+    ```yaml title="ferrflow.yaml"
+    package:
+      - name: my-action
+        path: "."
+        versionedFiles: []
+    ```
+  </TabItem>
+</Tabs>
+
+FerrFlow reads the current version from the latest matching git tag, computes the next bump from conventional commits, then creates the tag, the GitHub Release, the changelog and any floating tags — without touching any source file. Hooks still run normally, so you can `docker build`, `docker push`, or `gh release upload` from `postPublish` against `FERRFLOW_NEW_VERSION`.
+
+<Aside type="note">
+Before v5.1, packages without `versionedFiles` were silently skipped. If you depended on that behavior to exclude a package from a release, remove it from the config instead.
+</Aside>
+
 ## `hooks`
 
 Run shell commands at key points in the release lifecycle. Hooks can be defined at workspace level (defaults for all packages) or per package (overrides workspace hooks for that package).

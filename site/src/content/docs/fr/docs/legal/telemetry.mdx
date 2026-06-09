@@ -3,7 +3,7 @@ title: Telemetrie
 description: Ce que FerrFlow collecte, comment les donnees sont anonymisees, et comment desactiver la telemetrie.
 ---
 
-import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+import { Tabs, TabItem } from '@astrojs/starlight/components';
 
 FerrFlow collecte des donnees de telemetrie anonymes pour ameliorer l'outil. Cette page explique exactement ce qui est envoye, comment les donnees sont anonymisees, et comment desactiver la telemetrie.
 
@@ -50,9 +50,9 @@ Vous pouvez desactiver completement la telemetrie via une variable d'environneme
 
 Valeurs acceptees pour desactiver : `false`, `0`, `off`, `no` (insensible a la casse).
 
-<Aside type="tip">
-`FERRFLOW_TELEMETRY=false` fonctionne aussi comme alternative.
-</Aside>
+FerrFlow honore aussi la variable d'environnement standard [`DO_NOT_TRACK`](https://consoledonottrack.com/) — `DO_NOT_TRACK=1` desactive la telemetrie sans aucune configuration specifique a FerrFlow. `FERRFLOW_TELEMETRY=false` reste pris en charge comme alternative pour la retrocompatibilite avec les configs v0/v1.
+
+Au premier lancement sur un depot ou la telemetrie est active, FerrFlow affiche un message d'une ligne renvoyant vers cette page.
 
 ### Fichier de configuration
 

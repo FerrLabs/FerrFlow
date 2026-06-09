@@ -3,7 +3,7 @@ title: Telemetry
 description: What FerrFlow collects, how data is anonymized, and how to opt out.
 ---
 
-import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+import { Tabs, TabItem } from '@astrojs/starlight/components';
 
 FerrFlow collects anonymous usage telemetry to help improve the tool. This page explains exactly what is sent, how it is anonymized, and how to disable it.
 
@@ -38,21 +38,17 @@ You can disable telemetry entirely using either an environment variable or your 
 <Tabs syncKey="os">
   <TabItem label="Linux / macOS">
     ```bash
-    export FERRFLOW_ANONYMOUS_TELEMETRY=false
+    export FERRFLOW_TELEMETRY=false
     ```
   </TabItem>
   <TabItem label="Windows">
     ```powershell
-    $env:FERRFLOW_ANONYMOUS_TELEMETRY = "false"
+    $env:FERRFLOW_TELEMETRY = "false"
     ```
   </TabItem>
 </Tabs>
 
 Accepted values to disable: `false`, `0`, `off`, `no` (case-insensitive).
-
-<Aside type="tip">
-`FERRFLOW_TELEMETRY=false` also works as a fallback.
-</Aside>
 
 ### Config file
 

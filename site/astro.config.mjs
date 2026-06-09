@@ -68,8 +68,9 @@ export default defineConfig({
       },
       plugins: [
         starlightVersions({
-          current: { label: 'v4' },
+          current: { label: 'v5' },
           versions: [
+            { slug: 'v4', label: 'v4' },
             { slug: 'v3', label: 'v3' },
             { slug: 'v2', label: 'v2' },
             { slug: 'v1', label: 'v1' },
@@ -112,7 +113,10 @@ export default defineConfig({
         },
         {
           label: 'Deployment',
-          items: [{ label: 'Self-hosting', slug: 'docs/self-hosting' }],
+          items: [
+            { label: 'Self-hosting', slug: 'docs/self-hosting' },
+            { label: 'Verifying releases', slug: 'docs/verifying-releases' },
+          ],
         },
         {
           label: 'Legal',

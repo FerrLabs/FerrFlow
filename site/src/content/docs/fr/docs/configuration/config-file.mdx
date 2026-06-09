@@ -448,6 +448,61 @@ Fichiers dans lesquels le numéro de version doit être mis à jour.
 | `gomod` | `go.mod` | Pas de mise à jour de fichier — la version vient uniquement des tags git |
 | `txt` | `VERSION`, `VERSION.txt` | Contenu entier du fichier remplacé |
 
+### Packages versionnés par tag uniquement
+
+`versionedFiles` est optionnel. Omettez-le (ou mettez-le à `[]`) pour les packages dont la version est communiquée entièrement via les tags git et les GitHub Releases — modules Go, images Docker, GitHub Actions, dépôts d'infrastructure.
+
+<Tabs syncKey="config-format">
+  <TabItem label="JSON">
+    ```json title="ferrflow.json"
+    {
+      "package": [
+        {
+          "name": "my-action",
+          "path": ".",
+          "versionedFiles": []
+        }
+      ]
+    }
+    ```
+  </TabItem>
+  <TabItem label="TOML">
+    ```toml title="ferrflow.toml"
+    [[package]]
+    name = "my-action"
+    path = "."
+    versioned_files = []
+    ```
+  </TabItem>
+  <TabItem label="JSON5">
+    ```json5 title="ferrflow.json5"
+    {
+      package: [
+        {
+          name: "my-action",
+          path: ".",
+          versionedFiles: [],
+        },
+      ],
+    }
+    ```
+  </TabItem>
+  <TabItem label="YAML">
+    ```yaml title="ferrflow.yaml"
+    package:
+      - name: my-action
+        path: "."
+        versionedFiles: []
+    ```
+  </TabItem>
+</Tabs>
+
+FerrFlow lit la version courante depuis le dernier tag git correspondant, calcule le prochain bump à partir des conventional commits, puis crée le tag, la GitHub Release, le changelog et les floating tags éventuels — sans toucher au moindre fichier source. Les hooks s'exécutent normalement, vous pouvez donc lancer `docker build`, `docker push` ou `gh release upload` depuis `postPublish` en utilisant `FERRFLOW_NEW_VERSION`.
+
+<Aside type="note">
+Avant la v5.1, les packages sans `versionedFiles` étaient silencieusement ignorés. Si vous vous appuyiez sur ce comportement pour exclure un package d'une release, retirez-le plutôt de la config.
+</Aside>
+
 ## `hooks`
 
 Exécutez des commandes shell à des points clés du cycle de release. Les hooks peuvent être définis au niveau du workspace (par défaut pour tous les packages) ou par package (surcharge les hooks du workspace pour ce package).

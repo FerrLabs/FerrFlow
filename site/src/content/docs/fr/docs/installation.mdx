@@ -48,7 +48,7 @@ import { Tabs, TabItem } from '@astrojs/starlight/components';
 La méthode recommandée pour utiliser FerrFlow en CI est la GitHub Action — aucune étape d'installation nécessaire :
 
 ```yaml
-- uses: FerrLabs/ferrflow@v2
+- uses: FerrLabs/ferrflow@v5
   env:
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
@@ -60,3 +60,11 @@ Consultez [GitHub Actions](/fr/docs/ci/github-actions) et [GitLab CI](/fr/docs/c
 ```bash
 ferrflow --version
 ```
+
+## Migration depuis la v4
+
+Si vous suivez la configuration documentée pour GitHub Actions / GitLab CI (`GITHUB_TOKEN` / `CI_JOB_TOKEN` en variable d'environnement), aucun changement n'est nécessaire — il suffit de bumper le pin de l'action à `FerrLabs/ferrflow@v5` et le binaire à la v5.x.
+
+Le seul changement cassant de la v5.0 est interne : FerrFlow n'injecte plus les tokens dans l'URL distante lors des push. Il utilise désormais le protocole standard de credential helper de git (`GIT_ASKPASS`). C'est invisible pour quiconque suit la configuration recommandée, mais si vous aviez un workflow custom qui s'appuyait sur des tokens injectés dans l'URL — par exemple, un runner self-hosted avec un remote pré-amorcé `https://x-access-token:$TOKEN@github.com/...` — passez à `GITHUB_TOKEN` (ou `FERRFLOW_TOKEN`) en variable d'environnement et FerrFlow se charge du reste.
+
+Depuis la v5.2, les releases sont signées via Sigstore et embarquent un SBOM CycloneDX — voir [Vérifier les releases](/fr/docs/verifying-releases).
