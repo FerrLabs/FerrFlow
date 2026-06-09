@@ -1,7 +1,8 @@
 # FerrFlow
 
 [![Latest release](https://img.shields.io/github/v/release/FerrLabs/FerrFlow)](https://github.com/FerrLabs/FerrFlow/releases/latest)
-[![Coverage](https://codecov.io/gh/FerrLabs/FerrFlow/graph/badge.svg)](https://codecov.io/gh/FerrLabs/FerrFlow)
+[![Quality Gate](https://sonar.ferrlabs.com/api/project_badges/measure?project=ferrflow&metric=alert_status&token=sqb_53f0d93466bd01a6c6a94a15125d5aa8390c67fa)](https://sonar.ferrlabs.com/dashboard?id=ferrflow)
+[![Coverage](https://sonar.ferrlabs.com/api/project_badges/measure?project=ferrflow&metric=coverage&token=sqb_53f0d93466bd01a6c6a94a15125d5aa8390c67fa)](https://sonar.ferrlabs.com/dashboard?id=ferrflow)
 [![License](https://img.shields.io/github/license/FerrLabs/FerrFlow)](LICENSE)
 [![Socket Badge](https://badge.socket.dev/npm/package/@ferrlabs/ferrflow/latest)](https://badge.socket.dev/npm/package/@ferrlabs/ferrflow/latest)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/FerrLabs/FerrFlow/badge)](https://scorecard.dev/viewer/?uri=github.com/FerrLabs/FerrFlow)
