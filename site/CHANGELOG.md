@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.6.0] - 2026-06-09
+
+### Features
+
+- feat(docs): cut v4 snapshot, surface v5 features, scrub forward references (#537)
+
 ## [6.5.12] - 2026-06-08
 
 ### Bug Fixes
