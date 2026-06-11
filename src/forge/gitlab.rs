@@ -4,6 +4,10 @@ use colored::Colorize;
 use super::{Forge, MergeRequestResult};
 use crate::error_code::{self, ErrorCodeExt};
 
+/// See `github::PER_PAGE` — same justification, same number.
+const PER_PAGE: u32 = 100;
+const MAX_PAGES: u32 = 100;
+
 pub struct GitLabForge {
     pub token: String,
     pub slug: String,
@@ -14,6 +18,37 @@ pub struct GitLabForge {
 impl GitLabForge {
     fn encoded_project_id(&self) -> String {
         self.slug.replace('/', "%2F")
+    }
+
+    /// Walk every page of a GitLab list endpoint. Same shape as the
+    /// GitHub helper: stop when a page returns fewer than `PER_PAGE`
+    /// items. GitLab supports the `?per_page=&page=` parameters
+    /// identically to GitHub, so the universal trick works. See #524.
+    fn paginated_json_array(&self, base_url: &str, what: &str) -> Result<Vec<serde_json::Value>> {
+        let mut all = Vec::new();
+        for page in 1..=MAX_PAGES {
+            let url = format!("{base_url}?per_page={PER_PAGE}&page={page}");
+            let body: serde_json::Value = self
+                .agent
+                .get(&url)
+                .header("PRIVATE-TOKEN", &self.token)
+                .header("User-Agent", "ferrflow")
+                .call()
+                .with_context(|| format!("Failed to list {what}"))?
+                .body_mut()
+                .read_json()
+                .with_context(|| format!("Failed to parse {what} response"))?;
+            let page_items = match body.as_array() {
+                Some(arr) if !arr.is_empty() => arr.clone(),
+                _ => return Ok(all),
+            };
+            let len = page_items.len();
+            all.extend(page_items);
+            if (len as u32) < PER_PAGE {
+                return Ok(all);
+            }
+        }
+        Ok(all)
     }
 }
 
@@ -153,23 +188,15 @@ impl Forge for GitLabForge {
     }
 
     fn find_comment(&self, mr_id: u64, marker: &str) -> Result<Option<u64>> {
-        let url = format!(
-            "{}/projects/{}/merge_requests/{}/notes?per_page=100",
+        let base_url = format!(
+            "{}/projects/{}/merge_requests/{}/notes",
             self.api_base,
             self.encoded_project_id(),
             mr_id
         );
-        let notes: Vec<serde_json::Value> = self
-            .agent
-            .get(&url)
-            .header("PRIVATE-TOKEN", &self.token)
-            .header("User-Agent", "ferrflow")
-            .call()
-            .with_context(|| "Failed to list MR notes")?
-            .body_mut()
-            .read_json()
-            .with_context(|| "Failed to parse MR notes")?;
-
+        // Paginate — long-lived release MRs can accumulate hundreds of
+        // notes from CI / bots / reviewers. See #524.
+        let notes = self.paginated_json_array(&base_url, "MR notes")?;
         for note in notes {
             if let Some(body) = note["body"].as_str()
                 && body.contains(marker)
