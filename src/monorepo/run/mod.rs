@@ -24,11 +24,13 @@ use super::util::{
 };
 
 mod cascade;
+mod checkpoint;
 mod drafts;
 mod execute;
 mod forced;
 mod lock;
 mod summary;
+use checkpoint::Checkpoint;
 use drafts::publish_pending_drafts;
 use execute::{ReleasePlan, execute_release, print_dry_run_hooks};
 use forced::{Forced, forced_version_for, parse_forced_version};
@@ -580,6 +582,50 @@ pub(super) fn run_release_logic(
     }
 
     if any_bumped && !tags_to_create.is_empty() {
+        // Crash-resume checkpoint (#549). On dry-run we record nothing
+        // — the run is read-only by design. Otherwise we either load an
+        // in-progress checkpoint left behind by a previous crash, or
+        // create a new one. HEAD-mismatch is fatal: an existing
+        // checkpoint pinned to a different commit means the repo state
+        // diverged from the in-flight release, and silently retrying
+        // would replay tags onto the wrong graph.
+        let head_sha = repo
+            .head_id()
+            .ok()
+            .map(|id| id.to_string())
+            .unwrap_or_default();
+        let tag_names: Vec<String> = tags_to_create
+            .iter()
+            .map(|(t, _, _, _, _, _, _)| t.clone())
+            .collect();
+        let mut checkpoint = if dry_run {
+            None
+        } else {
+            match Checkpoint::load(root)? {
+                Some(existing) if existing.head_sha == head_sha => {
+                    if verbose {
+                        eprintln!(
+                            "  ↻ Found in-progress release checkpoint at phase {:?}; resuming",
+                            existing.phase
+                        );
+                    }
+                    Some(existing)
+                }
+                Some(existing) => {
+                    return Err(anyhow::anyhow!(
+                        "found a stale release checkpoint at .git/ferrflow.checkpoint.json \
+                         pinned to commit {} but HEAD is now {}.\n  \
+                         Either reset HEAD back to {} and rerun to resume the previous release, \
+                         or delete .git/ferrflow.checkpoint.json to start fresh.",
+                        &existing.head_sha[..8.min(existing.head_sha.len())],
+                        &head_sha[..8.min(head_sha.len())],
+                        &existing.head_sha[..8.min(existing.head_sha.len())]
+                    ));
+                }
+                None => Some(Checkpoint::new(head_sha, tag_names)),
+            }
+        };
+
         let mut plan = ReleasePlan {
             repo: &repo,
             config,
@@ -595,8 +641,15 @@ pub(super) fn run_release_logic(
             files_per_package: &mut files_per_package,
             pkg_outputs: &mut pkg_outputs,
             shared_outputs: &mut shared_outputs,
+            checkpoint: checkpoint.as_mut(),
         };
         execute_release(&mut plan)?;
+        // Release finished cleanly — drop the checkpoint so the next
+        // run starts from scratch instead of trying to resume a
+        // finished release.
+        if !dry_run {
+            Checkpoint::delete(root)?;
+        }
     } else if dry_run && any_bumped {
         let plan = ReleasePlan {
             repo: &repo,
@@ -613,6 +666,7 @@ pub(super) fn run_release_logic(
             files_per_package: &mut files_per_package,
             pkg_outputs: &mut pkg_outputs,
             shared_outputs: &mut shared_outputs,
+            checkpoint: None,
         };
         print_dry_run_hooks(&plan)?;
     }
