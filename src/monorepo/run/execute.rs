@@ -14,6 +14,7 @@ use crate::hooks::{HookContext, HookPoint, resolve_hook, resolve_on_failure, run
 use crate::telemetry;
 use crate::versioning::truncate_version;
 
+use super::checkpoint::{Checkpoint, Phase};
 use super::summary::{TagToCreate, write_github_step_summary};
 use crate::monorepo::preview::build_forge_instance;
 use crate::monorepo::util::{auto_stage_new_files, collect_dirty_files};
@@ -40,6 +41,11 @@ pub(super) struct ReleasePlan<'a> {
     pub files_per_package: &'a mut HashMap<String, Vec<String>>,
     pub pkg_outputs: &'a mut Vec<(String, Vec<String>)>,
     pub shared_outputs: &'a mut Vec<String>,
+    /// Crash-resume marker, persisted at `.git/ferrflow.checkpoint.json`
+    /// as each phase succeeds. `None` on dry-run (we never write
+    /// anything in that mode) and on resumed runs that already finished
+    /// every phase. See #549.
+    pub checkpoint: Option<&'a mut Checkpoint>,
 }
 
 /// Run the commit / branch+PR / tag / floating-tag / forge-release /
@@ -72,28 +78,69 @@ pub(super) fn execute_release(plan: &mut ReleasePlan<'_>) -> Result<()> {
 
     if !plan.dry_run {
         let file_refs: Vec<&str> = files_snapshot.iter().map(String::as_str).collect();
-        run_commit_or_pr(
-            plan,
-            mode,
-            scope,
-            &file_refs,
-            &commit_msg,
-            &release_parts,
-            skip_ci,
-        )?;
-        create_release_tags(plan)?;
-        create_and_move_floating_tags(plan, &mut floating_tag_names)?;
+        if !checkpoint_is_done(plan, Phase::CommitDone) {
+            run_commit_or_pr(
+                plan,
+                mode,
+                scope,
+                &file_refs,
+                &commit_msg,
+                &release_parts,
+                skip_ci,
+            )?;
+            // Record HEAD post-commit so the checkpoint reflects the
+            // actual release commit (not the pre-bump HEAD we started
+            // from). Useful for debug + future resume sanity checks.
+            if let (Some(cp), Some(id)) = (plan.checkpoint.as_mut(), plan.repo.head_id().ok()) {
+                cp.commit_sha = Some(id.to_string());
+            }
+            checkpoint_advance(plan, Phase::CommitDone)?;
+        } else if plan.verbose {
+            eprintln!("  ↻ Resumed: skipping commit (already done)");
+        }
+        if !checkpoint_is_done(plan, Phase::TagsCreated) {
+            create_release_tags(plan)?;
+            create_and_move_floating_tags(plan, &mut floating_tag_names)?;
+            checkpoint_advance(plan, Phase::TagsCreated)?;
+        } else if plan.verbose {
+            eprintln!("  ↻ Resumed: skipping tag creation (already done)");
+        }
     }
 
     run_pre_publish_hooks(plan)?;
 
     if !plan.dry_run {
-        push_and_publish(plan, mode, &floating_tag_names)?;
+        if !checkpoint_is_done(plan, Phase::ReleasesCreated) {
+            push_and_publish(plan, mode, &floating_tag_names)?;
+            checkpoint_advance(plan, Phase::ReleasesCreated)?;
+        } else if plan.verbose {
+            eprintln!("  ↻ Resumed: skipping push + publish (already done)");
+        }
     }
 
     emit_release_telemetry(plan);
-    run_post_publish_hooks(plan)?;
+    if !checkpoint_is_done(plan, Phase::PostPublishDone) {
+        run_post_publish_hooks(plan)?;
+        checkpoint_advance(plan, Phase::PostPublishDone)?;
+    } else if plan.verbose {
+        eprintln!("  ↻ Resumed: skipping post-publish hooks (already done)");
+    }
 
+    Ok(())
+}
+
+fn checkpoint_is_done(plan: &ReleasePlan<'_>, phase: Phase) -> bool {
+    plan.checkpoint
+        .as_ref()
+        .map(|cp| cp.is_done(phase))
+        .unwrap_or(false)
+}
+
+fn checkpoint_advance(plan: &mut ReleasePlan<'_>, phase: Phase) -> Result<()> {
+    if let Some(cp) = plan.checkpoint.as_mut() {
+        cp.advance(phase);
+        cp.save(plan.root)?;
+    }
     Ok(())
 }
 
