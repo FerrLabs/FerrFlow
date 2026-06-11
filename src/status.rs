@@ -49,10 +49,12 @@ pub fn run(config_path: Option<&std::path::Path>, output: &OutputFormat) -> Resu
             "unknown".to_string()
         };
 
+        let skip_markers = config.workspace.effective_commit_skip_markers();
         let commits = get_commits_since_last_tag(
             &repo,
             &tag_search_prefix,
             config.workspace.orphaned_tag_strategy,
+            &skip_markers,
         )?;
         let has_changes = commits
             .iter()

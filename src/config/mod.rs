@@ -22,7 +22,8 @@ pub use types::{
     BranchChannelConfig, ChannelValue, ForgeKind, HooksConfig, OnFailure, OrphanedTagStrategy,
     PrereleaseIdentifier, ReleaseCommitMode, ReleaseCommitScope,
 };
-pub use workspace::WorkspaceConfig;
+#[allow(unused_imports)]
+pub use workspace::{WorkspaceConfig, default_commit_skip_markers};
 
 use format::{CONFIG_FORMATS, DotfileFormat, Json5Format, JsonFormat, TomlFormat};
 #[cfg(feature = "cli")]

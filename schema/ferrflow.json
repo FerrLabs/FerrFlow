@@ -70,6 +70,11 @@
           "type": "boolean",
           "description": "Append [skip ci] to the release commit message. Defaults to true in 'commit' mode, false in 'pr' mode."
         },
+        "commitSkipMarkers": {
+          "type": "array",
+          "description": "Markers in a commit subject line that cause FerrFlow to skip the commit when computing the next version. Matched case-insensitively, subject line only. Defaults to ['[skip ci]', '[ci skip]', '[no ci]', '[skip actions]', '[actions skip]'].",
+          "items": { "type": "string" }
+        },
         "floatingTags": {
           "type": "array",
           "description": "Floating tag levels to create/move on each release. Each level produces a tag pointing to the latest matching release (e.g. 'major' creates a v1 tag for v1.2.3).",

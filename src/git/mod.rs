@@ -16,6 +16,7 @@ pub use auth::get_remote_url;
 pub use commits::{
     GitLog, create_branch_and_commit, create_branch_and_commits, create_commit,
     get_commits_since_last_stable_tag, get_commits_since_last_tag, get_commits_since_oid,
+    subject_has_skip_marker,
 };
 pub use diff::{get_changed_files, get_changed_files_since_oid, get_changed_files_since_tag};
 pub use fetch::fetch_tags;

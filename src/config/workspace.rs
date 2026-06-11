@@ -28,6 +28,8 @@ pub struct WorkspaceConfig {
     pub auto_merge_releases: bool,
     #[serde(default, alias = "skipCi")]
     pub skip_ci: Option<bool>,
+    #[serde(default, alias = "commitSkipMarkers")]
+    pub commit_skip_markers: Option<Vec<String>>,
     #[serde(default, alias = "floatingTags")]
     pub floating_tags: Vec<FloatingTagLevel>,
     #[serde(default, alias = "orphanedTagStrategy")]
@@ -45,6 +47,22 @@ impl WorkspaceConfig {
         self.skip_ci
             .unwrap_or(self.release_commit_mode == ReleaseCommitMode::Commit)
     }
+
+    pub fn effective_commit_skip_markers(&self) -> Vec<String> {
+        self.commit_skip_markers
+            .clone()
+            .unwrap_or_else(default_commit_skip_markers)
+    }
+}
+
+pub fn default_commit_skip_markers() -> Vec<String> {
+    vec![
+        "[skip ci]".to_string(),
+        "[ci skip]".to_string(),
+        "[no ci]".to_string(),
+        "[skip actions]".to_string(),
+        "[actions skip]".to_string(),
+    ]
 }
 
 fn default_auto_merge() -> bool {

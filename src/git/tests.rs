@@ -414,7 +414,13 @@ fn get_commits_since_last_tag_no_tags() {
     create_commit_in_repo(&repo, dir.path(), "a.txt", "feat: first");
     create_commit_in_repo(&repo, dir.path(), "b.txt", "fix: second");
 
-    let commits = get_commits_since_last_tag(&repo, "v", OrphanedTagStrategy::Warn).unwrap();
+    let commits = get_commits_since_last_tag(
+        &repo,
+        "v",
+        OrphanedTagStrategy::Warn,
+        &crate::config::default_commit_skip_markers(),
+    )
+    .unwrap();
     assert_eq!(commits.len(), 2);
     assert_eq!(commits[0].message.trim(), "fix: second");
     assert_eq!(commits[1].message.trim(), "feat: first");
@@ -428,7 +434,13 @@ fn get_commits_since_last_tag_with_tag() {
     create_commit_in_repo(&repo, dir.path(), "b.txt", "fix: second");
     create_commit_in_repo(&repo, dir.path(), "c.txt", "feat: third");
 
-    let commits = get_commits_since_last_tag(&repo, "v", OrphanedTagStrategy::Warn).unwrap();
+    let commits = get_commits_since_last_tag(
+        &repo,
+        "v",
+        OrphanedTagStrategy::Warn,
+        &crate::config::default_commit_skip_markers(),
+    )
+    .unwrap();
     assert_eq!(commits.len(), 2);
     // Most recent first (topological order)
     assert!(commits[0].message.contains("third"));
@@ -443,9 +455,115 @@ fn get_commits_skips_skip_ci() {
     create_commit_in_repo(&repo, dir.path(), "b.txt", "chore(release): bump [skip ci]");
     create_commit_in_repo(&repo, dir.path(), "c.txt", "feat: real change");
 
-    let commits = get_commits_since_last_tag(&repo, "v", OrphanedTagStrategy::Warn).unwrap();
+    let commits = get_commits_since_last_tag(
+        &repo,
+        "v",
+        OrphanedTagStrategy::Warn,
+        &crate::config::default_commit_skip_markers(),
+    )
+    .unwrap();
     assert_eq!(commits.len(), 1);
     assert!(commits[0].message.contains("real change"));
+}
+
+#[test]
+fn get_commits_skips_ci_skip_variant() {
+    let (dir, repo) = init_repo();
+    create_commit_in_repo(&repo, dir.path(), "a.txt", "feat: first");
+    create_lightweight_tag(&repo, "v1.0.0");
+    create_commit_in_repo(&repo, dir.path(), "b.txt", "chore(release): bump [ci skip]");
+    create_commit_in_repo(&repo, dir.path(), "c.txt", "feat: real change");
+
+    let commits = get_commits_since_last_tag(
+        &repo,
+        "v",
+        OrphanedTagStrategy::Warn,
+        &crate::config::default_commit_skip_markers(),
+    )
+    .unwrap();
+    assert_eq!(commits.len(), 1);
+    assert!(commits[0].message.contains("real change"));
+}
+
+#[test]
+fn get_commits_skip_marker_is_case_insensitive() {
+    let (dir, repo) = init_repo();
+    create_commit_in_repo(&repo, dir.path(), "a.txt", "feat: first");
+    create_lightweight_tag(&repo, "v1.0.0");
+    create_commit_in_repo(&repo, dir.path(), "b.txt", "chore(release): bump [SKIP CI]");
+
+    let commits = get_commits_since_last_tag(
+        &repo,
+        "v",
+        OrphanedTagStrategy::Warn,
+        &crate::config::default_commit_skip_markers(),
+    )
+    .unwrap();
+    assert_eq!(commits.len(), 0);
+}
+
+#[test]
+fn get_commits_skip_marker_ignored_in_body() {
+    let (dir, repo) = init_repo();
+    create_commit_in_repo(&repo, dir.path(), "a.txt", "feat: first");
+    create_lightweight_tag(&repo, "v1.0.0");
+    create_commit_in_repo(
+        &repo,
+        dir.path(),
+        "b.txt",
+        "feat: document CI behavior\n\nThis commit explains how [skip ci] works.",
+    );
+
+    let commits = get_commits_since_last_tag(
+        &repo,
+        "v",
+        OrphanedTagStrategy::Warn,
+        &crate::config::default_commit_skip_markers(),
+    )
+    .unwrap();
+    assert_eq!(commits.len(), 1);
+}
+
+#[test]
+fn get_commits_skip_markers_can_be_overridden() {
+    let (dir, repo) = init_repo();
+    create_commit_in_repo(&repo, dir.path(), "a.txt", "feat: first");
+    create_lightweight_tag(&repo, "v1.0.0");
+    create_commit_in_repo(&repo, dir.path(), "b.txt", "feat: real [skip ci]");
+
+    let custom = vec!["[no release]".to_string()];
+    let commits =
+        get_commits_since_last_tag(&repo, "v", OrphanedTagStrategy::Warn, &custom).unwrap();
+    assert_eq!(
+        commits.len(),
+        1,
+        "[skip ci] not in custom set, should not skip"
+    );
+}
+
+#[test]
+fn subject_has_skip_marker_subject_only() {
+    use crate::git::subject_has_skip_marker;
+    let markers = crate::config::default_commit_skip_markers();
+    assert!(subject_has_skip_marker("chore: bump [skip ci]", &markers));
+    assert!(subject_has_skip_marker("chore: bump [SKIP CI]", &markers));
+    assert!(subject_has_skip_marker("chore: bump [ci skip]", &markers));
+    assert!(subject_has_skip_marker("chore: bump [no ci]", &markers));
+    assert!(subject_has_skip_marker(
+        "chore: bump [skip actions]",
+        &markers
+    ));
+    assert!(subject_has_skip_marker(
+        "chore: bump [actions skip]",
+        &markers
+    ));
+    assert!(!subject_has_skip_marker(
+        "feat: documentation\n\nbody mentions [skip ci] only",
+        &markers
+    ));
+    assert!(!subject_has_skip_marker("feat: normal commit", &markers));
+    assert!(!subject_has_skip_marker("", &markers));
+    assert!(!subject_has_skip_marker("anything", &[]));
 }
 
 // -----------------------------------------------------------------------
@@ -974,7 +1092,13 @@ fn get_commits_since_orphaned_tag_with_recovery() {
     let (repo, dir) = create_orphaned_tag_scenario("v1.0.0");
     create_commit_in_repo(&repo, dir.path(), "b.txt", "feat: new feature");
 
-    let commits = get_commits_since_last_tag(&repo, "v", OrphanedTagStrategy::TreeHash).unwrap();
+    let commits = get_commits_since_last_tag(
+        &repo,
+        "v",
+        OrphanedTagStrategy::TreeHash,
+        &crate::config::default_commit_skip_markers(),
+    )
+    .unwrap();
     assert_eq!(commits.len(), 1);
     assert!(commits[0].message.contains("new feature"));
 }
@@ -991,11 +1115,23 @@ fn get_commits_since_last_stable_tag_skips_prereleases() {
     create_commit_in_repo(&repo, dir.path(), "d.txt", "fix: last fix");
 
     // Stable commits should include everything since v1.0.0
-    let commits = get_commits_since_last_stable_tag(&repo, "v", OrphanedTagStrategy::Warn).unwrap();
+    let commits = get_commits_since_last_stable_tag(
+        &repo,
+        "v",
+        OrphanedTagStrategy::Warn,
+        &crate::config::default_commit_skip_markers(),
+    )
+    .unwrap();
     assert_eq!(commits.len(), 3);
 
     // Regular commits should include only since v2.0.0-beta.2
-    let commits = get_commits_since_last_tag(&repo, "v", OrphanedTagStrategy::Warn).unwrap();
+    let commits = get_commits_since_last_tag(
+        &repo,
+        "v",
+        OrphanedTagStrategy::Warn,
+        &crate::config::default_commit_skip_markers(),
+    )
+    .unwrap();
     assert_eq!(commits.len(), 1);
 }
 
