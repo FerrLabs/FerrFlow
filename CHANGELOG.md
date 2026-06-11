@@ -4,6 +4,17 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.3.0] - 2026-06-11
+
+### Features
+
+- feat(release): crash-resume checkpoint (#549) (#556)
+- feat(commit): configurable commit-skip markers, subject-only matching (#527) (#554)
+
+### Bug Fixes
+
+- fix(formats): preserve formatting when bumping JSON files (#526) (#555)
+
 ## [5.2.4] - 2026-06-08
 
 ### Bug Fixes
