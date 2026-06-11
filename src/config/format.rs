@@ -49,6 +49,7 @@ const CAMEL_CASE_KEYS: &[&str] = &[
     "release_commit_scope",
     "auto_merge_releases",
     "skip_ci",
+    "commit_skip_markers",
     "pre_bump",
     "post_bump",
     "pre_commit",

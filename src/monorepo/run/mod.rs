@@ -221,20 +221,26 @@ pub(super) fn run_release_logic(
         // Helpers that route through TagIndex when the strategy allows it,
         // falling back to the per-call slow path. Returns commits walked
         // back to the last (stable or any) tag for the current package.
+        let skip_markers = config.workspace.effective_commit_skip_markers();
         let commits_since_stable = || -> Result<Vec<crate::git::GitLog>> {
             if let (Some(idx), OrphanedTagStrategy::Warn) = (tag_index.as_ref(), strategy) {
                 let stop = idx.find_last_stable_tag_commit(&tag_search_prefix, strategy);
-                get_commits_since_oid(&repo, stop)
+                get_commits_since_oid(&repo, stop, &skip_markers)
             } else {
-                get_commits_since_last_stable_tag(&repo, &tag_search_prefix, strategy)
+                get_commits_since_last_stable_tag(
+                    &repo,
+                    &tag_search_prefix,
+                    strategy,
+                    &skip_markers,
+                )
             }
         };
         let commits_since_any = || -> Result<Vec<crate::git::GitLog>> {
             if let (Some(idx), OrphanedTagStrategy::Warn) = (tag_index.as_ref(), strategy) {
                 let stop = idx.find_last_tag_commit(&tag_search_prefix, strategy);
-                get_commits_since_oid(&repo, stop)
+                get_commits_since_oid(&repo, stop, &skip_markers)
             } else {
-                get_commits_since_last_tag(&repo, &tag_search_prefix, strategy)
+                get_commits_since_last_tag(&repo, &tag_search_prefix, strategy, &skip_markers)
             }
         };
 

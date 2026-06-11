@@ -285,7 +285,13 @@ fn bench_git_operations(c: &mut Criterion) {
         c.bench_function(label, |b| {
             b.iter(|| {
                 black_box(
-                    get_commits_since_last_tag(&repo, "v", OrphanedTagStrategy::Warn).unwrap(),
+                    get_commits_since_last_tag(
+                        &repo,
+                        "v",
+                        OrphanedTagStrategy::Warn,
+                        &ferrflow::config::default_commit_skip_markers(),
+                    )
+                    .unwrap(),
                 );
             });
         });
@@ -408,8 +414,13 @@ fn bench_full_check_flow(c: &mut Criterion) {
         c.bench_function(label, |b| {
             b.iter(|| {
                 let config = Config::load(_dir.path(), None).unwrap();
-                let commits =
-                    get_commits_since_last_tag(&repo, "v", OrphanedTagStrategy::Warn).unwrap();
+                let commits = get_commits_since_last_tag(
+                    &repo,
+                    "v",
+                    OrphanedTagStrategy::Warn,
+                    &ferrflow::config::default_commit_skip_markers(),
+                )
+                .unwrap();
                 for commit in &commits {
                     black_box(determine_bump(&commit.message));
                 }

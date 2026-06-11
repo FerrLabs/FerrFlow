@@ -13,23 +13,26 @@ pub fn get_commits_since_last_tag(
     repo: &Repository,
     tag_prefix: &str,
     strategy: OrphanedTagStrategy,
+    skip_markers: &[String],
 ) -> Result<Vec<GitLog>> {
     let last_tag_oid = find_last_tag_commit(repo, tag_prefix, strategy)?;
-    get_commits_since_oid(repo, last_tag_oid)
+    get_commits_since_oid(repo, last_tag_oid, skip_markers)
 }
 
 pub fn get_commits_since_last_stable_tag(
     repo: &Repository,
     tag_prefix: &str,
     strategy: OrphanedTagStrategy,
+    skip_markers: &[String],
 ) -> Result<Vec<GitLog>> {
     let last_tag_oid = find_last_stable_tag(repo, tag_prefix, strategy)?.map(|t| t.commit_oid);
-    get_commits_since_oid(repo, last_tag_oid)
+    get_commits_since_oid(repo, last_tag_oid, skip_markers)
 }
 
 pub fn get_commits_since_oid(
     repo: &Repository,
     last_tag_oid: Option<ObjectId>,
+    skip_markers: &[String],
 ) -> Result<Vec<GitLog>> {
     let head = repo.head_id()?.detach();
     let mut platform = repo.rev_walk([head]).sorting(Sorting::BreadthFirst);
@@ -50,7 +53,7 @@ pub fn get_commits_since_oid(
             Err(_) => continue,
         };
         let message = String::from_utf8_lossy(raw).into_owned();
-        if message.contains("[skip ci]") {
+        if subject_has_skip_marker(&message, skip_markers) {
             continue;
         }
         commits.push(GitLog {
@@ -60,6 +63,25 @@ pub fn get_commits_since_oid(
     }
 
     Ok(commits)
+}
+
+/// Returns true if the commit subject (first line) contains any of the
+/// configured skip markers, matched case-insensitively.
+///
+/// We scope to the subject line so a commit *body* that quotes or
+/// documents a marker (e.g. release notes referencing `[skip ci]`)
+/// isn't silently dropped.
+pub fn subject_has_skip_marker(message: &str, skip_markers: &[String]) -> bool {
+    if skip_markers.is_empty() {
+        return false;
+    }
+    let subject = message.lines().next().unwrap_or("").to_ascii_lowercase();
+    if subject.is_empty() {
+        return false;
+    }
+    skip_markers
+        .iter()
+        .any(|m| subject.contains(&m.to_ascii_lowercase()))
 }
 
 pub fn create_commit(repo: &Repository, files: &[&str], message: &str) -> Result<()> {

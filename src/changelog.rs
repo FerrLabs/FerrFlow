@@ -33,8 +33,13 @@ pub fn generate_only(config_path: Option<&Path>, dry_run: bool) -> Result<()> {
 
     for pkg in &config.packages {
         let tag_prefix = format!("{}@v", pkg.name);
-        let commits =
-            get_commits_since_last_tag(&repo, &tag_prefix, config.workspace.orphaned_tag_strategy)?;
+        let skip_markers = config.workspace.effective_commit_skip_markers();
+        let commits = get_commits_since_last_tag(
+            &repo,
+            &tag_prefix,
+            config.workspace.orphaned_tag_strategy,
+            &skip_markers,
+        )?;
 
         if commits.is_empty() {
             continue;
