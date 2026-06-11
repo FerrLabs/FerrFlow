@@ -64,7 +64,10 @@ impl Forge for GitLabForge {
         if draft {
             eprintln!(
                 "{}",
-                "Warning: GitLab does not support draft releases, creating as published".yellow()
+                "Warning: --draft is not supported on GitLab. The release will be created as \
+                 published immediately. Use a tag-protected branch or a manual approval gate if \
+                 you need a review step before publishing."
+                    .yellow()
             );
         }
 

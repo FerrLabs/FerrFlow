@@ -153,7 +153,7 @@ Add `$schema` to get autocompletion and validation in VS Code, WebStorm, and any
       "name": "my-app",
       "path": ".",
       "changelog": "CHANGELOG.md",
-      "versioned_files": [
+      "versionedFiles": [
         { "path": "package.json", "format": "json" }
       ]
     }
@@ -174,7 +174,7 @@ Add `$schema` to get autocompletion and validation in VS Code, WebStorm, and any
       name: "my-app",
       path: ".",
       changelog: "CHANGELOG.md",
-      versioned_files: [
+      versionedFiles: [
         { path: "package.json", format: "json" },
       ],
     },
@@ -211,8 +211,8 @@ format = "toml"
       "name": "api",
       "path": "services/api",
       "changelog": "services/api/CHANGELOG.md",
-      "shared_paths": ["services/shared/"],
-      "versioned_files": [
+      "sharedPaths": ["services/shared/"],
+      "versionedFiles": [
         { "path": "services/api/Cargo.toml", "format": "toml" }
       ]
     },
@@ -220,7 +220,7 @@ format = "toml"
       "name": "frontend",
       "path": "frontend",
       "changelog": "frontend/CHANGELOG.md",
-      "versioned_files": [
+      "versionedFiles": [
         { "path": "frontend/package.json", "format": "json" }
       ]
     }
