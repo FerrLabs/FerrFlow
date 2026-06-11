@@ -4,6 +4,36 @@ use std::path::PathBuf;
 use crate::config::Config;
 use crate::error_code::{self, ErrorCodeExt};
 
+/// Percent-encode bytes outside the unreserved set, preserving forward
+/// slashes so a multi-segment path (`src/lib/foo.rs`) keeps its
+/// structure. Used when interpolating user-supplied paths into URL
+/// path positions. See #553.
+fn encode_path(s: &str) -> String {
+    encode_with_safe(s, |b| matches!(b, b'/'))
+}
+
+/// Percent-encode bytes outside the unreserved set with no exceptions —
+/// the value lands in a single URL query parameter and must not
+/// smuggle further `?`, `&`, `=`, or `#` characters. Used for the git
+/// ref (`?ref=…`).
+fn encode_query_value(s: &str) -> String {
+    encode_with_safe(s, |_| false)
+}
+
+fn encode_with_safe(s: &str, extra_safe: impl Fn(u8) -> bool) -> String {
+    let mut out = String::with_capacity(s.len());
+    for b in s.bytes() {
+        let unreserved =
+            b.is_ascii_alphanumeric() || matches!(b, b'-' | b'.' | b'_' | b'~') || extra_safe(b);
+        if unreserved {
+            out.push(b as char);
+        } else {
+            out.push_str(&format!("%{b:02X}"));
+        }
+    }
+    out
+}
+
 pub trait FileSource {
     fn read_file(&self, path: &str) -> Result<Option<Vec<u8>>>;
     fn path_exists(&self, path: &str) -> Result<bool>;
@@ -72,10 +102,12 @@ impl FileSource for GitHubSource {
     fn read_file(&self, path: &str) -> Result<Option<Vec<u8>>> {
         let mut url = format!(
             "https://api.github.com/repos/{}/{}/contents/{}",
-            self.owner, self.repo, path
+            encode_path(&self.owner),
+            encode_path(&self.repo),
+            encode_path(path)
         );
         if let Some(ref r) = self.git_ref {
-            url.push_str(&format!("?ref={r}"));
+            url.push_str(&format!("?ref={}", encode_query_value(r)));
         }
         let mut req = ureq::get(&url).header("Accept", "application/vnd.github.v3.raw");
         if let Some(ref token) = self.token {
@@ -108,13 +140,15 @@ pub struct GitLabSource {
 impl FileSource for GitLabSource {
     fn read_file(&self, path: &str) -> Result<Option<Vec<u8>>> {
         let project_id = format!("{}/{}", self.owner, self.repo);
-        let encoded_project = project_id.replace('/', "%2F");
-        let encoded_path = path.replace('/', "%2F");
+        // Percent-encode everything (including the embedded slash) so
+        // the project id and the file path land as single URL segments.
+        let encoded_project = encode_query_value(&project_id);
+        let encoded_path = encode_query_value(path);
         let mut url = format!(
             "https://gitlab.com/api/v4/projects/{encoded_project}/repository/files/{encoded_path}/raw"
         );
         if let Some(ref r) = self.git_ref {
-            url.push_str(&format!("?ref={r}"));
+            url.push_str(&format!("?ref={}", encode_query_value(r)));
         } else {
             url.push_str("?ref=main");
         }
@@ -186,4 +220,30 @@ pub fn load_config_from_source(
         CONFIG_FILENAMES.join(", ")
     ))
     .error_code(error_code::VALIDATE_NO_CONFIG)?
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn encode_path_preserves_slashes_and_unreserved() {
+        assert_eq!(encode_path("src/foo.rs"), "src/foo.rs");
+        assert_eq!(encode_path("a-_.~b"), "a-_.~b");
+    }
+
+    #[test]
+    fn encode_path_percent_encodes_specials() {
+        assert_eq!(encode_path("a b"), "a%20b");
+        assert_eq!(encode_path("a?b"), "a%3Fb");
+        assert_eq!(encode_path("a#b"), "a%23b");
+        assert_eq!(encode_path("a&b"), "a%26b");
+    }
+
+    #[test]
+    fn encode_query_value_encodes_slash_too() {
+        assert_eq!(encode_query_value("feat/x"), "feat%2Fx");
+        assert_eq!(encode_query_value("a=b&c"), "a%3Db%26c");
+        assert_eq!(encode_query_value("a?b#c"), "a%3Fb%23c");
+    }
 }

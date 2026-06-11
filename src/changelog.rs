@@ -72,7 +72,7 @@ pub fn generate_only(config_path: Option<&Path>, dry_run: bool) -> Result<()> {
         let new_version = bump_version(&current_version, bump)?;
 
         let changelog_path = match &pkg.changelog {
-            Some(rel) => root.join(rel),
+            Some(rel) => crate::formats::join_within_repo(&root, rel)?,
             None => {
                 println!(
                     "{}",
