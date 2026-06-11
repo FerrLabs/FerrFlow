@@ -1,6 +1,6 @@
 #[cfg(feature = "cli")]
 use crate::conventional_commits::determine_bump;
-use crate::conventional_commits::{BumpType, CommitClass, classify, parse_subject};
+use crate::conventional_commits::{BumpType, CommitCategory, classify_commit, parse_subject};
 use anyhow::Result;
 use chrono::Local;
 use std::path::Path;
@@ -101,18 +101,24 @@ pub fn generate_only(config_path: Option<&Path>, dry_run: bool) -> Result<()> {
 
 pub fn build_section(new_version: &str, commits: &[GitLog]) -> String {
     let date = Local::now().format("%Y-%m-%d").to_string();
+    let mut breaking = Vec::new();
     let mut features = Vec::new();
     let mut fixes = Vec::new();
-    let mut breaking = Vec::new();
+    let mut refactors = Vec::new();
 
+    // Reuse the same classifier that drives `determine_bump` so the
+    // changelog can never label a release "Breaking Changes" while the
+    // bump engine computed a minor — and so `refactor:` commits, which
+    // are Patch in the bump engine, no longer disappear from the
+    // rendered section. See #525.
     for commit in commits {
         let subject = parse_subject(&commit.message);
-
-        match classify(&commit.message) {
-            CommitClass::Breaking => breaking.push(format!("- {subject}")),
-            CommitClass::Feature => features.push(format!("- {subject}")),
-            CommitClass::Fix => fixes.push(format!("- {subject}")),
-            CommitClass::Other => {}
+        match classify_commit(&commit.message) {
+            CommitCategory::Breaking => breaking.push(format!("- {subject}")),
+            CommitCategory::Feature => features.push(format!("- {subject}")),
+            CommitCategory::Fix => fixes.push(format!("- {subject}")),
+            CommitCategory::Refactor => refactors.push(format!("- {subject}")),
+            CommitCategory::Other => {}
         }
     }
 
@@ -131,6 +137,11 @@ pub fn build_section(new_version: &str, commits: &[GitLog]) -> String {
     if !fixes.is_empty() {
         section.push_str("\n### Bug Fixes\n\n");
         section.push_str(&fixes.join("\n"));
+        section.push('\n');
+    }
+    if !refactors.is_empty() {
+        section.push_str("\n### Refactoring\n\n");
+        section.push_str(&refactors.join("\n"));
         section.push('\n');
     }
 
@@ -315,7 +326,11 @@ mod tests {
     }
 
     #[test]
-    fn build_section_refactor_chore_excluded() {
+    fn build_section_chore_docs_excluded_refactor_kept() {
+        // chore/docs/ci/style/test/build don't bump and don't appear in
+        // the user-facing changelog. refactor: DOES bump (patch) and
+        // must appear, otherwise a release shows up with an empty
+        // changelog section. See #525.
         let commits = make_commits(&[
             "refactor: clean up",
             "chore: update deps",
@@ -329,6 +344,29 @@ mod tests {
         assert!(!section.contains("### Features"));
         assert!(!section.contains("### Bug Fixes"));
         assert!(!section.contains("### Breaking Changes"));
+        assert!(
+            section.contains("### Refactoring"),
+            "refactor: must render its own section, not be silently dropped"
+        );
+        assert!(section.contains("- refactor: clean up"));
+        assert!(!section.contains("chore: update deps"));
+        assert!(!section.contains("docs: update readme"));
+        assert!(!section.contains("ci: fix pipeline"));
+        assert!(!section.contains("style: format code"));
+        assert!(!section.contains("test: add tests"));
+        assert!(!section.contains("build: update config"));
+    }
+
+    #[test]
+    fn build_section_does_not_misclassify_feature_word() {
+        // `feature:` (no colon-delimited type) and `feat add` (no colon)
+        // are not the conventional `feat:` type and must not appear as
+        // features.
+        let commits = make_commits(&["feature: misnamed type", "feat add no colon"]);
+        let section = build_section("1.0.1", &commits);
+        assert!(!section.contains("### Features"));
+        assert!(!section.contains("misnamed type"));
+        assert!(!section.contains("no colon"));
     }
 
     #[test]

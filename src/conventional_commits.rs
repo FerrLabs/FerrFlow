@@ -22,7 +22,6 @@ impl std::fmt::Display for BumpType {
 
 static BREAKING_RE: OnceLock<Regex> = OnceLock::new();
 static FEAT_RE: OnceLock<Regex> = OnceLock::new();
-static PATCH_RE: OnceLock<Regex> = OnceLock::new();
 
 fn breaking_header_re() -> &'static Regex {
     BREAKING_RE.get_or_init(|| {
@@ -34,58 +33,70 @@ fn feat_header_re() -> &'static Regex {
     FEAT_RE.get_or_init(|| Regex::new(r"^feat(\(.+\))?:").unwrap())
 }
 
-fn patch_header_re() -> &'static Regex {
-    PATCH_RE.get_or_init(|| Regex::new(r"^(fix|perf|refactor)(\(.+\))?:").unwrap())
-}
-
 static BREAKING_FOOTER_RE: OnceLock<Regex> = OnceLock::new();
 
 fn breaking_footer_re() -> &'static Regex {
     BREAKING_FOOTER_RE.get_or_init(|| Regex::new(r"(?m)^BREAKING[ -]CHANGE:").unwrap())
 }
 
-static FIX_RE: OnceLock<Regex> = OnceLock::new();
-
-fn fix_header_re() -> &'static Regex {
-    FIX_RE.get_or_init(|| Regex::new(r"^(fix|perf)(\(.+\))?:").unwrap())
+pub fn determine_bump(message: &str) -> BumpType {
+    match classify_commit(message) {
+        CommitCategory::Breaking => BumpType::Major,
+        CommitCategory::Feature => BumpType::Minor,
+        CommitCategory::Fix | CommitCategory::Refactor => BumpType::Patch,
+        CommitCategory::Other => BumpType::None,
+    }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum CommitClass {
+/// Author-facing categorization of a single commit. Drives both the
+/// version bump (via [`determine_bump`]) and changelog section grouping,
+/// so the two can't disagree the way they used to. See #525.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CommitCategory {
+    /// `feat!:`, `fix(scope)!:`, etc. or a `BREAKING CHANGE:` footer.
     Breaking,
+    /// `feat:` or `feat(scope):` (and not breaking).
     Feature,
+    /// `fix:` / `perf:` — patch-bumping bug or performance changes.
     Fix,
+    /// `refactor:` — patch-bumping internal restructuring. Distinct
+    /// from `Fix` so the changelog can render it as its own section
+    /// (the prior code dropped refactor commits entirely from the
+    /// changelog while still letting them trigger a release).
+    Refactor,
+    /// `chore:` / `docs:` / `ci:` / `style:` / `test:` / `build:` or any
+    /// non-conventional message. Doesn't bump and shouldn't appear in
+    /// the user-facing changelog.
     Other,
 }
 
-pub fn classify(message: &str) -> CommitClass {
+pub fn classify_commit(message: &str) -> CommitCategory {
     let header = parse_subject(message);
 
     if breaking_header_re().is_match(header) || breaking_footer_re().is_match(message) {
-        return CommitClass::Breaking;
+        return CommitCategory::Breaking;
     }
     if feat_header_re().is_match(header) {
-        return CommitClass::Feature;
+        return CommitCategory::Feature;
     }
-    if fix_header_re().is_match(header) {
-        return CommitClass::Fix;
+    if fix_perf_header_re().is_match(header) {
+        return CommitCategory::Fix;
     }
-    CommitClass::Other
+    if refactor_header_re().is_match(header) {
+        return CommitCategory::Refactor;
+    }
+    CommitCategory::Other
 }
 
-pub fn determine_bump(message: &str) -> BumpType {
-    let header = parse_subject(message);
+static FIX_PERF_RE: OnceLock<Regex> = OnceLock::new();
+static REFACTOR_RE: OnceLock<Regex> = OnceLock::new();
 
-    if breaking_header_re().is_match(header) || breaking_footer_re().is_match(message) {
-        return BumpType::Major;
-    }
-    if feat_header_re().is_match(header) {
-        return BumpType::Minor;
-    }
-    if patch_header_re().is_match(header) {
-        return BumpType::Patch;
-    }
-    BumpType::None
+fn fix_perf_header_re() -> &'static Regex {
+    FIX_PERF_RE.get_or_init(|| Regex::new(r"^(fix|perf)(\(.+\))?:").unwrap())
+}
+
+fn refactor_header_re() -> &'static Regex {
+    REFACTOR_RE.get_or_init(|| Regex::new(r"^refactor(\(.+\))?:").unwrap())
 }
 
 pub fn parse_subject(message: &str) -> &str {
