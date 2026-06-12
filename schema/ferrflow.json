@@ -164,7 +164,21 @@
                 "format": {
                   "type": "string",
                   "description": "File format used to locate and update the version field.",
-                  "enum": ["csproj", "toml", "json", "xml", "gradle", "gomod", "helm", "txt"]
+                  "enum": [
+                    "csproj",
+                    "toml",
+                    "json",
+                    "xml",
+                    "gradle",
+                    "gomod",
+                    "helm",
+                    "chartyaml",
+                    "pubspecyaml",
+                    "mixexs",
+                    "gemspec",
+                    "packageswift",
+                    "txt"
+                  ]
                 },
                 "selector": {
                   "type": "string",
