@@ -78,6 +78,9 @@ pub(super) fn bump_zerover(current: &str, bump: BumpType) -> Result<String> {
         .map_err(|e| anyhow::anyhow!("Invalid semver '{}': {}", current, e))
         .error_code(error_code::VERSIONING_INVALID_SEMVER)?;
 
+    v.pre = semver::Prerelease::EMPTY;
+    v.build = semver::BuildMetadata::EMPTY;
+
     match bump {
         BumpType::Major => {
             v.minor += 1;
@@ -95,4 +98,27 @@ pub(super) fn bump_zerover(current: &str, bump: BumpType) -> Result<String> {
 
     v.major = 0;
     Ok(v.to_string())
+}
+
+#[cfg(test)]
+mod zerover_tests {
+    use super::*;
+
+    #[test]
+    fn zerover_clears_prerelease_and_build_metadata() {
+        assert_eq!(
+            bump_zerover("0.4.0-beta.1+build", BumpType::Minor).unwrap(),
+            "0.5.0"
+        );
+        assert_eq!(
+            bump_zerover("0.4.0-rc.2", BumpType::Patch).unwrap(),
+            "0.4.1"
+        );
+    }
+
+    #[test]
+    fn zerover_keeps_major_at_zero() {
+        assert_eq!(bump_zerover("0.3.5", BumpType::Major).unwrap(), "0.4.0");
+        assert_eq!(bump_zerover("1.2.3", BumpType::Minor).unwrap(), "0.3.0");
+    }
 }
