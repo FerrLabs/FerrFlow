@@ -91,12 +91,14 @@ Un package peut avoir autant d'entrées de fichiers versionnés que nécessaire 
   <TabItem label="JSON">
     ```json title="ferrflow.json"
     {
-      "package": {
-        "versionedFiles": [
-          { "path": "Cargo.toml", "format": "toml" },
-          { "path": "npm/package.json", "format": "json" }
-        ]
-      }
+      "package": [
+        {
+          "versionedFiles": [
+            { "path": "Cargo.toml", "format": "toml" },
+            { "path": "npm/package.json", "format": "json" }
+          ]
+        }
+      ]
     }
     ```
   </TabItem>
@@ -114,23 +116,15 @@ Un package peut avoir autant d'entrées de fichiers versionnés que nécessaire 
   <TabItem label="JSON5">
     ```json5 title="ferrflow.json5"
     {
-      package: {
-        versionedFiles: [
-          { path: "Cargo.toml", format: "toml" },
-          { path: "npm/package.json", format: "json" },
-        ],
-      },
+      package: [
+        {
+          versionedFiles: [
+            { path: "Cargo.toml", format: "toml" },
+            { path: "npm/package.json", format: "json" },
+          ],
+        },
+      ],
     }
-    ```
-  </TabItem>
-  <TabItem label="YAML">
-    ```yaml title="ferrflow.yaml"
-    package:
-      versionedFiles:
-        - path: Cargo.toml
-          format: toml
-        - path: npm/package.json
-          format: json
     ```
   </TabItem>
 </Tabs>

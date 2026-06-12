@@ -97,26 +97,11 @@ Add `"$schema": "https://ferrflow.com/schema/ferrflow.json"` to your JSON config
     }
     ```
   </TabItem>
-  <TabItem label="YAML">
-    ```yaml
-    workspace:
-      tagTemplate: "v{version}"
-
-    package:
-      - name: my-app
-        path: "."
-        changelog: CHANGELOG.md
-        versionedFiles:
-          - path: Cargo.toml
-            format: toml
-    ```
-  </TabItem>
 </Tabs>
 
 <Aside type="note">
 JSON, JSON5, and TypeScript/JavaScript configs use **camelCase** keys (`tagTemplate`, `versionedFiles`).
 TOML configs use **snake_case** keys (`tag_template`, `versioned_files`).
-YAML configs support both, but **camelCase** is recommended for consistency with JSON.
 All forms are equivalent.
 </Aside>
 
@@ -184,12 +169,16 @@ Global settings that apply to all packages.
 | `tagTemplate` | string | `"v{version}"` or `"{name}@v{version}"` | Tag naming pattern. Uses `{version}` and `{name}` placeholders. Defaults to `v{version}` for single-package repos and `{name}@v{version}` for monorepos. |
 | `versioning` | string | `"semver"` | Default versioning strategy for all packages |
 | `releaseCommitMode` | string | `"commit"` | How to handle the release commit: `"commit"`, `"pr"`, or `"none"` |
+| `releaseCommitScope` | string | `"grouped"` | In a monorepo where several packages are bumped at once, whether to create a single `"grouped"` commit or one commit `"per-package"`. Only matters when multiple packages bump. |
+| `forge` | string | `"auto"` | Git forge override: `"auto"` detects from the remote URL, `"github"` or `"gitlab"` force a forge (useful for self-hosted instances on custom domains). |
 | `skipCi` | boolean | depends on mode | Add `[skip ci]` to release commits. Defaults to `true` when mode is `"commit"`, `false` otherwise. |
+| `commitSkipMarkers` | array | see below | Markers in a commit subject that make FerrFlow ignore the commit when computing a bump. Defaults to `["[skip ci]", "[ci skip]", "[no ci]", "[skip actions]", "[actions skip]"]`. |
 | `autoMergeReleases` | boolean | `true` | Enable auto-merge on release PRs (only applies when mode is `"pr"`) |
-| `recoverMissedReleases` | boolean | `false` | When enabled, if FerrFlow finds unreleased commits spanning multiple version bumps, it creates all intermediate releases instead of jumping to the latest version |
+| `recoverMissedReleases` | boolean | `false` | Compare versioned files against the last tag instead of just the last commit, recovering releases missed earlier in a monorepo. |
 | `floatingTags` | array | `[]` | Floating tag levels to create on each release: `"major"`, `"minor"`. For example, `["major"]` creates a `v1` tag that always points to the latest `v1.x.y` release. |
 | `orphanedTagStrategy` | string | `"warn"` | How to handle tags pointing to orphaned commits after rebase + force-push: `"warn"`, `"treeHash"`, or `"message"` |
-| `telemetry` | boolean | `true` | Send anonymous usage telemetry ([details](/docs/legal/telemetry)) |
+| `branches` | array | `[]` | Map branches to pre-release channels (see [Pre-release channels](#pre-release-channels)). |
+| `anonymous_telemetry` | boolean | `true` | Send anonymous usage statistics ([details](/docs/legal/telemetry)). No identifying data is collected. The old `telemetry` key is a deprecated alias — prefer `anonymous_telemetry` in new configs. |
 
 ### Tag template
 
@@ -225,12 +214,6 @@ The `tagTemplate` field controls how git tags are named. Available placeholders:
     }
     ```
   </TabItem>
-  <TabItem label="YAML">
-    ```yaml title="ferrflow.yaml"
-    workspace:
-      tagTemplate: "v{version}"
-    ```
-  </TabItem>
 </Tabs>
 
 For monorepos, use `{name}` to namespace tags per package:
@@ -258,12 +241,6 @@ For monorepos, use `{name}` to namespace tags per package:
         tagTemplate: "{name}@v{version}",
       },
     }
-    ```
-  </TabItem>
-  <TabItem label="YAML">
-    ```yaml title="ferrflow.yaml"
-    workspace:
-      tagTemplate: "{name}@v{version}"
     ```
   </TabItem>
 </Tabs>
@@ -295,13 +272,6 @@ Floating tags are version aliases that always point to the latest release matchi
         floatingTags: ["major"],
       },
     }
-    ```
-  </TabItem>
-  <TabItem label="YAML">
-    ```yaml title="ferrflow.yaml"
-    workspace:
-      floatingTags:
-        - major
     ```
   </TabItem>
 </Tabs>
@@ -343,12 +313,6 @@ When a branch is rebased and force-pushed, existing tags may point to commits th
         orphanedTagStrategy: "treeHash",
       },
     }
-    ```
-  </TabItem>
-  <TabItem label="YAML">
-    ```yaml title="ferrflow.yaml"
-    workspace:
-      orphanedTagStrategy: treeHash
     ```
   </TabItem>
 </Tabs>
@@ -399,13 +363,6 @@ Controls how FerrFlow handles the commit that updates version files and changelo
     }
     ```
   </TabItem>
-  <TabItem label="YAML">
-    ```yaml title="ferrflow.yaml"
-    workspace:
-      releaseCommitMode: pr
-      autoMergeReleases: true
-    ```
-  </TabItem>
 </Tabs>
 
 ### Versioning strategies
@@ -446,10 +403,54 @@ FerrFlow supports multiple versioning strategies, configurable at workspace or p
     }
     ```
   </TabItem>
-  <TabItem label="YAML">
-    ```yaml title="ferrflow.yaml"
-    workspace:
-      versioning: calver
+</Tabs>
+
+### Pre-release channels
+
+The `branches` array maps branch names (or glob patterns) to pre-release channels. When FerrFlow runs on a branch matching an entry, it releases on that channel — e.g. `1.4.0-beta.1` instead of `1.4.0`. The same mapping is what `--channel` on `ferrflow check` and `ferrflow release` overrides ad-hoc.
+
+Each entry has:
+
+| Field | Type | Description |
+|---|---|---|
+| `name` | string | Branch name or glob pattern (e.g. `"main"`, `"release/*"`) |
+| `channel` | string or `false` | Channel name (`"beta"`, `"rc"`, …), or `false` for a stable release |
+| `prereleaseIdentifier` | string | Strategy for the identifier appended after the channel name |
+
+<Tabs syncKey="config-format">
+  <TabItem label="JSON">
+    ```json title="ferrflow.json"
+    {
+      "workspace": {
+        "branches": [
+          { "name": "main", "channel": false },
+          { "name": "next", "channel": "beta" }
+        ]
+      }
+    }
+    ```
+  </TabItem>
+  <TabItem label="TOML">
+    ```toml title="ferrflow.toml"
+    [[workspace.branches]]
+    name = "main"
+    channel = false
+
+    [[workspace.branches]]
+    name = "next"
+    channel = "beta"
+    ```
+  </TabItem>
+  <TabItem label="JSON5">
+    ```json5 title="ferrflow.json5"
+    {
+      workspace: {
+        branches: [
+          { name: "main", channel: false },
+          { name: "next", channel: "beta" },
+        ],
+      },
+    }
     ```
   </TabItem>
 </Tabs>
@@ -521,18 +522,6 @@ Files where the version number should be updated.
     }
     ```
   </TabItem>
-  <TabItem label="YAML">
-    ```yaml title="ferrflow.yaml"
-    package:
-      - name: my-app
-        path: "."
-        versionedFiles:
-          - path: Cargo.toml
-            format: toml
-          - path: npm/package.json
-            format: json
-    ```
-  </TabItem>
 </Tabs>
 
 | `format` | File | Field updated |
@@ -582,14 +571,6 @@ Files where the version number should be updated.
         },
       ],
     }
-    ```
-  </TabItem>
-  <TabItem label="YAML">
-    ```yaml title="ferrflow.yaml"
-    package:
-      - name: my-action
-        path: "."
-        versionedFiles: []
     ```
   </TabItem>
 </Tabs>
@@ -672,18 +653,6 @@ post_publish    ← push Docker images, notify Slack, publish packages
         },
       },
     }
-    ```
-  </TabItem>
-  <TabItem label="YAML">
-    ```yaml
-    workspace:
-      hooks:
-        preBump: cargo test
-        postBump: node scripts/sync-deps.js
-        preCommit: cargo fmt --check
-        prePublish: cargo build --release
-        postPublish: "make docker-push && ./scripts/notify.sh"
-        onFailure: abort
     ```
   </TabItem>
 </Tabs>
@@ -772,20 +741,6 @@ Package-level hooks **replace** workspace-level hooks for that package (they are
     }
     ```
   </TabItem>
-  <TabItem label="YAML">
-    ```yaml
-    workspace:
-      hooks:
-        preBump: "echo releasing $FERRFLOW_PACKAGE"
-        postPublish: make notify
-
-    package:
-      - name: api
-        path: packages/api
-        hooks:
-          preBump: cargo test
-    ```
-  </TabItem>
 </Tabs>
 
 In this example, the `api` package runs `cargo test` for `preBump` (overriding the workspace echo) but inherits the workspace `postPublish` hook.
@@ -860,22 +815,6 @@ In this example, the `api` package runs `cargo test` for `preBump` (overriding t
         },
       ],
     }
-    ```
-  </TabItem>
-  <TabItem label="YAML">
-    ```yaml title="ferrflow.yaml"
-    workspace:
-      tagTemplate: "v{version}"
-
-    package:
-      - name: ferrflow
-        path: "."
-        changelog: CHANGELOG.md
-        versionedFiles:
-          - path: Cargo.toml
-            format: toml
-          - path: npm/package.json
-            format: json
     ```
   </TabItem>
 </Tabs>
@@ -967,31 +906,6 @@ In this example, the `api` package runs `cargo test` for `preBump` (overriding t
         },
       ],
     }
-    ```
-  </TabItem>
-  <TabItem label="YAML">
-    ```yaml title="ferrflow.yaml"
-    workspace:
-      tagTemplate: "{name}@v{version}"
-
-    package:
-      - name: api
-        path: packages/api
-        changelog: packages/api/CHANGELOG.md
-        sharedPaths:
-          - packages/shared/
-        versionedFiles:
-          - path: packages/api/Cargo.toml
-            format: toml
-
-      - name: site
-        path: packages/site
-        changelog: packages/site/CHANGELOG.md
-        sharedPaths:
-          - packages/shared/
-        versionedFiles:
-          - path: packages/site/package.json
-            format: json
     ```
   </TabItem>
 </Tabs>
