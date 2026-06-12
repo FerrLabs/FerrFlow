@@ -491,7 +491,7 @@ on_failure = "abort"  # or "continue"
 
 If a hook exits non-zero and `on_failure` is `abort` (default), the release is cancelled. Set `on_failure` to `continue` to ignore hook failures.
 
-Hook commands receive environment variables: `FERRFLOW_PACKAGE`, `FERRFLOW_VERSION`, `FERRFLOW_PREV_VERSION`, `FERRFLOW_CHANNEL`, `FERRFLOW_IS_PRERELEASE`.
+Hook commands receive environment variables: `FERRFLOW_PACKAGE`, `FERRFLOW_OLD_VERSION`, `FERRFLOW_NEW_VERSION`, `FERRFLOW_BUMP_TYPE`, `FERRFLOW_TAG`, `FERRFLOW_PACKAGE_PATH`, `FERRFLOW_DRY_RUN`, `FERRFLOW_CHANNEL`, `FERRFLOW_IS_PRERELEASE`.
 
 ## Conventional Commits
 
