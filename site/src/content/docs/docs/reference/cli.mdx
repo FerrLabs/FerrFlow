@@ -13,10 +13,11 @@ ferrflow release [OPTIONS]
 
 | Flag | Description |
 |---|---|
-| `--dry-run` | Preview all changes without writing, committing, or pushing |
 | `--force` | Allow floating tags to move backward to a lower version |
 | `--force-version <VERSION>` | Force a specific version, skipping commit analysis. Format: `VERSION` (single repo) or `NAME@VERSION` (monorepo) |
-| `--verbose`, `-v` | Show detailed output including commit hashes and file diffs |
+| `--channel <NAME>` | Pre-release channel override (e.g. `beta`, `rc`, `dev`) |
+| `--draft` | Create releases as drafts (GitHub only). A later `ferrflow release` without `--draft` detects and publishes existing drafts automatically |
+| `--force-unlock` | Break an existing `.git/ferrflow.lock` before acquiring it. Use only when no other `ferrflow release` is running — e.g. after a crash left the lockfile behind |
 
 **What it does:**
 1. Scans commits since the last tag for each package
@@ -62,11 +63,17 @@ From there the first `feat:` commit bumps to `0.1.0` / `1` / today's date / … 
 
 ## `ferrflow check`
 
-Preview what `ferrflow release` would do without making any changes. Equivalent to `ferrflow release --dry-run`.
+Preview what `ferrflow release` would do without making any changes.
 
 ```bash
-ferrflow check
+ferrflow check [OPTIONS]
 ```
+
+| Flag | Description |
+|---|---|
+| `--json` | Output as JSON |
+| `--channel <NAME>` | Pre-release channel override (e.g. `beta`, `rc`, `dev`) |
+| `--comment` | Post a preview comment on the current PR/MR |
 
 ---
 
@@ -75,12 +82,10 @@ ferrflow check
 Generate or update `CHANGELOG.md` only, without bumping versions or creating tags.
 
 ```bash
-ferrflow changelog [OPTIONS]
+ferrflow changelog
 ```
 
-| Flag | Description |
-|---|---|
-| `--dry-run` | Print the changelog entry without writing to disk |
+Takes no command-specific flags. Use the global `--dry-run` to print the entry without writing it.
 
 ---
 
@@ -149,12 +154,42 @@ ferrflow tag [PACKAGE] [OPTIONS]
 
 ---
 
+## `ferrflow validate`
+
+Validate the config and the versioned files it points at, without bumping anything. Pass `--repo` to validate a remote repository instead of the working tree.
+
+```bash
+ferrflow validate [OPTIONS]
+```
+
+| Flag | Description |
+|---|---|
+| `--json` | Output as JSON |
+| `--repo <REPO>` | Remote repository to validate (e.g. `owner/repo` for GitHub, or `gitlab:group/project`) |
+| `--ref <REF>` | Git ref for remote validation (branch, tag, or commit) |
+
+---
+
+## `ferrflow completions`
+
+Generate a shell completion script and print it to stdout.
+
+```bash
+ferrflow completions <SHELL>
+```
+
+`<SHELL>` is one of `bash`, `elvish`, `fish`, `powershell`, or `zsh`.
+
+---
+
 ## Global flags
 
 These flags work with all commands:
 
 | Flag | Description |
 |---|---|
-| `--config <PATH>` | Path to a custom config file (default: auto-detected). Also accepts `FERRFLOW_CONFIG` env variable. |
+| `--dry-run` | Show what would happen without making any changes |
+| `--verbose`, `-v` | Verbose output, including commit hashes and file diffs |
+| `--config <PATH>` | Path to a custom config file (default: auto-detected). Also accepts the `FERRFLOW_CONFIG` env variable. |
 | `--version` | Print the FerrFlow version and exit |
 | `--help`, `-h` | Print help |

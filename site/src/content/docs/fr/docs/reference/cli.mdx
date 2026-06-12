@@ -13,10 +13,11 @@ ferrflow release [OPTIONS]
 
 | Option | Description |
 |---|---|
-| `--dry-run` | Prévisualiser tous les changements sans écrire, committer ou pousser |
 | `--force` | Autoriser les floating tags à reculer vers une version inférieure |
 | `--force-version <VERSION>` | Forcer une version spécifique, sans analyser les commits. Format : `VERSION` (repo simple) ou `NAME@VERSION` (monorepo) |
-| `--verbose`, `-v` | Afficher la sortie détaillée incluant les hashes de commits et les diffs de fichiers |
+| `--channel <NAME>` | Canal de pré-release à utiliser (ex. `beta`, `rc`, `dev`) |
+| `--draft` | Créer les releases en brouillon (GitHub uniquement). Un `ferrflow release` ultérieur sans `--draft` détecte et publie automatiquement les brouillons existants |
+| `--force-unlock` | Forcer la levée d'un verrou `.git/ferrflow.lock` existant. À n'utiliser que si aucun autre `ferrflow release` n'est en cours — par exemple après un crash ayant laissé le fichier de verrou |
 
 **Ce que ça fait :**
 1. Scanne les commits depuis le dernier tag pour chaque package
@@ -31,11 +32,17 @@ ferrflow release [OPTIONS]
 
 ## `ferrflow check`
 
-Prévisualiser ce que `ferrflow release` ferait sans effectuer de changements. Équivalent à `ferrflow release --dry-run`.
+Prévisualiser ce que `ferrflow release` ferait sans effectuer de changements.
 
 ```bash
-ferrflow check
+ferrflow check [OPTIONS]
 ```
+
+| Option | Description |
+|---|---|
+| `--json` | Sortie au format JSON |
+| `--channel <NAME>` | Canal de pré-release à utiliser (ex. `beta`, `rc`, `dev`) |
+| `--comment` | Poster un commentaire de prévisualisation sur la PR/MR courante |
 
 ---
 
@@ -44,12 +51,10 @@ ferrflow check
 Générer ou mettre à jour `CHANGELOG.md` uniquement, sans bumper les versions ni créer de tags.
 
 ```bash
-ferrflow changelog [OPTIONS]
+ferrflow changelog
 ```
 
-| Option | Description |
-|---|---|
-| `--dry-run` | Afficher l'entrée du changelog sans écrire sur le disque |
+Ne prend aucune option spécifique. Utilisez l'option globale `--dry-run` pour afficher l'entrée sans l'écrire.
 
 ---
 
@@ -118,12 +123,42 @@ ferrflow tag [PACKAGE] [OPTIONS]
 
 ---
 
+## `ferrflow validate`
+
+Valider la configuration et les fichiers versionnés qu'elle référence, sans rien bumper. Utilisez `--repo` pour valider un dépôt distant plutôt que l'arbre de travail.
+
+```bash
+ferrflow validate [OPTIONS]
+```
+
+| Option | Description |
+|---|---|
+| `--json` | Sortie au format JSON |
+| `--repo <REPO>` | Dépôt distant à valider (ex. `owner/repo` pour GitHub, ou `gitlab:group/project`) |
+| `--ref <REF>` | Ref git pour la validation distante (branche, tag ou commit) |
+
+---
+
+## `ferrflow completions`
+
+Générer un script de complétion shell et l'afficher sur la sortie standard.
+
+```bash
+ferrflow completions <SHELL>
+```
+
+`<SHELL>` est l'un de `bash`, `elvish`, `fish`, `powershell` ou `zsh`.
+
+---
+
 ## Options globales
 
 Ces options fonctionnent avec toutes les commandes :
 
 | Option | Description |
 |---|---|
+| `--dry-run` | Montrer ce qui se passerait sans effectuer de changements |
+| `--verbose`, `-v` | Sortie détaillée, incluant les hashes de commits et les diffs de fichiers |
 | `--config <PATH>` | Chemin vers un fichier de configuration personnalisé (défaut : auto-détecté). Accepte aussi la variable d'environnement `FERRFLOW_CONFIG`. |
 | `--version` | Afficher la version de FerrFlow et quitter |
 | `--help`, `-h` | Afficher l'aide |
