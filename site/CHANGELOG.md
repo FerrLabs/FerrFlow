@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.6.2] - 2026-06-12
+
+### Bug Fixes
+
+- fix(docs): correct config reference — drop unsupported YAML, fix package array, complete workspace table (#548)
+
 ## [6.6.1] - 2026-06-12
 
 ### Bug Fixes
