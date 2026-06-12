@@ -1,6 +1,6 @@
 #[cfg(feature = "cli")]
 use crate::conventional_commits::determine_bump;
-use crate::conventional_commits::{BumpType, parse_subject};
+use crate::conventional_commits::{BumpType, CommitClass, classify, parse_subject};
 use anyhow::Result;
 use chrono::Local;
 use std::path::Path;
@@ -107,14 +107,12 @@ pub fn build_section(new_version: &str, commits: &[GitLog]) -> String {
 
     for commit in commits {
         let subject = parse_subject(&commit.message);
-        let first_line = commit.message.lines().next().unwrap_or("").to_lowercase();
 
-        if commit.message.contains("BREAKING CHANGE") || first_line.contains("!:") {
-            breaking.push(format!("- {subject}"));
-        } else if first_line.starts_with("feat") {
-            features.push(format!("- {subject}"));
-        } else if first_line.starts_with("fix") || first_line.starts_with("perf") {
-            fixes.push(format!("- {subject}"));
+        match classify(&commit.message) {
+            CommitClass::Breaking => breaking.push(format!("- {subject}")),
+            CommitClass::Feature => features.push(format!("- {subject}")),
+            CommitClass::Fix => fixes.push(format!("- {subject}")),
+            CommitClass::Other => {}
         }
     }
 
@@ -238,6 +236,19 @@ mod tests {
         assert!(section.contains("### Features"));
         assert!(section.contains("### Bug Fixes"));
         assert!(!section.contains("chore: update deps"));
+    }
+
+    #[test]
+    fn build_section_does_not_misclassify_prose() {
+        let commits = make_commits(&[
+            "fix: handle the !: token in the parser",
+            "features added without a conventional prefix",
+        ]);
+        let section = build_section("1.0.1", &commits);
+        assert!(section.contains("### Bug Fixes"));
+        assert!(section.contains("- fix: handle the !: token in the parser"));
+        assert!(!section.contains("### Breaking Changes"));
+        assert!(!section.contains("### Features"));
     }
 
     #[test]

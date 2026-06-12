@@ -44,6 +44,35 @@ fn breaking_footer_re() -> &'static Regex {
     BREAKING_FOOTER_RE.get_or_init(|| Regex::new(r"(?m)^BREAKING CHANGE").unwrap())
 }
 
+static FIX_RE: OnceLock<Regex> = OnceLock::new();
+
+fn fix_header_re() -> &'static Regex {
+    FIX_RE.get_or_init(|| Regex::new(r"^(fix|perf)(\(.+\))?:").unwrap())
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum CommitClass {
+    Breaking,
+    Feature,
+    Fix,
+    Other,
+}
+
+pub fn classify(message: &str) -> CommitClass {
+    let header = parse_subject(message);
+
+    if breaking_header_re().is_match(header) || breaking_footer_re().is_match(message) {
+        return CommitClass::Breaking;
+    }
+    if feat_header_re().is_match(header) {
+        return CommitClass::Feature;
+    }
+    if fix_header_re().is_match(header) {
+        return CommitClass::Fix;
+    }
+    CommitClass::Other
+}
+
 pub fn determine_bump(message: &str) -> BumpType {
     let header = parse_subject(message);
 

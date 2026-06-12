@@ -372,8 +372,8 @@ pub(super) fn fetch_and_rebase(repo: &Repository, remote_name: &str, branch: &st
         None => {
             return Err(anyhow!(
                 "Refusing to rebase: HEAD is detached. Check out '{branch}' before retrying. \
-                 (To recover an in-progress release, use `ferrflow release --recover` or reset \
-                 the branch manually.)"
+                 (If a previous release left a stale lock, clear it with `ferrflow release \
+                 --force-unlock`, or reset the branch manually.)"
             ));
         }
     }
