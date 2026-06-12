@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.6.1] - 2026-06-12
+
+### Bug Fixes
+
+- fix(schema): sync served schema with CLI source of truth (#545)
+
 ## [6.6.0] - 2026-06-09
 
 ### Features
