@@ -41,7 +41,7 @@ fn patch_header_re() -> &'static Regex {
 static BREAKING_FOOTER_RE: OnceLock<Regex> = OnceLock::new();
 
 fn breaking_footer_re() -> &'static Regex {
-    BREAKING_FOOTER_RE.get_or_init(|| Regex::new(r"(?m)^BREAKING CHANGE").unwrap())
+    BREAKING_FOOTER_RE.get_or_init(|| Regex::new(r"(?m)^BREAKING[ -]CHANGE:").unwrap())
 }
 
 pub fn determine_bump(message: &str) -> BumpType {
@@ -122,6 +122,24 @@ mod tests {
     fn test_breaking_change_in_body() {
         let msg = "feat: something\n\nBREAKING CHANGE: removed old API";
         assert_eq!(determine_bump(msg), BumpType::Major);
+    }
+
+    #[test]
+    fn test_breaking_change_hyphen_footer() {
+        let msg = "feat: something\n\nBREAKING-CHANGE: removed old API";
+        assert_eq!(determine_bump(msg), BumpType::Major);
+    }
+
+    #[test]
+    fn test_breaking_change_prose_is_not_major() {
+        assert_eq!(
+            determine_bump("docs: note that BREAKING CHANGES are coming in v2"),
+            BumpType::None
+        );
+        let body = "feat: add flag\n\nBREAKING CHANGE will be handled later, not yet";
+        assert_eq!(determine_bump(body), BumpType::Minor);
+        let plural = "chore: cleanup\n\nBREAKING CHANGES: none in this one";
+        assert_eq!(determine_bump(plural), BumpType::None);
     }
 
     #[test]
