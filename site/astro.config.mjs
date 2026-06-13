@@ -113,10 +113,7 @@ export default defineConfig({
         },
         {
           label: 'Deployment',
-          items: [
-            { label: 'Self-hosting', slug: 'docs/self-hosting' },
-            { label: 'Verifying releases', slug: 'docs/verifying-releases' },
-          ],
+          items: [{ label: 'Verifying releases', slug: 'docs/verifying-releases' }],
         },
         {
           label: 'Legal',

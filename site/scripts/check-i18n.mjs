@@ -13,10 +13,7 @@ const DOCS_FR_DIR = join(SRC_DIR, 'content', 'docs', 'fr', 'docs');
 const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.astro']);
 const DOC_EXTENSIONS = new Set(['.md', '.mdx']);
 
-// TODO: translate self-hosting.mdx to FR and remove from this list
-const KNOWN_EN_ONLY = new Set([
-  'self-hosting.mdx',
-]);
+const KNOWN_EN_ONLY = new Set();
 const KNOWN_FR_ONLY = new Set();
 
 const T_CALL_RE = /\bt\(\s*[a-zA-Z_$][\w$]*\s*,\s*(['"`])((?:[^\\]|\\.)*?)\1/g;
@@ -37,7 +34,8 @@ async function walk(dir, exts) {
   for (const entry of entries) {
     const full = join(dir, entry.name);
     if (entry.isDirectory()) {
-      if (entry.name === 'node_modules' || entry.name === 'dist' || entry.name.startsWith('.')) continue;
+      if (entry.name === 'node_modules' || entry.name === 'dist' || entry.name.startsWith('.'))
+        continue;
       out.push(...(await walk(full, exts)));
     } else if (exts.has(getExt(entry.name))) {
       out.push(full);
@@ -87,18 +85,41 @@ function extractKeys(block) {
       i += 2;
       continue;
     }
-    if (c === '{' || c === '[') { depth++; i++; continue; }
-    if (c === '}' || c === ']') { depth--; i++; continue; }
-    if (c === ',') { if (depth === 0) expectKey = true; i++; continue; }
-    if (c === ':') { expectKey = false; i++; continue; }
-    if (c === ' ' || c === '\t' || c === '\n' || c === '\r') { i++; continue; }
+    if (c === '{' || c === '[') {
+      depth++;
+      i++;
+      continue;
+    }
+    if (c === '}' || c === ']') {
+      depth--;
+      i++;
+      continue;
+    }
+    if (c === ',') {
+      if (depth === 0) expectKey = true;
+      i++;
+      continue;
+    }
+    if (c === ':') {
+      expectKey = false;
+      i++;
+      continue;
+    }
+    if (c === ' ' || c === '\t' || c === '\n' || c === '\r') {
+      i++;
+      continue;
+    }
     if (c === '"' || c === "'" || c === '`') {
       const quote = c;
       let j = i + 1;
       let key = '';
       while (j < n) {
         const cc = block[j];
-        if (cc === '\\') { key += block[j + 1] ?? ''; j += 2; continue; }
+        if (cc === '\\') {
+          key += block[j + 1] ?? '';
+          j += 2;
+          continue;
+        }
         if (cc === quote) break;
         key += cc;
         j++;
@@ -144,7 +165,12 @@ function diff(a, b) {
 }
 
 async function pathExists(p) {
-  try { await stat(p); return true; } catch { return false; }
+  try {
+    await stat(p);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function toRelSet(files, root) {
