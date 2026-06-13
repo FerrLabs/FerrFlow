@@ -4,6 +4,14 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.3.3] - 2026-06-13
+
+### Bug Fixes
+
+- fix(changelog): align categorization with bump parser, keep refactor section (#525) (#559)
+- fix(docs): correct hook env vars, schema enum, GitLab draft warning, --recover refs (#557)
+- fix(audit): zerover metadata clear, path containment, URL encoding (#553) (#562)
+
 ## [5.3.2] - 2026-06-13
 
 ### Bug Fixes
