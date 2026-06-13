@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.6.3] - 2026-06-13
+
+### Bug Fixes
+
+- fix(docs): remove fictional self-hosting API/dashboard page (#550)
+
 ## [6.6.2] - 2026-06-12
 
 ### Bug Fixes
