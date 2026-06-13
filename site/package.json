@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "@astrojs/starlight": "^0.38.2",
+    "@astrojs/starlight": "^0.39.0",
     "@ferrlabs/ui-astro": "^1.4.0",
     "@fontsource/dm-mono": "^5.2.7",
     "@fontsource/fraunces": "^5.2.9",
