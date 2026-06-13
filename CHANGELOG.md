@@ -4,6 +4,13 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.3.2] - 2026-06-13
+
+### Bug Fixes
+
+- fix(forge): paginate release & comment lookups on GitHub + GitLab (#524) (#561)
+- fix(formats): read & write Cargo workspace-inherited versions (#523) (#560)
+
 ## [5.3.1] - 2026-06-12
 
 ### Bug Fixes
