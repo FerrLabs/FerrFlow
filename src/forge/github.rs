@@ -3,11 +3,62 @@ use anyhow::{Context, Result};
 use super::{Forge, MergeRequestResult};
 use crate::error_code::{self, ErrorCodeExt};
 
+/// Per-page size for paginated GitHub list endpoints. 100 is the API
+/// maximum (smaller values just multiply round-trips).
+const PER_PAGE: u32 = 100;
+
+/// Hard ceiling on how many pages we'll fetch before bailing. 100 pages
+/// × 100 items = 10,000 items, well past anything a release-tagging
+/// path needs to scan. The guard is here to prevent a misbehaving API
+/// (one that keeps returning a full page) from looping forever. See
+/// #524.
+const MAX_PAGES: u32 = 100;
+
 pub struct GitHubForge {
     pub token: String,
     pub slug: String,
     pub api_base: String,
     pub agent: ureq::Agent,
+}
+
+impl GitHubForge {
+    /// Fetch every page of a GitHub list endpoint and return the items
+    /// concatenated. Stops as soon as a page returns fewer than
+    /// `PER_PAGE` items (the universal end-of-pagination signal, used
+    /// by GitHub, GitLab, Forgejo, Bitbucket alike). `base_url` must
+    /// already include the path; we append `?per_page=&page=` ourselves.
+    ///
+    /// Short-circuit: most release-time calls hit small lists (a few
+    /// recent releases / comments on a release PR), so the typical path
+    /// is one HTTP round-trip.
+    fn paginated_json_array(&self, base_url: &str, what: &str) -> Result<Vec<serde_json::Value>> {
+        let mut all = Vec::new();
+        for page in 1..=MAX_PAGES {
+            let url = format!("{base_url}?per_page={PER_PAGE}&page={page}");
+            let body: serde_json::Value = self
+                .agent
+                .get(&url)
+                .header("Authorization", &format!("Bearer {}", self.token))
+                .header("Accept", "application/vnd.github+json")
+                .header("X-GitHub-Api-Version", "2022-11-28")
+                .header("User-Agent", "ferrflow")
+                .call()
+                .with_context(|| format!("Failed to list {what}"))?
+                .body_mut()
+                .read_json()
+                .with_context(|| format!("Failed to parse {what} response"))?;
+            let page_items = match body.as_array() {
+                Some(arr) if !arr.is_empty() => arr.clone(),
+                _ => return Ok(all),
+            };
+            let len = page_items.len();
+            all.extend(page_items);
+            if (len as u32) < PER_PAGE {
+                return Ok(all);
+            }
+        }
+        Ok(all)
+    }
 }
 
 impl Forge for GitHubForge {
@@ -46,25 +97,12 @@ impl Forge for GitHubForge {
     }
 
     fn find_draft_release(&self, tag: &str) -> Result<Option<u64>> {
-        let url = format!("{}/repos/{}/releases", self.api_base, self.slug);
-
-        let response: serde_json::Value = self
-            .agent
-            .get(&url)
-            .header("Authorization", &format!("Bearer {}", self.token))
-            .header("Accept", "application/vnd.github+json")
-            .header("X-GitHub-Api-Version", "2022-11-28")
-            .header("User-Agent", "ferrflow")
-            .call()
-            .with_context(|| "Failed to list GitHub releases")
-            .error_code(error_code::GITHUB_LIST_RELEASES)?
-            .body_mut()
-            .read_json()
-            .with_context(|| "Failed to parse releases response")
-            .error_code(error_code::GITHUB_PARSE_RELEASES)?;
-
-        let empty = vec![];
-        let releases = response.as_array().unwrap_or(&empty);
+        let base_url = format!("{}/repos/{}/releases", self.api_base, self.slug);
+        // Paginate so repos with >30 (the GitHub default page size) or
+        // even >100 releases still find the matching draft. See #524.
+        let releases = self
+            .paginated_json_array(&base_url, "GitHub releases")
+            .error_code(error_code::GITHUB_LIST_RELEASES)?;
         for release in releases {
             if release["draft"].as_bool() == Some(true)
                 && release["tag_name"].as_str() == Some(tag)
@@ -73,7 +111,6 @@ impl Forge for GitHubForge {
                 return Ok(Some(id));
             }
         }
-
         Ok(None)
     }
 
@@ -188,22 +225,13 @@ impl Forge for GitHubForge {
     }
 
     fn find_comment(&self, pr_id: u64, marker: &str) -> Result<Option<u64>> {
-        let url = format!(
-            "{}/repos/{}/issues/{}/comments?per_page=100",
+        let base_url = format!(
+            "{}/repos/{}/issues/{}/comments",
             self.api_base, self.slug, pr_id
         );
-        let comments: Vec<serde_json::Value> = self
-            .agent
-            .get(&url)
-            .header("Authorization", &format!("Bearer {}", self.token))
-            .header("Accept", "application/vnd.github+json")
-            .header("User-Agent", "ferrflow")
-            .call()
-            .with_context(|| "Failed to list PR comments")?
-            .body_mut()
-            .read_json()
-            .with_context(|| "Failed to parse PR comments")?;
-
+        // Paginate so a long-lived release PR with hundreds of comments
+        // still finds the marker comment. See #524.
+        let comments = self.paginated_json_array(&base_url, "PR comments")?;
         for comment in comments {
             if let Some(body) = comment["body"].as_str()
                 && body.contains(marker)
