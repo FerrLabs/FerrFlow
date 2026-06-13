@@ -65,6 +65,8 @@ pub const CONFIG_READ_FAILED: ErrorCode = ErrorCode(1015);
 pub const CONFIG_MULTIPLE_FILES: ErrorCode = ErrorCode(1016);
 #[allow(dead_code)]
 pub const CONFIG_ALREADY_EXISTS: ErrorCode = ErrorCode(1017);
+#[allow(dead_code)]
+pub const CONFIG_INVALID_PATH: ErrorCode = ErrorCode(1018);
 
 #[allow(dead_code)]
 pub const VALIDATE_INVALID_REPO_SPEC: ErrorCode = ErrorCode(1100);

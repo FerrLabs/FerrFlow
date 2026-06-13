@@ -182,6 +182,24 @@ fn test_zerover_clamps_non_zero_major() {
 }
 
 #[test]
+fn test_zerover_clears_prerelease_and_build_metadata() {
+    // Stable bumps must drop pre-release + build metadata, matching
+    // bump_semver's behaviour. See #553.
+    assert_eq!(
+        bump_zerover("0.4.0-beta.1", BumpType::Minor).unwrap(),
+        "0.5.0"
+    );
+    assert_eq!(
+        bump_zerover("0.4.0+build.7", BumpType::Patch).unwrap(),
+        "0.4.1"
+    );
+    assert_eq!(
+        bump_zerover("0.4.0-rc.1+build.7", BumpType::Major).unwrap(),
+        "0.5.0"
+    );
+}
+
+#[test]
 fn test_zerover_invalid_version() {
     assert!(bump_zerover("garbage", BumpType::Patch).is_err());
 }
