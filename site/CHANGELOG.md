@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.6.5] - 2026-06-15
+
+### Bug Fixes
+
+- fix(ci+site): unblock benchmark sync + show competitor tools on perf page (#553)
+
 ## [6.6.4] - 2026-06-15
 
 ### Bug Fixes
