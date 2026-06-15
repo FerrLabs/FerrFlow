@@ -537,12 +537,67 @@ fn run_post_publish_hooks(plan: &mut ReleasePlan<'_>) -> Result<()> {
             )?;
         }
         // Declarative publishers preview. v1 ships the plan only —
-        // each kind's actual execution lands in a follow-up PR, so
-        // even on a live release we currently just print what FerrFlow
-        // *will* run once the executors exist. Until then users keep
-        // their existing postPublish shell hooks alongside; the
-        // preview lets them iterate on the publishers block safely.
-        print_dry_run_publishers(pkg, &ctx.package, &ctx.new_version);
+        // Declarative publishers: cargo executes for real now (#572 +
+        // this PR), the other kinds still preview-only until their PR
+        // lands. The dispatcher hides the kind-by-kind degradation —
+        // users see uniform "[kind] action … → status" log lines and
+        // can declare their full publishing plan today without waiting
+        // for every executor.
+        run_publishers_for_package(plan, pkg, &ctx.package, &ctx.new_version, &ctx.tag)?;
+    }
+    Ok(())
+}
+
+fn run_publishers_for_package(
+    plan: &ReleasePlan<'_>,
+    pkg: &crate::config::PackageConfig,
+    package_name: &str,
+    new_version: &str,
+    tag: &str,
+) -> Result<()> {
+    if pkg.publishers.is_empty() {
+        return Ok(());
+    }
+    println!(
+        "  {} {} publishers:",
+        "→".cyan(),
+        pkg.publishers.len().to_string().cyan()
+    );
+    let package_path = plan.root.join(&pkg.path);
+    let pub_ctx = crate::publishers::PublishContext {
+        package_name,
+        package_path: &package_path,
+        new_version,
+        tag,
+        registries: &plan.config.workspace.registries,
+        dry_run: plan.dry_run,
+        verbose: plan.verbose,
+    };
+    for p in &pkg.publishers {
+        let kind = p.kind_name();
+        let preview = p.describe(package_name, new_version);
+        match crate::publishers::run(p, &pub_ctx) {
+            Ok(crate::publishers::PublishOutcome::Published { url }) => {
+                let suffix = url.as_deref().unwrap_or("");
+                println!("    [{kind}] {preview} → {} {suffix}", "published".green());
+            }
+            Ok(crate::publishers::PublishOutcome::Skipped { reason }) => {
+                println!("    [{kind}] {preview} → {} ({reason})", "skipped".yellow());
+            }
+            Ok(crate::publishers::PublishOutcome::DryRun) => {
+                println!("    [{kind}] {preview} {}", "(dry-run)".dimmed());
+            }
+            Ok(crate::publishers::PublishOutcome::NotImplementedYet) => {
+                println!(
+                    "    [{kind}] {preview} {}",
+                    "(executor not implemented yet)".dimmed()
+                );
+            }
+            Err(e) => {
+                eprintln!("    [{kind}] {} {e:#}", "ERROR".red());
+                return Err(e);
+            }
+        }
     }
     Ok(())
 }
@@ -566,33 +621,7 @@ pub(super) fn print_dry_run_hooks(plan: &ReleasePlan<'_>) -> Result<()> {
                 run_hook(point, &cmd, ctx, on_failure, true, plan.verbose, plan.root)?;
             }
         }
-        print_dry_run_publishers(pkg, &ctx.package, &ctx.new_version);
+        run_publishers_for_package(plan, pkg, &ctx.package, &ctx.new_version, &ctx.tag)?;
     }
     Ok(())
-}
-
-/// Render the declarative `publishers[]` plan as one line per entry.
-/// The v1 scope is preview-only — execution lands per-kind in
-/// follow-up PRs — so this is how users see what FerrFlow *would*
-/// publish without any side effect.
-pub(super) fn print_dry_run_publishers(
-    pkg: &crate::config::PackageConfig,
-    package_name: &str,
-    new_version: &str,
-) {
-    if pkg.publishers.is_empty() {
-        return;
-    }
-    println!(
-        "  {} {} publishers:",
-        "→".cyan(),
-        pkg.publishers.len().to_string().cyan()
-    );
-    for p in &pkg.publishers {
-        println!(
-            "    [{}] {}",
-            p.kind_name(),
-            p.describe(package_name, new_version)
-        );
-    }
 }
