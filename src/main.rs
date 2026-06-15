@@ -10,6 +10,7 @@ mod git;
 mod hooks;
 mod monorepo;
 mod prerelease;
+mod publishers;
 mod query;
 mod status;
 mod telemetry;
