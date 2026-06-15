@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::types::HooksConfig;
+use super::types::{HooksConfig, PublisherConfig};
 use super::workspace::WorkspaceConfig;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -21,6 +21,12 @@ pub struct PackageConfig {
     pub floating_tags: Option<Vec<FloatingTagLevel>>,
     #[serde(default)]
     pub hooks: Option<HooksConfig>,
+    /// Declarative publish targets. Evaluated in declaration order
+    /// after the git push + GitHub Release create the new tag. v1
+    /// only emits dry-run preview lines; per-kind execution lands in
+    /// follow-up PRs.
+    #[serde(default)]
+    pub publishers: Vec<PublisherConfig>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Default)]

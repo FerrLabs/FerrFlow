@@ -59,6 +59,9 @@ const CAMEL_CASE_KEYS: &[&str] = &[
     "floating_tags",
     "orphaned_tag_strategy",
     "prerelease_identifier",
+    "token_env",
+    "allow_dirty",
+    "display_name",
 ];
 
 pub(crate) fn to_camel_case_keys(value: serde_json::Value) -> serde_json::Value {

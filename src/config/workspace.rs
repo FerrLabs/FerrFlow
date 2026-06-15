@@ -2,9 +2,10 @@ use serde::{Deserialize, Serialize};
 
 use super::package::{FloatingTagLevel, VersioningStrategy};
 use super::types::{
-    BranchChannelConfig, ForgeKind, HooksConfig, OrphanedTagStrategy, ReleaseCommitMode,
-    ReleaseCommitScope,
+    BranchChannelConfig, ForgeKind, HooksConfig, OrphanedTagStrategy, RegistryConfig,
+    ReleaseCommitMode, ReleaseCommitScope,
 };
+use std::collections::BTreeMap;
 
 #[derive(Debug, Deserialize, Serialize, Default)]
 pub struct WorkspaceConfig {
@@ -40,6 +41,13 @@ pub struct WorkspaceConfig {
     pub hooks: Option<HooksConfig>,
     #[serde(default)]
     pub branches: Option<Vec<BranchChannelConfig>>,
+    /// Named registry credentials shared by `package.publishers[]`.
+    /// Keyed by a short identifier (e.g. `"kellnr"`, `"gh-packages"`)
+    /// that publishers reference by name. Lets users declare auth
+    /// once and reuse it across every cargo / npm / docker entry. See
+    /// the publisher RFC.
+    #[serde(default)]
+    pub registries: BTreeMap<String, RegistryConfig>,
 }
 
 impl WorkspaceConfig {

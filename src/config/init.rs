@@ -173,6 +173,7 @@ fn collect_package(path_default: &str, monorepo: bool) -> PackageConfig {
         tag_template: None,
         hooks: None,
         floating_tags: None,
+        publishers: vec![],
     }
 }
 

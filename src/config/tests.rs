@@ -160,6 +160,7 @@ fn effective_versioning_inherits_workspace() {
         tag_template: None,
         hooks: None,
         floating_tags: None,
+        publishers: vec![],
     };
     assert_eq!(
         pkg.effective_versioning(&ws, &[]),
@@ -184,6 +185,7 @@ fn effective_versioning_package_overrides() {
         tag_template: None,
         hooks: None,
         floating_tags: None,
+        publishers: vec![],
     };
     assert_eq!(
         pkg.effective_versioning(&ws, &[]),
@@ -205,6 +207,7 @@ fn effective_versioning_autodetects_from_tags_when_unset() {
         tag_template: None,
         hooks: None,
         floating_tags: None,
+        publishers: vec![],
     };
     let tags = vec!["v2024.04.18", "v2024.05.01"];
     assert_eq!(
@@ -227,6 +230,7 @@ fn effective_versioning_falls_back_to_semver_without_tags() {
         tag_template: None,
         hooks: None,
         floating_tags: None,
+        publishers: vec![],
     };
     assert_eq!(
         pkg.effective_versioning(&ws, &[]),
@@ -250,6 +254,7 @@ fn make_pkg(name: &str, tag_template: Option<&str>) -> PackageConfig {
         tag_template: tag_template.map(String::from),
         hooks: None,
         floating_tags: None,
+        publishers: vec![],
     }
 }
 
@@ -464,6 +469,7 @@ fn json_serializes_camel_case() {
             tag_template: Some("{name}@v{version}".into()),
             hooks: None,
             floating_tags: None,
+            publishers: vec![],
         }],
     };
     let serialized = handler.serialize(&config).unwrap();
@@ -510,6 +516,7 @@ fn toml_keeps_snake_case() {
             tag_template: Some("{name}@v{version}".into()),
             hooks: None,
             floating_tags: None,
+            publishers: vec![],
         }],
     };
     let serialized = handler.serialize(&config).unwrap();
@@ -1101,6 +1108,7 @@ fn tag_prefix_no_version_placeholder() {
         tag_template: Some("release-latest".to_string()),
         hooks: None,
         floating_tags: None,
+        publishers: vec![],
     };
     // When template has no {version}, prefix is the entire template
     assert_eq!(pkg.tag_prefix(&ws, false), "release-latest");
@@ -1120,6 +1128,7 @@ fn tag_for_version_replaces_placeholders() {
         tag_template: Some("{name}/v{version}".to_string()),
         hooks: None,
         floating_tags: None,
+        publishers: vec![],
     };
     assert_eq!(pkg.tag_for_version(&ws, true, "1.2.3"), "api/v1.2.3");
 }
@@ -1462,4 +1471,182 @@ fn path_to_file_url_unix_style() {
     assert!(url.starts_with("file:///"));
     assert!(url.contains("test.js"));
     assert!(!url.contains('\\'));
+}
+
+// -----------------------------------------------------------------------
+// publishers + registries (RFC v1 — parse/dry-run preview only)
+// -----------------------------------------------------------------------
+
+#[test]
+fn registries_parse_in_workspace_section() {
+    let json = r#"{
+        "workspace": {
+            "registries": {
+                "kellnr": { "url": "https://kellnr.example.com", "tokenEnv": "CARGO_REGISTRIES_KELLNR_TOKEN" },
+                "gh-packages": { "tokenEnv": "NODE_AUTH_TOKEN" }
+            }
+        },
+        "package": []
+    }"#;
+    let cfg: Config = serde_json::from_str(json).unwrap();
+    let kellnr = cfg.workspace.registries.get("kellnr").unwrap();
+    assert_eq!(kellnr.url.as_deref(), Some("https://kellnr.example.com"));
+    assert_eq!(
+        kellnr.token_env.as_deref(),
+        Some("CARGO_REGISTRIES_KELLNR_TOKEN")
+    );
+    let gh = cfg.workspace.registries.get("gh-packages").unwrap();
+    assert_eq!(gh.url, None);
+    assert_eq!(gh.token_env.as_deref(), Some("NODE_AUTH_TOKEN"));
+}
+
+#[test]
+fn publishers_cargo_kind_parses() {
+    let json = r#"{
+        "package": [{
+            "name": "auth",
+            "path": "crates/auth",
+            "publishers": [
+                { "kind": "cargo", "registry": "kellnr", "allowDirty": false }
+            ]
+        }]
+    }"#;
+    let cfg: Config = serde_json::from_str(json).unwrap();
+    let p = &cfg.packages[0].publishers[0];
+    match p {
+        PublisherConfig::Cargo {
+            registry,
+            allow_dirty,
+        } => {
+            assert_eq!(registry.as_deref(), Some("kellnr"));
+            assert!(!*allow_dirty);
+        }
+        _ => panic!("expected cargo kind"),
+    }
+}
+
+#[test]
+fn publishers_docker_kind_has_defaults() {
+    let json = r#"{
+        "package": [{
+            "name": "auth",
+            "path": "crates/auth",
+            "publishers": [
+                { "kind": "docker", "image": "ghcr.io/ferrlabs/auth" }
+            ]
+        }]
+    }"#;
+    let cfg: Config = serde_json::from_str(json).unwrap();
+    match &cfg.packages[0].publishers[0] {
+        PublisherConfig::Docker {
+            image,
+            tags,
+            platforms,
+            context,
+            dockerfile,
+            sign,
+        } => {
+            assert_eq!(image, "ghcr.io/ferrlabs/auth");
+            assert_eq!(tags, &vec!["{version}".to_string()]);
+            assert!(platforms.is_empty());
+            assert_eq!(context, ".");
+            assert_eq!(dockerfile, "Dockerfile");
+            assert_eq!(*sign, crate::config::DockerSign::None);
+        }
+        _ => panic!("expected docker kind"),
+    }
+}
+
+#[test]
+fn publishers_describe_renders_dry_run_preview() {
+    let cargo = PublisherConfig::Cargo {
+        registry: Some("kellnr".to_string()),
+        allow_dirty: false,
+    };
+    assert_eq!(
+        cargo.describe("ferrlabs-auth", "0.1.0"),
+        "cargo publish ferrlabs-auth@0.1.0 → kellnr"
+    );
+
+    let docker = PublisherConfig::Docker {
+        image: "ghcr.io/ferrlabs/auth".to_string(),
+        tags: vec!["{version}".to_string(), "latest".to_string()],
+        platforms: vec!["linux/amd64".to_string(), "linux/arm64".to_string()],
+        context: ".".to_string(),
+        dockerfile: "Dockerfile".to_string(),
+        sign: crate::config::DockerSign::Sigstore,
+    };
+    let line = docker.describe("ferrlabs-auth", "0.1.0");
+    assert!(line.contains("ghcr.io/ferrlabs/auth"));
+    assert!(line.contains("0.1.0"));
+    assert!(line.contains("latest"));
+    assert!(line.contains("linux/amd64,linux/arm64"));
+    assert!(line.contains("+sigstore"));
+
+    let webhook = PublisherConfig::Webhook {
+        url: "https://hooks.slack.com/x".to_string(),
+        body: None,
+        headers: Default::default(),
+    };
+    assert!(webhook.describe("auth", "0.1.0").contains("POST"));
+    assert!(webhook.describe("auth", "0.1.0").contains("auth@0.1.0"));
+}
+
+#[test]
+fn publishers_default_to_empty_vec_when_omitted() {
+    let json = r#"{
+        "package": [{ "name": "x", "path": "." }]
+    }"#;
+    let cfg: Config = serde_json::from_str(json).unwrap();
+    assert!(cfg.packages[0].publishers.is_empty());
+}
+
+#[test]
+fn publishers_accepts_all_six_kinds_in_one_package() {
+    let json = r#"{
+        "package": [{
+            "name": "kit",
+            "path": "crates/kit",
+            "publishers": [
+                { "kind": "cargo" },
+                { "kind": "npm", "tag": "beta", "access": "public" },
+                { "kind": "docker", "image": "ghcr.io/x/kit" },
+                { "kind": "helm", "registry": "oci://ghcr.io/x/charts" },
+                { "kind": "github-release-asset", "path": "sbom.cdx.json" },
+                { "kind": "webhook", "url": "https://example.com/x" }
+            ]
+        }]
+    }"#;
+    let cfg: Config = serde_json::from_str(json).unwrap();
+    let kinds: Vec<&str> = cfg.packages[0]
+        .publishers
+        .iter()
+        .map(PublisherConfig::kind_name)
+        .collect();
+    assert_eq!(
+        kinds,
+        vec![
+            "cargo",
+            "npm",
+            "docker",
+            "helm",
+            "github-release-asset",
+            "webhook"
+        ]
+    );
+}
+
+#[test]
+fn publishers_unknown_kind_is_rejected() {
+    let json = r#"{
+        "package": [{
+            "name": "x",
+            "path": ".",
+            "publishers": [{ "kind": "telegram", "channel": "@foo" }]
+        }]
+    }"#;
+    assert!(
+        serde_json::from_str::<Config>(json).is_err(),
+        "an unknown publisher kind must not silently parse"
+    );
 }
