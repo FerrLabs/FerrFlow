@@ -222,6 +222,18 @@ Si une execution précédente a planté sans relacher le verrou, l'invocation su
 Le verrou est par-depot, scope a `.git/`. Il ne protege pas entre des clones separes du meme depot — si vous lancez des releases simultanees depuis deux runners differents contre deux checkouts du meme remote, le verrou ne voit pas l'autre cote. Utilisez un seul runner de release, ou serialisez au niveau CI (`concurrency:` dans GitHub Actions, `interruptible: false` dans GitLab).
 </Aside>
 
+## Reprise apres crash
+
+Une release enchaine plusieurs etapes a effet de bord : ecriture des fichiers de version → commit → tag → push du commit → push des tags → creation des GitHub Releases → execution des hooks `post_publish`. Si le process meurt entre l'une d'elles (coupure reseau, arret du runner, SIGKILL), le depot reste dans un etat de release partiel.
+
+Depuis la v5.3, FerrFlow ecrit `.git/ferrflow.checkpoint.json` apres chaque phase reussie. La prochaine invocation `ferrflow release` sur le meme commit reprend a la phase enregistree et saute le travail deja fait — utile a l'echelle CI ou les pannes transitoires sont la norme. Le checkpoint est efface automatiquement quand la release se termine sans erreur.
+
+Deux garde-fous :
+- Verrouillage HEAD : le checkpoint enregistre le SHA du commit sur lequel la release tournait. Si vous avancez HEAD entre deux runs, FerrFlow refuse de reprendre et vous demande soit de revenir au commit enregistre, soit de supprimer le checkpoint manuellement. Ca evite de rejouer d'anciens tags sur un graphe de commits different.
+- Idempotence : les operations git et forge sous-jacentes sont deja idempotentes (pousser un tag deja pousse est un no-op, creer une release qui existe deja la reutilise), donc un crash en milieu de phase recupere proprement au run suivant.
+
+Pour repartir de zero apres un crash dont vous ne voulez pas reprendre l'etat, supprimez `.git/ferrflow.checkpoint.json` a la main.
+
 ## Resume
 
 | Trigger | Automatique | Gate de revue | Ideal pour |

@@ -172,7 +172,7 @@ Paramètres globaux qui s'appliquent à tous les packages.
 | `releaseCommitScope` | string | `"grouped"` | Dans un monorepo où plusieurs packages sont bumpés en même temps, créer un seul commit `"grouped"` ou un commit `"per-package"`. N'a d'effet que quand plusieurs packages bumpent. |
 | `forge` | string | `"auto"` | Forçage du forge git : `"auto"` détecte depuis l'URL du remote, `"github"` ou `"gitlab"` forcent un forge (utile pour les instances auto-hébergées sur domaine personnalisé). |
 | `skipCi` | boolean | dépend du mode | Ajouter `[skip ci]` aux commits de release. Par défaut `true` en mode `"commit"`, `false` sinon. |
-| `commitSkipMarkers` | array | voir ci-dessous | Marqueurs dans le sujet d'un commit qui font ignorer ce commit lors du calcul du bump. Par défaut `["[skip ci]", "[ci skip]", "[no ci]", "[skip actions]", "[actions skip]"]`. |
+| `commitSkipMarkers` | array | `["[skip ci]", "[ci skip]", "[no ci]", "[skip actions]", "[actions skip]"]` | Marqueurs qui font ignorer un commit par FerrFlow lors du calcul de la prochaine version. Comparaison insensible à la casse, sur la ligne de sujet uniquement. |
 | `autoMergeReleases` | boolean | `true` | Activer l'auto-merge sur les PR de release (uniquement en mode `"pr"`) |
 | `recoverMissedReleases` | boolean | `false` | Comparer les fichiers versionnés au dernier tag plutôt qu'au seul dernier commit, pour rattraper des releases manquées plus tôt dans un monorepo. |
 | `branches` | array | `[]` | Associe des branches à des canaux de pré-release (voir [Canaux de pré-release](#canaux-de-pré-release)). |

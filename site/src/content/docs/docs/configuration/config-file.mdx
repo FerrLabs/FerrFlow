@@ -172,7 +172,7 @@ Global settings that apply to all packages.
 | `releaseCommitScope` | string | `"grouped"` | In a monorepo where several packages are bumped at once, whether to create a single `"grouped"` commit or one commit `"per-package"`. Only matters when multiple packages bump. |
 | `forge` | string | `"auto"` | Git forge override: `"auto"` detects from the remote URL, `"github"` or `"gitlab"` force a forge (useful for self-hosted instances on custom domains). |
 | `skipCi` | boolean | depends on mode | Add `[skip ci]` to release commits. Defaults to `true` when mode is `"commit"`, `false` otherwise. |
-| `commitSkipMarkers` | array | see below | Markers in a commit subject that make FerrFlow ignore the commit when computing a bump. Defaults to `["[skip ci]", "[ci skip]", "[no ci]", "[skip actions]", "[actions skip]"]`. |
+| `commitSkipMarkers` | array | `["[skip ci]", "[ci skip]", "[no ci]", "[skip actions]", "[actions skip]"]` | Markers that cause FerrFlow to skip a commit when computing the next version. Matched case-insensitively, subject line only. |
 | `autoMergeReleases` | boolean | `true` | Enable auto-merge on release PRs (only applies when mode is `"pr"`) |
 | `recoverMissedReleases` | boolean | `false` | Compare versioned files against the last tag instead of just the last commit, recovering releases missed earlier in a monorepo. |
 | `floatingTags` | array | `[]` | Floating tag levels to create on each release: `"major"`, `"minor"`. For example, `["major"]` creates a `v1` tag that always points to the latest `v1.x.y` release. |
