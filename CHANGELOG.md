@@ -4,6 +4,13 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.6.0] - 2026-06-15
+
+### Features
+
+- feat(publishers): helm + github-release-asset + webhook executors (final 3) (#576)
+- feat(publishers): docker buildx + multi-arch + optional sigstore signing (#575)
+
 ## [5.5.0] - 2026-06-15
 
 ### Features
