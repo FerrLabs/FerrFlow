@@ -4,6 +4,13 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.3.6] - 2026-06-15
+
+### Bug Fixes
+
+- perf(ci): cache npm globals for the bench job (#570)
+- perf(ci): install cargo-tarpaulin prebuilt instead of compiling from source (#569)
+
 ## [5.3.5] - 2026-06-15
 
 ### Bug Fixes
