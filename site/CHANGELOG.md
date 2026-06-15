@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.6.4] - 2026-06-15
+
+### Bug Fixes
+
+- fix(deps): update dependency @astrojs/starlight to ^0.40.0 (#552)
+
 ## [6.6.3] - 2026-06-13
 
 ### Bug Fixes
