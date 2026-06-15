@@ -24,7 +24,7 @@ RUN mkdir -p benches && echo 'fn main() {}' > benches/ferrflow_benchmarks.rs \
     && cargo build --release --package ferrflow
 
 # Runtime stage
-FROM alpine:3.23
+FROM alpine:3.24
 RUN apk add --no-cache ca-certificates
 COPY --from=builder /app/target/release/ferrflow /usr/local/bin/ferrflow
 ENTRYPOINT ["ferrflow"]
