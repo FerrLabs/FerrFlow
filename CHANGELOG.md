@@ -4,6 +4,14 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.5.0] - 2026-06-15
+
+### Features
+
+- feat(publishers): npm executor with scoped .npmrc + idempotency (#574)
+- feat(publishers): cargo executor with idempotency + token-env validation (#573)
+- feat(config): declarative publishers + workspace registries (foundation) (#572)
+
 ## [5.4.0] - 2026-06-15
 
 ### Features
