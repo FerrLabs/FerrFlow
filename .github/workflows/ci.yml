@@ -467,7 +467,7 @@ jobs:
       # competitor set + their versions, with a wide fallback so a
       # version change still benefits from the previous cache shape.
       - name: Cache competitor npm globals
-        uses: actions/cache@v4
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
         with:
           path: |
             ~/.npm
