@@ -23,6 +23,7 @@ fn make_package(name: &str, path: &str) -> PackageConfig {
         versioning: None,
         tag_template: None,
         floating_tags: None,
+        publishers: vec![],
         hooks: None,
     }
 }

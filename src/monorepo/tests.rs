@@ -43,6 +43,7 @@ fn make_pkg(name: &str, path: &str, shared: &[&str]) -> PackageConfig {
         tag_template: None,
         hooks: None,
         floating_tags: None,
+        publishers: vec![],
     }
 }
 

@@ -18,9 +18,11 @@ pub use format::{ConfigFileFormat, ConfigFormatHandler, format_handler};
 #[cfg(feature = "cli")]
 pub use init::init;
 pub use package::{FileFormat, FloatingTagLevel, PackageConfig, VersionedFile, VersioningStrategy};
+#[allow(unused_imports)]
 pub use types::{
-    BranchChannelConfig, ChannelValue, ForgeKind, HooksConfig, OnFailure, OrphanedTagStrategy,
-    PrereleaseIdentifier, ReleaseCommitMode, ReleaseCommitScope,
+    BranchChannelConfig, ChannelValue, DockerSign, ForgeKind, HooksConfig, OnFailure,
+    OrphanedTagStrategy, PrereleaseIdentifier, PublisherConfig, RegistryConfig, ReleaseCommitMode,
+    ReleaseCommitScope,
 };
 #[allow(unused_imports)]
 pub use workspace::{WorkspaceConfig, default_commit_skip_markers};
@@ -208,6 +210,7 @@ impl Config {
                     tag_template: None,
                     hooks: None,
                     floating_tags: None,
+                    publishers: vec![],
                 }]
             },
         }
