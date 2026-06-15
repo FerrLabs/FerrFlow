@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.4.0] - 2026-06-15
+
+### Features
+
+- feat(config): declarative publishers + workspace registries (foundation) (#572)
+
 ## [5.3.6] - 2026-06-15
 
 ### Bug Fixes
