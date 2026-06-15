@@ -99,6 +99,18 @@
         "hooks": {
           "$ref": "#/$defs/hooks"
         },
+        "registries": {
+          "type": "object",
+          "description": "Named registry credentials referenced by package.publishers[]. Lets users declare 'the Kellnr token lives in CARGO_REGISTRIES_KELLNR_TOKEN' once and reuse it across every cargo / npm / docker publisher.",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "url": { "type": "string" },
+              "tokenEnv": { "type": "string", "description": "Name of the env var holding the registry token. The token value is never read from config." }
+            },
+            "additionalProperties": false
+          }
+        },
         "branches": {
           "type": "array",
           "description": "Map branches to pre-release channels. When FerrFlow runs on a branch matching a configured name/pattern, it uses the corresponding channel.",
@@ -222,6 +234,12 @@
           },
           "hooks": {
             "$ref": "#/$defs/hooks"
+          },
+          "publishers": {
+            "type": "array",
+            "description": "Declarative publish targets evaluated after the GitHub Release is created. Each entry is a self-contained intent — see $defs/publisher for the kinds.",
+            "items": { "$ref": "#/$defs/publisher" },
+            "default": []
           }
         },
         "additionalProperties": false
@@ -229,6 +247,76 @@
     }
   },
   "$defs": {
+    "publisher": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind"],
+          "properties": {
+            "kind": { "const": "cargo" },
+            "registry": { "type": "string" },
+            "allowDirty": { "type": "boolean", "default": false }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind"],
+          "properties": {
+            "kind": { "const": "npm" },
+            "registry": { "type": "string" },
+            "tag": { "type": "string" },
+            "access": { "type": "string", "enum": ["public", "restricted"] }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "image"],
+          "properties": {
+            "kind": { "const": "docker" },
+            "image": { "type": "string" },
+            "tags": { "type": "array", "items": { "type": "string" }, "default": ["{version}"] },
+            "platforms": { "type": "array", "items": { "type": "string" } },
+            "context": { "type": "string", "default": "." },
+            "dockerfile": { "type": "string", "default": "Dockerfile" },
+            "sign": { "type": "string", "enum": ["none", "sigstore"], "default": "none" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "registry"],
+          "properties": {
+            "kind": { "const": "helm" },
+            "chart": { "type": "string", "default": "." },
+            "registry": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "path"],
+          "properties": {
+            "kind": { "const": "github-release-asset" },
+            "path": { "type": "string" },
+            "displayName": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "url"],
+          "properties": {
+            "kind": { "const": "webhook" },
+            "url": { "type": "string" },
+            "body": {},
+            "headers": { "type": "object", "additionalProperties": { "type": "string" } }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
     "hooks": {
       "type": "object",
       "description": "Shell commands executed at lifecycle points during release.",

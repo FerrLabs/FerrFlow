@@ -751,6 +751,170 @@ In this example, the `api` package runs `cargo test` for `preBump` (overriding t
 - **`--verbose`**: hook stdout/stderr is streamed live. Otherwise output is only shown on failure.
 - Files modified by `postBump` or `preCommit` hooks are automatically included in the release commit.
 
+## `publishers`
+
+Declarative replacement for the shell-script-in-`postPublish`-hook pattern. Each entry says "after the GitHub Release is created, push this package to that target." Available since v5.4.
+
+Six built-in kinds cover the common publishing targets:
+
+| `kind` | What it does | Idempotent on |
+|---|---|---|
+| `cargo` | `cargo publish` to crates.io or a custom registry | "already uploaded" registry response |
+| `npm` | `npm publish` to npmjs.org, GitHub Packages, or a custom registry | "cannot publish over the previously published versions" |
+| `docker` | `docker buildx build --push` with multi-arch + optional Sigstore | `docker manifest inspect` on each requested tag |
+| `helm` | `helm package` + `helm push` to an OCI registry | `helm show chart` on the new version |
+| `github-release-asset` | `gh release upload --clobber` of a sidecar file | always re-uploads (clobber semantics) |
+| `webhook` | Generic `POST` notifier with `{name}` / `{version}` / `{tag}` / `{env:NAME}` interpolation | none — webhooks are fire-and-forget |
+
+All kinds honor `--dry-run` (print the plan, do nothing) and the crash-resume checkpoint (a re-run after a partial failure picks up where it left off).
+
+### Registries
+
+Token credentials are declared once at the workspace level. Each publisher references a registry by name; FerrFlow validates the token env var is exported *before* invoking the underlying tool.
+
+<Tabs syncKey="config-format">
+  <TabItem label="JSON">
+    ```json title="ferrflow.json"
+    {
+      "workspace": {
+        "registries": {
+          "kellnr": {
+            "url": "https://kellnr.example.com",
+            "tokenEnv": "CARGO_REGISTRIES_KELLNR_TOKEN"
+          },
+          "gh-packages": {
+            "url": "https://npm.pkg.github.com",
+            "tokenEnv": "NODE_AUTH_TOKEN"
+          }
+        }
+      }
+    }
+    ```
+  </TabItem>
+  <TabItem label="TOML">
+    ```toml title="ferrflow.toml"
+    [workspace.registries.kellnr]
+    url = "https://kellnr.example.com"
+    token_env = "CARGO_REGISTRIES_KELLNR_TOKEN"
+
+    [workspace.registries.gh-packages]
+    url = "https://npm.pkg.github.com"
+    token_env = "NODE_AUTH_TOKEN"
+    ```
+  </TabItem>
+</Tabs>
+
+The token value itself never lives in the config file — only the env-var name does. This keeps `ferrflow.json` checked-in safely.
+
+### Cargo publisher
+
+```json title="ferrflow.json"
+{
+  "package": [{
+    "name": "ferrlabs-auth",
+    "path": "crates/auth",
+    "versionedFiles": [{ "path": "Cargo.toml", "format": "toml" }],
+    "publishers": [
+      { "kind": "cargo", "registry": "kellnr" }
+    ]
+  }]
+}
+```
+
+Omit `registry` to publish to crates.io. `allowDirty: true` adds `--allow-dirty` (mirrors `cargo publish`'s own flag).
+
+### npm publisher
+
+```json title="ferrflow.json"
+{
+  "package": [{
+    "name": "@ferrlabs/ui-react",
+    "path": "packages/react",
+    "publishers": [
+      { "kind": "npm", "registry": "gh-packages", "tag": "next", "access": "public" }
+    ]
+  }]
+}
+```
+
+Omit `registry` to publish to npmjs.org. `tag` defaults to `"latest"`. A scoped `.npmrc` is written into the package dir for the duration of the publish and removed on exit — your project's `.npmrc` is never modified.
+
+### Docker publisher
+
+```json title="ferrflow.json"
+{
+  "package": [{
+    "name": "ferrlabs-auth-api",
+    "path": "crates/auth-api",
+    "publishers": [{
+      "kind": "docker",
+      "image": "ghcr.io/ferrlabs/auth-api",
+      "tags": ["{version}", "{major}", "{minor}", "latest"],
+      "platforms": ["linux/amd64", "linux/arm64"],
+      "sign": "sigstore"
+    }]
+  }]
+}
+```
+
+`{version}`, `{major}`, `{minor}` expand from the release version. `sign: "sigstore"` runs `cosign sign --yes <image>@<digest>` against the produced manifest after push. Auth assumes you've already run `docker login` (FerrFlow doesn't manage docker credentials so it doesn't conflict with the rest of the CI).
+
+### Helm publisher
+
+```json title="ferrflow.json"
+{
+  "package": [{
+    "name": "ferrvault-operator",
+    "path": "operator",
+    "publishers": [{
+      "kind": "helm",
+      "chart": "chart",
+      "registry": "oci://ghcr.io/ferrlabs/charts"
+    }]
+  }]
+}
+```
+
+`chart` is the directory containing `Chart.yaml`, relative to the package path. Auth assumes `helm registry login` was done in CI.
+
+### GitHub release asset
+
+```json title="ferrflow.json"
+{
+  "publishers": [
+    { "kind": "github-release-asset", "path": "sbom.cdx.json" },
+    { "kind": "github-release-asset", "path": "ferrflow-linux-x64.tar.gz.sig", "displayName": "linux-x64.sig" }
+  ]
+}
+```
+
+Re-uploads use `--clobber` so a retry replaces the previous file rather than failing. Picks up `GITHUB_TOKEN` from the environment, same as `gh release upload`.
+
+### Webhook
+
+```json title="ferrflow.json"
+{
+  "publishers": [{
+    "kind": "webhook",
+    "url": "https://hooks.slack.com/services/...",
+    "body": { "text": "Released {name}@{version} :rocket:" },
+    "headers": { "Authorization": "Bearer {env:SLACK_TOKEN}" }
+  }]
+}
+```
+
+`{name}`, `{version}`, `{tag}` and `{env:NAME}` are interpolated in the URL, body, and header values. Missing `{env:NAME}` is an error (a webhook with an unset bearer token must NOT send anonymously).
+
+### Migrating from postPublish hooks
+
+The publishers block is additive — your existing `postPublish` hooks keep working. Recommended order:
+
+1. Add a `publishers` block alongside your hook with `--dry-run` enabled in CI to preview what would be published.
+2. Once the dry-run output matches what your hook does, switch CI to a real `ferrflow release` and verify the live publish.
+3. Delete the `postPublish` hook.
+
+The crash-resume checkpoint (see [pipeline triggers](/docs/ci/pipeline-triggers#crash-resume)) means a partially-failed publish is safely re-runnable — the publishers that already succeeded skip themselves on the second pass.
+
 ## Complete examples
 
 ### Single repo
