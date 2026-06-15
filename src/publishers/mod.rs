@@ -15,6 +15,7 @@ use std::path::Path;
 use crate::config::{PublisherConfig, RegistryConfig};
 
 pub mod cargo;
+pub mod npm;
 
 /// Inputs threaded into every publisher invocation. References the
 /// release context that the post-publish phase already has on hand —
@@ -66,8 +67,12 @@ pub fn run(p: &PublisherConfig, ctx: &PublishContext<'_>) -> Result<PublishOutco
             registry,
             allow_dirty,
         } => cargo::run(registry.as_deref(), *allow_dirty, ctx),
-        PublisherConfig::Npm { .. }
-        | PublisherConfig::Docker { .. }
+        PublisherConfig::Npm {
+            registry,
+            tag,
+            access,
+        } => npm::run(registry.as_deref(), tag.as_deref(), access.as_deref(), ctx),
+        PublisherConfig::Docker { .. }
         | PublisherConfig::Helm { .. }
         | PublisherConfig::GithubReleaseAsset { .. }
         | PublisherConfig::Webhook { .. } => Ok(PublishOutcome::NotImplementedYet),
