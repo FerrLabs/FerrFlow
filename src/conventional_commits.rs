@@ -36,7 +36,7 @@ fn feat_header_re() -> &'static Regex {
 static BREAKING_FOOTER_RE: OnceLock<Regex> = OnceLock::new();
 
 fn breaking_footer_re() -> &'static Regex {
-    BREAKING_FOOTER_RE.get_or_init(|| Regex::new(r"(?m)^BREAKING[ -]CHANGE:").unwrap())
+    BREAKING_FOOTER_RE.get_or_init(|| Regex::new(r"(?m)^BREAKING[ -]CHANGE: ").unwrap())
 }
 
 pub fn determine_bump(message: &str) -> BumpType {
@@ -180,6 +180,12 @@ mod tests {
         assert_eq!(determine_bump(body), BumpType::Minor);
         let plural = "chore: cleanup\n\nBREAKING CHANGES: none in this one";
         assert_eq!(determine_bump(plural), BumpType::None);
+    }
+
+    #[test]
+    fn test_breaking_change_footer_missing_space_after_colon() {
+        let msg = "feat: x\n\nBREAKING CHANGE:no-space-description";
+        assert_eq!(determine_bump(msg), BumpType::Minor);
     }
 
     #[test]
