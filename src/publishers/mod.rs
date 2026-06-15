@@ -16,7 +16,10 @@ use crate::config::{PublisherConfig, RegistryConfig};
 
 pub mod cargo;
 pub mod docker;
+pub mod github_release_asset;
+pub mod helm;
 pub mod npm;
+pub mod webhook;
 
 /// Inputs threaded into every publisher invocation. References the
 /// release context that the post-publish phase already has on hand —
@@ -56,9 +59,6 @@ pub enum PublishOutcome {
     /// Dry-run pass: nothing happened, only the preview line was
     /// printed by the caller.
     DryRun,
-    /// Kind's executor isn't implemented in this build yet. Treated
-    /// as a non-fatal warning so users can plan ahead.
-    NotImplementedYet,
 }
 
 /// Dispatch one publisher entry to its executor.
@@ -81,8 +81,12 @@ pub fn run(p: &PublisherConfig, ctx: &PublishContext<'_>) -> Result<PublishOutco
             dockerfile,
             sign,
         } => docker::run(image, tags, platforms, context, dockerfile, *sign, ctx),
-        PublisherConfig::Helm { .. }
-        | PublisherConfig::GithubReleaseAsset { .. }
-        | PublisherConfig::Webhook { .. } => Ok(PublishOutcome::NotImplementedYet),
+        PublisherConfig::Helm { chart, registry } => helm::run(chart, registry, ctx),
+        PublisherConfig::GithubReleaseAsset { path, display_name } => {
+            github_release_asset::run(path, display_name.as_deref(), ctx)
+        }
+        PublisherConfig::Webhook { url, body, headers } => {
+            webhook::run(url, body.as_ref(), headers, ctx)
+        }
     }
 }

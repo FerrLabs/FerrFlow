@@ -587,12 +587,6 @@ fn run_publishers_for_package(
             Ok(crate::publishers::PublishOutcome::DryRun) => {
                 println!("    [{kind}] {preview} {}", "(dry-run)".dimmed());
             }
-            Ok(crate::publishers::PublishOutcome::NotImplementedYet) => {
-                println!(
-                    "    [{kind}] {preview} {}",
-                    "(executor not implemented yet)".dimmed()
-                );
-            }
             Err(e) => {
                 eprintln!("    [{kind}] {} {e:#}", "ERROR".red());
                 return Err(e);
