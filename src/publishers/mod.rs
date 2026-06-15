@@ -15,6 +15,7 @@ use std::path::Path;
 use crate::config::{PublisherConfig, RegistryConfig};
 
 pub mod cargo;
+pub mod docker;
 pub mod npm;
 
 /// Inputs threaded into every publisher invocation. References the
@@ -72,8 +73,15 @@ pub fn run(p: &PublisherConfig, ctx: &PublishContext<'_>) -> Result<PublishOutco
             tag,
             access,
         } => npm::run(registry.as_deref(), tag.as_deref(), access.as_deref(), ctx),
-        PublisherConfig::Docker { .. }
-        | PublisherConfig::Helm { .. }
+        PublisherConfig::Docker {
+            image,
+            tags,
+            platforms,
+            context,
+            dockerfile,
+            sign,
+        } => docker::run(image, tags, platforms, context, dockerfile, *sign, ctx),
+        PublisherConfig::Helm { .. }
         | PublisherConfig::GithubReleaseAsset { .. }
         | PublisherConfig::Webhook { .. } => Ok(PublishOutcome::NotImplementedYet),
     }
