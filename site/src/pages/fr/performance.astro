@@ -57,10 +57,13 @@ const tools = new Set<string>();
 const commands = new Set<string>();
 const grid: Record<string, Cell> = {};
 
+const PREFERRED_METHOD: Record<string, string> = { ferrflow: 'binary' };
+const preferredMethod = (tool: string) => PREFERRED_METHOD[tool] ?? 'npm';
+
 for (const [key, cell] of Object.entries(data)) {
   const p = parseKey(key);
   if (!p) continue;
-  if (p.method !== 'binary') continue;
+  if (p.method !== preferredMethod(p.tool)) continue;
   fixtures.add(p.fixture);
   tools.add(p.tool);
   if (p.cmd) commands.add(p.cmd);
