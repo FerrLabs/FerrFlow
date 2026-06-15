@@ -458,6 +458,23 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
+      # Cache ~/.npm so the competitor npm-global installs that
+      # `Benchmarks/scripts/run.sh` does (`npm install -g
+      # @changesets/cli`, `commit-and-tag-version`, `standard-version`,
+      # `semantic-release@23`, the `npx --yes release-please` size
+      # measurement) reuse downloaded tarballs across runs instead of
+      # re-fetching them every time. Key on the file that pins the
+      # competitor set + their versions, with a wide fallback so a
+      # version change still benefits from the previous cache shape.
+      - name: Cache competitor npm globals
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            ~/.cache/npx
+          key: bench-npm-cache-${{ hashFiles('.github/workflows/ci.yml', 'benchmarks/fixtures/definitions/*.json') }}
+          restore-keys: |
+            bench-npm-cache-
       - uses: FerrLabs/Benchmarks@v5
         with:
           type: full
