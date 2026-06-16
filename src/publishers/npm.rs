@@ -26,6 +26,7 @@ pub fn run(
     registry: Option<&str>,
     tag: Option<&str>,
     access: Option<&str>,
+    extra_args: &[String],
     ctx: &PublishContext<'_>,
 ) -> Result<PublishOutcome> {
     let registry_label = registry.unwrap_or("npmjs.org");
@@ -81,6 +82,7 @@ pub fn run(
     if let Some(a) = access {
         cmd.arg(format!("--access={a}"));
     }
+    cmd.args(extra_args);
 
     let output = cmd.output().with_context(|| {
         format!(
@@ -230,8 +232,14 @@ mod tests {
     #[test]
     fn missing_registry_definition_is_a_clear_error() {
         let registries = BTreeMap::new();
-        let err =
-            run(Some("gh-packages"), None, None, &ctx(&registries, true)).expect_err("must error");
+        let err = run(
+            Some("gh-packages"),
+            None,
+            None,
+            &[],
+            &ctx(&registries, true),
+        )
+        .expect_err("must error");
         assert!(format!("{err:?}").contains("not declared under `workspace.registries`"));
     }
 
@@ -245,15 +253,21 @@ mod tests {
                 token_env: Some("__FERRFLOW_NPM_TOKEN_NEVER_SET".into()),
             },
         );
-        let err =
-            run(Some("gh-packages"), None, None, &ctx(&registries, false)).expect_err("must error");
+        let err = run(
+            Some("gh-packages"),
+            None,
+            None,
+            &[],
+            &ctx(&registries, false),
+        )
+        .expect_err("must error");
         assert!(format!("{err:?}").contains("is not set"));
     }
 
     #[test]
     fn dry_run_short_circuits_for_public_npm() {
         let registries = BTreeMap::new();
-        let outcome = run(None, None, None, &ctx(&registries, true)).expect("dry-run");
+        let outcome = run(None, None, None, &[], &ctx(&registries, true)).expect("dry-run");
         assert!(matches!(outcome, PublishOutcome::DryRun));
     }
 

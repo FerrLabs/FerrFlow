@@ -15,7 +15,12 @@ use std::process::Command;
 use super::{PublishContext, PublishOutcome};
 use crate::error_code::{self, ErrorCodeExt};
 
-pub fn run(chart_path: &str, registry: &str, ctx: &PublishContext<'_>) -> Result<PublishOutcome> {
+pub fn run(
+    chart_path: &str,
+    registry: &str,
+    extra_args: &[String],
+    ctx: &PublishContext<'_>,
+) -> Result<PublishOutcome> {
     let chart_dir = ctx.package_path.join(chart_path);
     if !chart_dir.exists() {
         return Err(anyhow!(
@@ -66,6 +71,7 @@ pub fn run(chart_path: &str, registry: &str, ctx: &PublishContext<'_>) -> Result
         .arg("push")
         .arg(&tgz)
         .arg(registry)
+        .args(extra_args)
         .output()
         .with_context(|| "spawn `helm push` failed")?;
     if !push.status.success() {
@@ -146,7 +152,7 @@ mod tests {
         let registries = BTreeMap::new();
         let c = ctx(&registries, dir.path(), true);
         let outcome =
-            run("chart", "oci://ghcr.io/x/charts", &c).expect("dry-run after Chart.yaml load");
+            run("chart", "oci://ghcr.io/x/charts", &[], &c).expect("dry-run after Chart.yaml load");
         assert!(matches!(outcome, PublishOutcome::DryRun));
     }
 
@@ -155,7 +161,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let registries = BTreeMap::new();
         let c = ctx(&registries, dir.path(), true);
-        let err = run("does-not-exist", "oci://ghcr.io/x", &c).expect_err("must error");
+        let err = run("does-not-exist", "oci://ghcr.io/x", &[], &c).expect_err("must error");
         assert!(format!("{err:?}").contains("does not exist"));
     }
 

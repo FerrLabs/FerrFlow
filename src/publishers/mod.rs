@@ -68,12 +68,20 @@ pub fn run(p: &PublisherConfig, ctx: &PublishContext<'_>) -> Result<PublishOutco
             registry,
             allow_dirty,
             no_verify,
-        } => cargo::run(registry.as_deref(), *allow_dirty, *no_verify, ctx),
+            args,
+        } => cargo::run(registry.as_deref(), *allow_dirty, *no_verify, args, ctx),
         PublisherConfig::Npm {
             registry,
             tag,
             access,
-        } => npm::run(registry.as_deref(), tag.as_deref(), access.as_deref(), ctx),
+            args,
+        } => npm::run(
+            registry.as_deref(),
+            tag.as_deref(),
+            access.as_deref(),
+            args,
+            ctx,
+        ),
         PublisherConfig::Docker {
             image,
             tags,
@@ -81,11 +89,20 @@ pub fn run(p: &PublisherConfig, ctx: &PublishContext<'_>) -> Result<PublishOutco
             context,
             dockerfile,
             sign,
-        } => docker::run(image, tags, platforms, context, dockerfile, *sign, ctx),
-        PublisherConfig::Helm { chart, registry } => helm::run(chart, registry, ctx),
-        PublisherConfig::GithubReleaseAsset { path, display_name } => {
-            github_release_asset::run(path, display_name.as_deref(), ctx)
-        }
+            args,
+        } => docker::run(
+            image, tags, platforms, context, dockerfile, *sign, args, ctx,
+        ),
+        PublisherConfig::Helm {
+            chart,
+            registry,
+            args,
+        } => helm::run(chart, registry, args, ctx),
+        PublisherConfig::GithubReleaseAsset {
+            path,
+            display_name,
+            args,
+        } => github_release_asset::run(path, display_name.as_deref(), args, ctx),
         PublisherConfig::Webhook { url, body, headers } => {
             webhook::run(url, body.as_ref(), headers, ctx)
         }

@@ -40,6 +40,7 @@ pub fn run(
     context_subdir: &str,
     dockerfile: &str,
     sign: DockerSign,
+    extra_args: &[String],
     ctx: &PublishContext<'_>,
 ) -> Result<PublishOutcome> {
     let resolved_tags = expand_tags(tags, ctx.new_version);
@@ -87,6 +88,9 @@ pub fn run(
     }
     cmd.arg("--metadata-file")
         .arg(metadata_path(ctx.package_path));
+    // User-supplied flags go BEFORE the build-context positional —
+    // buildx rejects flags that follow the context argument.
+    cmd.args(extra_args);
     cmd.arg(&context_path);
 
     let output = cmd.output().with_context(|| {
@@ -248,6 +252,7 @@ mod tests {
             ".",
             "Dockerfile",
             DockerSign::None,
+            &[],
             &ctx(&registries, true),
         )
         .expect("dry-run");
