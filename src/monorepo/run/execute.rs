@@ -555,14 +555,6 @@ fn run_publishers_for_package(
     new_version: &str,
     tag: &str,
 ) -> Result<()> {
-    if pkg.publishers.is_empty() {
-        return Ok(());
-    }
-    println!(
-        "  {} {} publishers:",
-        "→".cyan(),
-        pkg.publishers.len().to_string().cyan()
-    );
     let package_path = plan.root.join(&pkg.path);
     let pub_ctx = crate::publishers::PublishContext {
         package_name,
@@ -573,27 +565,7 @@ fn run_publishers_for_package(
         dry_run: plan.dry_run,
         verbose: plan.verbose,
     };
-    for p in &pkg.publishers {
-        let kind = p.kind_name();
-        let preview = p.describe(package_name, new_version);
-        match crate::publishers::run(p, &pub_ctx) {
-            Ok(crate::publishers::PublishOutcome::Published { url }) => {
-                let suffix = url.as_deref().unwrap_or("");
-                println!("    [{kind}] {preview} → {} {suffix}", "published".green());
-            }
-            Ok(crate::publishers::PublishOutcome::Skipped { reason }) => {
-                println!("    [{kind}] {preview} → {} ({reason})", "skipped".yellow());
-            }
-            Ok(crate::publishers::PublishOutcome::DryRun) => {
-                println!("    [{kind}] {preview} {}", "(dry-run)".dimmed());
-            }
-            Err(e) => {
-                eprintln!("    [{kind}] {} {e:#}", "ERROR".red());
-                return Err(e);
-            }
-        }
-    }
-    Ok(())
+    crate::publishers::run_all(&pkg.publishers, &pub_ctx)
 }
 
 /// Dry-run hook trace: when nothing will actually fire (no commit, no
