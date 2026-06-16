@@ -177,7 +177,9 @@ fn collect_package(path_default: &str, monorepo: bool) -> PackageConfig {
     }
 }
 
-pub fn init(format: Option<ConfigFileFormat>) -> Result<()> {
+const DEFAULT_MANIFEST_FILE: &str = ".ferrflow.manifest.json";
+
+pub fn init(format: Option<ConfigFileFormat>, manifest: bool) -> Result<()> {
     // Check if any config file already exists
     for handler in CONFIG_FORMATS {
         let path = PathBuf::from(handler.filename());
@@ -218,8 +220,13 @@ pub fn init(format: Option<ConfigFileFormat>) -> Result<()> {
         vec![collect_package(".", false)]
     };
 
+    let mut workspace = WorkspaceConfig::default();
+    if manifest {
+        workspace.manifest_file = Some(DEFAULT_MANIFEST_FILE.to_string());
+    }
+
     let config = Config {
-        workspace: WorkspaceConfig::default(),
+        workspace,
         packages,
     };
 
@@ -227,6 +234,19 @@ pub fn init(format: Option<ConfigFileFormat>) -> Result<()> {
     let filename = handler.filename();
     std::fs::write(filename, &content)?;
     println!("Created {filename}");
+
+    if manifest {
+        let root = std::env::current_dir()?;
+        let packages = crate::manifest::initial_snapshot(&config, &root);
+        let initial = crate::manifest::Manifest::new(
+            packages,
+            crate::manifest::now_utc_iso8601(),
+            String::new(),
+        );
+        crate::manifest::write_atomic(&root.join(DEFAULT_MANIFEST_FILE), &initial)?;
+        println!("Created {DEFAULT_MANIFEST_FILE}");
+    }
+
     println!("Run: ferrflow check");
 
     if config.workspace.anonymous_telemetry {

@@ -86,6 +86,10 @@ pub enum Commands {
         /// Config file format (json, json5, toml)
         #[arg(long)]
         format: Option<ConfigFileFormat>,
+        /// Also scaffold a .ferrflow.manifest.json snapshot and enable
+        /// manifest mode in the generated config
+        #[arg(long)]
+        manifest: bool,
     },
     /// Print each package name, current version, and last release tag
     Status {
@@ -131,6 +135,11 @@ pub enum Commands {
         #[command(subcommand)]
         command: CacheCommand,
     },
+    /// Regenerate the version manifest from current filesystem state.
+    /// Requires workspace.manifest_file to be configured. Use this to
+    /// repair a manifest that diverged from the package files (e.g. after
+    /// a crashed release).
+    SyncManifest,
 }
 
 #[derive(Subcommand)]
@@ -153,6 +162,7 @@ impl Commands {
             Commands::Validate { .. } => "validate",
             Commands::Completions { .. } => "completions",
             Commands::Cache { .. } => "cache",
+            Commands::SyncManifest => "sync-manifest",
         }
     }
 }
@@ -205,7 +215,7 @@ impl Cli {
             Commands::Changelog => {
                 crate::changelog::generate_only(self.config.as_deref(), self.dry_run)
             }
-            Commands::Init { format } => crate::config::init(format),
+            Commands::Init { format, manifest } => crate::config::init(format, manifest),
             Commands::Status { output } => {
                 crate::status::run(self.config.as_deref(), &output, timing)
             }
@@ -237,6 +247,7 @@ impl Cli {
             Commands::Cache { command } => match command {
                 CacheCommand::Clear => crate::cache::clear_cwd(),
             },
+            Commands::SyncManifest => crate::manifest::sync_cwd(self.config.as_deref()),
         }
     }
 }
@@ -341,16 +352,38 @@ mod tests {
     #[test]
     fn parse_init_no_format() {
         let cli = parse(&["ferrflow", "init"]);
-        assert!(matches!(cli.command, Commands::Init { format: None }));
+        assert!(matches!(
+            cli.command,
+            Commands::Init {
+                format: None,
+                manifest: false
+            }
+        ));
     }
 
     #[test]
     fn parse_init_with_format() {
         let cli = parse(&["ferrflow", "init", "--format", "toml"]);
         match cli.command {
-            Commands::Init { format } => assert!(format.is_some()),
+            Commands::Init { format, .. } => assert!(format.is_some()),
             _ => panic!("expected Init"),
         }
+    }
+
+    #[test]
+    fn parse_init_with_manifest() {
+        let cli = parse(&["ferrflow", "init", "--manifest"]);
+        match cli.command {
+            Commands::Init { manifest, .. } => assert!(manifest),
+            _ => panic!("expected Init"),
+        }
+    }
+
+    #[test]
+    fn parse_sync_manifest() {
+        let cli = parse(&["ferrflow", "sync-manifest"]);
+        assert!(matches!(cli.command, Commands::SyncManifest));
+        assert_eq!(cli.command.name(), "sync-manifest");
     }
 
     #[test]
