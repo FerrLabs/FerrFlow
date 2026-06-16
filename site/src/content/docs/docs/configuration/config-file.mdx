@@ -821,7 +821,7 @@ The token value itself never lives in the config file — only the env-var name 
 }
 ```
 
-Omit `registry` to publish to crates.io. `allowDirty: true` adds `--allow-dirty` (mirrors `cargo publish`'s own flag).
+Omit `registry` to publish to crates.io. `allowDirty: true` adds `--allow-dirty` (mirrors `cargo publish`'s own flag). `noVerify: true` adds `--no-verify` — set it for multi-crate batch releases so inter-dependent crates don't fail on registry-index propagation timing.
 
 ### npm publisher
 
@@ -904,6 +904,22 @@ Re-uploads use `--clobber` so a retry replaces the previous file rather than fai
 ```
 
 `{name}`, `{version}`, `{tag}` and `{env:NAME}` are interpolated in the URL, body, and header values. Missing `{env:NAME}` is an error (a webhook with an unset bearer token must NOT send anonymously).
+
+### Extra flags (`args`)
+
+Every command-based publisher — `cargo`, `npm`, `docker`, `helm`, `github-release-asset` — accepts an `args` array. The strings are appended verbatim to the underlying tool invocation, so you can pass options FerrFlow doesn't model natively without waiting for a new field.
+
+```json title="ferrflow.json"
+{
+  "publishers": [
+    { "kind": "cargo", "registry": "kellnr", "args": ["--locked"] },
+    { "kind": "npm", "args": ["--provenance"] },
+    { "kind": "docker", "image": "ghcr.io/ferrlabs/api", "args": ["--build-arg", "PROFILE=release"] }
+  ]
+}
+```
+
+For the docker publisher, `args` are inserted before the build-context positional (buildx rejects flags that follow the context argument). The `webhook` publisher has no `args` — it isn't a shelled-out command.
 
 ### Migrating from postPublish hooks
 
