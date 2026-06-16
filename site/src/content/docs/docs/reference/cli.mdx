@@ -77,6 +77,47 @@ ferrflow check [OPTIONS]
 
 ---
 
+## `ferrflow publish`
+
+Run the configured [publishers](/docs/configuration/config-file/#publishers) for the currently-released version of each package — without bumping, committing, or tagging. `ferrflow release` already runs your publishers at the end of a release; `ferrflow publish` is for when you'd rather run them in a **separate CI job** that has the build toolchain and registry auth the publishers need (docker buildx, helm, a built `dist/`, …) which your release job may not.
+
+```bash
+ferrflow publish [PACKAGE]
+```
+
+| Argument | Description |
+|---|---|
+| `[PACKAGE]` | Publish a single package by name. Omit to run publishers for every package that declares them. |
+
+It reads each package's current version from its `versionedFiles` (or the latest matching tag for tag-only packages), so run it **after** `ferrflow release` has cut the version — typically from a workflow keyed off the release tag. Publishers are idempotent: anything already on the registry is skipped, so a re-run is safe. Use the global `--dry-run` to preview without publishing.
+
+The GitHub Action exposes this as `mode: publish` — it installs the binary and runs `ferrflow publish` for you, so a tag-triggered job only has to set up the toolchain its publishers need:
+
+```yaml title=".github/workflows/publish.yml"
+on:
+  push:
+    tags: ["v*"]
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: FerrLabs/FerrFlow@v5
+        with:
+          mode: publish
+```
+
+---
+
 ## `ferrflow changelog`
 
 Generate or update `CHANGELOG.md` only, without bumping versions or creating tags.
