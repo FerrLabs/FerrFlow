@@ -921,6 +921,29 @@ Every command-based publisher — `cargo`, `npm`, `docker`, `helm`, `github-rele
 
 For the docker publisher, `args` are inserted before the build-context positional (buildx rejects flags that follow the context argument). The `webhook` publisher has no `args` — it isn't a shelled-out command.
 
+### Deferring publishing to a separate job (`deferPublish`)
+
+By default publishers run inline at the end of `ferrflow release`. That's fine when the release job already has what the publishers need — but `docker`, `helm`, and `npm` publishers need a build toolchain (buildx, helm, a built `dist/`) that a minimal release job often doesn't carry.
+
+Set `workspace.deferPublish: true` and `ferrflow release` will **skip** the publishers; a separate [`ferrflow publish`](/docs/reference/cli/#ferrflow-publish) run executes them. You keep **one** config file:
+
+```json title="ferrflow.json"
+{
+  "workspace": { "deferPublish": true },
+  "package": [{
+    "name": "my-operator",
+    "path": ".",
+    "versionedFiles": [{ "path": "go.mod", "format": "gomod" }],
+    "publishers": [
+      { "kind": "docker", "image": "ghcr.io/acme/my-operator", "tags": ["{version}", "latest"] },
+      { "kind": "helm", "chart": "charts/my-operator", "registry": "oci://ghcr.io/acme/charts" }
+    ]
+  }]
+}
+```
+
+`release` versions + tags as usual; a tag-triggered job that sets up the toolchain runs `ferrflow publish` (which always runs the publishers, ignoring `deferPublish`). See the [`ferrflow publish`](/docs/reference/cli/#ferrflow-publish) reference for the matching workflow.
+
 ### Migrating from postPublish hooks
 
 The publishers block is additive — your existing `postPublish` hooks keep working. Recommended order:
