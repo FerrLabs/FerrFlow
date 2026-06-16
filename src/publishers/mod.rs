@@ -67,7 +67,8 @@ pub fn run(p: &PublisherConfig, ctx: &PublishContext<'_>) -> Result<PublishOutco
         PublisherConfig::Cargo {
             registry,
             allow_dirty,
-        } => cargo::run(registry.as_deref(), *allow_dirty, ctx),
+            no_verify,
+        } => cargo::run(registry.as_deref(), *allow_dirty, *no_verify, ctx),
         PublisherConfig::Npm {
             registry,
             tag,

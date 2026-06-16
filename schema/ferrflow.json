@@ -255,7 +255,8 @@
           "properties": {
             "kind": { "const": "cargo" },
             "registry": { "type": "string" },
-            "allowDirty": { "type": "boolean", "default": false }
+            "allowDirty": { "type": "boolean", "default": false },
+            "noVerify": { "type": "boolean", "default": false, "description": "Pass cargo publish --no-verify. Set for multi-crate batch releases so inter-dependent crates don't fail on registry-index propagation timing." }
           },
           "additionalProperties": false
         },

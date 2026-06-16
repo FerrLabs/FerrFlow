@@ -134,6 +134,17 @@ pub enum PublisherConfig {
         /// Mirrors `cargo publish --allow-dirty`. Default false.
         #[serde(default, rename = "allowDirty")]
         allow_dirty: bool,
+        /// Mirrors `cargo publish --no-verify`. Default false.
+        ///
+        /// Set this when publishing a batch of inter-dependent
+        /// workspace crates: the verify build would otherwise require
+        /// each just-published crate to propagate to the registry
+        /// index before the next dependent crate can resolve it, which
+        /// makes a multi-crate release order- and timing-sensitive.
+        /// `--no-verify` skips that build (the workspace was already
+        /// built + tested in CI) and makes the batch publish robust.
+        #[serde(default, rename = "noVerify")]
+        no_verify: bool,
     },
     /// `npm publish` to npmjs.org, GitHub Packages, or a custom
     /// registry. `registry` references workspace registries.
