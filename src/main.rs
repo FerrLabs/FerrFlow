@@ -15,6 +15,7 @@ mod publishers;
 mod query;
 mod status;
 mod telemetry;
+mod timing;
 mod validate;
 mod versioning;
 

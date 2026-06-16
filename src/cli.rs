@@ -6,6 +6,7 @@ use clap_complete::Shell;
 
 use crate::config::ConfigFileFormat;
 use crate::status::OutputFormat;
+use crate::timing::Timing;
 
 #[derive(Parser)]
 #[command(name = "ferrflow")]
@@ -23,6 +24,10 @@ pub struct Cli {
     /// Path to config file (overrides auto-detection, env: FERRFLOW_CONFIG)
     #[arg(long, global = true, env = "FERRFLOW_CONFIG")]
     pub config: Option<PathBuf>,
+
+    /// Print a per-stage timing breakdown to stderr after the command finishes
+    #[arg(long, global = true)]
+    pub timing: bool,
 
     #[command(subcommand)]
     pub command: Commands,
@@ -142,6 +147,13 @@ impl Commands {
 
 impl Cli {
     pub fn run(self) -> Result<()> {
+        let mut timing = Timing::new(self.timing);
+        let result = self.dispatch(&mut timing);
+        timing.report();
+        result
+    }
+
+    fn dispatch(self, timing: &mut Timing) -> Result<()> {
         match self.command {
             Commands::Check {
                 json,
@@ -153,6 +165,7 @@ impl Cli {
                 json,
                 channel.as_deref(),
                 comment,
+                timing,
             ),
             Commands::Release {
                 force,
@@ -169,6 +182,7 @@ impl Cli {
                 channel.as_deref(),
                 draft,
                 force_unlock,
+                timing,
             ),
             Commands::Publish { package } => crate::publish::run(
                 self.config.as_deref(),
@@ -180,12 +194,14 @@ impl Cli {
                 crate::changelog::generate_only(self.config.as_deref(), self.dry_run)
             }
             Commands::Init { format } => crate::config::init(format),
-            Commands::Status { output } => crate::status::run(self.config.as_deref(), &output),
+            Commands::Status { output } => {
+                crate::status::run(self.config.as_deref(), &output, timing)
+            }
             Commands::Version { package, json } => {
                 crate::query::version(self.config.as_deref(), package.as_deref(), json)
             }
             Commands::Tag { package, json } => {
-                crate::query::tag(self.config.as_deref(), package.as_deref(), json)
+                crate::query::tag(self.config.as_deref(), package.as_deref(), json, timing)
             }
             Commands::Validate {
                 json,
@@ -464,6 +480,25 @@ mod tests {
     fn global_config_path() {
         let cli = parse(&["ferrflow", "--config", "/tmp/ferrflow.json", "check"]);
         assert_eq!(cli.config, Some(PathBuf::from("/tmp/ferrflow.json")));
+    }
+
+    #[test]
+    fn global_timing_default_off() {
+        let cli = parse(&["ferrflow", "check"]);
+        assert!(!cli.timing);
+    }
+
+    #[test]
+    fn global_timing() {
+        let cli = parse(&["ferrflow", "--timing", "check"]);
+        assert!(cli.timing);
+    }
+
+    #[test]
+    fn global_timing_after_subcommand() {
+        let cli = parse(&["ferrflow", "release", "--timing", "--dry-run"]);
+        assert!(cli.timing);
+        assert!(cli.dry_run);
     }
 
     #[test]

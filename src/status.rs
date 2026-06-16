@@ -2,6 +2,7 @@ use crate::config::Config;
 use crate::conventional_commits::{BumpType, determine_bump};
 use crate::formats::read_version;
 use crate::git::{find_last_tag_name, get_commits_since_last_tag, get_repo_root, open_repo};
+use crate::timing::Timing;
 use anyhow::Result;
 use colored::Colorize;
 use serde::Serialize;
@@ -20,10 +21,14 @@ struct PackageStatus {
     has_changes: bool,
 }
 
-pub fn run(config_path: Option<&std::path::Path>, output: &OutputFormat) -> Result<()> {
-    let repo = open_repo(&std::env::current_dir()?)?;
+pub fn run(
+    config_path: Option<&std::path::Path>,
+    output: &OutputFormat,
+    timing: &mut Timing,
+) -> Result<()> {
+    let repo = timing.stage("open_repo", || open_repo(&std::env::current_dir()?))?;
     let root = get_repo_root(&repo)?;
-    let config = Config::load(&root, config_path)?;
+    let config = timing.stage("load config", || Config::load(&root, config_path))?;
 
     if config.packages.is_empty() {
         println!(
@@ -35,6 +40,7 @@ pub fn run(config_path: Option<&std::path::Path>, output: &OutputFormat) -> Resu
 
     let mut statuses: Vec<PackageStatus> = Vec::new();
 
+    let compute_start = std::time::Instant::now();
     for pkg in &config.packages {
         let tag_search_prefix = pkg.tag_prefix(&config.workspace, config.is_monorepo());
         let last_tag = find_last_tag_name(
@@ -68,6 +74,7 @@ pub fn run(config_path: Option<&std::path::Path>, output: &OutputFormat) -> Resu
             has_changes,
         });
     }
+    timing.record("per-package compute", compute_start.elapsed());
 
     match output {
         OutputFormat::Text => print_text(&statuses),
@@ -151,7 +158,14 @@ mod tests {
         setup_single_package(dir.path());
         create_commit(&repo, dir.path(), "init.txt", "initial");
         let config_path = dir.path().join(".ferrflow");
-        with_cwd(dir.path(), || run(Some(&config_path), &OutputFormat::Text)).unwrap();
+        with_cwd(dir.path(), || {
+            run(
+                Some(&config_path),
+                &OutputFormat::Text,
+                &mut Timing::new(false),
+            )
+        })
+        .unwrap();
     }
 
     #[test]
@@ -160,7 +174,14 @@ mod tests {
         setup_single_package(dir.path());
         create_commit(&repo, dir.path(), "init.txt", "initial");
         let config_path = dir.path().join(".ferrflow");
-        with_cwd(dir.path(), || run(Some(&config_path), &OutputFormat::Json)).unwrap();
+        with_cwd(dir.path(), || {
+            run(
+                Some(&config_path),
+                &OutputFormat::Json,
+                &mut Timing::new(false),
+            )
+        })
+        .unwrap();
     }
 
     #[test]
@@ -169,7 +190,14 @@ mod tests {
         fs::write(dir.path().join(".ferrflow"), r#"{"package": []}"#).unwrap();
         create_commit(&repo, dir.path(), "init.txt", "initial");
         let config_path = dir.path().join(".ferrflow");
-        with_cwd(dir.path(), || run(Some(&config_path), &OutputFormat::Text)).unwrap();
+        with_cwd(dir.path(), || {
+            run(
+                Some(&config_path),
+                &OutputFormat::Text,
+                &mut Timing::new(false),
+            )
+        })
+        .unwrap();
     }
 
     #[test]
@@ -179,7 +207,14 @@ mod tests {
         create_commit(&repo, dir.path(), "init.txt", "chore: initial");
         create_tag(&repo, "v1.0.0");
         let config_path = dir.path().join(".ferrflow");
-        with_cwd(dir.path(), || run(Some(&config_path), &OutputFormat::Text)).unwrap();
+        with_cwd(dir.path(), || {
+            run(
+                Some(&config_path),
+                &OutputFormat::Text,
+                &mut Timing::new(false),
+            )
+        })
+        .unwrap();
     }
 
     #[test]
@@ -190,7 +225,14 @@ mod tests {
         create_tag(&repo, "v1.0.0");
         create_commit(&repo, dir.path(), "new.txt", "feat: new feature");
         let config_path = dir.path().join(".ferrflow");
-        with_cwd(dir.path(), || run(Some(&config_path), &OutputFormat::Text)).unwrap();
+        with_cwd(dir.path(), || {
+            run(
+                Some(&config_path),
+                &OutputFormat::Text,
+                &mut Timing::new(false),
+            )
+        })
+        .unwrap();
     }
 
     #[test]
@@ -201,6 +243,13 @@ mod tests {
         create_tag(&repo, "v1.0.0");
         create_commit(&repo, dir.path(), "feature.txt", "feat: add feature");
         let config_path = dir.path().join(".ferrflow");
-        with_cwd(dir.path(), || run(Some(&config_path), &OutputFormat::Json)).unwrap();
+        with_cwd(dir.path(), || {
+            run(
+                Some(&config_path),
+                &OutputFormat::Json,
+                &mut Timing::new(false),
+            )
+        })
+        .unwrap();
     }
 }

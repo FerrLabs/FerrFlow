@@ -15,6 +15,7 @@ use crate::git::{
 use crate::hooks::{HookContext, HookPoint, resolve_hook, resolve_on_failure, run_hook};
 use crate::prerelease::PrereleaseContext;
 use crate::telemetry;
+use crate::timing::Timing;
 use crate::versioning::{compute_next_version, truncate_version};
 
 use super::types::{CheckCommit, CheckPackage, CheckResult};
@@ -48,6 +49,7 @@ pub(super) fn run_release_logic(
     channel: Option<&str>,
     draft: bool,
     force_unlock: bool,
+    timing: &mut Timing,
 ) -> Result<()> {
     if config.packages.is_empty() {
         if json {
@@ -66,6 +68,10 @@ pub(super) fn run_release_logic(
 
     let repo = open_repo(root)?;
 
+    if dry_run {
+        timing.skip("fetch_tags", "dry-run");
+    }
+
     // Acquire the release lock before any mutating step. Dropped at the
     // end of run_release_logic via RAII. Skipped on dry-run (no writes).
     // The lockfile lives at .git/ferrflow.lock; concurrent invocations
@@ -78,11 +84,15 @@ pub(super) fn run_release_logic(
         Some(lock::ReleaseLock::acquire(root)?)
     };
 
-    if !dry_run
-        && let Err(e) = fetch_tags(&repo, &config.workspace.remote)
-        && verbose
-    {
-        eprintln!("Warning: could not fetch remote tags: {e}");
+    if !dry_run {
+        let start = std::time::Instant::now();
+        let fetch = fetch_tags(&repo, &config.workspace.remote);
+        timing.record("fetch_tags", start.elapsed());
+        if let Err(e) = fetch
+            && verbose
+        {
+            eprintln!("Warning: could not fetch remote tags: {e}");
+        }
     }
 
     let current_branch = crate::git::resolve_current_branch(&repo, &config.workspace.branch);
@@ -111,7 +121,7 @@ pub(super) fn run_release_logic(
     // each repeat that scan. Coupled with the ancestor set, the per-pkg
     // lookups collapse from O(tags) callbacks + O(commits) walk to O(1)
     // hash hits.
-    let tag_index = crate::git::TagIndex::build(&repo).ok();
+    let tag_index = timing.stage("build TagIndex", || crate::git::TagIndex::build(&repo).ok());
 
     let target_branch = if prerelease_ctx.is_prerelease() {
         current_branch.clone()
@@ -142,6 +152,7 @@ pub(super) fn run_release_logic(
 
     let forced: Option<Forced<'_>> = parse_forced_version(force_version, config.is_monorepo())?;
 
+    let compute_start = std::time::Instant::now();
     for (pkg_idx, pkg) in config.packages.iter().enumerate() {
         let tag_search_prefix = pkg.tag_prefix(&config.workspace, config.is_monorepo());
 
@@ -571,6 +582,8 @@ pub(super) fn run_release_logic(
         )?;
     }
 
+    timing.record("per-package compute", compute_start.elapsed());
+
     if json {
         println!(
             "{}",
@@ -643,7 +656,10 @@ pub(super) fn run_release_logic(
             shared_outputs: &mut shared_outputs,
             checkpoint: checkpoint.as_mut(),
         };
-        execute_release(&mut plan)?;
+        let release_start = std::time::Instant::now();
+        let release_result = execute_release(&mut plan);
+        timing.record("release commit phase", release_start.elapsed());
+        release_result?;
         // Release finished cleanly — drop the checkpoint so the next
         // run starts from scratch instead of trying to resume a
         // finished release.
@@ -669,6 +685,7 @@ pub(super) fn run_release_logic(
             checkpoint: None,
         };
         print_dry_run_hooks(&plan)?;
+        timing.skip("release commit phase", "dry-run");
     }
 
     if !any_bumped && !draft && !dry_run {
