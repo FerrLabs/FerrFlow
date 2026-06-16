@@ -1518,6 +1518,7 @@ fn publishers_cargo_kind_parses() {
             registry,
             allow_dirty,
             no_verify,
+            ..
         } => {
             assert_eq!(registry.as_deref(), Some("kellnr"));
             assert!(!*allow_dirty);
@@ -1544,6 +1545,31 @@ fn publishers_cargo_no_verify_defaults_false() {
 }
 
 #[test]
+fn publishers_args_parses_and_defaults_empty() {
+    let json = r#"{
+        "package": [{
+            "name": "auth",
+            "path": "crates/auth",
+            "publishers": [
+                { "kind": "cargo", "args": ["--locked", "--jobs", "2"] },
+                { "kind": "npm" }
+            ]
+        }]
+    }"#;
+    let cfg: Config = serde_json::from_str(json).unwrap();
+    match &cfg.packages[0].publishers[0] {
+        PublisherConfig::Cargo { args, .. } => {
+            assert_eq!(args, &vec!["--locked", "--jobs", "2"]);
+        }
+        _ => panic!("expected cargo kind"),
+    }
+    match &cfg.packages[0].publishers[1] {
+        PublisherConfig::Npm { args, .. } => assert!(args.is_empty()),
+        _ => panic!("expected npm kind"),
+    }
+}
+
+#[test]
 fn publishers_docker_kind_has_defaults() {
     let json = r#"{
         "package": [{
@@ -1563,6 +1589,7 @@ fn publishers_docker_kind_has_defaults() {
             context,
             dockerfile,
             sign,
+            ..
         } => {
             assert_eq!(image, "ghcr.io/ferrlabs/auth");
             assert_eq!(tags, &vec!["{version}".to_string()]);
@@ -1581,6 +1608,7 @@ fn publishers_describe_renders_dry_run_preview() {
         registry: Some("kellnr".to_string()),
         allow_dirty: false,
         no_verify: false,
+        args: vec![],
     };
     assert_eq!(
         cargo.describe("ferrlabs-auth", "0.1.0"),
@@ -1594,6 +1622,7 @@ fn publishers_describe_renders_dry_run_preview() {
         context: ".".to_string(),
         dockerfile: "Dockerfile".to_string(),
         sign: crate::config::DockerSign::Sigstore,
+        args: vec![],
     };
     let line = docker.describe("ferrlabs-auth", "0.1.0");
     assert!(line.contains("ghcr.io/ferrlabs/auth"));

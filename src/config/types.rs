@@ -145,6 +145,11 @@ pub enum PublisherConfig {
         /// built + tested in CI) and makes the batch publish robust.
         #[serde(default, rename = "noVerify")]
         no_verify: bool,
+        /// Extra raw arguments appended to the `cargo publish`
+        /// invocation. Escape hatch for flags FerrFlow doesn't model
+        /// (e.g. `--features`, `--target`). Passed verbatim.
+        #[serde(default)]
+        args: Vec<String>,
     },
     /// `npm publish` to npmjs.org, GitHub Packages, or a custom
     /// registry. `registry` references workspace registries.
@@ -159,6 +164,10 @@ pub enum PublisherConfig {
         /// `--access public|restricted` for scoped packages.
         #[serde(default)]
         access: Option<String>,
+        /// Extra raw arguments appended to `npm publish` (e.g.
+        /// `--provenance`, `--dry-run`). Passed verbatim.
+        #[serde(default)]
+        args: Vec<String>,
     },
     /// Docker `buildx` push with optional Sigstore signing.
     Docker {
@@ -185,6 +194,11 @@ pub enum PublisherConfig {
         /// `none` = no signature.
         #[serde(default)]
         sign: DockerSign,
+        /// Extra raw arguments passed to `docker buildx build`,
+        /// inserted before the build context positional (e.g.
+        /// `--build-arg`, `--cache-from`, `--provenance=false`).
+        #[serde(default)]
+        args: Vec<String>,
     },
     /// OCI helm chart push.
     Helm {
@@ -193,6 +207,10 @@ pub enum PublisherConfig {
         chart: String,
         /// Target OCI registry, e.g. `oci://ghcr.io/ferrlabs/charts`.
         registry: String,
+        /// Extra raw arguments appended to `helm push` (e.g.
+        /// `--insecure-skip-tls-verify`). Passed verbatim.
+        #[serde(default)]
+        args: Vec<String>,
     },
     /// Attach an extra file to the GitHub Release that
     /// `ferrflow release` just created. Useful for SBOMs, signed
@@ -204,6 +222,10 @@ pub enum PublisherConfig {
         /// path's basename.
         #[serde(default, rename = "displayName")]
         display_name: Option<String>,
+        /// Extra raw arguments appended to `gh release upload` (e.g.
+        /// `--repo`). Passed verbatim.
+        #[serde(default)]
+        args: Vec<String>,
     },
     /// Generic POST notifier — Slack incoming webhook, Discord,
     /// custom internal services. The JSON body has access to
@@ -300,10 +322,14 @@ impl PublisherConfig {
                     resolved.join(", ")
                 )
             }
-            PublisherConfig::Helm { chart, registry } => {
+            PublisherConfig::Helm {
+                chart, registry, ..
+            } => {
                 format!("helm push {chart} {new_version} → {registry}")
             }
-            PublisherConfig::GithubReleaseAsset { path, display_name } => {
+            PublisherConfig::GithubReleaseAsset {
+                path, display_name, ..
+            } => {
                 let shown = display_name.as_deref().unwrap_or(path);
                 format!("upload {shown} → GitHub Release {new_version}")
             }

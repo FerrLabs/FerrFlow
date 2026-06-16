@@ -256,7 +256,8 @@
             "kind": { "const": "cargo" },
             "registry": { "type": "string" },
             "allowDirty": { "type": "boolean", "default": false },
-            "noVerify": { "type": "boolean", "default": false, "description": "Pass cargo publish --no-verify. Set for multi-crate batch releases so inter-dependent crates don't fail on registry-index propagation timing." }
+            "noVerify": { "type": "boolean", "default": false, "description": "Pass cargo publish --no-verify. Set for multi-crate batch releases so inter-dependent crates don't fail on registry-index propagation timing." },
+            "args": { "type": "array", "items": { "type": "string" }, "description": "Extra flags appended verbatim to the underlying cargo publish invocation. Escape hatch for options FerrFlow doesn't model natively.", "default": [] }
           },
           "additionalProperties": false
         },
@@ -267,7 +268,8 @@
             "kind": { "const": "npm" },
             "registry": { "type": "string" },
             "tag": { "type": "string" },
-            "access": { "type": "string", "enum": ["public", "restricted"] }
+            "access": { "type": "string", "enum": ["public", "restricted"] },
+            "args": { "type": "array", "items": { "type": "string" }, "description": "Extra flags appended verbatim to the underlying npm publish invocation. Escape hatch for options FerrFlow doesn't model natively.", "default": [] }
           },
           "additionalProperties": false
         },
@@ -281,7 +283,8 @@
             "platforms": { "type": "array", "items": { "type": "string" } },
             "context": { "type": "string", "default": "." },
             "dockerfile": { "type": "string", "default": "Dockerfile" },
-            "sign": { "type": "string", "enum": ["none", "sigstore"], "default": "none" }
+            "sign": { "type": "string", "enum": ["none", "sigstore"], "default": "none" },
+            "args": { "type": "array", "items": { "type": "string" }, "description": "Extra flags appended verbatim to the underlying docker buildx build invocation (before the build-context positional). Escape hatch for options FerrFlow doesn't model natively.", "default": [] }
           },
           "additionalProperties": false
         },
@@ -291,7 +294,8 @@
           "properties": {
             "kind": { "const": "helm" },
             "chart": { "type": "string", "default": "." },
-            "registry": { "type": "string" }
+            "registry": { "type": "string" },
+            "args": { "type": "array", "items": { "type": "string" }, "description": "Extra flags appended verbatim to the underlying helm push invocation. Escape hatch for options FerrFlow doesn't model natively.", "default": [] }
           },
           "additionalProperties": false
         },
@@ -301,7 +305,8 @@
           "properties": {
             "kind": { "const": "github-release-asset" },
             "path": { "type": "string" },
-            "displayName": { "type": "string" }
+            "displayName": { "type": "string" },
+            "args": { "type": "array", "items": { "type": "string" }, "description": "Extra flags appended verbatim to the underlying gh release upload invocation. Escape hatch for options FerrFlow doesn't model natively.", "default": [] }
           },
           "additionalProperties": false
         },

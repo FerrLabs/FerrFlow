@@ -16,6 +16,7 @@ use crate::error_code::{self, ErrorCodeExt};
 pub fn run(
     path: &str,
     display_name: Option<&str>,
+    extra_args: &[String],
     ctx: &PublishContext<'_>,
 ) -> Result<PublishOutcome> {
     let asset_path = ctx.package_path.join(path);
@@ -42,6 +43,7 @@ pub fn run(
         .arg(ctx.tag)
         .arg(&asset_arg)
         .arg("--clobber")
+        .args(extra_args)
         .output()
         .with_context(|| "spawn `gh release upload` failed (is gh in PATH?)")?;
     if !output.status.success() {
@@ -76,7 +78,7 @@ mod tests {
             dry_run: true,
             verbose: false,
         };
-        let err = run("sbom.cdx.json", None, &ctx).expect_err("must error");
+        let err = run("sbom.cdx.json", None, &[], &ctx).expect_err("must error");
         assert!(format!("{err:?}").contains("does not exist"));
     }
 
@@ -94,7 +96,7 @@ mod tests {
             dry_run: true,
             verbose: false,
         };
-        let outcome = run("sbom.cdx.json", Some("sbom.json"), &ctx).expect("dry-run");
+        let outcome = run("sbom.cdx.json", Some("sbom.json"), &[], &ctx).expect("dry-run");
         assert!(matches!(outcome, PublishOutcome::DryRun));
     }
 }
