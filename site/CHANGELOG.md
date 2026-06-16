@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.8.0] - 2026-06-16
+
+### Features
+
+- feat(docs): document ferrflow publish command (#560)
+
 ## [6.7.0] - 2026-06-16
 
 ### Features
