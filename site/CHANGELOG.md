@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.6.6] - 2026-06-16
+
+### Bug Fixes
+
+- fix(ci): use FERRLABS_DISPATCH_TOKEN for sync checkout+push (real repo access) (#556)
+
 ## [6.6.5] - 2026-06-15
 
 ### Bug Fixes
