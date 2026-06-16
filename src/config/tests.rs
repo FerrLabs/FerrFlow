@@ -943,6 +943,20 @@ fn release_commit_scope_camel_case_alias() {
     );
 }
 
+#[test]
+fn defer_publish_defaults_false() {
+    let json = r#"{ "workspace": {}, "package": [] }"#;
+    let config: Config = serde_json::from_str(json).unwrap();
+    assert!(!config.workspace.defer_publish);
+}
+
+#[test]
+fn defer_publish_parses_camel_case_alias() {
+    let json = r#"{ "workspace": { "deferPublish": true }, "package": [] }"#;
+    let config: Config = serde_json::from_str(json).unwrap();
+    assert!(config.workspace.defer_publish);
+}
+
 // -----------------------------------------------------------------------
 // load_explicit with json5
 // -----------------------------------------------------------------------

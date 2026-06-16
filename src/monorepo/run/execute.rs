@@ -555,6 +555,12 @@ fn run_publishers_for_package(
     new_version: &str,
     tag: &str,
 ) -> Result<()> {
+    // `deferPublish` hands publishing off to a separate `ferrflow
+    // publish` run (typically a CI job that carries the build toolchain
+    // the release job lacks). Skip the inline run here.
+    if plan.config.workspace.defer_publish {
+        return Ok(());
+    }
     let package_path = plan.root.join(&pkg.path);
     let pub_ctx = crate::publishers::PublishContext {
         package_name,
