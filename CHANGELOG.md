@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.12.0] - 2026-06-16
+
+### Features
+
+- feat(changelog): configurable sections, scope grouping, commit + compare links (#586)
+
 ## [5.11.1] - 2026-06-16
 
 ### Bug Fixes
