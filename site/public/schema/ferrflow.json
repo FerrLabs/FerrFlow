@@ -144,6 +144,38 @@
             },
             "additionalProperties": false
           }
+        },
+        "changelog": {
+          "type": "object",
+          "description": "Opt-in changelog rendering. When omitted, FerrFlow renders the classic three sections (Breaking Changes, Features, Bug Fixes) with flat bullets and no links.",
+          "properties": {
+            "sections": {
+              "type": "object",
+              "description": "Map commit-type prefixes to section labels, or false to hide. Keys: feat, fix, perf, docs, refactor, security. When omitted, defaults to feat -> Features and fix -> Bug Fixes (Breaking Changes always shown). 'security' applies to security: and fix(security): commits.",
+              "additionalProperties": {
+                "oneOf": [
+                  { "type": "string", "description": "Section heading label for this commit type." },
+                  { "type": "boolean", "const": false, "description": "Hide this commit type from the changelog." }
+                ]
+              }
+            },
+            "groupByScope": {
+              "type": "boolean",
+              "description": "Group bullets by commit scope using an inline bold prefix (- **api:** add events endpoint). Scopeless commits render first.",
+              "default": false
+            },
+            "includeCommitLinks": {
+              "type": "boolean",
+              "description": "Append a commit link to each bullet (([abc1234](<forge>/commit/abc1234))) when the forge is known. Silently omitted when the remote forge cannot be resolved.",
+              "default": false
+            },
+            "includeCompareLink": {
+              "type": "boolean",
+              "description": "Emit a keep-a-changelog compare footer ([1.2.3]: <forge>/compare/v1.2.2...v1.2.3) when the forge is known and a previous tag exists.",
+              "default": false
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
