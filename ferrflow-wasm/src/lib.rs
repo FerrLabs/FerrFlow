@@ -45,7 +45,11 @@ pub fn build_changelog_section(version: &str, commits_json: &str) -> Result<Stri
         })
         .collect();
 
-    Ok(changelog::build_section(version, &commits))
+    Ok(changelog::build_section_with(
+        version,
+        &commits,
+        &changelog::ChangelogRender::default(),
+    ))
 }
 
 #[wasm_bindgen]

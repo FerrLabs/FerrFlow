@@ -126,6 +126,16 @@ pub fn extract_repo_slug(url: &str) -> Option<String> {
         .filter(|s| s.contains('/') && !s.is_empty())
 }
 
+pub fn web_base_url(remote_url: &str) -> Option<String> {
+    let kind = detect_forge_from_url(remote_url)?;
+    let host = extract_host(remote_url)?;
+    let slug = extract_repo_slug(remote_url)?;
+    match kind {
+        ForgeKind::Github | ForgeKind::Gitlab => Some(format!("https://{host}/{slug}")),
+        ForgeKind::Auto => None,
+    }
+}
+
 pub fn resolve_token(kind: ForgeKind) -> Option<String> {
     if let Ok(token) = std::env::var("FERRFLOW_TOKEN")
         && !token.is_empty()

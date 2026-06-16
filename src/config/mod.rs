@@ -25,7 +25,9 @@ pub use types::{
     ReleaseCommitScope,
 };
 #[allow(unused_imports)]
-pub use workspace::{WorkspaceConfig, default_commit_skip_markers};
+pub use workspace::{
+    ChangelogConfig, SectionSetting, WorkspaceConfig, default_commit_skip_markers,
+};
 
 use format::{CONFIG_FORMATS, DotfileFormat, Json5Format, JsonFormat, TomlFormat};
 #[cfg(feature = "cli")]

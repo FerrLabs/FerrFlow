@@ -2,7 +2,7 @@ use std::hint::black_box;
 use std::io::Write;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use ferrflow::changelog::{build_section, update_changelog};
+use ferrflow::changelog::{ChangelogRender, build_section_with, update_changelog};
 use ferrflow::config::{Config, FileFormat, OrphanedTagStrategy};
 use ferrflow::conventional_commits::{BumpType, determine_bump};
 use ferrflow::formats::get_handler;
@@ -64,7 +64,11 @@ fn bench_changelog(c: &mut Criterion) {
 
         c.bench_function(&format!("changelog/build_{size}"), |b| {
             b.iter(|| {
-                black_box(build_section("1.0.0", &commits));
+                black_box(build_section_with(
+                    "1.0.0",
+                    &commits,
+                    &ChangelogRender::default(),
+                ));
             });
         });
 
