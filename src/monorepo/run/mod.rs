@@ -3,7 +3,7 @@ use colored::Colorize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
-use crate::changelog::{build_section, update_changelog};
+use crate::changelog::{ChangelogRender, build_section_with, update_changelog_with};
 use crate::config::{Config, OrphanedTagStrategy, VersioningStrategy};
 use crate::conventional_commits::{BumpType, determine_bump};
 use crate::formats::{get_handler, read_version, write_version};
@@ -100,6 +100,16 @@ pub(super) fn run_release_logic(
     }
 
     let current_branch = crate::git::resolve_current_branch(&repo, &config.workspace.branch);
+
+    let forge_base = config.workspace.changelog.as_ref().and_then(|cl| {
+        if cl.include_commit_links || cl.include_compare_link {
+            crate::git::get_remote_url(&repo, &config.workspace.remote)
+                .as_deref()
+                .and_then(crate::forge::web_base_url)
+        } else {
+            None
+        }
+    });
 
     let prerelease_ctx = PrereleaseContext::resolve(
         channel,
@@ -215,10 +225,9 @@ pub(super) fn run_release_logic(
         let strategy = config.workspace.orphaned_tag_strategy;
         // Fast path via the pre-built TagIndex for Warn (default); otherwise
         // fall back to the per-call form that still uses the ancestor cache.
-        let tag_version =
+        let highest_tag =
             if let (Some(idx), OrphanedTagStrategy::Warn) = (tag_index.as_ref(), strategy) {
                 idx.find_highest_semver_tag(&tag_search_prefix, strategy)
-                    .map(|(_tag, version)| version)
             } else {
                 crate::git::find_highest_semver_tag_with_cache(
                     &repo,
@@ -226,8 +235,9 @@ pub(super) fn run_release_logic(
                     strategy,
                     head_ancestors.as_ref(),
                 )?
-                .map(|(_tag, version)| version)
             };
+        let last_tag = highest_tag.as_ref().map(|(tag, _version)| tag.clone());
+        let tag_version = highest_tag.map(|(_tag, version)| version);
         let current_version = match (tag_version, file_version) {
             (Some(tag), Some(file)) => pick_higher_semver(&file, &tag),
             (Some(tag), None) => tag,
@@ -502,15 +512,23 @@ pub(super) fn run_release_logic(
                 }
             }
 
+            let changelog_render = ChangelogRender {
+                config: config.workspace.changelog.as_ref(),
+                forge_base: forge_base.clone(),
+                last_tag: last_tag.clone(),
+                new_tag: Some(tag.clone()),
+            };
+
             if let Some(changelog_rel) = &pkg.changelog {
                 let changelog_path = root.join(changelog_rel);
-                update_changelog(
+                update_changelog_with(
                     &changelog_path,
                     &pkg.name,
                     &new_version,
                     &commits,
                     bump,
                     false,
+                    &changelog_render,
                 )?;
                 files_to_commit.push(changelog_rel.clone());
                 files_per_package
@@ -538,7 +556,7 @@ pub(super) fn run_release_logic(
                 }
             }
 
-            let body = build_section(&new_version, &commits);
+            let body = build_section_with(&new_version, &commits, &changelog_render);
             tags_to_create.push((
                 tag.clone(),
                 format!("Release {tag}"),

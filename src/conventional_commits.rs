@@ -103,6 +103,49 @@ pub fn parse_subject(message: &str) -> &str {
     message.lines().next().unwrap_or("").trim()
 }
 
+static HEADER_RE: OnceLock<Regex> = OnceLock::new();
+
+fn header_re() -> &'static Regex {
+    HEADER_RE.get_or_init(|| {
+        Regex::new(r"^(?P<type>[a-z]+)(?:\((?P<scope>[^()]+)\))?(?P<bang>!)?:\s*(?P<desc>.*)$")
+            .unwrap()
+    })
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParsedHeader<'a> {
+    pub commit_type: &'a str,
+    pub scope: Option<&'a str>,
+    pub breaking_bang: bool,
+    pub description: &'a str,
+}
+
+pub fn parse_header(message: &str) -> Option<ParsedHeader<'_>> {
+    let subject = parse_subject(message);
+    let caps = header_re().captures(subject)?;
+    Some(ParsedHeader {
+        commit_type: caps.name("type")?.as_str(),
+        scope: caps.name("scope").map(|m| m.as_str()),
+        breaking_bang: caps.name("bang").is_some(),
+        description: caps.name("desc").map(|m| m.as_str()).unwrap_or(""),
+    })
+}
+
+pub fn is_breaking(message: &str) -> bool {
+    matches!(classify_commit(message), CommitCategory::Breaking)
+}
+
+pub fn breaking_footer_body(message: &str) -> Option<String> {
+    let re = breaking_footer_re();
+    let mat = re.find(message)?;
+    let body = message[mat.end()..].trim();
+    if body.is_empty() {
+        None
+    } else {
+        Some(body.lines().next().unwrap_or("").trim().to_string())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -348,5 +391,60 @@ mod tests {
     fn test_multiline_body_breaking_marker_in_body_does_not_match() {
         let msg = "chore: update deps\n\nfeat!: this is in the body";
         assert_eq!(determine_bump(msg), BumpType::None);
+    }
+
+    #[test]
+    fn test_parse_header_type_scope_desc() {
+        let h = parse_header("feat(api): add events endpoint").unwrap();
+        assert_eq!(h.commit_type, "feat");
+        assert_eq!(h.scope, Some("api"));
+        assert!(!h.breaking_bang);
+        assert_eq!(h.description, "add events endpoint");
+    }
+
+    #[test]
+    fn test_parse_header_breaking_bang() {
+        let h = parse_header("feat!: drop flag").unwrap();
+        assert_eq!(h.commit_type, "feat");
+        assert_eq!(h.scope, None);
+        assert!(h.breaking_bang);
+        assert_eq!(h.description, "drop flag");
+    }
+
+    #[test]
+    fn test_parse_header_scoped_bang() {
+        let h = parse_header("fix(security)!: patch").unwrap();
+        assert_eq!(h.commit_type, "fix");
+        assert_eq!(h.scope, Some("security"));
+        assert!(h.breaking_bang);
+    }
+
+    #[test]
+    fn test_parse_header_non_conventional() {
+        assert!(parse_header("just a message").is_none());
+        assert!(parse_header("feat add no colon").is_none());
+    }
+
+    #[test]
+    fn test_breaking_footer_body_extracts_description() {
+        let msg = "feat: add x\n\nBREAKING CHANGE: the old endpoint is gone";
+        assert_eq!(
+            breaking_footer_body(msg).as_deref(),
+            Some("the old endpoint is gone")
+        );
+    }
+
+    #[test]
+    fn test_breaking_footer_body_none_when_absent() {
+        assert_eq!(breaking_footer_body("feat: add x"), None);
+        assert_eq!(breaking_footer_body("feat!: add x"), None);
+    }
+
+    #[test]
+    fn test_is_breaking() {
+        assert!(is_breaking("feat!: x"));
+        assert!(is_breaking("feat: x\n\nBREAKING CHANGE: y"));
+        assert!(!is_breaking("feat: x"));
+        assert!(!is_breaking("fix: y"));
     }
 }

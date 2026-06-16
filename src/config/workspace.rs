@@ -57,6 +57,40 @@ pub struct WorkspaceConfig {
     /// publish` always runs the publishers regardless of this flag.
     #[serde(default, alias = "deferPublish")]
     pub defer_publish: bool,
+    #[serde(default)]
+    pub changelog: Option<ChangelogConfig>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+pub struct ChangelogConfig {
+    #[serde(default)]
+    pub sections: Option<BTreeMap<String, SectionSetting>>,
+    #[serde(default, alias = "groupByScope")]
+    pub group_by_scope: bool,
+    #[serde(default, alias = "includeCommitLinks")]
+    pub include_commit_links: bool,
+    #[serde(default, alias = "includeCompareLink")]
+    pub include_compare_link: bool,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum SectionSetting {
+    Label(String),
+    Enabled(bool),
+}
+
+impl SectionSetting {
+    pub fn label(&self) -> Option<&str> {
+        match self {
+            SectionSetting::Label(label) => Some(label),
+            SectionSetting::Enabled(_) => None,
+        }
+    }
+
+    pub fn is_hidden(&self) -> bool {
+        matches!(self, SectionSetting::Enabled(false))
+    }
 }
 
 impl WorkspaceConfig {

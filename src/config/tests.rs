@@ -90,6 +90,60 @@ format = "toml"
 }
 
 #[test]
+fn parse_changelog_config_toml() {
+    let toml = r#"
+[workspace.changelog]
+sections = { feat = "Features", fix = "Bug Fixes", perf = "Performance", docs = false }
+group_by_scope = true
+include_commit_links = true
+include_compare_link = true
+
+[[package]]
+name = "app"
+path = "."
+"#;
+    let config: Config = toml_edit::de::from_str(toml).unwrap();
+    let cl = config
+        .workspace
+        .changelog
+        .expect("changelog config present");
+    assert!(cl.group_by_scope);
+    assert!(cl.include_commit_links);
+    assert!(cl.include_compare_link);
+    let sections = cl.sections.expect("sections present");
+    assert_eq!(
+        sections.get("feat").and_then(|s| s.label()),
+        Some("Features")
+    );
+    assert!(sections.get("docs").unwrap().is_hidden());
+    assert!(!sections.get("feat").unwrap().is_hidden());
+}
+
+#[test]
+fn parse_changelog_config_camel_case() {
+    let json = r#"{
+        "workspace": { "changelog": { "groupByScope": true, "includeCommitLinks": true, "includeCompareLink": true } },
+        "package": []
+    }"#;
+    let config: Config = serde_json::from_str(json).unwrap();
+    let cl = config
+        .workspace
+        .changelog
+        .expect("changelog config present");
+    assert!(cl.group_by_scope);
+    assert!(cl.include_commit_links);
+    assert!(cl.include_compare_link);
+    assert!(cl.sections.is_none());
+}
+
+#[test]
+fn changelog_config_defaults_when_absent() {
+    let json = r#"{ "workspace": {}, "package": [] }"#;
+    let config: Config = serde_json::from_str(json).unwrap();
+    assert!(config.workspace.changelog.is_none());
+}
+
+#[test]
 fn parse_versioning_strategies() {
     let json = r#"{
             "workspace": { "versioning": "calver" },
