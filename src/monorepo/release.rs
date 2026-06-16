@@ -4,6 +4,7 @@ use std::path::Path;
 
 use crate::config::Config;
 use crate::git::{get_repo_root, open_repo};
+use crate::timing::Timing;
 
 use super::run::run_release_logic;
 
@@ -19,11 +20,12 @@ pub fn release(
     channel: Option<&str>,
     draft: bool,
     force_unlock: bool,
+    timing: &mut Timing,
 ) -> Result<()> {
     crate::bot_token::ensure_bot_token()?;
-    let repo = open_repo(&std::env::current_dir()?)?;
+    let repo = timing.stage("open_repo", || open_repo(&std::env::current_dir()?))?;
     let root = get_repo_root(&repo)?;
-    let config = Config::load(&root, config_path)?;
+    let config = timing.stage("load config", || Config::load(&root, config_path))?;
     drop(repo);
 
     if dry_run {
@@ -51,6 +53,7 @@ pub fn release(
             channel,
             draft,
             force_unlock,
+            timing,
         );
     }
 
@@ -72,6 +75,7 @@ pub fn release(
             channel,
             draft,
             force_unlock,
+            timing,
         );
 
         match result {

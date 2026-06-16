@@ -5,6 +5,7 @@ use crate::git::{
     Repository, TagIndex, find_highest_semver_tag_with_cache, find_last_tag_name,
     find_last_tag_name_with_cache, get_repo_root, open_repo,
 };
+use crate::timing::Timing;
 use anyhow::Result;
 use serde::Serialize;
 
@@ -135,10 +136,15 @@ pub fn version(
     Ok(())
 }
 
-pub fn tag(config_path: Option<&std::path::Path>, package: Option<&str>, json: bool) -> Result<()> {
-    let repo = open_repo(&std::env::current_dir()?)?;
+pub fn tag(
+    config_path: Option<&std::path::Path>,
+    package: Option<&str>,
+    json: bool,
+    timing: &mut Timing,
+) -> Result<()> {
+    let repo = timing.stage("open_repo", || open_repo(&std::env::current_dir()?))?;
     let root = get_repo_root(&repo)?;
-    let config = Config::load(&root, config_path)?;
+    let config = timing.stage("load config", || Config::load(&root, config_path))?;
 
     if config.packages.is_empty() {
         Err(anyhow::anyhow!(
@@ -196,7 +202,8 @@ pub fn tag(config_path: Option<&std::path::Path>, package: Option<&str>, json: b
         // The index pre-resolves both, leaving per-package work as a
         // linear scan over already-resolved entries.
         let strategy = config.workspace.orphaned_tag_strategy;
-        let index = TagIndex::build(&repo).ok();
+        let index = timing.stage("build TagIndex", || TagIndex::build(&repo).ok());
+        let resolve_start = std::time::Instant::now();
         let entries: Vec<TagEntry> = config
             .packages
             .iter()
@@ -228,6 +235,7 @@ pub fn tag(config_path: Option<&std::path::Path>, package: Option<&str>, json: b
                 }
             })
             .collect();
+        timing.record("per-package tag lookup", resolve_start.elapsed());
 
         if json {
             println!("{}", serde_json::to_string(&entries)?);
@@ -386,7 +394,10 @@ mod tests {
         setup_single_package(dir.path());
         create_commit(&repo, dir.path(), "init.txt", "initial");
         let config_path = dir.path().join(".ferrflow");
-        with_cwd(dir.path(), || tag(Some(&config_path), None, false)).unwrap();
+        with_cwd(dir.path(), || {
+            tag(Some(&config_path), None, false, &mut Timing::new(false))
+        })
+        .unwrap();
     }
 
     #[test]
@@ -396,7 +407,10 @@ mod tests {
         create_commit(&repo, dir.path(), "init.txt", "initial");
         create_tag(&repo, "v1.2.3");
         let config_path = dir.path().join(".ferrflow");
-        with_cwd(dir.path(), || tag(Some(&config_path), None, false)).unwrap();
+        with_cwd(dir.path(), || {
+            tag(Some(&config_path), None, false, &mut Timing::new(false))
+        })
+        .unwrap();
     }
 
     #[test]
@@ -406,7 +420,10 @@ mod tests {
         create_commit(&repo, dir.path(), "init.txt", "initial");
         create_tag(&repo, "v1.2.3");
         let config_path = dir.path().join(".ferrflow");
-        with_cwd(dir.path(), || tag(Some(&config_path), None, true)).unwrap();
+        with_cwd(dir.path(), || {
+            tag(Some(&config_path), None, true, &mut Timing::new(false))
+        })
+        .unwrap();
     }
 
     // Issue #531: a package without `versionedFiles` must still resolve a
@@ -448,7 +465,10 @@ mod tests {
         create_commit(&repo, dir.path(), "init.txt", "initial");
         create_tag(&repo, "img@v1.0.0");
         let config_path = dir.path().join(".ferrflow");
-        with_cwd(dir.path(), || tag(Some(&config_path), None, true)).unwrap();
+        with_cwd(dir.path(), || {
+            tag(Some(&config_path), None, true, &mut Timing::new(false))
+        })
+        .unwrap();
     }
 
     #[test]
@@ -458,7 +478,12 @@ mod tests {
         create_commit(&repo, dir.path(), "init.txt", "initial");
         let config_path = dir.path().join(".ferrflow");
         let result = with_cwd(dir.path(), || {
-            tag(Some(&config_path), Some("nonexistent"), false)
+            tag(
+                Some(&config_path),
+                Some("nonexistent"),
+                false,
+                &mut Timing::new(false),
+            )
         });
         assert!(result.is_err());
     }
@@ -469,7 +494,10 @@ mod tests {
         setup_monorepo(dir.path());
         create_commit(&repo, dir.path(), "init.txt", "initial");
         let config_path = dir.path().join(".ferrflow");
-        with_cwd(dir.path(), || tag(Some(&config_path), None, false)).unwrap();
+        with_cwd(dir.path(), || {
+            tag(Some(&config_path), None, false, &mut Timing::new(false))
+        })
+        .unwrap();
     }
 
     #[test]
@@ -478,7 +506,9 @@ mod tests {
         fs::write(dir.path().join(".ferrflow"), r#"{"package": []}"#).unwrap();
         create_commit(&repo, dir.path(), "init.txt", "initial");
         let config_path = dir.path().join(".ferrflow");
-        let result = with_cwd(dir.path(), || tag(Some(&config_path), None, false));
+        let result = with_cwd(dir.path(), || {
+            tag(Some(&config_path), None, false, &mut Timing::new(false))
+        });
         assert!(result.is_err());
     }
 }
