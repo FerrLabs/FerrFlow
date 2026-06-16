@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.9.0] - 2026-06-16
+
+### Features
+
+- feat(docs): document workspace.deferPublish + schema (#562)
+
 ## [6.8.1] - 2026-06-16
 
 ### Bug Fixes
