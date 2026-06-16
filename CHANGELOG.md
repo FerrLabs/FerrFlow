@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.9.0] - 2026-06-16
+
+### Features
+
+- feat(cli): add ferrflow publish to run publishers without releasing (#581)
+
 ## [5.8.0] - 2026-06-16
 
 ### Features
