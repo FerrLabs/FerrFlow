@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.11.1] - 2026-06-16
+
+### Bug Fixes
+
+- perf(cache): cross-run cache for the per-package walk under .git/ferrflow-cache (#585)
+
 ## [5.11.0] - 2026-06-16
 
 ### Features
