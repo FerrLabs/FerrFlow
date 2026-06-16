@@ -48,6 +48,15 @@ pub struct WorkspaceConfig {
     /// the publisher RFC.
     #[serde(default)]
     pub registries: BTreeMap<String, RegistryConfig>,
+    /// When `true`, `ferrflow release` does NOT run the configured
+    /// `publishers` inline — it defers them to a separate `ferrflow
+    /// publish` invocation. Default `false` (publishers run at the end
+    /// of `release`, as usual). Set `true` when the release job is
+    /// minimal but publishing needs a build toolchain (docker buildx,
+    /// helm, a built npm dist) that lives in another CI job. `ferrflow
+    /// publish` always runs the publishers regardless of this flag.
+    #[serde(default, alias = "deferPublish")]
+    pub defer_publish: bool,
 }
 
 impl WorkspaceConfig {
