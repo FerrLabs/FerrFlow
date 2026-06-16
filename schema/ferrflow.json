@@ -104,6 +104,11 @@
           "description": "When true, `ferrflow release` does not run the configured publishers inline — it defers them to a separate `ferrflow publish` invocation (e.g. a CI job that carries the docker/helm/npm build toolchain the release job lacks). `ferrflow publish` always runs the publishers regardless of this flag.",
           "default": false
         },
+        "manifest_file": {
+          "type": "string",
+          "description": "Opt-in single-file source of truth for per-package versions, relative to the repo root (e.g. '.ferrflow.manifest.json'). When set, `ferrflow release` writes a full version snapshot to this file as part of the release commit, validates it against the versioned files at release start (a divergence is a hard error — run `ferrflow sync-manifest` to repair), and `status` / `version` read current versions from it. Omit to leave all behaviour unchanged.",
+          "examples": [".ferrflow.manifest.json"]
+        },
         "registries": {
           "type": "object",
           "description": "Named registry credentials referenced by package.publishers[]. Lets users declare 'the Kellnr token lives in CARGO_REGISTRIES_KELLNR_TOKEN' once and reuse it across every cargo / npm / docker publisher.",

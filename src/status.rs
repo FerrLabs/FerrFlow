@@ -38,6 +38,9 @@ pub fn run(
         return Ok(());
     }
 
+    let manifest = crate::manifest::manifest_path(&config, &root)
+        .and_then(|path| crate::manifest::read_if_present(&path).ok().flatten());
+
     let mut statuses: Vec<PackageStatus> = Vec::new();
 
     let compute_start = std::time::Instant::now();
@@ -49,11 +52,16 @@ pub fn run(
             config.workspace.orphaned_tag_strategy,
         )?;
 
-        let version = if let Some(vf) = pkg.versioned_files.first() {
-            read_version(vf, &root).unwrap_or_else(|_| "unknown".to_string())
-        } else {
-            "unknown".to_string()
-        };
+        let version = manifest
+            .as_ref()
+            .and_then(|m| m.version_of(&pkg.name))
+            .map(str::to_string)
+            .or_else(|| {
+                pkg.versioned_files
+                    .first()
+                    .and_then(|vf| read_version(vf, &root).ok())
+            })
+            .unwrap_or_else(|| "unknown".to_string());
 
         let skip_markers = config.workspace.effective_commit_skip_markers();
         let commits = get_commits_since_last_tag(

@@ -617,6 +617,27 @@ pub(super) fn run_release_logic(
     }
 
     if any_bumped && !tags_to_create.is_empty() {
+        if !dry_run && let Some(manifest_rel) = config.workspace.manifest_file.as_deref() {
+            let overrides: std::collections::BTreeMap<String, String> = tags_to_create
+                .iter()
+                .map(|(_, _, _, name, ver, _, _)| (name.clone(), ver.clone()))
+                .collect();
+            let packages = crate::manifest::snapshot_with_overrides(config, root, &overrides);
+            let commit = repo
+                .head_id()
+                .ok()
+                .map(|id| id.to_string()[..7.min(id.to_string().len())].to_string())
+                .unwrap_or_default();
+            let manifest = crate::manifest::Manifest::new(
+                packages,
+                crate::manifest::now_utc_iso8601(),
+                commit,
+            );
+            let manifest_path = root.join(manifest_rel);
+            crate::manifest::write_atomic(&manifest_path, &manifest)?;
+            files_to_commit.push(manifest_rel.to_string());
+        }
+
         // Crash-resume checkpoint (#549). On dry-run we record nothing
         // — the run is read-only by design. Otherwise we either load an
         // in-progress checkpoint left behind by a previous crash, or

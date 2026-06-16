@@ -91,6 +91,241 @@ mod cache_flow {
     }
 }
 
+mod manifest_flow {
+    use crate::config::Config;
+    use crate::manifest::{self, Manifest};
+    use crate::status::{self, OutputFormat};
+    use crate::test_utils::{commit_file, git, init_repo, with_cwd};
+    use crate::timing::Timing;
+    use std::collections::BTreeMap;
+    use std::path::Path;
+
+    fn add_bare_remote(dir: &Path) -> tempfile::TempDir {
+        let bare = tempfile::tempdir().unwrap();
+        git(dir, &["init", "--bare", &bare.path().to_string_lossy()]);
+        git(
+            dir,
+            &["remote", "add", "origin", &bare.path().to_string_lossy()],
+        );
+        bare
+    }
+
+    fn write_config(dir: &Path, manifest_mode: bool, commit_mode: &str) {
+        let manifest_line = if manifest_mode {
+            r#""manifestFile": ".ferrflow.manifest.json", "#
+        } else {
+            ""
+        };
+        std::fs::write(
+            dir.join(".ferrflow"),
+            format!(
+                r#"{{"workspace": {{{manifest_line}"releaseCommitMode": "{commit_mode}"}}, "package": [
+                    {{"name": "api", "path": "api", "versionedFiles": [{{"path": "api/version.json", "format": "json"}}], "changelog": "api/CHANGELOG.md"}},
+                    {{"name": "web", "path": "web", "versionedFiles": [{{"path": "web/version.json", "format": "json"}}], "changelog": "web/CHANGELOG.md"}}
+                ]}}"#
+            ),
+        )
+        .unwrap();
+    }
+
+    fn write_pkg(dir: &Path, pkg: &str, version: &str) {
+        std::fs::create_dir_all(dir.join(pkg)).unwrap();
+        std::fs::write(
+            dir.join(pkg).join("version.json"),
+            format!("{{\"name\": \"{pkg}\", \"version\": \"{version}\"}}"),
+        )
+        .unwrap();
+    }
+
+    fn run_release(dir: &Path) -> anyhow::Result<()> {
+        let config = dir.join(".ferrflow");
+        with_cwd(dir, || {
+            crate::monorepo::release(
+                Some(&config),
+                false,
+                false,
+                false,
+                None,
+                None,
+                false,
+                false,
+                &mut Timing::new(false),
+            )
+        })
+    }
+
+    #[test]
+    fn release_none_mode_writes_full_sorted_snapshot() {
+        let (dir, _repo) = init_repo();
+        write_pkg(dir.path(), "api", "1.0.0");
+        write_pkg(dir.path(), "web", "2.0.0");
+        write_config(dir.path(), true, "none");
+        commit_file(dir.path(), "seed.txt", "x", "chore: seed", 1_960_000_000);
+        // Only `api` has a releasable commit; `web` stays at its file version.
+        commit_file(
+            dir.path(),
+            "api/feature.txt",
+            "y",
+            "feat: api change",
+            1_960_000_001,
+        );
+        let _remote = add_bare_remote(dir.path());
+
+        run_release(dir.path()).unwrap();
+
+        let manifest_path = dir.path().join(".ferrflow.manifest.json");
+        let manifest = manifest::read(&manifest_path).unwrap();
+        assert_eq!(manifest.version, 1);
+        assert_eq!(manifest.version_of("api"), Some("1.1.0"));
+        assert_eq!(manifest.version_of("web"), Some("2.0.0"));
+
+        let raw = std::fs::read_to_string(&manifest_path).unwrap();
+        let api_at = raw.find("\"api\"").unwrap();
+        let web_at = raw.find("\"web\"").unwrap();
+        assert!(api_at < web_at, "packages must be sorted");
+        serde_json::from_str::<serde_json::Value>(&raw).expect("valid JSON");
+    }
+
+    #[test]
+    fn manifest_off_writes_no_manifest() {
+        let (dir, _repo) = init_repo();
+        write_pkg(dir.path(), "api", "1.0.0");
+        write_pkg(dir.path(), "web", "2.0.0");
+        write_config(dir.path(), false, "none");
+        commit_file(dir.path(), "seed.txt", "x", "chore: seed", 1_961_000_000);
+        commit_file(
+            dir.path(),
+            "api/feature.txt",
+            "y",
+            "feat: api change",
+            1_961_000_001,
+        );
+        let _remote = add_bare_remote(dir.path());
+
+        run_release(dir.path()).unwrap();
+
+        assert!(!dir.path().join(".ferrflow.manifest.json").exists());
+    }
+
+    #[test]
+    fn release_commit_mode_includes_manifest_in_release_commit() {
+        let (dir, _repo) = init_repo();
+        write_pkg(dir.path(), "api", "1.0.0");
+        write_pkg(dir.path(), "web", "2.0.0");
+        write_config(dir.path(), true, "commit");
+        commit_file(dir.path(), "seed.txt", "x", "chore: seed", 1_966_000_000);
+        commit_file(
+            dir.path(),
+            "api/feature.txt",
+            "y",
+            "feat: api change",
+            1_966_000_001,
+        );
+        let _remote = add_bare_remote(dir.path());
+
+        run_release(dir.path()).unwrap();
+
+        let committed = git(dir.path(), &["show", "--name-only", "--format=", "HEAD"]);
+        assert!(
+            committed.contains(".ferrflow.manifest.json"),
+            "manifest must be part of the release commit, got: {committed}"
+        );
+        let manifest = manifest::read(&dir.path().join(".ferrflow.manifest.json")).unwrap();
+        assert_eq!(manifest.version_of("api"), Some("1.1.0"));
+        assert_eq!(manifest.version_of("web"), Some("2.0.0"));
+    }
+
+    #[test]
+    fn diverged_manifest_blocks_release_start() {
+        let (dir, _repo) = init_repo();
+        write_pkg(dir.path(), "api", "1.1.0");
+        write_pkg(dir.path(), "web", "2.0.0");
+        write_config(dir.path(), true, "commit");
+        commit_file(dir.path(), "seed.txt", "x", "chore: seed", 1_962_000_000);
+        commit_file(
+            dir.path(),
+            "api/feature.txt",
+            "y",
+            "feat: api change",
+            1_962_000_001,
+        );
+
+        let mut packages = BTreeMap::new();
+        packages.insert("api".to_string(), "1.0.0".to_string());
+        packages.insert("web".to_string(), "2.0.0".to_string());
+        manifest::write_atomic(
+            &dir.path().join(".ferrflow.manifest.json"),
+            &Manifest::new(packages, "t".into(), "sha".into()),
+        )
+        .unwrap();
+
+        let err = run_release(dir.path()).unwrap_err();
+        assert!(format!("{err:?}").contains("sync-manifest"));
+        // The blocked release must not have mutated the package file.
+        let api = std::fs::read_to_string(dir.path().join("api/version.json")).unwrap();
+        assert!(api.contains("1.1.0"));
+    }
+
+    #[test]
+    fn sync_manifest_regenerates_from_files() {
+        let (dir, _repo) = init_repo();
+        write_pkg(dir.path(), "api", "3.4.5");
+        write_pkg(dir.path(), "web", "6.7.8");
+        write_config(dir.path(), true, "none");
+        commit_file(dir.path(), "seed.txt", "x", "chore: seed", 1_963_000_000);
+        let config = dir.path().join(".ferrflow");
+
+        with_cwd(dir.path(), || manifest::sync_cwd(Some(&config))).unwrap();
+
+        let manifest = manifest::read(&dir.path().join(".ferrflow.manifest.json")).unwrap();
+        assert_eq!(manifest.version_of("api"), Some("3.4.5"));
+        assert_eq!(manifest.version_of("web"), Some("6.7.8"));
+    }
+
+    #[test]
+    fn sync_manifest_errors_when_disabled() {
+        let (dir, _repo) = init_repo();
+        write_pkg(dir.path(), "api", "1.0.0");
+        write_pkg(dir.path(), "web", "2.0.0");
+        write_config(dir.path(), false, "none");
+        commit_file(dir.path(), "seed.txt", "x", "chore: seed", 1_964_000_000);
+        let config = dir.path().join(".ferrflow");
+
+        let err = with_cwd(dir.path(), || manifest::sync_cwd(Some(&config))).unwrap_err();
+        assert!(format!("{err:?}").contains("manifest_file"));
+    }
+
+    #[test]
+    fn status_reads_from_manifest_when_present() {
+        let (dir, _repo) = init_repo();
+        // File says 1.0.0 but manifest says 1.1.0 — status must trust the manifest.
+        write_pkg(dir.path(), "api", "1.0.0");
+        write_pkg(dir.path(), "web", "2.0.0");
+        write_config(dir.path(), true, "none");
+        commit_file(dir.path(), "seed.txt", "x", "chore: seed", 1_965_000_000);
+
+        let mut packages = BTreeMap::new();
+        packages.insert("api".to_string(), "1.1.0".to_string());
+        packages.insert("web".to_string(), "2.0.0".to_string());
+        manifest::write_atomic(
+            &dir.path().join(".ferrflow.manifest.json"),
+            &Manifest::new(packages, "t".into(), "sha".into()),
+        )
+        .unwrap();
+
+        let config = dir.path().join(".ferrflow");
+        let loaded = Config::load(dir.path(), Some(&config)).unwrap();
+        let manifest = manifest::read(&dir.path().join(".ferrflow.manifest.json")).unwrap();
+        let api = loaded.packages.iter().find(|p| p.name == "api").unwrap();
+        assert_eq!(manifest.version_of(&api.name), Some("1.1.0"));
+
+        with_cwd(dir.path(), || {
+            status::run(Some(&config), &OutputFormat::Json, &mut Timing::new(false))
+        })
+        .unwrap();
+    }
+}
+
 #[test]
 fn pick_higher_semver_prefers_tag_when_tag_is_higher() {
     assert_eq!(pick_higher_semver("2.0.0", "3.0.0"), "3.0.0");

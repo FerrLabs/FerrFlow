@@ -59,6 +59,14 @@ pub struct WorkspaceConfig {
     pub defer_publish: bool,
     #[serde(default)]
     pub changelog: Option<ChangelogConfig>,
+    /// Opt-in single-file source of truth for per-package versions.
+    /// When set (e.g. `".ferrflow.manifest.json"`), `ferrflow release`
+    /// writes a full version snapshot to this path (relative to the repo
+    /// root) as part of the release commit, validates it against the
+    /// versioned files at release start, and `status` / `version` read
+    /// from it. `None` (default) leaves all behaviour unchanged.
+    #[serde(default, alias = "manifestFile")]
+    pub manifest_file: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]

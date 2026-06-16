@@ -9,6 +9,7 @@ mod forge;
 mod formats;
 mod git;
 mod hooks;
+mod manifest;
 mod monorepo;
 mod prerelease;
 mod publish;

@@ -28,6 +28,10 @@ pub fn release(
     let config = timing.stage("load config", || Config::load(&root, config_path))?;
     drop(repo);
 
+    if !dry_run {
+        crate::manifest::validate_in_sync(&config, &root)?;
+    }
+
     if dry_run {
         println!("{}", "FerrFlow — Release (dry run)".bold().blue());
     } else {

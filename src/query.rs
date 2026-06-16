@@ -25,6 +25,24 @@ fn version_from_tags(
         .map(|(_, version)| version)
 }
 
+fn resolve_version(
+    repo: &Repository,
+    pkg: &crate::config::PackageConfig,
+    config: &Config,
+    root: &std::path::Path,
+    manifest: Option<&crate::manifest::Manifest>,
+) -> Option<String> {
+    manifest
+        .and_then(|m| m.version_of(&pkg.name))
+        .map(str::to_string)
+        .or_else(|| {
+            pkg.versioned_files
+                .first()
+                .and_then(|vf| read_version(vf, root).ok())
+        })
+        .or_else(|| version_from_tags(repo, pkg, &config.workspace, config.is_monorepo()))
+}
+
 #[derive(Serialize)]
 struct VersionEntry {
     name: String,
@@ -53,6 +71,9 @@ pub fn version(
         .error_code(error_code::QUERY_NO_PACKAGES)?;
     }
 
+    let manifest = crate::manifest::manifest_path(&config, &root)
+        .and_then(|path| crate::manifest::read_if_present(&path).ok().flatten());
+
     if let Some(name) = package {
         let pkg = config
             .packages
@@ -61,12 +82,7 @@ pub fn version(
             .ok_or_else(|| anyhow::anyhow!("package '{}' not found", name))
             .error_code(error_code::QUERY_PACKAGE_NOT_FOUND)?;
 
-        let version = pkg
-            .versioned_files
-            .first()
-            .map(|vf| read_version(vf, &root))
-            .transpose()?
-            .or_else(|| version_from_tags(&repo, pkg, &config.workspace, config.is_monorepo()))
+        let version = resolve_version(&repo, pkg, &config, &root, manifest.as_ref())
             .unwrap_or_else(|| "unknown".to_string());
 
         if json {
@@ -85,12 +101,7 @@ pub fn version(
 
     if config.packages.len() == 1 {
         let pkg = &config.packages[0];
-        let version = pkg
-            .versioned_files
-            .first()
-            .map(|vf| read_version(vf, &root))
-            .transpose()?
-            .or_else(|| version_from_tags(&repo, pkg, &config.workspace, config.is_monorepo()))
+        let version = resolve_version(&repo, pkg, &config, &root, manifest.as_ref())
             .unwrap_or_else(|| "unknown".to_string());
 
         if json {
@@ -109,13 +120,7 @@ pub fn version(
             .packages
             .iter()
             .map(|pkg| {
-                let version = pkg
-                    .versioned_files
-                    .first()
-                    .and_then(|vf| read_version(vf, &root).ok())
-                    .or_else(|| {
-                        version_from_tags(&repo, pkg, &config.workspace, config.is_monorepo())
-                    })
+                let version = resolve_version(&repo, pkg, &config, &root, manifest.as_ref())
                     .unwrap_or_else(|| "unknown".to_string());
                 VersionEntry {
                     name: pkg.name.clone(),
