@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.10.0] - 2026-06-16
+
+### Features
+
+- feat(config): add workspace.deferPublish to skip publishers on release (#583)
+
 ## [5.9.0] - 2026-06-16
 
 ### Features
