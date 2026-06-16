@@ -42,7 +42,7 @@ pub fn release(
         );
 
     if single_shot {
-        return run_release_logic(
+        let out = run_release_logic(
             &root,
             &config,
             dry_run,
@@ -54,7 +54,11 @@ pub fn release(
             draft,
             force_unlock,
             timing,
-        );
+        )?;
+        if let Some(out) = out {
+            out.print();
+        }
+        return Ok(());
     }
 
     let mut last_err: Option<anyhow::Error> = None;
@@ -79,7 +83,12 @@ pub fn release(
         );
 
         match result {
-            Ok(()) => return Ok(()),
+            Ok(out) => {
+                if let Some(out) = out {
+                    out.print();
+                }
+                return Ok(());
+            }
             Err(e)
                 if attempt < MAX_RELEASE_REGENERATE_ATTEMPTS
                     && crate::git::is_push_rejected_error(&e) =>

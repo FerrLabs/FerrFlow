@@ -8,21 +8,22 @@ pub(super) type TagToCreate = (String, String, String, String, String, i32, bool
 ///
 /// `pkg_outputs` entries are `(pkg_name, lines)`. The name is unused at
 /// print time today but kept for future grouping needs.
-pub(super) fn print_outputs(pkg_outputs: &[(String, Vec<String>)], shared_outputs: &[String]) {
+pub(super) fn collect_outputs(
+    pkg_outputs: &[(String, Vec<String>)],
+    shared_outputs: &[String],
+) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
     for (i, (_, lines)) in pkg_outputs.iter().enumerate() {
         if i > 0 {
-            println!();
+            out.push(String::new());
         }
-        for line in lines {
-            println!("{line}");
-        }
+        out.extend(lines.iter().cloned());
     }
     if !shared_outputs.is_empty() {
-        println!();
-        for line in shared_outputs {
-            println!("{line}");
-        }
+        out.push(String::new());
+        out.extend(shared_outputs.iter().cloned());
     }
+    out
 }
 
 /// Write the per-tag release blurb to `$GITHUB_STEP_SUMMARY` when the

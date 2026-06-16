@@ -1,6 +1,96 @@
 use super::util::*;
 use crate::config::PackageConfig;
 
+mod cache_flow {
+    use crate::cache;
+    use crate::git::open_repo;
+    use crate::test_utils::{commit_file, init_repo, with_cwd};
+    use crate::timing::Timing;
+
+    fn setup(dir: &std::path::Path) {
+        std::fs::write(
+            dir.join("Cargo.toml"),
+            "[package]\nname = \"app\"\nversion = \"1.0.0\"\n",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join(".ferrflow"),
+            r#"{"package":[{"name":"app","path":".","versionedFiles":[{"path":"Cargo.toml","format":"toml"}]}]}"#,
+        )
+        .unwrap();
+    }
+
+    fn run_check(dir: &std::path::Path) {
+        let config = dir.join(".ferrflow");
+        with_cwd(dir, || {
+            super::super::check(
+                Some(&config),
+                false,
+                false,
+                None,
+                false,
+                &mut Timing::new(false),
+            )
+        })
+        .unwrap();
+    }
+
+    #[test]
+    fn first_check_writes_cache_second_hits_with_same_key() {
+        let (dir, _repo) = init_repo();
+        setup(dir.path());
+        commit_file(dir.path(), "a.txt", "x", "feat: a", 1_950_000_000);
+
+        run_check(dir.path());
+
+        let repo = open_repo(dir.path()).unwrap();
+        let cache_dir = cache::cache_dir(&repo);
+        let key = cache::compute_key(
+            &repo,
+            dir.path(),
+            Some(&dir.path().join(".ferrflow")),
+            "text",
+        )
+        .expect("key");
+        let first = cache::read(&cache_dir, &key).expect("cache written on miss");
+
+        run_check(dir.path());
+        let second = cache::read(&cache_dir, &key).expect("still a hit");
+        assert_eq!(first.text_lines, second.text_lines);
+        assert!(!first.text_lines.is_empty());
+    }
+
+    #[test]
+    fn cache_busts_after_a_new_commit() {
+        let (dir, _repo) = init_repo();
+        setup(dir.path());
+        commit_file(dir.path(), "a.txt", "x", "feat: a", 1_950_000_100);
+        run_check(dir.path());
+
+        let repo = open_repo(dir.path()).unwrap();
+        let cache_dir = cache::cache_dir(&repo);
+        let old_key = cache::compute_key(
+            &repo,
+            dir.path(),
+            Some(&dir.path().join(".ferrflow")),
+            "text",
+        )
+        .unwrap();
+
+        commit_file(dir.path(), "b.txt", "y", "feat: b", 1_950_000_200);
+        let repo2 = open_repo(dir.path()).unwrap();
+        let new_key = cache::compute_key(
+            &repo2,
+            dir.path(),
+            Some(&dir.path().join(".ferrflow")),
+            "text",
+        )
+        .unwrap();
+        assert!(cache::read(&cache_dir, &new_key).is_none());
+        assert!(cache::read(&cache_dir, &old_key).is_some());
+    }
+}
+
 #[test]
 fn pick_higher_semver_prefers_tag_when_tag_is_higher() {
     assert_eq!(pick_higher_semver("2.0.0", "3.0.0"), "3.0.0");

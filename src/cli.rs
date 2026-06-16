@@ -126,6 +126,17 @@ pub enum Commands {
         /// Shell to generate completions for
         shell: Shell,
     },
+    /// Manage the cross-run cache under .git/ferrflow-cache/
+    Cache {
+        #[command(subcommand)]
+        command: CacheCommand,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum CacheCommand {
+    /// Delete the cross-run cache directory
+    Clear,
 }
 
 impl Commands {
@@ -141,6 +152,7 @@ impl Commands {
             Commands::Tag { .. } => "tag",
             Commands::Validate { .. } => "validate",
             Commands::Completions { .. } => "completions",
+            Commands::Cache { .. } => "cache",
         }
     }
 }
@@ -222,6 +234,9 @@ impl Cli {
                 );
                 Ok(())
             }
+            Commands::Cache { command } => match command {
+                CacheCommand::Clear => crate::cache::clear_cwd(),
+            },
         }
     }
 }
@@ -462,6 +477,23 @@ mod tests {
     fn parse_changelog() {
         let cli = parse(&["ferrflow", "changelog"]);
         assert!(matches!(cli.command, Commands::Changelog));
+    }
+
+    #[test]
+    fn parse_cache_clear() {
+        let cli = parse(&["ferrflow", "cache", "clear"]);
+        assert!(matches!(
+            cli.command,
+            Commands::Cache {
+                command: CacheCommand::Clear
+            }
+        ));
+        assert_eq!(cli.command.name(), "cache");
+    }
+
+    #[test]
+    fn cache_requires_subcommand() {
+        assert!(Cli::try_parse_from(["ferrflow", "cache"]).is_err());
     }
 
     #[test]
