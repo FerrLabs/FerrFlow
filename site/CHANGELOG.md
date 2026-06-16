@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.7.0] - 2026-06-16
+
+### Features
+
+- feat(config): document publisher noVerify + args fields (#558)
+
 ## [6.6.6] - 2026-06-16
 
 ### Bug Fixes
