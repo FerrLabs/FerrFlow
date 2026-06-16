@@ -50,24 +50,7 @@ impl Config {
             return Self::load_explicit(&resolved_path);
         }
 
-        // Build ordered search list: json > json5 > toml > ts > js > .ferrflow
-        let mut search: Vec<&str> = CONFIG_FORMATS.iter().map(|h| h.filename()).collect();
-
-        #[cfg(feature = "cli")]
-        {
-            // Insert ts/js before .ferrflow (last element)
-            let dotfile_pos = search.len() - 1;
-            search.insert(dotfile_pos, TS_CONFIG_FILENAME);
-            search.insert(dotfile_pos + 1, JS_CONFIG_FILENAME);
-        }
-
-        let mut found: Vec<PathBuf> = Vec::new();
-        for filename in &search {
-            let path = repo_root.join(filename);
-            if path.exists() {
-                found.push(path);
-            }
-        }
+        let found = Self::discover(repo_root);
 
         if found.is_empty() {
             return Ok(Self::auto_detect(repo_root));
@@ -86,6 +69,39 @@ impl Config {
         }
 
         Self::load_from_path(&found[0])
+    }
+
+    fn discover(repo_root: &Path) -> Vec<PathBuf> {
+        // Ordered search list: json > json5 > toml > ts > js > .ferrflow
+        #[cfg_attr(not(feature = "cli"), allow(unused_mut))]
+        let mut search: Vec<&str> = CONFIG_FORMATS.iter().map(|h| h.filename()).collect();
+
+        #[cfg(feature = "cli")]
+        {
+            // Insert ts/js before .ferrflow (last element)
+            let dotfile_pos = search.len() - 1;
+            search.insert(dotfile_pos, TS_CONFIG_FILENAME);
+            search.insert(dotfile_pos + 1, JS_CONFIG_FILENAME);
+        }
+
+        search
+            .iter()
+            .map(|filename| repo_root.join(filename))
+            .filter(|path| path.exists())
+            .collect()
+    }
+
+    pub fn source_path(repo_root: &Path, explicit_path: Option<&Path>) -> Option<PathBuf> {
+        if let Some(path) = explicit_path {
+            let resolved = if path.is_relative() {
+                repo_root.join(path)
+            } else {
+                path.to_path_buf()
+            };
+            return resolved.exists().then_some(resolved);
+        }
+        let found = Self::discover(repo_root);
+        (found.len() == 1).then(|| found.into_iter().next().unwrap())
     }
 
     fn load_from_path(path: &Path) -> Result<Self> {
@@ -218,6 +234,14 @@ impl Config {
 
     pub fn is_monorepo(&self) -> bool {
         self.packages.len() > 1
+    }
+
+    pub fn has_release_side_effects(&self) -> bool {
+        self.workspace.hooks.is_some()
+            || self
+                .packages
+                .iter()
+                .any(|pkg| pkg.hooks.is_some() || !pkg.publishers.is_empty())
     }
 }
 

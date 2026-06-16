@@ -18,7 +18,7 @@ use crate::telemetry;
 use crate::timing::Timing;
 use crate::versioning::{compute_next_version, truncate_version};
 
-use super::types::{CheckCommit, CheckPackage, CheckResult};
+use super::types::{CheckCommit, CheckPackage, CheckResult, RunOutput};
 use super::util::{
     auto_stage_new_files, collect_dirty_files, is_package_touched, pick_higher_semver,
     tags_for_package,
@@ -35,7 +35,7 @@ use checkpoint::Checkpoint;
 use drafts::publish_pending_drafts;
 use execute::{ReleasePlan, execute_release, print_dry_run_hooks};
 use forced::{Forced, forced_version_for, parse_forced_version};
-use summary::{TagToCreate, print_outputs};
+use summary::{TagToCreate, collect_outputs};
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn run_release_logic(
@@ -50,20 +50,24 @@ pub(super) fn run_release_logic(
     draft: bool,
     force_unlock: bool,
     timing: &mut Timing,
-) -> Result<()> {
+) -> Result<Option<RunOutput>> {
     if config.packages.is_empty() {
         if json {
-            println!(
-                "{}",
-                serde_json::to_string(&CheckResult { packages: vec![] })?
-            );
-            return Ok(());
+            let out = RunOutput {
+                json: Some(serde_json::to_string(&CheckResult { packages: vec![] })?),
+                text_lines: Vec::new(),
+            };
+            return finish(dry_run, out);
         }
-        println!(
-            "{}",
-            "No packages configured. Run `ferrflow init` to create a ferrflow config.".yellow()
-        );
-        return Ok(());
+        let out = RunOutput {
+            json: None,
+            text_lines: vec![
+                "No packages configured. Run `ferrflow init` to create a ferrflow config."
+                    .yellow()
+                    .to_string(),
+            ],
+        };
+        return finish(dry_run, out);
     }
 
     let repo = open_repo(root)?;
@@ -300,11 +304,11 @@ pub(super) fn run_release_logic(
 
             if bump == BumpType::None && !is_date_or_seq {
                 if !json {
-                    println!(
+                    shared_outputs.push(format!(
                         "{} {} — no releasable commits",
                         "○".dimmed(),
                         pkg.name.dimmed()
-                    );
+                    ));
                 }
                 continue;
             }
@@ -585,13 +589,13 @@ pub(super) fn run_release_logic(
     timing.record("per-package compute", compute_start.elapsed());
 
     if json {
-        println!(
-            "{}",
-            serde_json::to_string(&CheckResult {
-                packages: json_packages
-            })?
-        );
-        return Ok(());
+        let out = RunOutput {
+            json: Some(serde_json::to_string(&CheckResult {
+                packages: json_packages,
+            })?),
+            text_lines: Vec::new(),
+        };
+        return finish(dry_run, out);
     }
 
     if any_bumped && !tags_to_create.is_empty() {
@@ -692,11 +696,25 @@ pub(super) fn run_release_logic(
         publish_pending_drafts(&repo, config, root, verbose, &mut shared_outputs)?;
     }
 
-    print_outputs(&pkg_outputs, &shared_outputs);
-
+    let mut text_lines = collect_outputs(&pkg_outputs, &shared_outputs);
     if !any_bumped && !verbose {
-        println!("{}", "Nothing to release.".dimmed());
+        text_lines.push("Nothing to release.".dimmed().to_string());
     }
 
-    Ok(())
+    finish(
+        dry_run,
+        RunOutput {
+            json: None,
+            text_lines,
+        },
+    )
+}
+
+fn finish(dry_run: bool, out: RunOutput) -> Result<Option<RunOutput>> {
+    if dry_run {
+        Ok(Some(out))
+    } else {
+        out.print();
+        Ok(None)
+    }
 }

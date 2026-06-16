@@ -21,3 +21,20 @@ pub(super) struct CheckPackage {
 pub(super) struct CheckResult {
     pub packages: Vec<CheckPackage>,
 }
+
+pub(super) struct RunOutput {
+    pub json: Option<String>,
+    pub text_lines: Vec<String>,
+}
+
+impl RunOutput {
+    pub fn print(&self) {
+        if let Some(json) = &self.json {
+            println!("{json}");
+            return;
+        }
+        for line in &self.text_lines {
+            println!("{line}");
+        }
+    }
+}
