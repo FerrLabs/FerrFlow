@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.7.0] - 2026-06-16
+
+### Features
+
+- feat(publishers): add noVerify option to cargo publisher (#577)
+
 ## [5.6.0] - 2026-06-15
 
 ### Features
