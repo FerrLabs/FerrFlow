@@ -12,7 +12,7 @@ inputs:
     required: false
     default: 'latest'
   mode:
-    description: 'Action mode: "release" runs the full release pipeline. "preview" posts a PR comment with version bump preview.'
+    description: 'Action mode: "release" runs the full release pipeline. "preview" posts a PR comment with version bump preview. "publish" runs the configured publishers for the currently-released version (no bump/tag) — for a separate job that has the build toolchain + registry auth the publishers need.'
     required: false
     default: 'release'
   dry_run:
@@ -110,3 +110,8 @@ runs:
         FERRFLOW_BOT_ENDPOINT: ${{ inputs.bot_endpoint }}
         FERRFLOW_BOT_AUDIENCE: ${{ inputs.bot_audience }}
       run: ferrflow ${{ inputs.dry_run == 'true' && '--dry-run' || '' }} release ${{ inputs.force_version != '' && format('--force-version {0}', inputs.force_version) || '' }}
+
+    - name: Run FerrFlow publishers
+      if: inputs.mode == 'publish'
+      shell: bash
+      run: ferrflow ${{ inputs.dry_run == 'true' && '--dry-run' || '' }} publish

@@ -64,6 +64,16 @@ pub enum Commands {
         #[arg(long)]
         force_unlock: bool,
     },
+    /// Run the configured publishers for the currently-released version
+    /// of each package, without bumping or tagging. Use after `release`
+    /// has cut the version — typically in a separate CI job that has the
+    /// build toolchain and registry auth the publishers need (docker
+    /// buildx, helm, npm, …).
+    Publish {
+        /// Package to publish (required in monorepos to target one;
+        /// omit to run publishers for every package)
+        package: Option<String>,
+    },
     /// Generate/update CHANGELOG.md only
     Changelog,
     /// Scaffold a ferrflow configuration file
@@ -118,6 +128,7 @@ impl Commands {
         match self {
             Commands::Check { .. } => "check",
             Commands::Release { .. } => "release",
+            Commands::Publish { .. } => "publish",
             Commands::Changelog => "changelog",
             Commands::Init { .. } => "init",
             Commands::Status { .. } => "status",
@@ -158,6 +169,12 @@ impl Cli {
                 channel.as_deref(),
                 draft,
                 force_unlock,
+            ),
+            Commands::Publish { package } => crate::publish::run(
+                self.config.as_deref(),
+                package.as_deref(),
+                self.dry_run,
+                self.verbose,
             ),
             Commands::Changelog => {
                 crate::changelog::generate_only(self.config.as_deref(), self.dry_run)
@@ -309,6 +326,22 @@ mod tests {
     fn parse_status_default() {
         let cli = parse(&["ferrflow", "status"]);
         assert!(matches!(cli.command, Commands::Status { .. }));
+    }
+
+    #[test]
+    fn parse_publish_no_package() {
+        let cli = parse(&["ferrflow", "publish"]);
+        assert!(matches!(cli.command, Commands::Publish { package: None }));
+    }
+
+    #[test]
+    fn parse_publish_with_package_and_dry_run() {
+        let cli = parse(&["ferrflow", "--dry-run", "publish", "my-pkg"]);
+        assert!(cli.dry_run);
+        match cli.command {
+            Commands::Publish { package } => assert_eq!(package.as_deref(), Some("my-pkg")),
+            _ => panic!("expected Publish"),
+        }
     }
 
     #[test]

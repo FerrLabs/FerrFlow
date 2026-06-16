@@ -9,6 +9,7 @@
 //! helm/asset/webhook land in follow-up PRs.
 
 use anyhow::Result;
+use colored::Colorize;
 use std::collections::BTreeMap;
 use std::path::Path;
 
@@ -59,6 +60,43 @@ pub enum PublishOutcome {
     /// Dry-run pass: nothing happened, only the preview line was
     /// printed by the caller.
     DryRun,
+}
+
+/// Run every publisher declared for a package against `ctx`, rendering
+/// a uniform `[kind] action … → status` line per entry. Shared by the
+/// `ferrflow release` post-publish phase and the standalone `ferrflow
+/// publish` command so both surface publishers identically. Returns the
+/// first executor error, after which remaining publishers are skipped.
+pub fn run_all(publishers: &[PublisherConfig], ctx: &PublishContext<'_>) -> Result<()> {
+    if publishers.is_empty() {
+        return Ok(());
+    }
+    println!(
+        "  {} {} publishers:",
+        "→".cyan(),
+        publishers.len().to_string().cyan()
+    );
+    for p in publishers {
+        let kind = p.kind_name();
+        let preview = p.describe(ctx.package_name, ctx.new_version);
+        match run(p, ctx) {
+            Ok(PublishOutcome::Published { url }) => {
+                let suffix = url.as_deref().unwrap_or("");
+                println!("    [{kind}] {preview} → {} {suffix}", "published".green());
+            }
+            Ok(PublishOutcome::Skipped { reason }) => {
+                println!("    [{kind}] {preview} → {} ({reason})", "skipped".yellow());
+            }
+            Ok(PublishOutcome::DryRun) => {
+                println!("    [{kind}] {preview} {}", "(dry-run)".dimmed());
+            }
+            Err(e) => {
+                eprintln!("    [{kind}] {} {e:#}", "ERROR".red());
+                return Err(e);
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Dispatch one publisher entry to its executor.
