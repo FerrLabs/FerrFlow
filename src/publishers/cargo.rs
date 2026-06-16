@@ -23,6 +23,7 @@ use crate::error_code::{self, ErrorCodeExt};
 pub fn run(
     registry: Option<&str>,
     allow_dirty: bool,
+    no_verify: bool,
     ctx: &PublishContext<'_>,
 ) -> Result<PublishOutcome> {
     let registry_label = registry.unwrap_or("crates-io");
@@ -60,6 +61,9 @@ pub fn run(
     }
     if allow_dirty {
         cmd.arg("--allow-dirty");
+    }
+    if no_verify {
+        cmd.arg("--no-verify");
     }
 
     let output = cmd.output().with_context(|| {
@@ -176,7 +180,7 @@ mod tests {
     fn missing_registry_definition_is_a_clear_error() {
         let registries = BTreeMap::new();
         let (c, _) = ctx(&registries, true);
-        let err = run(Some("kellnr"), false, &c).expect_err("must error");
+        let err = run(Some("kellnr"), false, false, &c).expect_err("must error");
         let msg = format!("{err:?}");
         assert!(
             msg.contains("not declared under `workspace.registries`"),
@@ -195,7 +199,7 @@ mod tests {
             },
         );
         let (c, _) = ctx(&registries, false);
-        let err = run(Some("kellnr"), false, &c).expect_err("must error");
+        let err = run(Some("kellnr"), false, false, &c).expect_err("must error");
         let msg = format!("{err:?}");
         assert!(
             msg.contains("is not set"),
@@ -207,7 +211,7 @@ mod tests {
     fn dry_run_short_circuits_after_validation() {
         let registries = BTreeMap::new();
         let (c, _) = ctx(&registries, true);
-        let outcome = run(None, false, &c).expect("public registry dry-run");
+        let outcome = run(None, false, false, &c).expect("public registry dry-run");
         assert!(matches!(outcome, PublishOutcome::DryRun));
     }
 
@@ -222,7 +226,7 @@ mod tests {
             },
         );
         let (c, _) = ctx(&registries, true);
-        let outcome = run(Some("kellnr"), false, &c).expect("dry-run with env");
+        let outcome = run(Some("kellnr"), false, false, &c).expect("dry-run with env");
         assert!(matches!(outcome, PublishOutcome::DryRun));
     }
 

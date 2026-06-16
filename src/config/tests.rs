@@ -1507,7 +1507,7 @@ fn publishers_cargo_kind_parses() {
             "name": "auth",
             "path": "crates/auth",
             "publishers": [
-                { "kind": "cargo", "registry": "kellnr", "allowDirty": false }
+                { "kind": "cargo", "registry": "kellnr", "allowDirty": false, "noVerify": true }
             ]
         }]
     }"#;
@@ -1517,10 +1517,28 @@ fn publishers_cargo_kind_parses() {
         PublisherConfig::Cargo {
             registry,
             allow_dirty,
+            no_verify,
         } => {
             assert_eq!(registry.as_deref(), Some("kellnr"));
             assert!(!*allow_dirty);
+            assert!(*no_verify);
         }
+        _ => panic!("expected cargo kind"),
+    }
+}
+
+#[test]
+fn publishers_cargo_no_verify_defaults_false() {
+    let json = r#"{
+        "package": [{
+            "name": "auth",
+            "path": "crates/auth",
+            "publishers": [{ "kind": "cargo" }]
+        }]
+    }"#;
+    let cfg: Config = serde_json::from_str(json).unwrap();
+    match &cfg.packages[0].publishers[0] {
+        PublisherConfig::Cargo { no_verify, .. } => assert!(!*no_verify),
         _ => panic!("expected cargo kind"),
     }
 }
@@ -1562,6 +1580,7 @@ fn publishers_describe_renders_dry_run_preview() {
     let cargo = PublisherConfig::Cargo {
         registry: Some("kellnr".to_string()),
         allow_dirty: false,
+        no_verify: false,
     };
     assert_eq!(
         cargo.describe("ferrlabs-auth", "0.1.0"),

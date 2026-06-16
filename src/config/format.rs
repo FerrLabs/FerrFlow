@@ -61,6 +61,7 @@ const CAMEL_CASE_KEYS: &[&str] = &[
     "prerelease_identifier",
     "token_env",
     "allow_dirty",
+    "no_verify",
     "display_name",
 ];
 
