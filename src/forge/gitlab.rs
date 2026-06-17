@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use colored::Colorize;
 
-use super::{Forge, MergeRequestResult};
+use super::{Forge, MergeRequestResult, ReleaseResult};
 use crate::error_code::{self, ErrorCodeExt};
 
 /// See `github::PER_PAGE` — same justification, same number.
@@ -60,7 +60,7 @@ impl Forge for GitLabForge {
         prerelease: bool,
         draft: bool,
         _target_commitish: Option<&str>,
-    ) -> Result<()> {
+    ) -> Result<ReleaseResult> {
         if draft {
             eprintln!(
                 "{}",
@@ -83,15 +83,22 @@ impl Forge for GitLabForge {
             payload["upcoming_release"] = serde_json::json!(true);
         }
 
-        self.agent
+        let response: serde_json::Value = self
+            .agent
             .post(&url)
             .header("PRIVATE-TOKEN", &self.token)
             .header("User-Agent", "ferrflow")
             .send_json(payload)
             .with_context(|| format!("Failed to create GitLab release for {tag}"))
-            .error_code(error_code::GITLAB_CREATE_RELEASE)?;
+            .error_code(error_code::GITLAB_CREATE_RELEASE)?
+            .body_mut()
+            .read_json()
+            .unwrap_or(serde_json::Value::Null);
 
-        Ok(())
+        Ok(ReleaseResult {
+            id: None,
+            url: response["_links"]["self"].as_str().map(str::to_string),
+        })
     }
 
     fn find_draft_release(&self, _tag: &str) -> Result<Option<u64>> {

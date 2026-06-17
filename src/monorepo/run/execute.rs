@@ -16,6 +16,7 @@ use crate::versioning::truncate_version;
 
 use super::checkpoint::{Checkpoint, Phase};
 use super::summary::{TagToCreate, write_github_step_summary};
+use crate::forge::ReleaseResult;
 use crate::monorepo::preview::build_forge_instance;
 use crate::monorepo::util::{auto_stage_new_files, collect_dirty_files};
 
@@ -41,6 +42,9 @@ pub(super) struct ReleasePlan<'a> {
     pub files_per_package: &'a mut HashMap<String, Vec<String>>,
     pub pkg_outputs: &'a mut Vec<(String, Vec<String>)>,
     pub shared_outputs: &'a mut Vec<String>,
+    /// Per-tag forge release metadata captured from `create_release`,
+    /// surfaced in `release --json`. Empty on dry-run.
+    pub forge_results: &'a mut Vec<(String, ReleaseResult)>,
     /// Crash-resume marker, persisted at `.git/ferrflow.checkpoint.json`
     /// as each phase succeeds. `None` on dry-run (we never write
     /// anything in that mode) and on resumed runs that already finished
@@ -461,7 +465,8 @@ fn push_and_publish(
                 plan.draft,
                 target_sha.as_deref(),
             ) {
-                Ok(()) => {
+                Ok(result) => {
+                    plan.forge_results.push((tag_name.clone(), result));
                     if let Some((_, lines)) = plan
                         .pkg_outputs
                         .iter_mut()

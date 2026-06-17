@@ -15,6 +15,7 @@ pub fn release(
     config_path: Option<&Path>,
     dry_run: bool,
     verbose: bool,
+    json: bool,
     force: bool,
     force_version: Option<&str>,
     channel: Option<&str>,
@@ -32,12 +33,14 @@ pub fn release(
         crate::manifest::validate_in_sync(&config, &root)?;
     }
 
-    if dry_run {
-        println!("{}", "FerrFlow — Release (dry run)".bold().blue());
-    } else {
-        println!("{}", "FerrFlow — Release".bold().green());
+    if !json {
+        if dry_run {
+            println!("{}", "FerrFlow — Release (dry run)".bold().blue());
+        } else {
+            println!("{}", "FerrFlow — Release".bold().green());
+        }
+        println!();
     }
-    println!();
 
     let single_shot = dry_run
         || matches!(
@@ -52,6 +55,7 @@ pub fn release(
             dry_run,
             verbose,
             false,
+            json,
             force,
             force_version,
             channel,
@@ -78,6 +82,7 @@ pub fn release(
             dry_run,
             verbose,
             false,
+            json,
             force,
             force_version,
             channel,

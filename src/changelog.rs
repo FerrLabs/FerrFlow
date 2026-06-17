@@ -401,6 +401,46 @@ pub fn update_changelog(
 }
 
 #[allow(clippy::too_many_arguments)]
+fn changelog_existing(changelog_path: &Path, package_name: &str) -> Result<String> {
+    if changelog_path.exists() {
+        Ok(std::fs::read_to_string(changelog_path)?)
+    } else {
+        Ok(format!(
+            "# Changelog\n\nAll notable changes to `{package_name}` will be documented here.\n\nThe format is based on [Keep a Changelog](https://keepachangelog.com/).\n"
+        ))
+    }
+}
+
+fn splice_section(existing: &str, section: &str) -> String {
+    if let Some(pos) = existing.find("\n## ") {
+        format!("{}{}{}", &existing[..pos], section, &existing[pos..])
+    } else {
+        format!("{}\n{}", existing.trim_end(), section)
+    }
+}
+
+/// Compute the `(old, new)` changelog contents a release would produce,
+/// without writing anything. Returns `None` when the bump is `None`
+/// (nothing would change). Used by `release --dry-run --verbose` to
+/// render a unified diff of the changelog alongside the versioned files.
+#[cfg(feature = "cli")]
+pub fn compute_changelog_update(
+    changelog_path: &Path,
+    package_name: &str,
+    new_version: &str,
+    commits: &[GitLog],
+    bump: BumpType,
+    render: &ChangelogRender,
+) -> Result<Option<(String, String)>> {
+    if bump == BumpType::None {
+        return Ok(None);
+    }
+    let section = build_section_with(new_version, commits, render);
+    let existing = changelog_existing(changelog_path, package_name)?;
+    let new_content = splice_section(&existing, &section);
+    Ok(Some((existing, new_content)))
+}
+
 pub fn update_changelog_with(
     changelog_path: &Path,
     package_name: &str,
@@ -425,19 +465,8 @@ pub fn update_changelog_with(
         return Ok(());
     }
 
-    let existing = if changelog_path.exists() {
-        std::fs::read_to_string(changelog_path)?
-    } else {
-        format!(
-            "# Changelog\n\nAll notable changes to `{package_name}` will be documented here.\n\nThe format is based on [Keep a Changelog](https://keepachangelog.com/).\n"
-        )
-    };
-
-    let new_content = if let Some(pos) = existing.find("\n## ") {
-        format!("{}{}{}", &existing[..pos], section, &existing[pos..])
-    } else {
-        format!("{}\n{}", existing.trim_end(), section)
-    };
+    let existing = changelog_existing(changelog_path, package_name)?;
+    let new_content = splice_section(&existing, &section);
 
     std::fs::write(changelog_path, new_content)?;
     println!("  ✓ Updated {}", changelog_path.display());

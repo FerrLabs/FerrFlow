@@ -10,6 +10,12 @@ pub struct MergeRequestResult {
     pub auto_merge_key: String,
 }
 
+#[derive(Default)]
+pub struct ReleaseResult {
+    pub id: Option<u64>,
+    pub url: Option<String>,
+}
+
 pub trait Forge {
     fn create_release(
         &self,
@@ -18,7 +24,7 @@ pub trait Forge {
         prerelease: bool,
         draft: bool,
         target_commitish: Option<&str>,
-    ) -> Result<()>;
+    ) -> Result<ReleaseResult>;
     fn find_draft_release(&self, tag: &str) -> Result<Option<u64>>;
     fn publish_release(&self, release_id: u64) -> Result<()>;
     fn create_merge_request(

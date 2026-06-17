@@ -114,6 +114,25 @@ pub fn write_version(vf: &VersionedFile, repo_root: &Path, version: &str) -> Res
     handler.write_version_with_selector(&path, version, vf.selector.as_deref())
 }
 
+#[cfg(feature = "cli")]
+pub fn render_new_version(vf: &VersionedFile, repo_root: &Path, version: &str) -> Result<String> {
+    use anyhow::Context;
+
+    let path = join_within_repo(repo_root, &vf.path)?;
+    let handler = get_handler(&vf.format);
+    let original = std::fs::read(&path)
+        .with_context(|| format!("Cannot read {} for dry-run diff", path.display()))?;
+
+    let tmp = tempfile::Builder::new()
+        .prefix(".ferrflow-diff-")
+        .tempfile_in(path.parent().unwrap_or(repo_root))?;
+    std::fs::write(tmp.path(), &original)?;
+    handler.write_version_with_selector(tmp.path(), version, vf.selector.as_deref())?;
+    let rendered = std::fs::read_to_string(tmp.path())
+        .with_context(|| format!("Cannot read rendered version for {}", path.display()))?;
+    Ok(rendered)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

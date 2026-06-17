@@ -3,10 +3,13 @@ use colored::Colorize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
-use crate::changelog::{ChangelogRender, build_section_with, update_changelog_with};
-use crate::config::{Config, OrphanedTagStrategy, VersioningStrategy};
+use crate::changelog::{
+    ChangelogRender, GitLog, build_section_with, compute_changelog_update, update_changelog_with,
+};
+use crate::config::{Config, OrphanedTagStrategy, PackageConfig, VersioningStrategy};
 use crate::conventional_commits::{BumpType, determine_bump};
-use crate::formats::{get_handler, read_version, write_version};
+use crate::diff::unified_diff;
+use crate::formats::{get_handler, read_version, render_new_version, write_version};
 use crate::git::{
     collect_all_tags, fetch_tags, get_changed_files, get_changed_files_since_oid,
     get_changed_files_since_tag, get_commits_since_last_stable_tag, get_commits_since_last_tag,
@@ -30,11 +33,13 @@ mod drafts;
 mod execute;
 mod forced;
 mod lock;
+mod release_json;
 mod summary;
 use checkpoint::Checkpoint;
 use drafts::publish_pending_drafts;
 use execute::{ReleasePlan, execute_release, print_dry_run_hooks};
 use forced::{Forced, forced_version_for, parse_forced_version};
+use release_json::{GitInfo, ReleaseJson, ReleasedPackage, SkippedPackage};
 use summary::{TagToCreate, collect_outputs};
 
 #[allow(clippy::too_many_arguments)]
@@ -44,6 +49,7 @@ pub(super) fn run_release_logic(
     dry_run: bool,
     verbose: bool,
     json: bool,
+    release_json: bool,
     force: bool,
     force_version: Option<&str>,
     channel: Option<&str>,
@@ -52,6 +58,19 @@ pub(super) fn run_release_logic(
     timing: &mut Timing,
 ) -> Result<Option<RunOutput>> {
     if config.packages.is_empty() {
+        if release_json {
+            let out = RunOutput {
+                json: Some(
+                    ReleaseJson {
+                        dry_run,
+                        ..Default::default()
+                    }
+                    .to_json()?,
+                ),
+                text_lines: Vec::new(),
+            };
+            return finish(dry_run, out);
+        }
         if json {
             let out = RunOutput {
                 json: Some(serde_json::to_string(&CheckResult { packages: vec![] })?),
@@ -145,7 +164,9 @@ pub(super) fn run_release_logic(
 
     let changed_files = get_changed_files(&repo)?;
 
-    if verbose && !json && !changed_files.is_empty() {
+    let quiet = json || release_json;
+
+    if verbose && !quiet && !changed_files.is_empty() {
         println!("Changed files in last commit:");
         for f in &changed_files {
             println!("  {}", f.dimmed());
@@ -155,6 +176,8 @@ pub(super) fn run_release_logic(
 
     let mut any_bumped = false;
     let mut json_packages: Vec<CheckPackage> = Vec::new();
+    let mut released: Vec<ReleasedPackage> = Vec::new();
+    let mut skipped: Vec<SkippedPackage> = Vec::new();
     let mut files_to_commit: Vec<String> = Vec::new();
     let mut files_per_package: HashMap<String, Vec<String>> = HashMap::new();
     let mut tags_to_create: Vec<TagToCreate> = Vec::new();
@@ -185,7 +208,7 @@ pub(super) fn run_release_logic(
                 };
             if is_package_touched(pkg, &files_since_tag, true) {
                 touched = true;
-                if verbose && !json {
+                if verbose && !quiet {
                     println!(
                         "{} {} — recovering missed release",
                         "↻".cyan(),
@@ -196,12 +219,18 @@ pub(super) fn run_release_logic(
         }
 
         if !touched && forced_ver_for_pkg.is_none() {
-            if verbose && !json {
+            if verbose && !quiet {
                 println!(
                     "{} {} — not touched, skipping",
                     "○".dimmed(),
                     pkg.name.dimmed()
                 );
+            }
+            if release_json {
+                skipped.push(SkippedPackage {
+                    package: pkg.name.clone(),
+                    reason: "not touched".to_string(),
+                });
             }
             continue;
         }
@@ -287,8 +316,14 @@ pub(super) fn run_release_logic(
             };
 
             if commits.is_empty() {
-                if verbose && !json {
+                if verbose && !quiet {
                     println!("{} {} — no new commits", "○".dimmed(), pkg.name.dimmed());
+                }
+                if release_json {
+                    skipped.push(SkippedPackage {
+                        package: pkg.name.clone(),
+                        reason: "no new commits".to_string(),
+                    });
                 }
                 continue;
             }
@@ -313,12 +348,18 @@ pub(super) fn run_release_logic(
             );
 
             if bump == BumpType::None && !is_date_or_seq {
-                if !json {
+                if !quiet {
                     shared_outputs.push(format!(
                         "{} {} — no releasable commits",
                         "○".dimmed(),
                         pkg.name.dimmed()
                     ));
+                }
+                if release_json {
+                    skipped.push(SkippedPackage {
+                        package: pkg.name.clone(),
+                        reason: "no releasable commits".to_string(),
+                    });
                 }
                 continue;
             }
@@ -345,8 +386,14 @@ pub(super) fn run_release_logic(
         };
 
         if current_version == new_version {
-            if verbose && !json {
+            if verbose && !quiet {
                 println!("{} {} — version unchanged", "○".dimmed(), pkg.name.dimmed());
+            }
+            if release_json {
+                skipped.push(SkippedPackage {
+                    package: pkg.name.clone(),
+                    reason: "version unchanged".to_string(),
+                });
             }
             continue;
         }
@@ -373,6 +420,30 @@ pub(super) fn run_release_logic(
         };
 
         let tag = pkg.tag_for_version(&config.workspace, config.is_monorepo(), &new_version);
+
+        if release_json {
+            released.push(ReleasedPackage {
+                package: pkg.name.clone(),
+                previous_version: current_version.clone(),
+                new_version: new_version.clone(),
+                bump_type: strategy_label.clone(),
+                tag: tag.clone(),
+                commit_count: commits.len(),
+                prerelease: is_prerelease,
+                forge_release_url: None,
+                forge_release_id: None,
+            });
+        }
+
+        if dry_run && verbose && !quiet {
+            let changelog_render = ChangelogRender {
+                config: config.workspace.changelog.as_ref(),
+                forge_base: forge_base.clone(),
+                last_tag: last_tag.clone(),
+                new_tag: Some(tag.clone()),
+            };
+            emit_dry_run_diffs(pkg, root, &new_version, &commits, bump, &changelog_render);
+        }
 
         if json {
             let check_commits: Vec<CheckCommit> = commits
@@ -587,6 +658,7 @@ pub(super) fn run_release_logic(
         let mut sink = cascade::CascadeSink {
             any_bumped: &mut any_bumped,
             json_packages: &mut json_packages,
+            released: &mut released,
             files_to_commit: &mut files_to_commit,
             files_per_package: &mut files_per_package,
             tags_to_create: &mut tags_to_create,
@@ -599,6 +671,7 @@ pub(super) fn run_release_logic(
             &all_tags,
             prerelease_ctx.channel.as_deref(),
             json,
+            release_json,
             dry_run,
             &mut sink,
         )?;
@@ -615,6 +688,8 @@ pub(super) fn run_release_logic(
         };
         return finish(dry_run, out);
     }
+
+    let mut forge_results: Vec<(String, crate::forge::ReleaseResult)> = Vec::new();
 
     if any_bumped && !tags_to_create.is_empty() {
         if !dry_run && let Some(manifest_rel) = config.workspace.manifest_file.as_deref() {
@@ -697,6 +772,7 @@ pub(super) fn run_release_logic(
             files_per_package: &mut files_per_package,
             pkg_outputs: &mut pkg_outputs,
             shared_outputs: &mut shared_outputs,
+            forge_results: &mut forge_results,
             checkpoint: checkpoint.as_mut(),
         };
         let release_start = std::time::Instant::now();
@@ -725,6 +801,7 @@ pub(super) fn run_release_logic(
             files_per_package: &mut files_per_package,
             pkg_outputs: &mut pkg_outputs,
             shared_outputs: &mut shared_outputs,
+            forge_results: &mut forge_results,
             checkpoint: None,
         };
         print_dry_run_hooks(&plan)?;
@@ -733,6 +810,45 @@ pub(super) fn run_release_logic(
 
     if !any_bumped && !draft && !dry_run {
         publish_pending_drafts(&repo, config, root, verbose, &mut shared_outputs)?;
+    }
+
+    if release_json {
+        for (tag, result) in &forge_results {
+            if let Some(rp) = released.iter_mut().find(|rp| &rp.tag == tag) {
+                rp.forge_release_url = result.url.clone();
+                rp.forge_release_id = result.id;
+            }
+        }
+        let commit = repo
+            .head_id()
+            .ok()
+            .map(|id| id.to_string()[..7.min(id.to_string().len())].to_string())
+            .unwrap_or_default();
+        let tags_pushed = if dry_run {
+            Vec::new()
+        } else {
+            tags_to_create
+                .iter()
+                .map(|(t, _, _, _, _, _, _)| t.clone())
+                .collect()
+        };
+        let payload = ReleaseJson {
+            released,
+            skipped,
+            git: GitInfo {
+                commit,
+                tags_pushed,
+                branch: target_branch.clone(),
+            },
+            dry_run,
+        };
+        return finish(
+            dry_run,
+            RunOutput {
+                json: Some(payload.to_json()?),
+                text_lines: Vec::new(),
+            },
+        );
     }
 
     let mut text_lines = collect_outputs(&pkg_outputs, &shared_outputs);
@@ -747,6 +863,67 @@ pub(super) fn run_release_logic(
             text_lines,
         },
     )
+}
+
+fn emit_dry_run_diffs(
+    pkg: &PackageConfig,
+    root: &Path,
+    new_version: &str,
+    commits: &[GitLog],
+    bump: BumpType,
+    changelog_render: &ChangelogRender,
+) {
+    for (path, diff) in
+        collect_dry_run_diffs(pkg, root, new_version, commits, bump, changelog_render)
+    {
+        println!("{}", path.bold());
+        print!("{diff}");
+        println!();
+    }
+}
+
+pub(super) fn collect_dry_run_diffs(
+    pkg: &PackageConfig,
+    root: &Path,
+    new_version: &str,
+    commits: &[GitLog],
+    bump: BumpType,
+    changelog_render: &ChangelogRender,
+) -> Vec<(String, String)> {
+    let mut diffs = Vec::new();
+    for vf in &pkg.versioned_files {
+        if !get_handler(&vf.format).modifies_file() {
+            continue;
+        }
+        let (Ok(old), Ok(new)) = (
+            std::fs::read_to_string(root.join(&vf.path)),
+            render_new_version(vf, root, new_version),
+        ) else {
+            continue;
+        };
+        let diff = unified_diff(&old, &new);
+        if !diff.is_empty() {
+            diffs.push((vf.path.clone(), diff));
+        }
+    }
+
+    if let Some(changelog_rel) = &pkg.changelog {
+        let changelog_path = root.join(changelog_rel);
+        if let Ok(Some((old, new))) = compute_changelog_update(
+            &changelog_path,
+            &pkg.name,
+            new_version,
+            commits,
+            bump,
+            changelog_render,
+        ) {
+            let diff = unified_diff(&old, &new);
+            if !diff.is_empty() {
+                diffs.push((changelog_rel.clone(), diff));
+            }
+        }
+    }
+    diffs
 }
 
 fn finish(dry_run: bool, out: RunOutput) -> Result<Option<RunOutput>> {
