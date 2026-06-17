@@ -29,5 +29,5 @@
     "typecheck": "astro check"
   },
   "type": "module",
-  "version": "6.9.3"
+  "version": "6.10.0"
 }

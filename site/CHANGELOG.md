@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.10.0] - 2026-06-17
+
+### Features
+
+- feat(site): show parallel-mode perf stats with runner core count (#566)
+
 ## [6.9.3] - 2026-06-17
 
 ### Bug Fixes
