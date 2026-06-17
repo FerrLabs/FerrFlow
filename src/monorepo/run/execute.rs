@@ -423,10 +423,7 @@ fn push_and_publish(
         let draft = plan.draft;
         let target_sha_ref = target_sha.as_deref();
 
-        let threads = plan
-            .tags_to_create
-            .len()
-            .clamp(1, RELEASE_FORGE_CONCURRENCY);
+        let threads = forge_pool_threads(plan.tags_to_create.len(), crate::concurrency::max_jobs());
         let pool = rayon::ThreadPoolBuilder::new()
             .num_threads(threads)
             .build()
@@ -488,6 +485,10 @@ fn push_and_publish(
 }
 
 const RELEASE_FORGE_CONCURRENCY: usize = 8;
+
+fn forge_pool_threads(tag_count: usize, max_jobs: usize) -> usize {
+    tag_count.clamp(1, RELEASE_FORGE_CONCURRENCY.min(max_jobs))
+}
 
 struct TagReleaseWarning {
     message: String,
@@ -842,6 +843,15 @@ mod tag_release_tests {
         assert!(!line.contains("Published"));
         assert!(line.contains("v1"));
         assert_eq!(forge.create_calls.lock().unwrap().as_slice(), ["v1"]);
+    }
+
+    #[test]
+    fn forge_pool_thread_sizing_respects_max_jobs() {
+        assert_eq!(forge_pool_threads(50, usize::MAX), 8);
+        assert_eq!(forge_pool_threads(3, usize::MAX), 3);
+        assert_eq!(forge_pool_threads(50, 1), 1);
+        assert_eq!(forge_pool_threads(50, 4), 4);
+        assert_eq!(forge_pool_threads(0, usize::MAX), 1);
     }
 
     #[test]

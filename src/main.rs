@@ -2,6 +2,7 @@ mod bot_token;
 mod cache;
 mod changelog;
 mod cli;
+mod concurrency;
 mod config;
 mod conventional_commits;
 mod diff;
@@ -36,6 +37,8 @@ use cli::Cli;
 fn main() {
     let cli = Cli::parse();
     let command_name = cli.command.name();
+
+    concurrency::init(cli.jobs);
 
     telemetry::maybe_print_first_run_notice();
 
