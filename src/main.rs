@@ -4,6 +4,7 @@ mod changelog;
 mod cli;
 mod config;
 mod conventional_commits;
+mod diff;
 mod error_code;
 mod forge;
 mod formats;

@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 
-use super::{Forge, MergeRequestResult};
+use super::{Forge, MergeRequestResult, ReleaseResult};
 use crate::error_code::{self, ErrorCodeExt};
 
 /// Per-page size for paginated GitHub list endpoints. 100 is the API
@@ -69,7 +69,7 @@ impl Forge for GitHubForge {
         prerelease: bool,
         draft: bool,
         target_commitish: Option<&str>,
-    ) -> Result<()> {
+    ) -> Result<ReleaseResult> {
         let url = format!("{}/repos/{}/releases", self.api_base, self.slug);
 
         let mut payload = serde_json::json!({
@@ -83,7 +83,8 @@ impl Forge for GitHubForge {
             payload["target_commitish"] = serde_json::Value::String(sha.to_string());
         }
 
-        self.agent
+        let response: serde_json::Value = self
+            .agent
             .post(&url)
             .header("Authorization", &format!("Bearer {}", self.token))
             .header("Accept", "application/vnd.github+json")
@@ -91,9 +92,15 @@ impl Forge for GitHubForge {
             .header("User-Agent", "ferrflow")
             .send_json(payload)
             .with_context(|| format!("Failed to create GitHub release for {tag}"))
-            .error_code(error_code::GITHUB_CREATE_RELEASE)?;
+            .error_code(error_code::GITHUB_CREATE_RELEASE)?
+            .body_mut()
+            .read_json()
+            .unwrap_or(serde_json::Value::Null);
 
-        Ok(())
+        Ok(ReleaseResult {
+            id: response["id"].as_u64(),
+            url: response["html_url"].as_str().map(str::to_string),
+        })
     }
 
     fn find_draft_release(&self, tag: &str) -> Result<Option<u64>> {

@@ -49,6 +49,9 @@ pub enum Commands {
     },
     /// Bump versions, update changelogs, create tags and push
     Release {
+        /// Output a single JSON object describing the release
+        #[arg(long)]
+        json: bool,
         /// Allow floating tags to move backward to a lower version
         #[arg(long)]
         force: bool,
@@ -190,6 +193,7 @@ impl Cli {
                 timing,
             ),
             Commands::Release {
+                json,
                 force,
                 force_version,
                 channel,
@@ -199,6 +203,7 @@ impl Cli {
                 self.config.as_deref(),
                 self.dry_run,
                 self.verbose,
+                json,
                 force,
                 force_version.as_deref(),
                 channel.as_deref(),
@@ -295,6 +300,7 @@ mod tests {
         assert!(matches!(
             cli.command,
             Commands::Release {
+                json: false,
                 force: false,
                 force_version: None,
                 channel: None,
@@ -302,6 +308,15 @@ mod tests {
                 force_unlock: false,
             }
         ));
+    }
+
+    #[test]
+    fn parse_release_json() {
+        let cli = parse(&["ferrflow", "release", "--json"]);
+        match cli.command {
+            Commands::Release { json, .. } => assert!(json),
+            _ => panic!("expected Release"),
+        }
     }
 
     #[test]

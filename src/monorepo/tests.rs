@@ -145,6 +145,7 @@ mod manifest_flow {
                 false,
                 false,
                 false,
+                false,
                 None,
                 None,
                 false,
@@ -323,6 +324,166 @@ mod manifest_flow {
             status::run(Some(&config), &OutputFormat::Json, &mut Timing::new(false))
         })
         .unwrap();
+    }
+}
+
+mod release_json_diff {
+    use crate::changelog::{ChangelogRender, GitLog};
+    use crate::config::Config;
+    use crate::conventional_commits::BumpType;
+    use crate::monorepo::run::{collect_dry_run_diffs, run_release_logic};
+    use crate::test_utils::{commit_file, init_repo, with_cwd};
+    use crate::timing::Timing;
+    use std::path::Path;
+
+    fn write_config(dir: &Path) {
+        std::fs::write(
+            dir.join(".ferrflow"),
+            r#"{"workspace": {"releaseCommitMode": "none"}, "package": [
+                {"name": "api", "path": "api", "versionedFiles": [{"path": "api/package.json", "format": "json"}], "changelog": "api/CHANGELOG.md"},
+                {"name": "web", "path": "web", "versionedFiles": [{"path": "web/package.json", "format": "json"}], "changelog": "web/CHANGELOG.md"}
+            ]}"#,
+        )
+        .unwrap();
+    }
+
+    fn write_pkg(dir: &Path, pkg: &str, version: &str) {
+        std::fs::create_dir_all(dir.join(pkg)).unwrap();
+        std::fs::write(
+            dir.join(pkg).join("package.json"),
+            format!("{{\n  \"name\": \"{pkg}\",\n  \"version\": \"{version}\",\n  \"private\": true\n}}\n"),
+        )
+        .unwrap();
+    }
+
+    fn dry_run_json(dir: &Path) -> serde_json::Value {
+        let config_path = dir.join(".ferrflow");
+        let config = Config::load(dir, Some(&config_path)).unwrap();
+        let mut captured: Option<String> = None;
+        with_cwd(dir, || {
+            let out = run_release_logic(
+                dir,
+                &config,
+                true,
+                false,
+                false,
+                true,
+                false,
+                None,
+                None,
+                false,
+                false,
+                &mut Timing::new(false),
+            )?;
+            captured = out.expect("dry-run returns output").json;
+            Ok(())
+        })
+        .unwrap();
+        let raw = captured.expect("json set");
+        serde_json::from_str(&raw).expect("valid JSON")
+    }
+
+    #[test]
+    fn dry_run_json_has_expected_shape() {
+        let (dir, _repo) = init_repo();
+        write_pkg(dir.path(), "api", "1.2.3");
+        write_pkg(dir.path(), "web", "2.0.0");
+        write_config(dir.path());
+        commit_file(dir.path(), "seed.txt", "x", "chore: seed", 1_970_000_000);
+        commit_file(
+            dir.path(),
+            "api/feature.txt",
+            "y",
+            "feat: api change",
+            1_970_000_001,
+        );
+
+        let v = dry_run_json(dir.path());
+
+        assert_eq!(v["dry_run"], true);
+        assert_eq!(v["git"]["branch"], "main");
+        assert_eq!(
+            v["git"]["tags_pushed"].as_array().unwrap().len(),
+            0,
+            "dry-run pushes nothing"
+        );
+
+        let released = v["released"].as_array().unwrap();
+        assert_eq!(released.len(), 1);
+        let api = &released[0];
+        assert_eq!(api["package"], "api");
+        assert_eq!(api["previous_version"], "1.2.3");
+        assert_eq!(api["new_version"], "1.3.0");
+        assert_eq!(api["bump_type"], "minor");
+        assert_eq!(api["tag"], "api@v1.3.0");
+        assert_eq!(api["commit_count"], 2);
+        assert_eq!(api["prerelease"], false);
+        assert!(api["forge_release_url"].is_null());
+        assert!(api["forge_release_id"].is_null());
+
+        let skipped = v["skipped"].as_array().unwrap();
+        assert_eq!(skipped.len(), 1);
+        assert_eq!(skipped[0]["package"], "web");
+        assert!(skipped[0]["reason"].is_string());
+    }
+
+    #[test]
+    fn empty_release_yields_empty_released() {
+        let (dir, _repo) = init_repo();
+        write_pkg(dir.path(), "api", "1.2.3");
+        write_pkg(dir.path(), "web", "2.0.0");
+        write_config(dir.path());
+        commit_file(dir.path(), "seed.txt", "x", "chore: seed", 1_971_000_000);
+
+        let v = dry_run_json(dir.path());
+
+        assert_eq!(v["released"].as_array().unwrap().len(), 0);
+        let skipped = v["skipped"].as_array().unwrap();
+        assert_eq!(skipped.len(), 2);
+        assert_eq!(v["dry_run"], true);
+    }
+
+    #[test]
+    fn dry_run_diff_covers_versioned_file_and_changelog() {
+        let (dir, _repo) = init_repo();
+        write_pkg(dir.path(), "api", "1.2.3");
+        std::fs::write(
+            dir.path().join("api/CHANGELOG.md"),
+            "# Changelog\n\n## [1.2.3]\n\n- old\n",
+        )
+        .unwrap();
+        write_config(dir.path());
+
+        let config_path = dir.path().join(".ferrflow");
+        let config = Config::load(dir.path(), Some(&config_path)).unwrap();
+        let pkg = config.packages.iter().find(|p| p.name == "api").unwrap();
+        let commits = vec![GitLog {
+            hash: "abc1234".to_string(),
+            message: "feat: api change".to_string(),
+        }];
+        let render = ChangelogRender::default();
+
+        let diffs =
+            collect_dry_run_diffs(pkg, dir.path(), "1.3.0", &commits, BumpType::Minor, &render);
+
+        let paths: Vec<&str> = diffs.iter().map(|(p, _)| p.as_str()).collect();
+        assert!(
+            paths.contains(&"api/package.json"),
+            "versioned file diff missing: {paths:?}"
+        );
+        assert!(
+            paths.contains(&"api/CHANGELOG.md"),
+            "changelog diff missing: {paths:?}"
+        );
+
+        let pkg_diff = &diffs
+            .iter()
+            .find(|(p, _)| p == "api/package.json")
+            .unwrap()
+            .1;
+        assert!(pkg_diff.contains("@@ -"));
+        assert!(pkg_diff.contains("-    \"version\": \"1.2.3\","));
+        assert!(pkg_diff.contains("+    \"version\": \"1.3.0\","));
     }
 }
 

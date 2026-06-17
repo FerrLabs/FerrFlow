@@ -9,6 +9,8 @@ pub mod versioning;
 #[cfg(feature = "cli")]
 pub mod cache;
 #[cfg(feature = "cli")]
+pub mod diff;
+#[cfg(feature = "cli")]
 pub mod forge;
 #[cfg(feature = "cli")]
 pub mod git;

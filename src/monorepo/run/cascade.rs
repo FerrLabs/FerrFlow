@@ -10,6 +10,7 @@ use crate::versioning::compute_next_version;
 
 use super::super::types::CheckPackage;
 use super::super::util::tags_for_package;
+use super::release_json::ReleasedPackage;
 use super::summary::TagToCreate;
 use crate::changelog::update_changelog;
 
@@ -19,6 +20,7 @@ use crate::changelog::update_changelog;
 pub(super) struct CascadeSink<'a> {
     pub any_bumped: &'a mut bool,
     pub json_packages: &'a mut Vec<CheckPackage>,
+    pub released: &'a mut Vec<ReleasedPackage>,
     pub files_to_commit: &'a mut Vec<String>,
     pub files_per_package: &'a mut HashMap<String, Vec<String>>,
     pub tags_to_create: &'a mut Vec<TagToCreate>,
@@ -29,12 +31,14 @@ pub(super) struct CascadeSink<'a> {
 /// Patch-bump every package that depends (transitively) on a package
 /// already bumped this run. Iterates to a fixed point, capped at
 /// `packages.len()` rounds to break circular dependencies.
+#[allow(clippy::too_many_arguments)]
 pub(super) fn run_dependency_cascade(
     config: &Config,
     root: &Path,
     all_tags: &[String],
     channel: Option<&str>,
     json: bool,
+    release_json: bool,
     dry_run: bool,
     sink: &mut CascadeSink<'_>,
 ) -> anyhow::Result<()> {
@@ -87,6 +91,20 @@ pub(super) fn run_dependency_cascade(
                 .filter(|d| sink.bumped_names.contains(*d))
                 .map(|s| s.as_str())
                 .collect();
+
+            if release_json {
+                sink.released.push(ReleasedPackage {
+                    package: pkg.name.clone(),
+                    previous_version: current_version.clone(),
+                    new_version: new_version.clone(),
+                    bump_type: "patch".to_string(),
+                    tag: tag.clone(),
+                    commit_count: 0,
+                    prerelease: false,
+                    forge_release_url: None,
+                    forge_release_id: None,
+                });
+            }
 
             if json {
                 sink.json_packages.push(CheckPackage {

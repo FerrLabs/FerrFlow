@@ -51,7 +51,7 @@ pub fn check(
     }
 
     let out = run_release_logic(
-        &root, &config, true, verbose, json, false, None, channel, false, false, timing,
+        &root, &config, true, verbose, json, false, false, None, channel, false, false, timing,
     )?;
 
     if let (Some(key), Some(out)) = (&cache_key, &out) {
