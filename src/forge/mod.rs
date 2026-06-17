@@ -16,7 +16,7 @@ pub struct ReleaseResult {
     pub url: Option<String>,
 }
 
-pub trait Forge {
+pub trait Forge: Send + Sync {
     fn create_release(
         &self,
         tag: &str,
