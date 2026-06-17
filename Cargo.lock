@@ -624,6 +624,7 @@ dependencies = [
  "hmac",
  "json5",
  "mimalloc",
+ "rayon",
  "regex",
  "semver",
  "serde",

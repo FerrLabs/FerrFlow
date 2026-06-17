@@ -6,26 +6,19 @@ use std::path::Path;
 use crate::changelog::{
     ChangelogRender, GitLog, build_section_with, compute_changelog_update, update_changelog_with,
 };
-use crate::config::{Config, OrphanedTagStrategy, PackageConfig, VersioningStrategy};
-use crate::conventional_commits::{BumpType, determine_bump};
+use crate::config::{Config, PackageConfig};
+use crate::conventional_commits::BumpType;
 use crate::diff::unified_diff;
-use crate::formats::{get_handler, read_version, render_new_version, write_version};
-use crate::git::{
-    collect_all_tags, fetch_tags, get_changed_files, get_changed_files_since_oid,
-    get_changed_files_since_tag, get_commits_since_last_stable_tag, get_commits_since_last_tag,
-    get_commits_since_oid, open_repo, tag_exists,
-};
+use crate::formats::{get_handler, render_new_version, write_version};
+use crate::git::{collect_all_tags, fetch_tags, get_changed_files, open_repo, tag_exists};
 use crate::hooks::{HookContext, HookPoint, resolve_hook, resolve_on_failure, run_hook};
 use crate::prerelease::PrereleaseContext;
 use crate::telemetry;
 use crate::timing::Timing;
-use crate::versioning::{compute_next_version, truncate_version};
+use crate::versioning::truncate_version;
 
 use super::types::{CheckCommit, CheckPackage, CheckResult, RunOutput};
-use super::util::{
-    auto_stage_new_files, collect_dirty_files, is_package_touched, pick_higher_semver,
-    tags_for_package,
-};
+use super::util::{auto_stage_new_files, collect_dirty_files};
 
 mod cascade;
 mod checkpoint;
@@ -33,12 +26,15 @@ mod drafts;
 mod execute;
 mod forced;
 mod lock;
+mod plan;
 mod release_json;
 mod summary;
 use checkpoint::Checkpoint;
 use drafts::publish_pending_drafts;
 use execute::{ReleasePlan, execute_release, print_dry_run_hooks};
-use forced::{Forced, forced_version_for, parse_forced_version};
+use forced::{Forced, parse_forced_version};
+use plan::{PackagePlan, PlanInputs, SkipReason, compute_plan};
+use rayon::prelude::*;
 use release_json::{GitInfo, ReleaseJson, ReleasedPackage, SkippedPackage};
 use summary::{TagToCreate, collect_outputs};
 
@@ -190,236 +186,92 @@ pub(super) fn run_release_logic(
     let forced: Option<Forced<'_>> = parse_forced_version(force_version, config.is_monorepo())?;
 
     let compute_start = std::time::Instant::now();
-    for (pkg_idx, pkg) in config.packages.iter().enumerate() {
-        let tag_search_prefix = pkg.tag_prefix(&config.workspace, config.is_monorepo());
 
-        let forced_ver_for_pkg = forced_version_for(&forced, &pkg.name);
+    let thread_safe_repo = repo.clone().into_sync();
+    let plan_inputs = PlanInputs {
+        config,
+        root,
+        tag_index: tag_index.as_ref(),
+        head_ancestors: head_ancestors.as_ref(),
+        all_tags: &all_tags,
+        prerelease_ctx: &prerelease_ctx,
+        forced: &forced,
+        changed_files: &changed_files,
+        short_hash: &short_hash,
+    };
+    let plans: Vec<PackagePlan> = config
+        .packages
+        .par_iter()
+        .map(|pkg| {
+            let repo = thread_safe_repo.to_thread_local();
+            compute_plan(&repo, pkg, &plan_inputs)
+        })
+        .collect::<Result<Vec<_>>>()?;
 
-        let mut touched = is_package_touched(pkg, &changed_files, config.is_monorepo());
-
-        if !touched && config.workspace.recover_missed_releases && config.is_monorepo() {
-            let strategy = config.workspace.orphaned_tag_strategy;
-            let files_since_tag =
-                if let (Some(idx), OrphanedTagStrategy::Warn) = (tag_index.as_ref(), strategy) {
-                    let last_oid = idx.find_last_tag_commit(&tag_search_prefix, strategy);
-                    get_changed_files_since_oid(&repo, last_oid)?
-                } else {
-                    get_changed_files_since_tag(&repo, &tag_search_prefix, strategy)?
-                };
-            if is_package_touched(pkg, &files_since_tag, true) {
-                touched = true;
-                if verbose && !quiet {
-                    println!(
-                        "{} {} — recovering missed release",
-                        "↻".cyan(),
-                        pkg.name.cyan()
-                    );
-                }
-            }
+    for (pkg_idx, (pkg, plan)) in config.packages.iter().zip(plans).enumerate() {
+        let recovered = match &plan {
+            PackagePlan::Skipped { recovered, .. } => *recovered,
+            PackagePlan::Bump(bump_plan) => bump_plan.recovered,
+        };
+        if recovered && verbose && !quiet {
+            println!(
+                "{} {} — recovering missed release",
+                "↻".cyan(),
+                pkg.name.cyan()
+            );
         }
 
-        if !touched && forced_ver_for_pkg.is_none() {
-            if verbose && !quiet {
-                println!(
-                    "{} {} — not touched, skipping",
-                    "○".dimmed(),
-                    pkg.name.dimmed()
-                );
-            }
-            if release_json {
-                skipped.push(SkippedPackage {
-                    package: pkg.name.clone(),
-                    reason: "not touched".to_string(),
-                });
-            }
-            continue;
-        }
-
-        // `versionedFiles` is optional (schema says so, and #531
-        // requested tag-only releases for Docker-image / content repos
-        // that have no version field to bump). Resolve the file-derived
-        // version only when at least one is configured; otherwise let
-        // the tag history alone drive the version computation. The
-        // file-write loop below is already a `for vf in
-        // &pkg.versioned_files` so it naturally no-ops when empty.
-        let pkg_strategy = pkg.effective_versioning(
-            &config.workspace,
-            &tags_for_package(&all_tags, &tag_search_prefix),
-        );
-
-        let file_version = pkg
-            .versioned_files
-            .first()
-            .and_then(|vf| read_version(vf, root).ok());
-        let strategy = config.workspace.orphaned_tag_strategy;
-        // Fast path via the pre-built TagIndex for Warn (default); otherwise
-        // fall back to the per-call form that still uses the ancestor cache.
-        let highest_tag =
-            if let (Some(idx), OrphanedTagStrategy::Warn) = (tag_index.as_ref(), strategy) {
-                idx.find_highest_semver_tag(&tag_search_prefix, strategy)
-            } else {
-                crate::git::find_highest_semver_tag_with_cache(
-                    &repo,
-                    &tag_search_prefix,
-                    strategy,
-                    head_ancestors.as_ref(),
-                )?
-            };
-        let last_tag = highest_tag.as_ref().map(|(tag, _version)| tag.clone());
-        let tag_version = highest_tag.map(|(_tag, version)| version);
-        let current_version = match (tag_version, file_version) {
-            (Some(tag), Some(file)) => pick_higher_semver(&file, &tag),
-            (Some(tag), None) => tag,
-            (None, Some(file)) => file,
-            (None, None) => crate::versioning::bootstrap_version(pkg_strategy),
-        };
-
-        // Helpers that route through TagIndex when the strategy allows it,
-        // falling back to the per-call slow path. Returns commits walked
-        // back to the last (stable or any) tag for the current package.
-        let skip_markers = config.workspace.effective_commit_skip_markers();
-        let commits_since_stable = || -> Result<Vec<crate::git::GitLog>> {
-            if let (Some(idx), OrphanedTagStrategy::Warn) = (tag_index.as_ref(), strategy) {
-                let stop = idx.find_last_stable_tag_commit(&tag_search_prefix, strategy);
-                get_commits_since_oid(&repo, stop, &skip_markers)
-            } else {
-                get_commits_since_last_stable_tag(
-                    &repo,
-                    &tag_search_prefix,
-                    strategy,
-                    &skip_markers,
-                )
-            }
-        };
-        let commits_since_any = || -> Result<Vec<crate::git::GitLog>> {
-            if let (Some(idx), OrphanedTagStrategy::Warn) = (tag_index.as_ref(), strategy) {
-                let stop = idx.find_last_tag_commit(&tag_search_prefix, strategy);
-                get_commits_since_oid(&repo, stop, &skip_markers)
-            } else {
-                get_commits_since_last_tag(&repo, &tag_search_prefix, strategy, &skip_markers)
-            }
-        };
-
-        let (new_version, is_prerelease, commits, bump) = if let Some(fv) = forced_ver_for_pkg {
-            let clean = fv.strip_prefix('v').unwrap_or(fv);
-            let commits = if !prerelease_ctx.is_prerelease() {
-                commits_since_stable().unwrap_or_default()
-            } else {
-                commits_since_any().unwrap_or_default()
-            };
-            (clean.to_string(), false, commits, BumpType::None)
-        } else {
-            let commits = if !prerelease_ctx.is_prerelease() {
-                commits_since_stable()?
-            } else {
-                commits_since_any()?
-            };
-
-            if commits.is_empty() {
-                if verbose && !quiet {
-                    println!("{} {} — no new commits", "○".dimmed(), pkg.name.dimmed());
+        let bump_plan = match plan {
+            PackagePlan::Skipped { reason, .. } => {
+                match reason {
+                    SkipReason::NotTouched => {
+                        if verbose && !quiet {
+                            println!(
+                                "{} {} — not touched, skipping",
+                                "○".dimmed(),
+                                pkg.name.dimmed()
+                            );
+                        }
+                    }
+                    SkipReason::NoNewCommits => {
+                        if verbose && !quiet {
+                            println!("{} {} — no new commits", "○".dimmed(), pkg.name.dimmed());
+                        }
+                    }
+                    SkipReason::NoReleasableCommits => {
+                        if !quiet {
+                            shared_outputs.push(format!(
+                                "{} {} — no releasable commits",
+                                "○".dimmed(),
+                                pkg.name.dimmed()
+                            ));
+                        }
+                    }
+                    SkipReason::VersionUnchanged => {
+                        if verbose && !quiet {
+                            println!("{} {} — version unchanged", "○".dimmed(), pkg.name.dimmed());
+                        }
+                    }
                 }
                 if release_json {
                     skipped.push(SkippedPackage {
                         package: pkg.name.clone(),
-                        reason: "no new commits".to_string(),
+                        reason: reason.json_label().to_string(),
                     });
                 }
                 continue;
             }
-
-            let strategy = pkg.effective_versioning(
-                &config.workspace,
-                &tags_for_package(&all_tags, &tag_search_prefix),
-            );
-
-            let bump = commits
-                .iter()
-                .map(|c| determine_bump(&c.message))
-                .max()
-                .unwrap_or(BumpType::None);
-
-            let is_date_or_seq = matches!(
-                strategy,
-                VersioningStrategy::Calver
-                    | VersioningStrategy::CalverShort
-                    | VersioningStrategy::CalverSeq
-                    | VersioningStrategy::Sequential
-            );
-
-            if bump == BumpType::None && !is_date_or_seq {
-                if !quiet {
-                    shared_outputs.push(format!(
-                        "{} {} — no releasable commits",
-                        "○".dimmed(),
-                        pkg.name.dimmed()
-                    ));
-                }
-                if release_json {
-                    skipped.push(SkippedPackage {
-                        package: pkg.name.clone(),
-                        reason: "no releasable commits".to_string(),
-                    });
-                }
-                continue;
-            }
-
-            let base_version = compute_next_version(&current_version, bump, strategy)?;
-
-            let (new_version, is_prerelease) = if prerelease_ctx.is_prerelease() {
-                let tag_prefix = pkg.tag_prefix(&config.workspace, config.is_monorepo());
-                if let Some(resolved) = prerelease_ctx.compute_identifier(
-                    &base_version,
-                    &tag_prefix,
-                    &all_tags,
-                    &short_hash,
-                ) {
-                    (format!("{base_version}{}", resolved.full_suffix), true)
-                } else {
-                    (base_version, false)
-                }
-            } else {
-                (base_version, false)
-            };
-
-            (new_version, is_prerelease, commits, bump)
+            PackagePlan::Bump(bump_plan) => *bump_plan,
         };
 
-        if current_version == new_version {
-            if verbose && !quiet {
-                println!("{} {} — version unchanged", "○".dimmed(), pkg.name.dimmed());
-            }
-            if release_json {
-                skipped.push(SkippedPackage {
-                    package: pkg.name.clone(),
-                    reason: "version unchanged".to_string(),
-                });
-            }
-            continue;
-        }
-
-        let strategy_label = if forced_ver_for_pkg.is_some() {
-            "forced".to_string()
-        } else {
-            let strategy = pkg.effective_versioning(
-                &config.workspace,
-                &tags_for_package(&all_tags, &tag_search_prefix),
-            );
-            let is_date_or_seq = matches!(
-                strategy,
-                VersioningStrategy::Calver
-                    | VersioningStrategy::CalverShort
-                    | VersioningStrategy::CalverSeq
-                    | VersioningStrategy::Sequential
-            );
-            if is_date_or_seq {
-                format!("{strategy:?}").to_lowercase()
-            } else {
-                bump.to_string()
-            }
-        };
-
-        let tag = pkg.tag_for_version(&config.workspace, config.is_monorepo(), &new_version);
+        let current_version = bump_plan.current_version;
+        let new_version = bump_plan.new_version;
+        let is_prerelease = bump_plan.is_prerelease;
+        let last_tag = bump_plan.last_tag;
+        let commits = bump_plan.commits;
+        let bump = bump_plan.bump;
+        let strategy_label = bump_plan.strategy_label;
+        let tag = bump_plan.tag;
 
         if release_json {
             released.push(ReleasedPackage {
