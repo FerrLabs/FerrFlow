@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.11.0] - 2026-06-17
+
+### Features
+
+- feat(site): redesign performance page as interactive grouped bar chart (#568)
+
 ## [6.10.0] - 2026-06-17
 
 ### Features
