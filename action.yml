@@ -93,6 +93,11 @@ runs:
     # via `FERRFLOW_BOT_LOGIN` and `FERRFLOW_BOT_USER_ID` env vars on
     # the calling job.
 
+    - name: Optimize commit-graph
+      if: inputs.mode != 'publish'
+      shell: bash
+      run: git commit-graph write --reachable 2>/dev/null || true
+
     - name: Preview release
       if: inputs.mode == 'preview'
       shell: bash

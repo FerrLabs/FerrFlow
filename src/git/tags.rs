@@ -13,6 +13,7 @@ pub fn build_head_ancestors(repo: &Repository) -> Result<HashSet<ObjectId>> {
     let head_id = repo.head_id()?.detach();
     let walk = repo
         .rev_walk([head_id])
+        .use_commit_graph(true)
         .sorting(Sorting::BreadthFirst)
         .all()?;
     let mut set: HashSet<ObjectId> = HashSet::new();
@@ -40,6 +41,7 @@ impl TagIndex {
         let head_id = repo.head_id()?.detach();
         let walk = repo
             .rev_walk([head_id])
+            .use_commit_graph(true)
             .sorting(Sorting::BreadthFirst)
             .all()?;
         let mut ancestors: HashSet<ObjectId> = HashSet::new();
@@ -192,7 +194,12 @@ fn is_reachable(
     if head == commit_oid {
         return true;
     }
-    let walk = match repo.rev_walk([head]).sorting(Sorting::BreadthFirst).all() {
+    let walk = match repo
+        .rev_walk([head])
+        .use_commit_graph(true)
+        .sorting(Sorting::BreadthFirst)
+        .all()
+    {
         Ok(w) => w,
         Err(_) => return false,
     };
@@ -218,6 +225,7 @@ pub(super) fn find_matching_commit(
     let head = repo.head_id().ok()?.detach();
     let walk = repo
         .rev_walk([head])
+        .use_commit_graph(true)
         .sorting(Sorting::ByCommitTime(CommitTimeOrder::NewestFirst))
         .all()
         .ok()?;
