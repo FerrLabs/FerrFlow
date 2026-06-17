@@ -4,6 +4,17 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.15.0] - 2026-06-17
+
+### Features
+
+- feat(release): --json output and --dry-run unified file diff (#588)
+
+### Bug Fixes
+
+- perf(monorepo): parallelize per-package planning with rayon (#592)
+- fix(forge): validate derived API host and document GitLab draft no-op (#589)
+
 ## [5.14.0] - 2026-06-17
 
 ### Features
