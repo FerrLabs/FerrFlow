@@ -622,6 +622,34 @@ fn get_changed_files_since_tag_only_new() {
     assert!(files.contains(&"b.txt".to_string()));
 }
 
+#[test]
+fn walks_stay_correct_with_commit_graph_present() {
+    let (dir, repo) = init_repo();
+    create_commit_in_repo(&repo, dir.path(), "a.txt", "feat: first");
+    create_lightweight_tag(&repo, "v1.0.0");
+    create_commit_in_repo(&repo, dir.path(), "b.txt", "fix: second");
+    create_commit_in_repo(&repo, dir.path(), "c.txt", "feat: third");
+    git(dir.path(), &["commit-graph", "write", "--reachable"]);
+
+    let commits = get_commits_since_last_tag(
+        &repo,
+        "v",
+        OrphanedTagStrategy::Warn,
+        &crate::config::default_commit_skip_markers(),
+        None,
+    )
+    .unwrap();
+    assert_eq!(commits.len(), 2);
+    assert!(commits[0].message.contains("third"));
+    assert!(commits[1].message.contains("second"));
+
+    let idx = TagIndex::build(&repo).unwrap();
+    assert!(
+        idx.find_last_tag_commit("v", OrphanedTagStrategy::Warn)
+            .is_some()
+    );
+}
+
 // -----------------------------------------------------------------------
 // create_commit
 // -----------------------------------------------------------------------

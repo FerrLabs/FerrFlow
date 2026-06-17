@@ -39,7 +39,10 @@ pub fn get_commits_since_oid(
     skip_markers: &[String],
 ) -> Result<Vec<GitLog>> {
     let head = repo.head_id()?.detach();
-    let mut platform = repo.rev_walk([head]).sorting(Sorting::BreadthFirst);
+    let mut platform = repo
+        .rev_walk([head])
+        .use_commit_graph(true)
+        .sorting(Sorting::BreadthFirst);
     if let Some(stop) = last_tag_oid {
         platform = platform.with_hidden([stop]);
     }
