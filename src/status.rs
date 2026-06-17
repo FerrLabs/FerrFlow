@@ -69,6 +69,7 @@ pub fn run(
             &tag_search_prefix,
             config.workspace.orphaned_tag_strategy,
             &skip_markers,
+            None,
         )?;
         let has_changes = commits
             .iter()

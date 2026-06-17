@@ -1,21 +1,23 @@
 use anyhow::{Context, Result};
 use gix::ObjectId;
 use gix::revision::walk::Sorting;
+use std::collections::HashSet;
 
 pub use crate::changelog::GitLog;
 use crate::config::OrphanedTagStrategy;
 
 use super::repo::Repository;
 use super::shell::run_git;
-use super::tags::{find_last_stable_tag, find_last_tag_commit};
+use super::tags::{find_last_stable_tag_with_cache, find_last_tag_commit};
 
 pub fn get_commits_since_last_tag(
     repo: &Repository,
     tag_prefix: &str,
     strategy: OrphanedTagStrategy,
     skip_markers: &[String],
+    ancestors: Option<&HashSet<ObjectId>>,
 ) -> Result<Vec<GitLog>> {
-    let last_tag_oid = find_last_tag_commit(repo, tag_prefix, strategy)?;
+    let last_tag_oid = find_last_tag_commit(repo, tag_prefix, strategy, ancestors)?;
     get_commits_since_oid(repo, last_tag_oid, skip_markers)
 }
 
@@ -24,8 +26,10 @@ pub fn get_commits_since_last_stable_tag(
     tag_prefix: &str,
     strategy: OrphanedTagStrategy,
     skip_markers: &[String],
+    ancestors: Option<&HashSet<ObjectId>>,
 ) -> Result<Vec<GitLog>> {
-    let last_tag_oid = find_last_stable_tag(repo, tag_prefix, strategy)?.map(|t| t.commit_oid);
+    let last_tag_oid = find_last_stable_tag_with_cache(repo, tag_prefix, strategy, ancestors)?
+        .map(|t| t.commit_oid);
     get_commits_since_oid(repo, last_tag_oid, skip_markers)
 }
 

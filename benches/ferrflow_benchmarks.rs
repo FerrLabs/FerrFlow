@@ -294,6 +294,7 @@ fn bench_git_operations(c: &mut Criterion) {
                         "v",
                         OrphanedTagStrategy::Warn,
                         &ferrflow::config::default_commit_skip_markers(),
+                        None,
                     )
                     .unwrap(),
                 );
@@ -346,7 +347,8 @@ fn bench_git_operations(c: &mut Criterion) {
         c.bench_function(label, |b| {
             b.iter(|| {
                 black_box(
-                    get_changed_files_since_tag(&repo, "v", OrphanedTagStrategy::Warn).unwrap(),
+                    get_changed_files_since_tag(&repo, "v", OrphanedTagStrategy::Warn, None)
+                        .unwrap(),
                 );
             });
         });
@@ -423,6 +425,7 @@ fn bench_full_check_flow(c: &mut Criterion) {
                     "v",
                     OrphanedTagStrategy::Warn,
                     &ferrflow::config::default_commit_skip_markers(),
+                    None,
                 )
                 .unwrap();
                 for commit in &commits {
