@@ -1,5 +1,6 @@
 use anyhow::Result;
 use colored::Colorize;
+use rayon::prelude::*;
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -16,7 +17,7 @@ use crate::versioning::truncate_version;
 
 use super::checkpoint::{Checkpoint, Phase};
 use super::summary::{TagToCreate, write_github_step_summary};
-use crate::forge::ReleaseResult;
+use crate::forge::{Forge, ReleaseResult};
 use crate::monorepo::preview::build_forge_instance;
 use crate::monorepo::util::{auto_stage_new_files, collect_dirty_files};
 
@@ -418,77 +419,54 @@ fn push_and_publish(
     let target_sha = plan.repo.head_id().ok().map(|id| id.to_string());
 
     if let Some(forge_instance) = build_forge_instance(plan.repo, plan.config) {
-        for (tag_name, _, body, pkg_name, _, _, is_pre) in plan.tags_to_create {
-            if !plan.draft {
-                match forge_instance.find_draft_release(tag_name) {
-                    Ok(Some(release_id)) => match forge_instance.publish_release(release_id) {
-                        Ok(()) => {
-                            if let Some((_, lines)) = plan
-                                .pkg_outputs
-                                .iter_mut()
-                                .rev()
-                                .find(|(n, _)| n == pkg_name)
-                            {
-                                lines.push(format!(
-                                    "  ✓ Published draft {} {}",
-                                    forge_instance.release_noun(),
-                                    tag_name.cyan()
-                                ));
-                            }
-                            continue;
-                        }
-                        Err(err) => eprintln!(
-                            "{}",
-                            format!("  Warning: failed to publish draft for {tag_name}: {err}")
-                                .yellow()
-                        ),
-                    },
-                    Ok(None) => {}
-                    Err(err) => {
-                        if plan.verbose {
-                            eprintln!(
-                                "{}",
-                                format!(
-                                    "  Warning: failed to check for draft release {tag_name}: {err}"
-                                )
-                                .yellow()
-                            );
-                        }
-                    }
+        let forge_ref: &dyn Forge = forge_instance.as_ref();
+        let draft = plan.draft;
+        let target_sha_ref = target_sha.as_deref();
+
+        let threads = plan
+            .tags_to_create
+            .len()
+            .clamp(1, RELEASE_FORGE_CONCURRENCY);
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build()
+            .map_err(|e| anyhow::anyhow!("failed to build release thread pool: {e}"))
+            .error_code(error_code::MONOREPO_PUSH_FAILED)?;
+
+        let outcomes: Vec<(String, String, TagReleaseOutcome)> = pool.install(|| {
+            plan.tags_to_create
+                .par_iter()
+                .map(|(tag_name, _, body, pkg_name, _, _, is_pre)| {
+                    let outcome = process_release_tag(
+                        forge_ref,
+                        tag_name,
+                        body,
+                        *is_pre,
+                        draft,
+                        target_sha_ref,
+                    );
+                    (tag_name.clone(), pkg_name.clone(), outcome)
+                })
+                .collect()
+        });
+
+        for (tag_name, pkg_name, outcome) in outcomes {
+            for warning in outcome.warnings {
+                if !warning.verbose_only || plan.verbose {
+                    eprintln!("{}", warning.message.yellow());
                 }
             }
-
-            match forge_instance.create_release(
-                tag_name,
-                body,
-                *is_pre,
-                plan.draft,
-                target_sha.as_deref(),
-            ) {
-                Ok(result) => {
-                    plan.forge_results.push((tag_name.clone(), result));
-                    if let Some((_, lines)) = plan
-                        .pkg_outputs
-                        .iter_mut()
-                        .rev()
-                        .find(|(n, _)| n == pkg_name)
-                    {
-                        let noun = forge_instance.release_noun();
-                        if plan.draft {
-                            lines.push(format!("  ✓ Draft {} {}", noun, tag_name.cyan()));
-                        } else {
-                            lines.push(format!("  ✓ {} {}", noun, tag_name.cyan()));
-                        }
-                    }
-                }
-                Err(err) => eprintln!(
-                    "{}",
-                    format!(
-                        "  Warning: failed to create {} for {tag_name}: {err}",
-                        forge_instance.release_noun()
-                    )
-                    .yellow()
-                ),
+            if let Some(result) = outcome.result {
+                plan.forge_results.push((tag_name, result));
+            }
+            if let Some(line) = outcome.success_line
+                && let Some((_, lines)) = plan
+                    .pkg_outputs
+                    .iter_mut()
+                    .rev()
+                    .find(|(n, _)| *n == pkg_name)
+            {
+                lines.push(line);
             }
         }
     }
@@ -507,6 +485,84 @@ fn push_and_publish(
 
     write_github_step_summary(plan.tags_to_create);
     Ok(())
+}
+
+const RELEASE_FORGE_CONCURRENCY: usize = 8;
+
+struct TagReleaseWarning {
+    message: String,
+    verbose_only: bool,
+}
+
+struct TagReleaseOutcome {
+    warnings: Vec<TagReleaseWarning>,
+    success_line: Option<String>,
+    result: Option<ReleaseResult>,
+}
+
+fn process_release_tag(
+    forge: &dyn Forge,
+    tag_name: &str,
+    body: &str,
+    is_pre: bool,
+    draft: bool,
+    target_sha: Option<&str>,
+) -> TagReleaseOutcome {
+    let noun = forge.release_noun();
+    let mut warnings = Vec::new();
+
+    if !draft {
+        match forge.find_draft_release(tag_name) {
+            Ok(Some(release_id)) => match forge.publish_release(release_id) {
+                Ok(()) => {
+                    return TagReleaseOutcome {
+                        warnings,
+                        success_line: Some(format!(
+                            "  ✓ Published draft {} {}",
+                            noun,
+                            tag_name.cyan()
+                        )),
+                        result: None,
+                    };
+                }
+                Err(err) => warnings.push(TagReleaseWarning {
+                    message: format!("  Warning: failed to publish draft for {tag_name}: {err}"),
+                    verbose_only: false,
+                }),
+            },
+            Ok(None) => {}
+            Err(err) => warnings.push(TagReleaseWarning {
+                message: format!("  Warning: failed to check for draft release {tag_name}: {err}"),
+                verbose_only: true,
+            }),
+        }
+    }
+
+    match forge.create_release(tag_name, body, is_pre, draft, target_sha) {
+        Ok(result) => {
+            let success_line = if draft {
+                format!("  ✓ Draft {} {}", noun, tag_name.cyan())
+            } else {
+                format!("  ✓ {} {}", noun, tag_name.cyan())
+            };
+            TagReleaseOutcome {
+                warnings,
+                success_line: Some(success_line),
+                result: Some(result),
+            }
+        }
+        Err(err) => {
+            warnings.push(TagReleaseWarning {
+                message: format!("  Warning: failed to create {noun} for {tag_name}: {err}"),
+                verbose_only: false,
+            });
+            TagReleaseOutcome {
+                warnings,
+                success_line: None,
+                result: None,
+            }
+        }
+    }
 }
 
 fn emit_release_telemetry(plan: &ReleasePlan<'_>) {
@@ -601,4 +657,218 @@ pub(super) fn print_dry_run_hooks(plan: &ReleasePlan<'_>) -> Result<()> {
         run_publishers_for_package(plan, pkg, &ctx.package, &ctx.new_version, &ctx.tag)?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tag_release_tests {
+    use super::*;
+    use crate::forge::MergeRequestResult;
+    use std::collections::HashMap;
+    use std::sync::Mutex;
+
+    #[derive(Default)]
+    struct MockForge {
+        drafts: HashMap<String, u64>,
+        publish_fails: bool,
+        find_draft_errors_for: Vec<String>,
+        create_fails_for: Vec<String>,
+        create_calls: Mutex<Vec<String>>,
+    }
+
+    impl Forge for MockForge {
+        fn create_release(
+            &self,
+            tag: &str,
+            _body: &str,
+            _prerelease: bool,
+            _draft: bool,
+            _target_commitish: Option<&str>,
+        ) -> Result<ReleaseResult> {
+            self.create_calls.lock().unwrap().push(tag.to_string());
+            if self.create_fails_for.iter().any(|t| t == tag) {
+                anyhow::bail!("create failed for {tag}");
+            }
+            Ok(ReleaseResult {
+                id: Some(1),
+                url: Some(format!("https://forge/{tag}")),
+            })
+        }
+
+        fn find_draft_release(&self, tag: &str) -> Result<Option<u64>> {
+            if self.find_draft_errors_for.iter().any(|t| t == tag) {
+                anyhow::bail!("draft lookup failed for {tag}");
+            }
+            Ok(self.drafts.get(tag).copied())
+        }
+
+        fn publish_release(&self, _release_id: u64) -> Result<()> {
+            if self.publish_fails {
+                anyhow::bail!("publish failed");
+            }
+            Ok(())
+        }
+
+        fn create_merge_request(
+            &self,
+            _head: &str,
+            _base: &str,
+            _title: &str,
+            _body: &str,
+        ) -> Result<MergeRequestResult> {
+            unreachable!("not exercised by release-tag tests")
+        }
+
+        fn enable_auto_merge(&self, _mr: &MergeRequestResult) -> Result<()> {
+            unreachable!("not exercised by release-tag tests")
+        }
+
+        fn mr_noun(&self) -> &'static str {
+            "pull request"
+        }
+
+        fn release_noun(&self) -> &'static str {
+            "release"
+        }
+
+        fn find_comment(&self, _pr_id: u64, _marker: &str) -> Result<Option<u64>> {
+            unreachable!("not exercised by release-tag tests")
+        }
+
+        fn create_comment(&self, _pr_id: u64, _body: &str) -> Result<()> {
+            unreachable!("not exercised by release-tag tests")
+        }
+
+        fn update_comment(&self, _pr_id: u64, _comment_id: u64, _body: &str) -> Result<()> {
+            unreachable!("not exercised by release-tag tests")
+        }
+    }
+
+    #[test]
+    fn publishes_existing_draft_and_skips_create() {
+        let forge = MockForge {
+            drafts: HashMap::from([("v1".to_string(), 42)]),
+            ..Default::default()
+        };
+        let outcome = process_release_tag(&forge, "v1", "body", false, false, None);
+
+        assert!(outcome.warnings.is_empty());
+        assert!(outcome.result.is_none());
+        let line = outcome.success_line.expect("a success line");
+        assert!(line.contains("Published draft release"));
+        assert!(line.contains("v1"));
+        assert!(
+            forge.create_calls.lock().unwrap().is_empty(),
+            "create_release must not run when a draft was published"
+        );
+    }
+
+    #[test]
+    fn falls_through_to_create_when_publish_fails() {
+        let forge = MockForge {
+            drafts: HashMap::from([("v1".to_string(), 42)]),
+            publish_fails: true,
+            ..Default::default()
+        };
+        let outcome = process_release_tag(&forge, "v1", "body", false, false, None);
+
+        assert_eq!(outcome.warnings.len(), 1);
+        assert!(!outcome.warnings[0].verbose_only);
+        assert!(
+            outcome.warnings[0]
+                .message
+                .contains("failed to publish draft")
+        );
+        assert!(outcome.result.is_some());
+        assert_eq!(forge.create_calls.lock().unwrap().as_slice(), ["v1"]);
+    }
+
+    #[test]
+    fn creates_release_when_no_draft() {
+        let forge = MockForge::default();
+        let outcome = process_release_tag(&forge, "v1", "body", false, false, None);
+
+        assert!(outcome.warnings.is_empty());
+        assert_eq!(
+            outcome.result.and_then(|r| r.url).as_deref(),
+            Some("https://forge/v1")
+        );
+        assert_eq!(forge.create_calls.lock().unwrap().as_slice(), ["v1"]);
+    }
+
+    #[test]
+    fn create_failure_yields_warning_and_no_result() {
+        let forge = MockForge {
+            create_fails_for: vec!["v1".to_string()],
+            ..Default::default()
+        };
+        let outcome = process_release_tag(&forge, "v1", "body", false, false, None);
+
+        assert_eq!(outcome.warnings.len(), 1);
+        assert!(!outcome.warnings[0].verbose_only);
+        assert!(
+            outcome.warnings[0]
+                .message
+                .contains("failed to create release")
+        );
+        assert!(outcome.result.is_none());
+        assert!(outcome.success_line.is_none());
+    }
+
+    #[test]
+    fn draft_check_error_is_verbose_only_then_creates() {
+        let forge = MockForge {
+            find_draft_errors_for: vec!["v1".to_string()],
+            ..Default::default()
+        };
+        let outcome = process_release_tag(&forge, "v1", "body", false, false, None);
+
+        assert_eq!(outcome.warnings.len(), 1);
+        assert!(outcome.warnings[0].verbose_only);
+        assert!(outcome.result.is_some());
+    }
+
+    #[test]
+    fn draft_mode_skips_draft_lookup_and_labels_draft() {
+        let forge = MockForge {
+            drafts: HashMap::from([("v1".to_string(), 42)]),
+            ..Default::default()
+        };
+        let outcome = process_release_tag(&forge, "v1", "body", false, true, None);
+
+        assert!(outcome.warnings.is_empty());
+        assert!(outcome.result.is_some());
+        let line = outcome.success_line.expect("a success line");
+        assert!(line.contains("✓ Draft release"));
+        assert!(!line.contains("Published"));
+        assert!(line.contains("v1"));
+        assert_eq!(forge.create_calls.lock().unwrap().as_slice(), ["v1"]);
+    }
+
+    #[test]
+    fn parallel_collection_preserves_tag_order() {
+        let forge = MockForge::default();
+        let tags = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"];
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(RELEASE_FORGE_CONCURRENCY)
+            .build()
+            .unwrap();
+
+        let collected: Vec<(String, Option<String>)> = pool.install(|| {
+            tags.par_iter()
+                .map(|t| {
+                    let outcome = process_release_tag(&forge, t, "body", false, false, None);
+                    (t.to_string(), outcome.result.and_then(|r| r.url))
+                })
+                .collect()
+        });
+
+        let order: Vec<&str> = collected.iter().map(|(t, _)| t.as_str()).collect();
+        assert_eq!(order, tags);
+        for (tag, url) in &collected {
+            assert_eq!(
+                url.as_deref(),
+                Some(format!("https://forge/{tag}").as_str())
+            );
+        }
+    }
 }
