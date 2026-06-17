@@ -86,22 +86,25 @@ pub fn extract_host(url: &str) -> Option<String> {
         let host_port = authority.rsplit('@').next()?;
         // Drop the optional `:port` suffix.
         let host = host_port.split(':').next()?;
-        if host.is_empty() {
-            return None;
-        }
-        Some(host.to_string())
+        valid_host(host)
     } else if url.contains('@') && url.contains(':') {
         // SSH form: `user@host:owner/repo`. Take what's after the LAST '@'
         // and before the first ':'.
         let after_at = url.rsplit('@').next()?;
         let host = after_at.split(':').next()?;
-        if host.is_empty() {
-            return None;
-        }
-        Some(host.to_string())
+        valid_host(host)
     } else {
         None
     }
+}
+
+fn valid_host(host: &str) -> Option<String> {
+    let ok = !host.is_empty()
+        && host.len() <= 253
+        && host
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'.' || b == b'-');
+    ok.then(|| host.to_string())
 }
 
 pub fn extract_repo_slug(url: &str) -> Option<String> {
@@ -471,6 +474,21 @@ mod tests {
     #[test]
     fn extract_host_empty() {
         assert_eq!(extract_host(""), None);
+    }
+
+    #[test]
+    fn extract_host_rejects_non_hostname_chars() {
+        // Defense in depth: a derived "host" that isn't a syntactically
+        // valid hostname must not be used to build the API base and
+        // receive the bearer token.
+        assert_eq!(extract_host("https://ho st/owner/repo"), None);
+        assert_eq!(extract_host("https://host_underscore/o/r"), None);
+        assert_eq!(extract_host("https://h%40ck/o/r"), None);
+        // Legit self-hosted hostnames still pass.
+        assert_eq!(
+            extract_host("https://git.corp.example.com/o/r").as_deref(),
+            Some("git.corp.example.com")
+        );
     }
 
     #[test]
