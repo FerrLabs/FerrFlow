@@ -61,6 +61,7 @@ pub fn generate_only(config_path: Option<&Path>, dry_run: bool) -> Result<()> {
             &tag_prefix,
             config.workspace.orphaned_tag_strategy,
             &skip_markers,
+            None,
         )?;
 
         if commits.is_empty() {

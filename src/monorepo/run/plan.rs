@@ -119,13 +119,14 @@ pub(super) fn compute_plan(
 
     if !touched && config.workspace.recover_missed_releases && is_monorepo {
         let strategy = config.workspace.orphaned_tag_strategy;
-        let files_since_tag =
-            if let (Some(idx), OrphanedTagStrategy::Warn) = (inputs.tag_index, strategy) {
-                let last_oid = idx.find_last_tag_commit(&tag_search_prefix, strategy);
-                get_changed_files_since_oid(repo, last_oid)?
-            } else {
-                get_changed_files_since_tag(repo, &tag_search_prefix, strategy)?
-            };
+        let files_since_tag = if let (Some(idx), OrphanedTagStrategy::Warn) =
+            (inputs.tag_index, strategy)
+        {
+            let last_oid = idx.find_last_tag_commit(&tag_search_prefix, strategy);
+            get_changed_files_since_oid(repo, last_oid)?
+        } else {
+            get_changed_files_since_tag(repo, &tag_search_prefix, strategy, inputs.head_ancestors)?
+        };
         if is_package_touched(pkg, &files_since_tag, true) {
             touched = true;
             recovered = true;
@@ -174,7 +175,13 @@ pub(super) fn compute_plan(
             let stop = idx.find_last_stable_tag_commit(&tag_search_prefix, strategy);
             get_commits_since_oid(repo, stop, &skip_markers)
         } else {
-            get_commits_since_last_stable_tag(repo, &tag_search_prefix, strategy, &skip_markers)
+            get_commits_since_last_stable_tag(
+                repo,
+                &tag_search_prefix,
+                strategy,
+                &skip_markers,
+                inputs.head_ancestors,
+            )
         }
     };
     let commits_since_any = || -> Result<Vec<GitLog>> {
@@ -182,7 +189,13 @@ pub(super) fn compute_plan(
             let stop = idx.find_last_tag_commit(&tag_search_prefix, strategy);
             get_commits_since_oid(repo, stop, &skip_markers)
         } else {
-            get_commits_since_last_tag(repo, &tag_search_prefix, strategy, &skip_markers)
+            get_commits_since_last_tag(
+                repo,
+                &tag_search_prefix,
+                strategy,
+                &skip_markers,
+                inputs.head_ancestors,
+            )
         }
     };
 

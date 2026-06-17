@@ -1,5 +1,6 @@
 use anyhow::Result;
 use gix::ObjectId;
+use std::collections::HashSet;
 
 use crate::config::OrphanedTagStrategy;
 
@@ -52,8 +53,9 @@ pub fn get_changed_files_since_tag(
     repo: &Repository,
     tag_prefix: &str,
     strategy: OrphanedTagStrategy,
+    ancestors: Option<&HashSet<ObjectId>>,
 ) -> Result<Vec<String>> {
-    let last_tag_oid = find_last_tag_commit(repo, tag_prefix, strategy)?;
+    let last_tag_oid = find_last_tag_commit(repo, tag_prefix, strategy, ancestors)?;
     get_changed_files_since_oid(repo, last_tag_oid)
 }
 

@@ -419,6 +419,7 @@ fn get_commits_since_last_tag_no_tags() {
         "v",
         OrphanedTagStrategy::Warn,
         &crate::config::default_commit_skip_markers(),
+        None,
     )
     .unwrap();
     assert_eq!(commits.len(), 2);
@@ -439,6 +440,7 @@ fn get_commits_since_last_tag_with_tag() {
         "v",
         OrphanedTagStrategy::Warn,
         &crate::config::default_commit_skip_markers(),
+        None,
     )
     .unwrap();
     assert_eq!(commits.len(), 2);
@@ -460,6 +462,7 @@ fn get_commits_skips_skip_ci() {
         "v",
         OrphanedTagStrategy::Warn,
         &crate::config::default_commit_skip_markers(),
+        None,
     )
     .unwrap();
     assert_eq!(commits.len(), 1);
@@ -479,6 +482,7 @@ fn get_commits_skips_ci_skip_variant() {
         "v",
         OrphanedTagStrategy::Warn,
         &crate::config::default_commit_skip_markers(),
+        None,
     )
     .unwrap();
     assert_eq!(commits.len(), 1);
@@ -497,6 +501,7 @@ fn get_commits_skip_marker_is_case_insensitive() {
         "v",
         OrphanedTagStrategy::Warn,
         &crate::config::default_commit_skip_markers(),
+        None,
     )
     .unwrap();
     assert_eq!(commits.len(), 0);
@@ -519,6 +524,7 @@ fn get_commits_skip_marker_ignored_in_body() {
         "v",
         OrphanedTagStrategy::Warn,
         &crate::config::default_commit_skip_markers(),
+        None,
     )
     .unwrap();
     assert_eq!(commits.len(), 1);
@@ -533,7 +539,7 @@ fn get_commits_skip_markers_can_be_overridden() {
 
     let custom = vec!["[no release]".to_string()];
     let commits =
-        get_commits_since_last_tag(&repo, "v", OrphanedTagStrategy::Warn, &custom).unwrap();
+        get_commits_since_last_tag(&repo, "v", OrphanedTagStrategy::Warn, &custom, None).unwrap();
     assert_eq!(
         commits.len(),
         1,
@@ -599,7 +605,7 @@ fn get_changed_files_since_tag_all_when_no_tag() {
     create_commit_in_repo(&repo, dir.path(), "a.txt", "first");
     create_commit_in_repo(&repo, dir.path(), "b.txt", "second");
 
-    let files = get_changed_files_since_tag(&repo, "v", OrphanedTagStrategy::Warn).unwrap();
+    let files = get_changed_files_since_tag(&repo, "v", OrphanedTagStrategy::Warn, None).unwrap();
     assert!(files.contains(&"a.txt".to_string()));
     assert!(files.contains(&"b.txt".to_string()));
 }
@@ -611,7 +617,7 @@ fn get_changed_files_since_tag_only_new() {
     create_lightweight_tag(&repo, "v1.0.0");
     create_commit_in_repo(&repo, dir.path(), "b.txt", "second");
 
-    let files = get_changed_files_since_tag(&repo, "v", OrphanedTagStrategy::Warn).unwrap();
+    let files = get_changed_files_since_tag(&repo, "v", OrphanedTagStrategy::Warn, None).unwrap();
     assert!(!files.contains(&"a.txt".to_string()));
     assert!(files.contains(&"b.txt".to_string()));
 }
@@ -1097,10 +1103,44 @@ fn get_commits_since_orphaned_tag_with_recovery() {
         "v",
         OrphanedTagStrategy::TreeHash,
         &crate::config::default_commit_skip_markers(),
+        None,
     )
     .unwrap();
     assert_eq!(commits.len(), 1);
     assert!(commits[0].message.contains("new feature"));
+}
+
+#[test]
+fn ancestor_cache_matches_uncached_on_orphan_recovery() {
+    let (repo, dir) = create_orphaned_tag_scenario("v1.0.0");
+    create_commit_in_repo(&repo, dir.path(), "b.txt", "feat: new feature");
+
+    let ancestors = build_head_ancestors(&repo).unwrap();
+    let markers = crate::config::default_commit_skip_markers();
+    let msgs =
+        |c: &[crate::changelog::GitLog]| c.iter().map(|g| g.message.clone()).collect::<Vec<_>>();
+
+    let uncached =
+        get_commits_since_last_tag(&repo, "v", OrphanedTagStrategy::TreeHash, &markers, None)
+            .unwrap();
+    let cached = get_commits_since_last_tag(
+        &repo,
+        "v",
+        OrphanedTagStrategy::TreeHash,
+        &markers,
+        Some(&ancestors),
+    )
+    .unwrap();
+
+    assert_eq!(msgs(&cached), msgs(&uncached));
+    assert_eq!(cached.len(), 1);
+
+    let files_uncached =
+        get_changed_files_since_tag(&repo, "v", OrphanedTagStrategy::TreeHash, None).unwrap();
+    let files_cached =
+        get_changed_files_since_tag(&repo, "v", OrphanedTagStrategy::TreeHash, Some(&ancestors))
+            .unwrap();
+    assert_eq!(files_cached, files_uncached);
 }
 
 #[test]
@@ -1120,6 +1160,7 @@ fn get_commits_since_last_stable_tag_skips_prereleases() {
         "v",
         OrphanedTagStrategy::Warn,
         &crate::config::default_commit_skip_markers(),
+        None,
     )
     .unwrap();
     assert_eq!(commits.len(), 3);
@@ -1130,6 +1171,7 @@ fn get_commits_since_last_stable_tag_skips_prereleases() {
         "v",
         OrphanedTagStrategy::Warn,
         &crate::config::default_commit_skip_markers(),
+        None,
     )
     .unwrap();
     assert_eq!(commits.len(), 1);

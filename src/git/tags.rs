@@ -488,16 +488,9 @@ pub(super) fn find_last_tag_commit(
     repo: &Repository,
     prefix: &str,
     strategy: OrphanedTagStrategy,
+    ancestors: Option<&HashSet<ObjectId>>,
 ) -> Result<Option<ObjectId>> {
-    Ok(find_last_tag(repo, prefix, strategy)?.map(|t| t.commit_oid))
-}
-
-pub(super) fn find_last_stable_tag(
-    repo: &Repository,
-    prefix: &str,
-    strategy: OrphanedTagStrategy,
-) -> Result<Option<TagMatch>> {
-    find_last_stable_tag_with_cache(repo, prefix, strategy, None)
+    Ok(find_last_tag_with_cache(repo, prefix, strategy, ancestors)?.map(|t| t.commit_oid))
 }
 
 pub(super) fn find_last_stable_tag_with_cache(
