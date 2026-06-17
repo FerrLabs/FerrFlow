@@ -34,7 +34,7 @@ workspace = true
 
 [features]
 default = ["cli"]
-cli = ["dep:gix", "dep:gix-traverse", "dep:ureq", "dep:clap", "dep:clap_complete", "dep:colored", "dep:hmac", "dep:mimalloc"]
+cli = ["dep:gix", "dep:gix-traverse", "dep:ureq", "dep:clap", "dep:clap_complete", "dep:colored", "dep:hmac", "dep:mimalloc", "dep:rayon"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
@@ -61,6 +61,9 @@ hmac = { version = "0.13", optional = true }
 # revwalk, regex captures). Typical 5-15% wall-time win on alloc-heavy
 # workloads — see #507. CLI-only (no value for the wasm build).
 mimalloc = { version = "0.1", default-features = false, optional = true }
+# rayon: data-parallel per-package planning compute (#476). CLI-only —
+# the wasm build does no git/monorepo scanning, so it must not pull rayon.
+rayon = { version = "1", optional = true }
 # tempfile is used at runtime by the TS config loader to drop the
 # generated wrapper script in a directory we own (security: writing into
 # the user's config directory is a symlink TOCTOU). Tests also use it.
