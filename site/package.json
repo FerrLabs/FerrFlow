@@ -6,6 +6,7 @@
     "@fontsource/fraunces": "^5.2.9",
     "@fontsource/inter": "^5.2.7",
     "astro": "^6.4.6",
+    "chart.js": "^4.5.1",
     "starlight-versions": "^0.9.0"
   },
   "devDependencies": {
