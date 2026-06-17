@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.15.2] - 2026-06-17
+
+### Bug Fixes
+
+- perf(forge): parallelize per-tag release creation with a capped rayon pool (#595)
+
 ## [5.15.1] - 2026-06-17
 
 ### Refactoring
