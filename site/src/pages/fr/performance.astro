@@ -91,6 +91,38 @@ const installSizeTools = Object.keys(installSizes).sort((a, b) => {
 });
 const hasInstallSizes = installSizeTools.length > 0;
 
+type ParallelCell = { median_ms: number; stddev_ms: number };
+const parallelData =
+  (benchmarks as unknown as { ferrflow_parallel?: Record<string, ParallelCell> })
+    .ferrflow_parallel ?? {};
+const runnerCores = (benchmarks as unknown as { runner_cores?: number }).runner_cores ?? null;
+const PARALLEL_CMD = 'release-dry-run';
+
+function parseParallelKey(key: string): { fixture: string; cmd: string } | null {
+  for (const fixture of orderedFixtures) {
+    if (key.startsWith(`${fixture}-`)) return { fixture, cmd: key.slice(fixture.length + 1) };
+  }
+  return null;
+}
+
+const parallelRows = Object.entries(parallelData)
+  .map(([key, cell]) => {
+    const p = parseParallelKey(key);
+    if (!p || p.cmd !== PARALLEL_CMD) return null;
+    const single = grid[`${p.fixture}|ferrflow|${p.cmd}`];
+    if (!single) return null;
+    return { fixture: p.fixture, single, parallel: cell };
+  })
+  .filter((r): r is { fixture: string; single: Cell; parallel: ParallelCell } => r !== null)
+  .sort((a, b) => orderedFixtures.indexOf(a.fixture) - orderedFixtures.indexOf(b.fixture));
+
+const hasParallel = parallelRows.length > 0 && runnerCores !== null && runnerCores > 1;
+
+function speedup(single: Cell, parallel: ParallelCell): string {
+  if (parallel.median_ms <= 0) return '—';
+  return `${(single.median_ms / parallel.median_ms).toFixed(1)}×`;
+}
+
 function fmtSize(v: string | undefined): string {
   if (!v || v === 'N/A') return '—';
   return `${v} Mo`;
@@ -172,12 +204,52 @@ const updated = new Date(benchmarks.timestamp).toLocaleDateString('fr-FR', {
           donc le coût de planification, pas le coût IO de mutation.
         </li>
         <li>
+          <strong>Comparaison mono-thread.</strong> FerrFlow tourne avec <code>--jobs 1</code> dans le
+          tableau ci-dessous, pour être mesuré comme les outils JS mono-thread. Ses chiffres réels en
+          parallèle sont reportés séparément.
+        </li>
+        <li>
           <strong>Reproductible</strong> — pipeline complet sur
           <a href="https://github.com/FerrLabs/Benchmarks">FerrLabs/Benchmarks</a> ; résultats publiés
           en artefacts à chaque push <code>main</code> et dans chaque release notes.
         </li>
       </ul>
     </section>
+
+    {
+      hasParallel && (
+        <section class="perf-section">
+          <h2>Mode parallèle</h2>
+          <p class="lead">
+            La comparaison fixe FerrFlow à un seul thread (<code>--jobs 1</code>) pour rester
+            comparable aux outils JS mono-thread. En CI réelle, il utilise tous les cœurs — voici le
+            même <code>release --dry-run</code> sur les {runnerCores} cœurs du runner de benchmark.
+          </p>
+          <div class="perf-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Fixture</th>
+                  <th>1 thread</th>
+                  <th class="is-ours">{runnerCores} cœurs</th>
+                  <th>Accélération</th>
+                </tr>
+              </thead>
+              <tbody>
+                {parallelRows.map((row) => (
+                  <tr>
+                    <td>{FIXTURE_LABELS[row.fixture] ?? row.fixture}</td>
+                    <td>{fmt(row.single)}</td>
+                    <td class="is-ours">{fmt(row.parallel as Cell)}</td>
+                    <td>{speedup(row.single, row.parallel)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )
+    }
 
     {
       orderedCommands.map((cmd) => (

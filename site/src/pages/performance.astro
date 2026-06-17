@@ -92,6 +92,38 @@ const installSizeTools = Object.keys(installSizes).sort((a, b) => {
 });
 const hasInstallSizes = installSizeTools.length > 0;
 
+type ParallelCell = { median_ms: number; stddev_ms: number };
+const parallelData =
+  (benchmarks as unknown as { ferrflow_parallel?: Record<string, ParallelCell> })
+    .ferrflow_parallel ?? {};
+const runnerCores = (benchmarks as unknown as { runner_cores?: number }).runner_cores ?? null;
+const PARALLEL_CMD = 'release-dry-run';
+
+function parseParallelKey(key: string): { fixture: string; cmd: string } | null {
+  for (const fixture of orderedFixtures) {
+    if (key.startsWith(`${fixture}-`)) return { fixture, cmd: key.slice(fixture.length + 1) };
+  }
+  return null;
+}
+
+const parallelRows = Object.entries(parallelData)
+  .map(([key, cell]) => {
+    const p = parseParallelKey(key);
+    if (!p || p.cmd !== PARALLEL_CMD) return null;
+    const single = grid[`${p.fixture}|ferrflow|${p.cmd}`];
+    if (!single) return null;
+    return { fixture: p.fixture, single, parallel: cell };
+  })
+  .filter((r): r is { fixture: string; single: Cell; parallel: ParallelCell } => r !== null)
+  .sort((a, b) => orderedFixtures.indexOf(a.fixture) - orderedFixtures.indexOf(b.fixture));
+
+const hasParallel = parallelRows.length > 0 && runnerCores !== null && runnerCores > 1;
+
+function speedup(single: Cell, parallel: ParallelCell): string {
+  if (parallel.median_ms <= 0) return '—';
+  return `${(single.median_ms / parallel.median_ms).toFixed(1)}×`;
+}
+
 function fmtSize(v: string | undefined): string {
   if (!v || v === 'N/A') return '—';
   return `${v} MB`;
@@ -172,12 +204,53 @@ const updated = new Date(benchmarks.timestamp).toLocaleDateString('en-US', {
           the IO cost of actually mutating files.
         </li>
         <li>
+          <strong>Single-threaded comparison.</strong> FerrFlow runs with <code>--jobs 1</code> in the
+          table below, so it's measured like the single-threaded JS tools. Its real-world parallel numbers
+          are reported separately.
+        </li>
+        <li>
           <strong>Reproducible</strong> — the full pipeline is in
           <a href="https://github.com/FerrLabs/Benchmarks">FerrLabs/Benchmarks</a>; results land as
           artifacts on every <code>main</code> push and in each release notes.
         </li>
       </ul>
     </section>
+
+    {
+      hasParallel && (
+        <section class="perf-section">
+          <h2>Parallel mode</h2>
+          <p class="lead">
+            The comparison pins FerrFlow to a single thread (<code>--jobs 1</code>) so it's
+            apples-to-apples with the single-threaded JS tools. In real CI it uses every core —
+            here's the same <code>release --dry-run</code> on all {runnerCores} cores of the
+            benchmark runner.
+          </p>
+          <div class="perf-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Fixture</th>
+                  <th>1 thread</th>
+                  <th class="is-ours">{runnerCores} cores</th>
+                  <th>Speedup</th>
+                </tr>
+              </thead>
+              <tbody>
+                {parallelRows.map((row) => (
+                  <tr>
+                    <td>{FIXTURE_LABELS[row.fixture] ?? row.fixture}</td>
+                    <td>{fmt(row.single)}</td>
+                    <td class="is-ours">{fmt(row.parallel as Cell)}</td>
+                    <td>{speedup(row.single, row.parallel)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )
+    }
 
     {
       orderedCommands.map((cmd) => (
