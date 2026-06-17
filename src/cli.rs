@@ -29,6 +29,10 @@ pub struct Cli {
     #[arg(long, global = true)]
     pub timing: bool,
 
+    /// Max threads for CPU-parallel work (per-package planning). Default: all cores. `1` forces single-threaded.
+    #[arg(long, global = true, env = "FERRFLOW_JOBS", value_name = "N")]
+    pub jobs: Option<usize>,
+
     #[command(subcommand)]
     pub command: Commands,
 }
@@ -574,6 +578,18 @@ mod tests {
     fn global_timing() {
         let cli = parse(&["ferrflow", "--timing", "check"]);
         assert!(cli.timing);
+    }
+
+    #[test]
+    fn global_jobs_default_none() {
+        let cli = parse(&["ferrflow", "check"]);
+        assert_eq!(cli.jobs, None);
+    }
+
+    #[test]
+    fn global_jobs_flag() {
+        let cli = parse(&["ferrflow", "release", "--jobs", "1", "--dry-run"]);
+        assert_eq!(cli.jobs, Some(1));
     }
 
     #[test]
