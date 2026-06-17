@@ -4,6 +4,16 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.16.0] - 2026-06-17
+
+### Features
+
+- feat(cli): add --jobs / FERRFLOW_JOBS to control parallelism (#598)
+
+### Bug Fixes
+
+- perf(git): use commit-graph for revision walks (#596)
+
 ## [5.15.2] - 2026-06-17
 
 ### Bug Fixes
