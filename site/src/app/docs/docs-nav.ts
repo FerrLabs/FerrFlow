@@ -1,12 +1,4 @@
-export interface DocItem {
-  readonly label: string;
-  readonly slug: string;
-}
-
-export interface DocSection {
-  readonly label: string;
-  readonly items: readonly DocItem[];
-}
+import type { DocSection, DocVersion } from '@ferrlabs/ui-ng/docs';
 
 export const DOCS_NAV: readonly DocSection[] = [
   {
@@ -51,13 +43,11 @@ export const DOCS_NAV: readonly DocSection[] = [
   },
 ];
 
-export const DOCS_ORDER: readonly DocItem[] = DOCS_NAV.flatMap((s) => s.items);
-
-export const DOC_VERSIONS = [
+export const DOC_VERSIONS: readonly DocVersion[] = [
   { slug: 'current', label: 'v5' },
   { slug: 'v4', label: 'v4' },
   { slug: 'v3', label: 'v3' },
   { slug: 'v2', label: 'v2' },
   { slug: 'v1', label: 'v1' },
   { slug: 'v0', label: 'v0' },
-] as const;
+];

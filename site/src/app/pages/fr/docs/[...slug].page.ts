@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { injectContent, MarkdownComponent } from '@analogjs/content';
-import { DocsLayoutComponent } from '../../../docs/docs-layout.component';
+import { DocsPageComponent } from '../../../docs/docs-page.component';
 
 interface DocAttributes {
   readonly title: string;
@@ -11,17 +11,17 @@ interface DocAttributes {
 @Component({
   selector: 'flr-docs-page-fr',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DocsLayoutComponent, MarkdownComponent],
+  imports: [DocsPageComponent, MarkdownComponent],
   template: `
     @if (post(); as post) {
-      <flr-docs-layout
+      <flr-docs-page
         lang="fr"
         [slug]="post.slug"
         [title]="post.attributes.title"
         [description]="post.attributes.description"
       >
         <analog-markdown [content]="post.content ?? ''" />
-      </flr-docs-layout>
+      </flr-docs-page>
     }
   `,
 })
