@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>FerrFlow</title>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="google" content="notranslate" />
+    <meta name="theme-color" content="#e8733a" />
+    <meta name="color-scheme" content="light" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/src/styles.css" />
+
+    <link rel="alternate" hreflang="en" href="https://ferrflow.com/" />
+    <link rel="alternate" hreflang="fr" href="https://ferrflow.com/fr/" />
+    <link rel="alternate" hreflang="x-default" href="https://ferrflow.com/" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="FerrFlow" />
+    <meta property="og:image" content="https://ferrflow.com/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://ferrflow.com/og.png" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "FerrFlow",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Linux, macOS, Windows",
+        "url": "https://ferrflow.com",
+        "sameAs": ["https://github.com/FerrLabs/FerrFlow"]
+      }
+    </script>
+
+    <script>
+      (function () {
+        try {
+          if (localStorage.getItem('lang-pref')) return;
+          var p = location.pathname;
+          if (p.startsWith('/fr/') || p === '/fr') return;
+          var b = (navigator.language || 'en').slice(0, 2).toLowerCase();
+          if (b === 'fr')
+            location.replace('/fr' + (p === '/' ? '/' : p) + location.search + location.hash);
+        } catch (e) {}
+      })();
+    </script>
+
+    <script
+      async
+      src="https://api.ferrgrowth.com/track.js"
+      data-id="38604730-9c4b-47b5-98b6-ed12002c5ac2"
+    ></script>
+  </head>
+  <body>
+    <flr-root></flr-root>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

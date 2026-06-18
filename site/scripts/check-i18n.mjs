@@ -1,20 +1,14 @@
 #!/usr/bin/env node
 import { readFile, readdir, stat } from 'node:fs/promises';
-import { join, relative, sep } from 'node:path';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const SCRIPT_DIR = fileURLToPath(new URL('.', import.meta.url));
 const SITE_ROOT = join(SCRIPT_DIR, '..');
 const SRC_DIR = join(SITE_ROOT, 'src');
-const TRANSLATIONS_FILE = join(SRC_DIR, 'i18n', 'translations.ts');
-const DOCS_EN_DIR = join(SRC_DIR, 'content', 'docs', 'docs');
-const DOCS_FR_DIR = join(SRC_DIR, 'content', 'docs', 'fr', 'docs');
+const TRANSLATIONS_FILE = join(SRC_DIR, 'app', 'i18n', 'translations.ts');
 
 const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.astro']);
-const DOC_EXTENSIONS = new Set(['.md', '.mdx']);
-
-const KNOWN_EN_ONLY = new Set();
-const KNOWN_FR_ONLY = new Set();
 
 const T_CALL_RE = /\bt\(\s*[a-zA-Z_$][\w$]*\s*,\s*(['"`])((?:[^\\]|\\.)*?)\1/g;
 
@@ -23,7 +17,7 @@ function getExt(name) {
   return i < 0 ? '' : name.slice(i);
 }
 
-async function walk(dir, exts) {
+async function walk(dir) {
   const out = [];
   let entries;
   try {
@@ -36,8 +30,8 @@ async function walk(dir, exts) {
     if (entry.isDirectory()) {
       if (entry.name === 'node_modules' || entry.name === 'dist' || entry.name.startsWith('.'))
         continue;
-      out.push(...(await walk(full, exts)));
-    } else if (exts.has(getExt(entry.name))) {
+      out.push(...(await walk(full)));
+    } else if (SOURCE_EXTENSIONS.has(getExt(entry.name))) {
       out.push(full);
     }
   }
@@ -70,62 +64,67 @@ function extractLangBlock(source, lang) {
 function extractKeys(block) {
   const keys = new Set();
   let i = 0;
-  const n = block.length;
-  let depth = 0;
   let expectKey = true;
-  while (i < n) {
+  while (i < block.length) {
     const c = block[i];
     if (c === '/' && block[i + 1] === '/') {
-      while (i < n && block[i] !== '\n') i++;
+      const nl = block.indexOf('\n', i);
+      i = nl < 0 ? block.length : nl + 1;
       continue;
     }
     if (c === '/' && block[i + 1] === '*') {
-      i += 2;
-      while (i < n && !(block[i] === '*' && block[i + 1] === '/')) i++;
-      i += 2;
+      const end = block.indexOf('*/', i + 2);
+      i = end < 0 ? block.length : end + 2;
       continue;
     }
-    if (c === '{' || c === '[') {
-      depth++;
-      i++;
-      continue;
-    }
-    if (c === '}' || c === ']') {
-      depth--;
-      i++;
-      continue;
-    }
-    if (c === ',') {
-      if (depth === 0) expectKey = true;
-      i++;
-      continue;
-    }
-    if (c === ':') {
-      expectKey = false;
-      i++;
-      continue;
-    }
-    if (c === ' ' || c === '\t' || c === '\n' || c === '\r') {
-      i++;
-      continue;
-    }
-    if (c === '"' || c === "'" || c === '`') {
+    if (expectKey && (c === "'" || c === '"' || c === '`')) {
       const quote = c;
       let j = i + 1;
       let key = '';
-      while (j < n) {
-        const cc = block[j];
-        if (cc === '\\') {
+      while (j < block.length) {
+        const ch = block[j];
+        if (ch === '\\') {
           key += block[j + 1] ?? '';
           j += 2;
           continue;
         }
-        if (cc === quote) break;
-        key += cc;
+        if (ch === quote) break;
+        key += ch;
         j++;
       }
-      if (depth === 0 && expectKey) keys.add(key);
+      if (j >= block.length) break;
+      let k = j + 1;
+      while (k < block.length && /\s/.test(block[k])) k++;
+      if (block[k] === ':') {
+        keys.add(key);
+        i = k + 1;
+        expectKey = false;
+        continue;
+      }
       i = j + 1;
+      continue;
+    }
+    if (c === ',') {
+      expectKey = true;
+      i++;
+      continue;
+    }
+    if (c === "'" || c === '"' || c === '`') {
+      const quote = c;
+      let j = i + 1;
+      while (j < block.length) {
+        const ch = block[j];
+        if (ch === '\\') {
+          j += 2;
+          continue;
+        }
+        if (ch === quote) {
+          j++;
+          break;
+        }
+        j++;
+      }
+      i = j;
       continue;
     }
     i++;
@@ -143,7 +142,7 @@ async function loadBundles() {
 }
 
 async function extractUsedKeys(srcDir) {
-  const files = await walk(srcDir, SOURCE_EXTENSIONS);
+  const files = await walk(srcDir);
   const keys = new Set();
   for (const file of files) {
     const text = await readFile(file, 'utf8');
@@ -171,14 +170,6 @@ async function pathExists(p) {
   } catch {
     return false;
   }
-}
-
-function toRelSet(files, root) {
-  const set = new Set();
-  for (const f of files) {
-    set.add(relative(root, f).split(sep).join('/'));
-  }
-  return set;
 }
 
 let hadError = false;
@@ -223,40 +214,6 @@ if (missing.length) {
   if (missing.length > 30) console.error(`      ... (+${missing.length - 30} more)`);
 } else if (used.size > 0) {
   console.log(`  ok ${used.size} t() call(s) all resolve to a bundle key`);
-}
-
-console.log('[i18n] docs');
-const enDocs = toRelSet(await walk(DOCS_EN_DIR, DOC_EXTENSIONS), DOCS_EN_DIR);
-const frDocs = toRelSet(await walk(DOCS_FR_DIR, DOC_EXTENSIONS), DOCS_FR_DIR);
-
-const missingFr = [];
-for (const p of enDocs) {
-  if (!frDocs.has(p) && !KNOWN_EN_ONLY.has(p)) missingFr.push(p);
-}
-missingFr.sort();
-
-const missingEn = [];
-for (const p of frDocs) {
-  if (!enDocs.has(p) && !KNOWN_FR_ONLY.has(p)) missingEn.push(p);
-}
-missingEn.sort();
-
-if (missingFr.length || missingEn.length) {
-  hadError = true;
-  if (missingFr.length) {
-    console.error(`  x ${missingFr.length} EN doc(s) without FR mirror:`);
-    for (const p of missingFr.slice(0, 30)) console.error(`      - ${p}`);
-    if (missingFr.length > 30) console.error(`      ... (+${missingFr.length - 30} more)`);
-  }
-  if (missingEn.length) {
-    console.error(`  x ${missingEn.length} FR doc(s) without EN mirror:`);
-    for (const p of missingEn.slice(0, 30)) console.error(`      - ${p}`);
-    if (missingEn.length > 30) console.error(`      ... (+${missingEn.length - 30} more)`);
-  }
-} else {
-  const skipped = KNOWN_EN_ONLY.size + KNOWN_FR_ONLY.size;
-  const note = skipped > 0 ? ` (${skipped} known-exception path(s) skipped)` : '';
-  console.log(`  ok docs/ parity (${enDocs.size} EN / ${frDocs.size} FR)${note}`);
 }
 
 if (hadError) {

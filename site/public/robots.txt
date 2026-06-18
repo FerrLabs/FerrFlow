@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://ferrflow.com/sitemap-index.xml
+Sitemap: https://ferrflow.com/sitemap.xml
