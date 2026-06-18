@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.12.1] - 2026-06-18
+
+### Refactoring
+
+- refactor(site): consume @ferrlabs/ui-ng/docs shared docs layout (#574)
+
 ## [6.12.0] - 2026-06-18
 
 ### Features
