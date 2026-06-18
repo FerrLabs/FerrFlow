@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.12.0] - 2026-06-18
+
+### Features
+
+- feat(site): migrate ferrflow.com (marketing + versioned docs) to Angular (#570)
+
 ## [6.11.1] - 2026-06-17
 
 ### Bug Fixes
