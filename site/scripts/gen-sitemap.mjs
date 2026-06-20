@@ -31,7 +31,7 @@ function docSlugs(dir) {
 }
 
 const DOC_DIRS = [
-  { dir: 'docs', prefix: '/docs/' },
+  { dir: 'docs-en', prefix: '/docs/' },
   { dir: 'docs-fr', prefix: '/fr/docs/' },
   { dir: 'docs-v4', prefix: '/v4/docs/' },
   { dir: 'docs-v3', prefix: '/v3/docs/' },

@@ -7,7 +7,7 @@ const SITE = fileURLToPath(new URL('../../site/src/content/docs', import.meta.ur
 const OUT = fileURLToPath(new URL('../src/content', import.meta.url));
 
 const SOURCES = [
-  { docsDir: join(SITE, 'docs'), outDir: join(OUT, 'docs') },
+  { docsDir: join(SITE, 'docs'), outDir: join(OUT, 'docs-en') },
   { docsDir: join(SITE, 'fr', 'docs'), outDir: join(OUT, 'docs-fr') },
   { docsDir: join(SITE, 'v0', 'docs'), outDir: join(OUT, 'docs-v0') },
   { docsDir: join(SITE, 'v1', 'docs'), outDir: join(OUT, 'docs-v1') },

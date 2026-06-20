@@ -27,6 +27,6 @@ interface DocAttributes {
 })
 export default class DocsPageEn {
   protected readonly post = toSignal(
-    injectContent<DocAttributes>({ param: 'slug', subdirectory: 'docs' }),
+    injectContent<DocAttributes>({ param: 'slug', subdirectory: 'docs-en' }),
   );
 }

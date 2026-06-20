@@ -31,7 +31,7 @@ function docSlugs(dir: string): string[] {
 const LEGAL = ['legal', 'privacy', 'security', 'terms', 'cookies'];
 
 const DOC_DIRS: { dir: string; prefix: string }[] = [
-  { dir: 'docs', prefix: '/docs/' },
+  { dir: 'docs-en', prefix: '/docs/' },
   { dir: 'docs-fr', prefix: '/fr/docs/' },
   { dir: 'docs-v4', prefix: '/v4/docs/' },
   { dir: 'docs-v3', prefix: '/v3/docs/' },
