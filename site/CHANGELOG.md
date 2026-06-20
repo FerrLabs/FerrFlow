@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.12.2] - 2026-06-20
+
+### Bug Fixes
+
+- fix(site): render English docs with the layout grid (#576)
+
 ## [6.12.1] - 2026-06-18
 
 ### Refactoring
