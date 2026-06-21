@@ -60,6 +60,21 @@ export default defineConfig({
   build: {
     target: ['es2022'],
   },
+  resolve: {
+    dedupe: [
+      '@angular/core',
+      '@angular/common',
+      '@angular/platform-browser',
+      '@angular/router',
+      '@angular/forms',
+    ],
+  },
+  optimizeDeps: {
+    include: ['@ferrlabs/ui-ng', '@ferrlabs/ui-ng/docs'],
+  },
+  ssr: {
+    noExternal: ['@ferrlabs/ui-ng'],
+  },
   plugins: [
     analog({
       static: true,
