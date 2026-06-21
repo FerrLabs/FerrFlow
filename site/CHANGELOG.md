@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.12.3] - 2026-06-21
+
+### Bug Fixes
+
+- fix(site): resolve docs catch-all routes to populate slug param (#578)
+
 ## [6.12.2] - 2026-06-20
 
 ### Bug Fixes
