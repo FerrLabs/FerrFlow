@@ -11,15 +11,16 @@ Run the full release pipeline: bump versions, update changelogs, commit, tag, pu
 ferrflow release [OPTIONS]
 ```
 
-| Flag | Description |
-|---|---|
-| `--force` | Allow floating tags to move backward to a lower version |
-| `--force-version <VERSION>` | Force a specific version, skipping commit analysis. Format: `VERSION` (single repo) or `NAME@VERSION` (monorepo) |
-| `--channel <NAME>` | Pre-release channel override (e.g. `beta`, `rc`, `dev`) |
-| `--draft` | Create releases as drafts (GitHub only). A later `ferrflow release` without `--draft` detects and publishes existing drafts automatically |
-| `--force-unlock` | Break an existing `.git/ferrflow.lock` before acquiring it. Use only when no other `ferrflow release` is running — e.g. after a crash left the lockfile behind |
+| Flag                        | Description                                                                                                                                                    |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--force`                   | Allow floating tags to move backward to a lower version                                                                                                        |
+| `--force-version <VERSION>` | Force a specific version, skipping commit analysis. Format: `VERSION` (single repo) or `NAME@VERSION` (monorepo)                                               |
+| `--channel <NAME>`          | Pre-release channel override (e.g. `beta`, `rc`, `dev`)                                                                                                        |
+| `--draft`                   | Create releases as drafts (GitHub only). A later `ferrflow release` without `--draft` detects and publishes existing drafts automatically                      |
+| `--force-unlock`            | Break an existing `.git/ferrflow.lock` before acquiring it. Use only when no other `ferrflow release` is running — e.g. after a crash left the lockfile behind |
 
 **What it does:**
+
 1. Scans commits since the last tag for each package
 2. Determines the version bump from Conventional Commits
 3. Updates all `versionedFiles` with the new version
@@ -39,22 +40,22 @@ The versioned file stays the canonical write target so downstream consumers (`ca
 
 Resolution order, per package:
 
-| Tag | File | Baseline used |
-|-----|------|---------------|
-| present | present | `max(tag, file)` by semver |
-| present | absent | tag |
-| absent | present | file |
-| absent | absent | strategy bootstrap (see below) |
+| Tag     | File    | Baseline used                  |
+| ------- | ------- | ------------------------------ |
+| present | present | `max(tag, file)` by semver     |
+| present | absent  | tag                            |
+| absent  | present | file                           |
+| absent  | absent  | strategy bootstrap (see below) |
 
 ### First release on a brand-new repo
 
-When no tag exists yet *and* the format has no version to read (notably `go.mod`, which stores the version in tags alone), FerrFlow bootstraps from the versioning strategy's zero value:
+When no tag exists yet _and_ the format has no version to read (notably `go.mod`, which stores the version in tags alone), FerrFlow bootstraps from the versioning strategy's zero value:
 
-| Strategy | Bootstrap baseline |
-|---|---|
-| `semver`, `zerover` | `0.0.0` |
-| `sequential` | `0` |
-| `calver-seq` | `0.0` |
+| Strategy                 | Bootstrap baseline                       |
+| ------------------------ | ---------------------------------------- |
+| `semver`, `zerover`      | `0.0.0`                                  |
+| `sequential`             | `0`                                      |
+| `calver-seq`             | `0.0`                                    |
 | `calver`, `calver-short` | ignored — bump derives from today's date |
 
 From there the first `feat:` commit bumps to `0.1.0` / `1` / today's date / … and the release flow creates the tag itself — no `git tag foo@v0.0.0` ceremony required before the first run.
@@ -69,11 +70,11 @@ Preview what `ferrflow release` would do without making any changes.
 ferrflow check [OPTIONS]
 ```
 
-| Flag | Description |
-|---|---|
-| `--json` | Output as JSON |
+| Flag               | Description                                             |
+| ------------------ | ------------------------------------------------------- |
+| `--json`           | Output as JSON                                          |
 | `--channel <NAME>` | Pre-release channel override (e.g. `beta`, `rc`, `dev`) |
-| `--comment` | Post a preview comment on the current PR/MR |
+| `--comment`        | Post a preview comment on the current PR/MR             |
 
 ---
 
@@ -85,8 +86,8 @@ Run the configured [publishers](/docs/configuration/config-file/#publishers) for
 ferrflow publish [PACKAGE]
 ```
 
-| Argument | Description |
-|---|---|
+| Argument    | Description                                                                                    |
+| ----------- | ---------------------------------------------------------------------------------------------- |
 | `[PACKAGE]` | Publish a single package by name. Omit to run publishers for every package that declares them. |
 
 It reads each package's current version from its `versionedFiles` (or the latest matching tag for tag-only packages), so run it **after** `ferrflow release` has cut the version — typically from a workflow keyed off the release tag. Publishers are idempotent: anything already on the registry is skipped, so a re-run is safe. Use the global `--dry-run` to preview without publishing.
@@ -96,7 +97,7 @@ The GitHub Action exposes this as `mode: publish` — it installs the binary and
 ```yaml title=".github/workflows/publish.yml"
 on:
   push:
-    tags: ["v*"]
+    tags: ['v*']
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -138,8 +139,8 @@ Scaffold a config file for the current repository. Detects existing version file
 ferrflow init [OPTIONS]
 ```
 
-| Flag | Description |
-|---|---|
+| Flag                | Description                                    |
+| ------------------- | ---------------------------------------------- |
 | `--format <FORMAT>` | Config file format: `json`, `json5`, or `toml` |
 
 ---
@@ -152,8 +153,8 @@ Show the current version of each package and whether a release would be triggere
 ferrflow status [OPTIONS]
 ```
 
-| Flag | Description |
-|---|---|
+| Flag                | Description                               |
+| ------------------- | ----------------------------------------- |
 | `--output <FORMAT>` | Output format: `text` (default) or `json` |
 
 Example output:
@@ -173,8 +174,8 @@ Print the current version of one or all packages. Useful in CI scripts.
 ferrflow version [PACKAGE] [OPTIONS]
 ```
 
-| Flag | Description |
-|---|---|
+| Flag     | Description    |
+| -------- | -------------- |
 | `--json` | Output as JSON |
 
 Returns the version from the latest git tag matching the package's tag template.
@@ -189,8 +190,8 @@ Print the latest tag for one or all packages.
 ferrflow tag [PACKAGE] [OPTIONS]
 ```
 
-| Flag | Description |
-|---|---|
+| Flag     | Description    |
+| -------- | -------------- |
 | `--json` | Output as JSON |
 
 ---
@@ -203,11 +204,11 @@ Validate the config and the versioned files it points at, without bumping anythi
 ferrflow validate [OPTIONS]
 ```
 
-| Flag | Description |
-|---|---|
-| `--json` | Output as JSON |
+| Flag            | Description                                                                             |
+| --------------- | --------------------------------------------------------------------------------------- |
+| `--json`        | Output as JSON                                                                          |
 | `--repo <REPO>` | Remote repository to validate (e.g. `owner/repo` for GitHub, or `gitlab:group/project`) |
-| `--ref <REF>` | Git ref for remote validation (branch, tag, or commit) |
+| `--ref <REF>`   | Git ref for remote validation (branch, tag, or commit)                                  |
 
 ---
 
@@ -227,10 +228,11 @@ ferrflow completions <SHELL>
 
 These flags work with all commands:
 
-| Flag | Description |
-|---|---|
-| `--dry-run` | Show what would happen without making any changes |
-| `--verbose`, `-v` | Verbose output, including commit hashes and file diffs |
-| `--config <PATH>` | Path to a custom config file (default: auto-detected). Also accepts the `FERRFLOW_CONFIG` env variable. |
-| `--version` | Print the FerrFlow version and exit |
-| `--help`, `-h` | Print help |
+| Flag              | Description                                                                                                                                                      |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--dry-run`       | Show what would happen without making any changes                                                                                                                |
+| `--verbose`, `-v` | Verbose output, including commit hashes and file diffs                                                                                                           |
+| `--config <PATH>` | Path to a custom config file (default: auto-detected). Also accepts the `FERRFLOW_CONFIG` env variable.                                                          |
+| `--jobs <N>`      | Max threads for CPU-parallel work (per-package planning). Default: all logical cores; `1` forces single-threaded. Also accepts the `FERRFLOW_JOBS` env variable. |
+| `--version`       | Print the FerrFlow version and exit                                                                                                                              |
+| `--help`, `-h`    | Print help                                                                                                                                                       |

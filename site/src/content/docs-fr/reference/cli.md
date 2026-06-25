@@ -11,15 +11,16 @@ Lance le pipeline complet de release : bump des versions, mise à jour des chang
 ferrflow release [OPTIONS]
 ```
 
-| Option | Description |
-|---|---|
-| `--force` | Autoriser les floating tags à reculer vers une version inférieure |
-| `--force-version <VERSION>` | Forcer une version spécifique, sans analyser les commits. Format : `VERSION` (repo simple) ou `NAME@VERSION` (monorepo) |
-| `--channel <NAME>` | Canal de pré-release à utiliser (ex. `beta`, `rc`, `dev`) |
-| `--draft` | Créer les releases en brouillon (GitHub uniquement). Un `ferrflow release` ultérieur sans `--draft` détecte et publie automatiquement les brouillons existants |
-| `--force-unlock` | Forcer la levée d'un verrou `.git/ferrflow.lock` existant. À n'utiliser que si aucun autre `ferrflow release` n'est en cours — par exemple après un crash ayant laissé le fichier de verrou |
+| Option                      | Description                                                                                                                                                                                 |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--force`                   | Autoriser les floating tags à reculer vers une version inférieure                                                                                                                           |
+| `--force-version <VERSION>` | Forcer une version spécifique, sans analyser les commits. Format : `VERSION` (repo simple) ou `NAME@VERSION` (monorepo)                                                                     |
+| `--channel <NAME>`          | Canal de pré-release à utiliser (ex. `beta`, `rc`, `dev`)                                                                                                                                   |
+| `--draft`                   | Créer les releases en brouillon (GitHub uniquement). Un `ferrflow release` ultérieur sans `--draft` détecte et publie automatiquement les brouillons existants                              |
+| `--force-unlock`            | Forcer la levée d'un verrou `.git/ferrflow.lock` existant. À n'utiliser que si aucun autre `ferrflow release` n'est en cours — par exemple après un crash ayant laissé le fichier de verrou |
 
 **Ce que ça fait :**
+
 1. Scanne les commits depuis le dernier tag pour chaque package
 2. Détermine l'incrément de version à partir des Conventional Commits
 3. Met à jour tous les `versionedFiles` avec la nouvelle version
@@ -38,11 +39,11 @@ Prévisualiser ce que `ferrflow release` ferait sans effectuer de changements.
 ferrflow check [OPTIONS]
 ```
 
-| Option | Description |
-|---|---|
-| `--json` | Sortie au format JSON |
-| `--channel <NAME>` | Canal de pré-release à utiliser (ex. `beta`, `rc`, `dev`) |
-| `--comment` | Poster un commentaire de prévisualisation sur la PR/MR courante |
+| Option             | Description                                                     |
+| ------------------ | --------------------------------------------------------------- |
+| `--json`           | Sortie au format JSON                                           |
+| `--channel <NAME>` | Canal de pré-release à utiliser (ex. `beta`, `rc`, `dev`)       |
+| `--comment`        | Poster un commentaire de prévisualisation sur la PR/MR courante |
 
 ---
 
@@ -54,8 +55,8 @@ Exécuter les [publishers](/fr/docs/configuration/config-file/#publishers) confi
 ferrflow publish [PACKAGE]
 ```
 
-| Argument | Description |
-|---|---|
+| Argument    | Description                                                                                                 |
+| ----------- | ----------------------------------------------------------------------------------------------------------- |
 | `[PACKAGE]` | Publier un seul package par son nom. Omettre pour exécuter les publishers de chaque package qui en déclare. |
 
 Il lit la version actuelle de chaque package depuis ses `versionedFiles` (ou le dernier tag correspondant pour les packages tag-only), donc à exécuter **après** que `ferrflow release` a coupé la version — typiquement depuis un workflow déclenché par le tag de release. Les publishers sont idempotents : tout ce qui est déjà sur le registre est ignoré, donc une ré-exécution est sûre. Utilisez l'option globale `--dry-run` pour prévisualiser sans publier.
@@ -65,7 +66,7 @@ L'Action GitHub l'expose via `mode: publish` — elle installe le binaire et ex�
 ```yaml title=".github/workflows/publish.yml"
 on:
   push:
-    tags: ["v*"]
+    tags: ['v*']
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -107,8 +108,8 @@ Générer un fichier de configuration pour le repository courant. Détecte les f
 ferrflow init [OPTIONS]
 ```
 
-| Option | Description |
-|---|---|
+| Option              | Description                                                    |
+| ------------------- | -------------------------------------------------------------- |
 | `--format <FORMAT>` | Format du fichier de configuration : `json`, `json5` ou `toml` |
 
 ---
@@ -121,8 +122,8 @@ Afficher la version actuelle de chaque package et si une release serait déclenc
 ferrflow status [OPTIONS]
 ```
 
-| Option | Description |
-|---|---|
+| Option              | Description                                  |
+| ------------------- | -------------------------------------------- |
 | `--output <FORMAT>` | Format de sortie : `text` (défaut) ou `json` |
 
 Exemple de sortie :
@@ -142,8 +143,8 @@ Afficher la version actuelle d'un ou de tous les packages. Utile dans les script
 ferrflow version [PACKAGE] [OPTIONS]
 ```
 
-| Option | Description |
-|---|---|
+| Option   | Description           |
+| -------- | --------------------- |
 | `--json` | Sortie au format JSON |
 
 Retourne la version depuis le dernier tag git correspondant au modèle de tag du package.
@@ -158,8 +159,8 @@ Afficher le dernier tag pour un ou tous les packages.
 ferrflow tag [PACKAGE] [OPTIONS]
 ```
 
-| Option | Description |
-|---|---|
+| Option   | Description           |
+| -------- | --------------------- |
 | `--json` | Sortie au format JSON |
 
 ---
@@ -172,11 +173,11 @@ Valider la configuration et les fichiers versionnés qu'elle référence, sans r
 ferrflow validate [OPTIONS]
 ```
 
-| Option | Description |
-|---|---|
-| `--json` | Sortie au format JSON |
+| Option          | Description                                                                       |
+| --------------- | --------------------------------------------------------------------------------- |
+| `--json`        | Sortie au format JSON                                                             |
 | `--repo <REPO>` | Dépôt distant à valider (ex. `owner/repo` pour GitHub, ou `gitlab:group/project`) |
-| `--ref <REF>` | Ref git pour la validation distante (branche, tag ou commit) |
+| `--ref <REF>`   | Ref git pour la validation distante (branche, tag ou commit)                      |
 
 ---
 
@@ -196,10 +197,11 @@ ferrflow completions <SHELL>
 
 Ces options fonctionnent avec toutes les commandes :
 
-| Option | Description |
-|---|---|
-| `--dry-run` | Montrer ce qui se passerait sans effectuer de changements |
-| `--verbose`, `-v` | Sortie détaillée, incluant les hashes de commits et les diffs de fichiers |
-| `--config <PATH>` | Chemin vers un fichier de configuration personnalisé (défaut : auto-détecté). Accepte aussi la variable d'environnement `FERRFLOW_CONFIG`. |
-| `--version` | Afficher la version de FerrFlow et quitter |
-| `--help`, `-h` | Afficher l'aide |
+| Option            | Description                                                                                                                                                                                             |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--dry-run`       | Montrer ce qui se passerait sans effectuer de changements                                                                                                                                               |
+| `--verbose`, `-v` | Sortie détaillée, incluant les hashes de commits et les diffs de fichiers                                                                                                                               |
+| `--config <PATH>` | Chemin vers un fichier de configuration personnalisé (défaut : auto-détecté). Accepte aussi la variable d'environnement `FERRFLOW_CONFIG`.                                                              |
+| `--jobs <N>`      | Nombre max de threads pour le travail CPU-parallèle (planification par paquet). Défaut : tous les cœurs logiques ; `1` force le mono-thread. Accepte aussi la variable d'environnement `FERRFLOW_JOBS`. |
+| `--version`       | Afficher la version de FerrFlow et quitter                                                                                                                                                              |
+| `--help`, `-h`    | Afficher l'aide                                                                                                                                                                                         |
