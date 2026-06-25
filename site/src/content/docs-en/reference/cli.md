@@ -83,21 +83,25 @@ ferrflow check [OPTIONS]
 Run the configured [publishers](/docs/configuration/config-file/#publishers) for the currently-released version of each package — without bumping, committing, or tagging. `ferrflow release` already runs your publishers at the end of a release; `ferrflow publish` is for when you'd rather run them in a **separate CI job** that has the build toolchain and registry auth the publishers need (docker buildx, helm, a built `dist/`, …) which your release job may not.
 
 ```bash
-ferrflow publish [PACKAGE]
+ferrflow publish [PACKAGES...]
 ```
 
-| Argument    | Description                                                                                    |
-| ----------- | ---------------------------------------------------------------------------------------------- |
-| `[PACKAGE]` | Publish a single package by name. Omit to run publishers for every package that declares them. |
+| Argument / flag | Description                                                                                                                                                                             |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `[PACKAGES...]` | Publish these packages by name (space-separated). Omit to auto-detect from the triggering tag (`GITHUB_REF` / `CI_COMMIT_TAG`), falling back to every package that declares publishers. |
+| `--all`, `-a`   | Publish every package, ignoring any triggering-tag scope.                                                                                                                               |
 
-It reads each package's current version from its `versionedFiles` (or the latest matching tag for tag-only packages), so run it **after** `ferrflow release` has cut the version — typically from a workflow keyed off the release tag. Publishers are idempotent: anything already on the registry is skipped, so a re-run is safe. Use the global `--dry-run` to preview without publishing.
+It reads each package's current version from its `versionedFiles` (or the latest matching tag for tag-only packages), so run it **after** `ferrflow release` has cut the version. Publishers are idempotent: anything already on the registry is skipped, so a re-run is safe. Use the global `--dry-run` to preview without publishing.
 
-The GitHub Action exposes this as `mode: publish` — it installs the binary and runs `ferrflow publish` for you, so a tag-triggered job only has to set up the toolchain its publishers need:
+**Scope resolution.** With no arguments, if the run was triggered by a package tag (e.g. `api@v2.2.1`), only that package is published — so a single tag-triggered workflow publishes each package on its own tag, with no per-package wiring. Without a matching tag (for example the release job's own branch ref), every package is published, as before. Pass package names to target a subset explicitly, or `--all` to force every package even under a tag.
+
+The GitHub Action exposes this as `mode: publish` — it installs the binary and runs `ferrflow publish` for you, scoping to the triggering tag automatically (or pass the `package` input to override). A tag-triggered job only has to set up the toolchain its publishers need:
 
 ```yaml title=".github/workflows/publish.yml"
 on:
   push:
-    tags: ['v*']
+    # `v*` for single-package repos; `*@v*` for monorepo per-package tags
+    tags: ['v*', '*@v*']
 jobs:
   publish:
     runs-on: ubuntu-latest

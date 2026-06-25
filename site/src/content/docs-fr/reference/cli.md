@@ -52,21 +52,25 @@ ferrflow check [OPTIONS]
 Exécuter les [publishers](/fr/docs/configuration/config-file/#publishers) configurés pour la version actuellement publiée de chaque package — sans bumper, committer ni tagger. `ferrflow release` exécute déjà vos publishers à la fin d'une release ; `ferrflow publish` sert lorsque vous préférez les exécuter dans un **job CI séparé** disposant de la toolchain de build et de l'authentification registre dont les publishers ont besoin (docker buildx, helm, un `dist/` compilé, …) — ce que votre job de release n'a pas forcément.
 
 ```bash
-ferrflow publish [PACKAGE]
+ferrflow publish [PACKAGES...]
 ```
 
-| Argument    | Description                                                                                                 |
-| ----------- | ----------------------------------------------------------------------------------------------------------- |
-| `[PACKAGE]` | Publier un seul package par son nom. Omettre pour exécuter les publishers de chaque package qui en déclare. |
+| Argument / option | Description                                                                                                                                                                                                   |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `[PACKAGES...]`   | Publier ces packages par leur nom (séparés par des espaces). Omettre pour auto-détecter depuis le tag déclencheur (`GITHUB_REF` / `CI_COMMIT_TAG`), avec repli sur chaque package qui déclare des publishers. |
+| `--all`, `-a`     | Publier tous les packages, en ignorant tout scope de tag déclencheur.                                                                                                                                         |
 
-Il lit la version actuelle de chaque package depuis ses `versionedFiles` (ou le dernier tag correspondant pour les packages tag-only), donc à exécuter **après** que `ferrflow release` a coupé la version — typiquement depuis un workflow déclenché par le tag de release. Les publishers sont idempotents : tout ce qui est déjà sur le registre est ignoré, donc une ré-exécution est sûre. Utilisez l'option globale `--dry-run` pour prévisualiser sans publier.
+Il lit la version actuelle de chaque package depuis ses `versionedFiles` (ou le dernier tag correspondant pour les packages tag-only), donc à exécuter **après** que `ferrflow release` a coupé la version. Les publishers sont idempotents : tout ce qui est déjà sur le registre est ignoré, donc une ré-exécution est sûre. Utilisez l'option globale `--dry-run` pour prévisualiser sans publier.
 
-L'Action GitHub l'expose via `mode: publish` — elle installe le binaire et exécute `ferrflow publish` pour vous, de sorte qu'un job déclenché par le tag n'a plus qu'à mettre en place la toolchain dont ses publishers ont besoin :
+**Résolution du scope.** Sans argument, si le run a été déclenché par un tag de package (ex. `api@v2.2.1`), seul ce package est publié — un seul workflow déclenché par tag publie ainsi chaque package sur son propre tag, sans câblage par package. Sans tag correspondant (par exemple la ref de branche du job de release), tous les packages sont publiés, comme avant. Passez des noms de packages pour cibler un sous-ensemble, ou `--all` pour forcer tous les packages même sous un tag.
+
+L'Action GitHub l'expose via `mode: publish` — elle installe le binaire et exécute `ferrflow publish` pour vous, en se scopant automatiquement au tag déclencheur (ou passez l'input `package` pour forcer). Un job déclenché par le tag n'a plus qu'à mettre en place la toolchain dont ses publishers ont besoin :
 
 ```yaml title=".github/workflows/publish.yml"
 on:
   push:
-    tags: ['v*']
+    # `v*` pour les repos mono-package ; `*@v*` pour les tags par-package en monorepo
+    tags: ['v*', '*@v*']
 jobs:
   publish:
     runs-on: ubuntu-latest
