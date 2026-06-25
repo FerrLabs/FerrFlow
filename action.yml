@@ -23,6 +23,10 @@ inputs:
     description: 'Force a specific version, skipping commit analysis. Format: VERSION (single repo) or NAME@VERSION (monorepo)'
     required: false
     default: ''
+  package:
+    description: 'For mode "publish": space-separated package names to publish (e.g. "api web"). Omit to auto-detect from the triggering tag (GITHUB_REF), falling back to every package.'
+    required: false
+    default: ''
   bot:
     description: 'Opt into the hosted FerrFlow bot identity (ferrflow[bot]). Requires permissions.id-token: write on the caller workflow. If false/unset, the caller''s token or GITHUB_TOKEN is used as before.'
     required: false
@@ -119,4 +123,4 @@ runs:
     - name: Run FerrFlow publishers
       if: inputs.mode == 'publish'
       shell: bash
-      run: ferrflow ${{ inputs.dry_run == 'true' && '--dry-run' || '' }} publish
+      run: ferrflow ${{ inputs.dry_run == 'true' && '--dry-run' || '' }} publish ${{ inputs.package }}

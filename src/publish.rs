@@ -10,7 +10,8 @@ use crate::publishers::{self, PublishContext};
 
 pub fn run(
     config_path: Option<&Path>,
-    package: Option<&str>,
+    packages: &[String],
+    all: bool,
     dry_run: bool,
     verbose: bool,
 ) -> Result<()> {
@@ -25,17 +26,7 @@ pub fn run(
         .error_code(error_code::QUERY_NO_PACKAGES)?;
     }
 
-    let targets: Vec<&PackageConfig> = match package {
-        Some(name) => vec![
-            config
-                .packages
-                .iter()
-                .find(|p| p.name == name)
-                .ok_or_else(|| anyhow::anyhow!("package '{name}' not found"))
-                .error_code(error_code::QUERY_PACKAGE_NOT_FOUND)?,
-        ],
-        None => config.packages.iter().collect(),
-    };
+    let targets = resolve_targets(&config, packages, all, triggering_tag().as_deref())?;
 
     let mut ran = 0usize;
     for pkg in targets {
@@ -73,6 +64,61 @@ pub fn run(
     }
 
     Ok(())
+}
+
+fn resolve_targets<'a>(
+    config: &'a Config,
+    packages: &[String],
+    all: bool,
+    trigger_tag: Option<&str>,
+) -> Result<Vec<&'a PackageConfig>> {
+    if !packages.is_empty() {
+        return packages
+            .iter()
+            .map(|name| {
+                config
+                    .packages
+                    .iter()
+                    .find(|p| &p.name == name)
+                    .ok_or_else(|| anyhow::anyhow!("package '{name}' not found"))
+                    .error_code(error_code::QUERY_PACKAGE_NOT_FOUND)
+            })
+            .collect();
+    }
+    if !all
+        && let Some(tag) = trigger_tag
+        && let Some(pkg) = match_package_for_tag(config, tag)
+    {
+        return Ok(vec![pkg]);
+    }
+    Ok(config.packages.iter().collect())
+}
+
+fn triggering_tag() -> Option<String> {
+    if let Ok(github_ref) = std::env::var("GITHUB_REF")
+        && let Some(tag) = github_ref.strip_prefix("refs/tags/")
+        && !tag.is_empty()
+    {
+        return Some(tag.to_string());
+    }
+    match std::env::var("CI_COMMIT_TAG") {
+        Ok(tag) if !tag.is_empty() => Some(tag),
+        _ => None,
+    }
+}
+
+fn match_package_for_tag<'a>(config: &'a Config, tag: &str) -> Option<&'a PackageConfig> {
+    let is_monorepo = config.is_monorepo();
+    config
+        .packages
+        .iter()
+        .filter_map(|pkg| {
+            let prefix = pkg.tag_prefix(&config.workspace, is_monorepo);
+            tag.starts_with(prefix.as_str())
+                .then_some((pkg, prefix.len()))
+        })
+        .max_by_key(|(_, len)| *len)
+        .map(|(pkg, _)| pkg)
 }
 
 /// Resolve the version currently on disk for `pkg` — the last released
@@ -119,7 +165,7 @@ mod tests {
         let cfg = write_config(dir.path(), r#"{"package": []}"#);
         commit_file(dir.path(), "init.txt", "x", "chore: init", 1_800_000_001);
         let _ = &repo;
-        let err = with_cwd(dir.path(), || run(Some(&cfg), None, true, false)).unwrap_err();
+        let err = with_cwd(dir.path(), || run(Some(&cfg), &[], false, true, false)).unwrap_err();
         assert!(format!("{err:?}").contains("No packages"));
     }
 
@@ -136,7 +182,10 @@ mod tests {
         )
         .unwrap();
         commit_file(dir.path(), "init.txt", "x", "chore: init", 1_800_000_002);
-        let err = with_cwd(dir.path(), || run(Some(&cfg), Some("nope"), true, false)).unwrap_err();
+        let err = with_cwd(dir.path(), || {
+            run(Some(&cfg), &["nope".to_string()], false, true, false)
+        })
+        .unwrap_err();
         assert!(format!("{err:?}").contains("not found"));
     }
 
@@ -154,7 +203,7 @@ mod tests {
         .unwrap();
         commit_file(dir.path(), "init.txt", "x", "chore: init", 1_800_000_003);
         // No publishers → nothing runs, no error.
-        with_cwd(dir.path(), || run(Some(&cfg), None, true, false)).unwrap();
+        with_cwd(dir.path(), || run(Some(&cfg), &[], false, true, false)).unwrap();
     }
 
     #[test]
@@ -173,7 +222,10 @@ mod tests {
         )
         .unwrap();
         commit_file(dir.path(), "init.txt", "x", "chore: init", 1_800_000_004);
-        with_cwd(dir.path(), || run(Some(&cfg), Some("a"), true, false)).unwrap();
+        with_cwd(dir.path(), || {
+            run(Some(&cfg), &["a".to_string()], false, true, false)
+        })
+        .unwrap();
     }
 
     #[test]
@@ -207,5 +259,90 @@ mod tests {
         let config = Config::load(dir.path(), None).unwrap();
         let v = current_version(&repo, &config.packages[0], &config, dir.path()).unwrap();
         assert_eq!(v, "1.4.0");
+    }
+
+    fn two_pkg_config(dir: &Path) -> Config {
+        let cfg = write_config(
+            dir,
+            r#"{"package": [
+                {"name": "api", "path": "api", "versionedFiles": [{"path": "api/Cargo.toml", "format": "toml"}]},
+                {"name": "web", "path": "web", "versionedFiles": [{"path": "web/Cargo.toml", "format": "toml"}]}
+            ]}"#,
+        );
+        Config::load(dir, Some(&cfg)).unwrap()
+    }
+
+    fn names(targets: Vec<&PackageConfig>) -> Vec<String> {
+        targets.iter().map(|p| p.name.clone()).collect()
+    }
+
+    #[test]
+    fn resolve_targets_explicit_packages_win() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = two_pkg_config(dir.path());
+        let targets =
+            resolve_targets(&config, &["web".to_string()], false, Some("api@v2.2.1")).unwrap();
+        assert_eq!(names(targets), vec!["web"]);
+    }
+
+    #[test]
+    fn resolve_targets_auto_detects_from_triggering_tag() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = two_pkg_config(dir.path());
+        let targets = resolve_targets(&config, &[], false, Some("api@v2.2.1")).unwrap();
+        assert_eq!(names(targets), vec!["api"]);
+    }
+
+    #[test]
+    fn resolve_targets_all_flag_overrides_tag_scope() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = two_pkg_config(dir.path());
+        let targets = resolve_targets(&config, &[], true, Some("api@v2.2.1")).unwrap();
+        assert_eq!(names(targets), vec!["api", "web"]);
+    }
+
+    #[test]
+    fn resolve_targets_unmatched_tag_falls_back_to_all() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = two_pkg_config(dir.path());
+        assert_eq!(
+            names(resolve_targets(&config, &[], false, Some("ghost@v1.0.0")).unwrap()),
+            vec!["api", "web"]
+        );
+        assert_eq!(
+            names(resolve_targets(&config, &[], false, None).unwrap()),
+            vec!["api", "web"]
+        );
+    }
+
+    #[test]
+    fn resolve_targets_unknown_explicit_package_errors() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = two_pkg_config(dir.path());
+        assert!(resolve_targets(&config, &["nope".to_string()], false, None).is_err());
+    }
+
+    #[test]
+    fn match_package_maps_tag_to_owning_package() {
+        let dir = tempfile::tempdir().unwrap();
+        let cfg = write_config(
+            dir.path(),
+            r#"{"package": [
+                {"name": "api", "path": "api", "versionedFiles": [{"path": "api/Cargo.toml", "format": "toml"}]},
+                {"name": "api-core", "path": "api-core", "versionedFiles": [{"path": "api-core/Cargo.toml", "format": "toml"}]}
+            ]}"#,
+        );
+        let config = Config::load(dir.path(), Some(&cfg)).unwrap();
+        assert_eq!(
+            match_package_for_tag(&config, "api-core@v1.0.0")
+                .unwrap()
+                .name,
+            "api-core"
+        );
+        assert_eq!(
+            match_package_for_tag(&config, "api@v1.0.0").unwrap().name,
+            "api"
+        );
+        assert!(match_package_for_tag(&config, "v1.0.0").is_none());
     }
 }

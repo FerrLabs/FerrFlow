@@ -84,9 +84,12 @@ pub enum Commands {
     /// build toolchain and registry auth the publishers need (docker
     /// buildx, helm, npm, …).
     Publish {
-        /// Package to publish (required in monorepos to target one;
-        /// omit to run publishers for every package)
-        package: Option<String>,
+        /// Packages to publish. Omit to auto-detect from the triggering tag
+        /// (GITHUB_REF / CI_COMMIT_TAG), falling back to every package.
+        packages: Vec<String>,
+        /// Publish every package, ignoring any triggering-tag scope.
+        #[arg(short = 'a', long)]
+        all: bool,
     },
     /// Generate/update CHANGELOG.md only
     Changelog,
@@ -217,9 +220,10 @@ impl Cli {
                 force_unlock,
                 timing,
             ),
-            Commands::Publish { package } => crate::publish::run(
+            Commands::Publish { packages, all } => crate::publish::run(
                 self.config.as_deref(),
-                package.as_deref(),
+                &packages,
+                all,
                 self.dry_run,
                 self.verbose,
             ),
@@ -416,15 +420,32 @@ mod tests {
     #[test]
     fn parse_publish_no_package() {
         let cli = parse(&["ferrflow", "publish"]);
-        assert!(matches!(cli.command, Commands::Publish { package: None }));
+        assert!(
+            matches!(cli.command, Commands::Publish { packages, all } if packages.is_empty() && !all)
+        );
     }
 
     #[test]
-    fn parse_publish_with_package_and_dry_run() {
-        let cli = parse(&["ferrflow", "--dry-run", "publish", "my-pkg"]);
+    fn parse_publish_with_packages_and_dry_run() {
+        let cli = parse(&["ferrflow", "--dry-run", "publish", "api", "web"]);
         assert!(cli.dry_run);
         match cli.command {
-            Commands::Publish { package } => assert_eq!(package.as_deref(), Some("my-pkg")),
+            Commands::Publish { packages, all } => {
+                assert_eq!(packages, vec!["api", "web"]);
+                assert!(!all);
+            }
+            _ => panic!("expected Publish"),
+        }
+    }
+
+    #[test]
+    fn parse_publish_all_flag() {
+        let cli = parse(&["ferrflow", "publish", "--all"]);
+        match cli.command {
+            Commands::Publish { packages, all } => {
+                assert!(packages.is_empty());
+                assert!(all);
+            }
             _ => panic!("expected Publish"),
         }
     }
