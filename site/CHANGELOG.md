@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.13.0] - 2026-06-25
+
+### Features
+
+- feat(site): document --jobs / FERRFLOW_JOBS global flag in CLI reference (#581)
+
 ## [6.12.3] - 2026-06-21
 
 ### Bug Fixes
