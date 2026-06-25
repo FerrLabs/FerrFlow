@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.14.0] - 2026-06-25
+
+### Features
+
+- feat(site): document ferrflow publish tag auto-scope + multiple packages + --all (#582)
+
 ## [6.13.0] - 2026-06-25
 
 ### Features
