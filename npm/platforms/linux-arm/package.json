@@ -1,0 +1,16 @@
+{
+  "cpu": [
+    "arm"
+  ],
+  "description": "FerrFlow Linux armv7 binary",
+  "license": "MPL-2.0",
+  "name": "@ferrflow/linux-arm",
+  "os": [
+    "linux"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FerrLabs/FerrFlow.git"
+  },
+  "version": "5.18.0"
+}

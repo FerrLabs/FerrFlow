@@ -16,8 +16,10 @@
   "optionalDependencies": {
     "@ferrflow/darwin-arm64": "5.18.0",
     "@ferrflow/darwin-x64": "5.18.0",
+    "@ferrflow/linux-arm": "5.18.0",
     "@ferrflow/linux-arm64": "5.18.0",
     "@ferrflow/linux-x64": "5.18.0",
+    "@ferrflow/win32-arm64": "5.18.0",
     "@ferrflow/win32-x64": "5.18.0"
   },
   "repository": {
