@@ -14,6 +14,8 @@ const PLATFORMS = {
   "darwin-x64": "@ferrflow/darwin-x64",
   "darwin-arm64": "@ferrflow/darwin-arm64",
   "win32-x64": "@ferrflow/win32-x64",
+  "win32-arm64": "@ferrflow/win32-arm64",
+  "linux-arm": "@ferrflow/linux-arm",
 };
 
 function getBinaryPath() {

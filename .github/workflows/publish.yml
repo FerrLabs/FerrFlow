@@ -34,6 +34,14 @@ jobs:
             os: windows-latest
             binary: ferrflow.exe
             archive: ferrflow-windows-x64.zip
+          - target: aarch64-pc-windows-msvc
+            os: windows-latest
+            binary: ferrflow.exe
+            archive: ferrflow-windows-arm64.zip
+          - target: armv7-unknown-linux-musleabihf
+            os: ubuntu-latest
+            binary: ferrflow
+            archive: ferrflow-linux-armv7.tar.gz
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable

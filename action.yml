@@ -63,6 +63,7 @@ runs:
         case "$ARCH" in
           x86_64)        ARCH_NAME="x64" ;;
           aarch64|arm64) ARCH_NAME="arm64" ;;
+          armv7l|armv7)  ARCH_NAME="armv7" ;;
           *)             echo "Unsupported architecture: $ARCH" && exit 1 ;;
         esac
 

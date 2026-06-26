@@ -10,6 +10,8 @@ declare -A ARCHIVES=(
   ["ferrflow-darwin-x64.tar.gz"]="darwin-x64"
   ["ferrflow-darwin-arm64.tar.gz"]="darwin-arm64"
   ["ferrflow-windows-x64.zip"]="win32-x64"
+  ["ferrflow-windows-arm64.zip"]="win32-arm64"
+  ["ferrflow-linux-armv7.tar.gz"]="linux-arm"
 )
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
