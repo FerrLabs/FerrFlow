@@ -47,7 +47,7 @@ pub(super) fn post_preview_comment(repo: &Repository, config: &Config, root: &Pa
     })();
 
     if let Err(e) = result {
-        eprintln!("Warning: failed to post preview comment: {e}");
+        tracing::warn!("Warning: failed to post preview comment: {e}");
     }
 }
 

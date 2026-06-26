@@ -101,14 +101,14 @@ pub(super) fn execute_release(plan: &mut ReleasePlan<'_>) -> Result<()> {
             }
             checkpoint_advance(plan, Phase::CommitDone)?;
         } else if plan.verbose {
-            eprintln!("  ↻ Resumed: skipping commit (already done)");
+            tracing::info!("  ↻ Resumed: skipping commit (already done)");
         }
         if !checkpoint_is_done(plan, Phase::TagsCreated) {
             create_release_tags(plan)?;
             create_and_move_floating_tags(plan, &mut floating_tag_names)?;
             checkpoint_advance(plan, Phase::TagsCreated)?;
         } else if plan.verbose {
-            eprintln!("  ↻ Resumed: skipping tag creation (already done)");
+            tracing::info!("  ↻ Resumed: skipping tag creation (already done)");
         }
     }
 
@@ -119,7 +119,7 @@ pub(super) fn execute_release(plan: &mut ReleasePlan<'_>) -> Result<()> {
             push_and_publish(plan, mode, &floating_tag_names)?;
             checkpoint_advance(plan, Phase::ReleasesCreated)?;
         } else if plan.verbose {
-            eprintln!("  ↻ Resumed: skipping push + publish (already done)");
+            tracing::info!("  ↻ Resumed: skipping push + publish (already done)");
         }
     }
 
@@ -128,7 +128,7 @@ pub(super) fn execute_release(plan: &mut ReleasePlan<'_>) -> Result<()> {
         run_post_publish_hooks(plan)?;
         checkpoint_advance(plan, Phase::PostPublishDone)?;
     } else if plan.verbose {
-        eprintln!("  ↻ Resumed: skipping post-publish hooks (already done)");
+        tracing::info!("  ↻ Resumed: skipping post-publish hooks (already done)");
     }
 
     Ok(())
@@ -265,7 +265,7 @@ fn run_commit_or_pr(
                                 Ok(()) => {
                                     plan.shared_outputs.push("✓ Auto-merge enabled".to_string())
                                 }
-                                Err(err) => eprintln!(
+                                Err(err) => tracing::warn!(
                                     "{}",
                                     format!("  Warning: failed to enable auto-merge: {err}")
                                         .yellow()
@@ -273,7 +273,7 @@ fn run_commit_or_pr(
                             }
                         }
                     }
-                    Err(err) => eprintln!(
+                    Err(err) => tracing::warn!(
                         "{}",
                         format!(
                             "  Warning: failed to create {}: {err}",
@@ -344,7 +344,7 @@ fn create_and_move_floating_tags(
                         ))
                         .error_code(error_code::MONOREPO_PUSH_FAILED)?;
                     }
-                    eprintln!(
+                    tracing::warn!(
                         "{}",
                         format!(
                             "  ⚠ Floating tag {} moves backward ({} → {})",
@@ -450,7 +450,7 @@ fn push_and_publish(
         for (tag_name, pkg_name, outcome) in outcomes {
             for warning in outcome.warnings {
                 if !warning.verbose_only || plan.verbose {
-                    eprintln!("{}", warning.message.yellow());
+                    tracing::warn!("{}", warning.message.yellow());
                 }
             }
             if let Some(result) = outcome.result {

@@ -66,7 +66,7 @@ impl ReleaseLock {
             }
             Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
                 if take_over_if_stale(&path)? {
-                    eprintln!(
+                    tracing::warn!(
                         "Warning: previous release lock at {} appeared stale; took it over.",
                         path.display()
                     );
@@ -95,7 +95,7 @@ impl ReleaseLock {
         let path = repo_root.join(".git").join("ferrflow.lock");
         if path.exists() {
             let _ = std::fs::remove_file(&path);
-            eprintln!(
+            tracing::warn!(
                 "Warning: --force-unlock removed existing lockfile at {}",
                 path.display()
             );
