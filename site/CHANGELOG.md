@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.17.3] - 2026-06-26
+
+### Refactoring
+
+- refactor(site): store benchmarks as JSON asset instead of regenerated TS module (#602)
+
 ## [6.17.2] - 2026-06-26
 
 ### Bug Fixes
