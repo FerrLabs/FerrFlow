@@ -109,6 +109,11 @@
           "description": "Opt-in single-file source of truth for per-package versions, relative to the repo root (e.g. '.ferrflow.manifest.json'). When set, `ferrflow release` writes a full version snapshot to this file as part of the release commit, validates it against the versioned files at release start (a divergence is a hard error — run `ferrflow sync-manifest` to repair), and `status` / `version` read current versions from it. Omit to leave all behaviour unchanged.",
           "examples": [".ferrflow.manifest.json"]
         },
+        "updateLockfiles": {
+          "type": "boolean",
+          "description": "When true, after `ferrflow release` bumps a manifest (Cargo.toml, package.json, pyproject.toml, Gemfile, mix.exs) it refreshes the sibling lockfile (Cargo.lock, package-lock.json / pnpm-lock.yaml / yarn.lock, poetry.lock / uv.lock, Gemfile.lock, mix.lock) with the package manager's offline / lockfile-only mode and stages it in the same release commit. A missing package manager or an unresolvable offline update is warned about, never fatal. Set per-package `updateLockfiles: false` to opt a single package out.",
+          "default": false
+        },
         "registries": {
           "type": "object",
           "description": "Named registry credentials referenced by package.publishers[]. Lets users declare 'the Kellnr token lives in CARGO_REGISTRIES_KELLNR_TOKEN' once and reuse it across every cargo / npm / docker publisher.",
@@ -282,6 +287,10 @@
             "description": "Declarative publish targets evaluated after the GitHub Release is created. Each entry is a self-contained intent — see $defs/publisher for the kinds.",
             "items": { "$ref": "#/$defs/publisher" },
             "default": []
+          },
+          "updateLockfiles": {
+            "type": "boolean",
+            "description": "Per-package override for workspace.updateLockfiles. Set false to skip lockfile refresh for this package even when the workspace default is on; set true to refresh only this package when the workspace default is off. Omit to inherit the workspace setting."
           }
         },
         "additionalProperties": false
