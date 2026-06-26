@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.18.0] - 2026-06-26
+
+### Features
+
+- feat(site): document monorepo dependency cycle detection (#604)
+
 ## [6.17.3] - 2026-06-26
 
 ### Refactoring
