@@ -33,6 +33,7 @@ for archive in "${!ARCHIVES[@]}"; do
     unzip -q "${WORK_DIR}/${archive}" -d "${pkg_dir}/bin/"
   else
     tar xzf "${WORK_DIR}/${archive}" -C "${pkg_dir}/bin/"
+    chmod +x "${pkg_dir}/bin/ferrflow"
   fi
 
   # Copy package.json, README, and LICENSE

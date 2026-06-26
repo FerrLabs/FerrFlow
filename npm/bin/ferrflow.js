@@ -4,6 +4,7 @@ import { existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { createRequire } from "module";
+import { constants } from "os";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
@@ -43,4 +44,11 @@ function getBinaryPath() {
 
 const binary = getBinaryPath();
 const result = spawnSync(binary, process.argv.slice(2), { stdio: "inherit" });
+if (result.error) {
+  console.error(`ferrflow: failed to launch ${binary}: ${result.error.message}`);
+  process.exit(1);
+}
+if (result.signal) {
+  process.exit(128 + (constants.signals[result.signal] ?? 0));
+}
 process.exit(result.status ?? 1);

@@ -3,6 +3,12 @@
     "ferrflow": "./bin/ferrflow.js"
   },
   "description": "Universal semantic versioning for monorepos and classic repos",
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "bin"
+  ],
   "homepage": "https://ferrflow.com",
   "keywords": [
     "semver",
