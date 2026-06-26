@@ -1,11 +1,8 @@
+# syntax=docker/dockerfile:1
 # Build stage
 FROM docker.io/library/node:24-alpine AS builder
 
 WORKDIR /app
-
-# NODE_AUTH_TOKEN authenticates pnpm against GitHub Packages for any private
-# @ferrlabs/* packages. Passed as a build-arg; the workflow's ephemeral token.
-ARG NODE_AUTH_TOKEN
 
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 RUN corepack enable
@@ -13,11 +10,15 @@ RUN corepack enable
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
 COPY packages/site/package.json ./packages/site/
 
-# pnpm ignores the ${NODE_AUTH_TOKEN} in the committed .npmrc, so the token
-# must live in a trusted config for supply-chain verification to authenticate.
-RUN pnpm config set "//npm.pkg.github.com/:_authToken" "${NODE_AUTH_TOKEN}"
-
-RUN pnpm install --frozen-lockfile --filter @ferrflow/site...
+# NODE_AUTH_TOKEN authenticates pnpm against GitHub Packages for any private
+# @ferrlabs/* packages. Mounted as a BuildKit secret (id=packages-read), never
+# a build-arg, so it never lands in an image layer or the build log. pnpm won't
+# expand it from the committed .npmrc, so it's written to a trusted config for
+# the install and removed in the same layer.
+RUN --mount=type=secret,id=packages-read,env=NODE_AUTH_TOKEN \
+    pnpm config set "//npm.pkg.github.com/:_authToken" "${NODE_AUTH_TOKEN}" \
+    && pnpm install --frozen-lockfile --filter @ferrflow/site... \
+    && pnpm config delete "//npm.pkg.github.com/:_authToken"
 
 COPY packages/site ./packages/site
 
