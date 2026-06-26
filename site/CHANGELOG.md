@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.15.0] - 2026-06-26
+
+### Features
+
+- feat(site): document publishing one package to multiple registries (#583)
+
 ## [6.14.0] - 2026-06-25
 
 ### Features
