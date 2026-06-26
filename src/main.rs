@@ -11,6 +11,7 @@ mod forge;
 mod formats;
 mod git;
 mod hooks;
+mod logging;
 mod manifest;
 mod monorepo;
 mod prerelease;
@@ -38,6 +39,7 @@ fn main() {
     let cli = Cli::parse();
     let command_name = cli.command.name();
 
+    logging::init_logging(cli.verbose, cli.log_format);
     concurrency::init(cli.jobs);
 
     telemetry::maybe_print_first_run_notice();

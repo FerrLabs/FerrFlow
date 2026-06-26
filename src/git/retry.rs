@@ -16,7 +16,7 @@ where
         match op() {
             Ok(()) => {
                 if attempt > 1 {
-                    eprintln!(
+                    tracing::info!(
                         "{}",
                         format!("  ✓ {label} succeeded on attempt {attempt}/{MAX_ATTEMPTS}")
                             .green()
@@ -29,7 +29,7 @@ where
                 if !transient || attempt == MAX_ATTEMPTS {
                     return Err(err);
                 }
-                eprintln!(
+                tracing::warn!(
                     "{}",
                     format!(
                         "  ⚠ {label} attempt {attempt}/{MAX_ATTEMPTS} failed (transient): {err}; \

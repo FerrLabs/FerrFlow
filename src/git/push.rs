@@ -181,7 +181,7 @@ fn shell_push_tags(repo: &Repository, remote_name: &str, tags: &[&str], force: b
         .ok_or_else(|| anyhow!("Remote '{remote_name}' has no URL"))?;
 
     let remote_shas = remote_tag_target_shas(workdir, &push_url, tags).unwrap_or_else(|err| {
-        eprintln!(
+        tracing::warn!(
             "  Warning: could not enumerate remote tag state ({err}); falling back to a plain push"
         );
         HashMap::new()
@@ -202,7 +202,7 @@ fn shell_push_tags(repo: &Repository, remote_name: &str, tags: &[&str], force: b
     }
 
     if !already_synced.is_empty() {
-        eprintln!(
+        tracing::info!(
             "  ↻ Already on remote at the same commit: {}",
             already_synced.join(", ")
         );
@@ -453,7 +453,7 @@ pub fn push(repo: &Repository, remote_name: &str, branch: &str, tags: &[&str]) -
                         .error_code(error_code::GIT_PUSH_BRANCH);
                 }
 
-                eprintln!(
+                tracing::warn!(
                     "Push rejected (non-fast-forward), rebasing on remote and retrying ({attempt}/{MAX_PUSH_RETRIES})..."
                 );
                 fetch_and_rebase(repo, remote_name, branch)?;

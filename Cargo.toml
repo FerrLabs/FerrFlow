@@ -34,7 +34,7 @@ workspace = true
 
 [features]
 default = ["cli"]
-cli = ["dep:gix", "dep:gix-traverse", "dep:ureq", "dep:clap", "dep:clap_complete", "dep:colored", "dep:hmac", "dep:mimalloc", "dep:rayon"]
+cli = ["dep:gix", "dep:gix-traverse", "dep:ureq", "dep:clap", "dep:clap_complete", "dep:colored", "dep:hmac", "dep:mimalloc", "dep:rayon", "dep:tracing", "dep:tracing-subscriber"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
@@ -64,6 +64,11 @@ mimalloc = { version = "0.1", default-features = false, optional = true }
 # rayon: data-parallel per-package planning compute (#476). CLI-only —
 # the wasm build does no git/monorepo scanning, so it must not pull rayon.
 rayon = { version = "1", optional = true }
+# tracing: structured logging foundation (#513). CLI-only — the wasm build
+# does no logging. tracing-subscriber provides the human (custom
+# message-only) and JSON fmt layers plus EnvFilter (RUST_LOG / verbose).
+tracing = { version = "0.1", optional = true }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["std", "fmt", "env-filter", "json"], optional = true }
 # tempfile is used at runtime by the TS config loader to drop the
 # generated wrapper script in a directory we own (security: writing into
 # the user's config directory is a symlink TOCTOU). Tests also use it.
