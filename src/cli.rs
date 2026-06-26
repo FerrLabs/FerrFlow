@@ -5,6 +5,7 @@ use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::Shell;
 
 use crate::config::ConfigFileFormat;
+use crate::logging::LogFormat;
 use crate::status::OutputFormat;
 use crate::timing::Timing;
 
@@ -32,6 +33,10 @@ pub struct Cli {
     /// Max threads for CPU-parallel work (per-package planning). Default: all cores. `1` forces single-threaded.
     #[arg(long, global = true, env = "FERRFLOW_JOBS", value_name = "N")]
     pub jobs: Option<usize>,
+
+    /// Log output format. `human` (default) keeps the colored terminal output; `json` emits one structured JSON event per line for CI ingestion.
+    #[arg(long, value_enum, default_value_t = LogFormat::default(), global = true)]
+    pub log_format: LogFormat,
 
     #[command(subcommand)]
     pub command: Commands,
