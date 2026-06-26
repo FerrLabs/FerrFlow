@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.20.0] - 2026-06-26
+
+### Features
+
+- feat(obs): add tracing logging foundation (init, --log-format flag, JSON layer) (#609)
+
 ## [5.19.0] - 2026-06-26
 
 ### Features
