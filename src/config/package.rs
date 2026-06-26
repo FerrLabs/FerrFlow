@@ -27,6 +27,8 @@ pub struct PackageConfig {
     /// follow-up PRs.
     #[serde(default)]
     pub publishers: Vec<PublisherConfig>,
+    #[serde(default, alias = "updateLockfiles")]
+    pub update_lockfiles: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Default)]
@@ -110,6 +112,10 @@ impl PackageConfig {
             Some(tags) => tags,
             None => &workspace.floating_tags,
         }
+    }
+
+    pub fn effective_update_lockfiles(&self, workspace: &WorkspaceConfig) -> bool {
+        self.update_lockfiles.unwrap_or(workspace.update_lockfiles)
     }
 }
 

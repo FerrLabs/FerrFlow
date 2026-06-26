@@ -155,6 +155,14 @@ pub(super) fn run_dependency_cascade(
                             .or_default()
                             .push(changelog_rel.clone());
                     }
+                    if pkg.effective_update_lockfiles(&config.workspace) {
+                        super::refresh_lockfiles(
+                            pkg,
+                            root,
+                            sink.files_to_commit,
+                            sink.files_per_package.entry(pkg.name.clone()).or_default(),
+                        );
+                    }
                 }
                 sink.pkg_outputs.push((pkg.name.clone(), lines));
             }

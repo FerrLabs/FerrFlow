@@ -67,6 +67,18 @@ pub struct WorkspaceConfig {
     /// from it. `None` (default) leaves all behaviour unchanged.
     #[serde(default, alias = "manifestFile")]
     pub manifest_file: Option<String>,
+    /// Opt-in lockfile auto-refresh. When `true`, after `ferrflow
+    /// release` bumps a manifest (`Cargo.toml`, `package.json`,
+    /// `pyproject.toml`, `Gemfile`, `mix.exs`) it refreshes the sibling
+    /// lockfile (`Cargo.lock`, `package-lock.json` / `pnpm-lock.yaml` /
+    /// `yarn.lock`, `poetry.lock` / `uv.lock`, `Gemfile.lock`,
+    /// `mix.lock`) with the package manager's offline / lockfile-only
+    /// mode and stages it in the same release commit. Default `false`
+    /// (no behaviour change). A missing package manager or an
+    /// unresolvable offline update is warned about, never fatal. Set
+    /// `package.updateLockfiles = false` to opt a single package out.
+    #[serde(default, alias = "updateLockfiles")]
+    pub update_lockfiles: bool,
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]

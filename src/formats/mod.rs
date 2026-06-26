@@ -5,6 +5,8 @@ pub mod gomod;
 pub mod gradle;
 pub mod helm;
 pub mod json;
+#[cfg(feature = "cli")]
+pub mod lockfiles;
 pub mod mix_exs;
 pub mod package_swift;
 pub mod pubspec_yaml;
