@@ -4,6 +4,22 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.22.0] - 2026-06-26
+
+### Features
+
+- feat(monorepo): detect dependency cycles and release in topological order (#618)
+- feat(formats): auto-update lockfiles after version bump (#617)
+- feat(obs): add tracing logging foundation (init, --log-format flag, JSON layer) (#609)
+
+### Bug Fixes
+
+- fix(build): sync Cargo.lock to the 5.20.0 manifest version (#616)
+
+### Refactoring
+
+- refactor(obs): migrate src/monorepo/ diagnostics to tracing macros (#615)
+
 ## [5.21.0] - 2026-06-26
 
 ### Features
