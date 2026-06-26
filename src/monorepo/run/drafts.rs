@@ -42,7 +42,7 @@ pub(super) fn publish_pending_drafts(
                         tag.cyan()
                     ));
                 }
-                Err(err) => eprintln!(
+                Err(err) => tracing::warn!(
                     "{}",
                     format!("  Warning: failed to publish draft for {tag}: {err}").yellow()
                 ),
@@ -50,7 +50,7 @@ pub(super) fn publish_pending_drafts(
             Ok(None) => {}
             Err(err) => {
                 if verbose {
-                    eprintln!(
+                    tracing::warn!(
                         "{}",
                         format!("  Warning: failed to check draft release {tag}: {err}").yellow()
                     );

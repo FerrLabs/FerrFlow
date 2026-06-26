@@ -103,7 +103,7 @@ pub fn release(
                     && crate::git::is_push_rejected_error(&e) =>
             {
                 eprintln!();
-                eprintln!(
+                tracing::warn!(
                     "{}",
                     format!(
                         "Release attempt {attempt}/{MAX_RELEASE_REGENERATE_ATTEMPTS} \
@@ -112,7 +112,7 @@ pub fn release(
                     )
                     .yellow()
                 );
-                eprintln!(
+                tracing::warn!(
                     "{}",
                     "Resetting working tree to remote tip and regenerating the release commit \
                      against the latest history…"

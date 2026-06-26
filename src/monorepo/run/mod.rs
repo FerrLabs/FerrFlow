@@ -110,7 +110,7 @@ pub(super) fn run_release_logic(
         if let Err(e) = fetch
             && verbose
         {
-            eprintln!("Warning: could not fetch remote tags: {e}");
+            tracing::warn!("Warning: could not fetch remote tags: {e}");
         }
     }
 
@@ -587,7 +587,7 @@ pub(super) fn run_release_logic(
             match Checkpoint::load(root)? {
                 Some(existing) if existing.head_sha == head_sha => {
                     if verbose {
-                        eprintln!(
+                        tracing::info!(
                             "  ↻ Found in-progress release checkpoint at phase {:?}; resuming",
                             existing.phase
                         );
