@@ -4,7 +4,7 @@
 [![Quality Gate](https://sonar.ferrlabs.com/api/project_badges/measure?project=ferrflow&metric=alert_status&token=sqb_53f0d93466bd01a6c6a94a15125d5aa8390c67fa)](https://sonar.ferrlabs.com/dashboard?id=ferrflow)
 [![Coverage](https://sonar.ferrlabs.com/api/project_badges/measure?project=ferrflow&metric=coverage&token=sqb_53f0d93466bd01a6c6a94a15125d5aa8390c67fa)](https://sonar.ferrlabs.com/dashboard?id=ferrflow)
 [![License](https://img.shields.io/github/license/FerrLabs/FerrFlow)](LICENSE)
-[![Socket Badge](https://badge.socket.dev/npm/package/@ferrlabs/ferrflow/latest)](https://badge.socket.dev/npm/package/@ferrlabs/ferrflow/latest)
+[![Socket Badge](https://badge.socket.dev/npm/package/ferrflow/latest)](https://badge.socket.dev/npm/package/ferrflow/latest)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/FerrLabs/FerrFlow/badge)](https://scorecard.dev/viewer/?uri=github.com/FerrLabs/FerrFlow)
 
 Universal semantic versioning for monorepos and classic repos.
@@ -45,8 +45,10 @@ cargo install ferrflow
 **npm**
 
 ```bash
-npm install -D @ferrlabs/ferrflow
+npm install -D ferrflow
 ```
+
+(`@ferrlabs/ferrflow` is kept as a published alias for the same package.)
 
 **Docker**
 
