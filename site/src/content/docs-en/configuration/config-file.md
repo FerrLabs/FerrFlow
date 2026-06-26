@@ -3,7 +3,6 @@ title: Configuration
 description: Complete reference for the FerrFlow configuration file.
 ---
 
-
 FerrFlow supports six config file formats, searched in this order:
 
 1. `ferrflow.json`
@@ -68,6 +67,7 @@ changelog = &quot;CHANGELOG.md&quot;
 path = &quot;Cargo.toml&quot;
 format = &quot;toml&quot;
 </code></pre>
+
 </div></div>
   <div class="ferr-tab" data-label="JSON5"><p class="ferr-tab__label">JSON5</p><div class="ferr-tab__body"><pre><code class="language-json5">{
   $schema: &quot;https://ferrflow.com/schema/ferrflow.json&quot;,
@@ -106,11 +106,11 @@ The main advantage of TS/JS configs is **function hooks**. Instead of shell comm
 ```ts title="ferrflow.ts"
 export default {
   workspace: {
-    tagTemplate: "v{version}",
+    tagTemplate: 'v{version}',
     hooks: {
       postPublish: async (ctx) => {
-        await fetch("https://hooks.slack.com/services/...", {
-          method: "POST",
+        await fetch('https://hooks.slack.com/services/...', {
+          method: 'POST',
           body: JSON.stringify({
             text: `Released ${ctx.package}@${ctx.newVersion}`,
           }),
@@ -120,9 +120,9 @@ export default {
   },
   package: [
     {
-      name: "my-app",
-      path: ".",
-      versionedFiles: [{ path: "package.json", format: "json" }],
+      name: 'my-app',
+      path: '.',
+      versionedFiles: [{ path: 'package.json', format: 'json' }],
     },
   ],
 };
@@ -132,17 +132,17 @@ export default {
 
 Function hooks receive a context object with these fields:
 
-| Field | Type | Description |
-|---|---|---|
-| `package` | string | Package name |
-| `oldVersion` | string | Version before bump (empty on first release) |
-| `newVersion` | string | Version after bump |
-| `bumpType` | string | `major`, `minor`, `patch`, or `none` |
-| `tag` | string | Full git tag name |
-| `dryRun` | boolean | Whether `--dry-run` is set |
-| `packagePath` | string | Absolute path to package root |
-| `channel` | string or null | Pre-release channel name |
-| `isPrerelease` | boolean | Whether this is a pre-release |
+| Field          | Type           | Description                                  |
+| -------------- | -------------- | -------------------------------------------- |
+| `package`      | string         | Package name                                 |
+| `oldVersion`   | string         | Version before bump (empty on first release) |
+| `newVersion`   | string         | Version after bump                           |
+| `bumpType`     | string         | `major`, `minor`, `patch`, or `none`         |
+| `tag`          | string         | Full git tag name                            |
+| `dryRun`       | boolean        | Whether `--dry-run` is set                   |
+| `packagePath`  | string         | Absolute path to package root                |
+| `channel`      | string or null | Pre-release channel name                     |
+| `isPrerelease` | boolean        | Whether this is a pre-release                |
 
 Shell string hooks and function hooks can be mixed in the same config. Shell strings still work in TS/JS configs.
 
@@ -150,32 +150,32 @@ Shell string hooks and function hooks can be mixed in the same config. Shell str
 
 Global settings that apply to all packages.
 
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `remote` | string | `"origin"` | Git remote to push to |
-| `branch` | string | auto-detected | Branch to push to (detected from remote HEAD) |
-| `tagTemplate` | string | `"v{version}"` or `"{name}@v{version}"` | Tag naming pattern. Uses `{version}` and `{name}` placeholders. Defaults to `v{version}` for single-package repos and `{name}@v{version}` for monorepos. |
-| `versioning` | string | `"semver"` | Default versioning strategy for all packages |
-| `releaseCommitMode` | string | `"commit"` | How to handle the release commit: `"commit"`, `"pr"`, or `"none"` |
-| `releaseCommitScope` | string | `"grouped"` | In a monorepo where several packages are bumped at once, whether to create a single `"grouped"` commit or one commit `"per-package"`. Only matters when multiple packages bump. |
-| `forge` | string | `"auto"` | Git forge override: `"auto"` detects from the remote URL, `"github"` or `"gitlab"` force a forge (useful for self-hosted instances on custom domains). |
-| `skipCi` | boolean | depends on mode | Add `[skip ci]` to release commits. Defaults to `true` when mode is `"commit"`, `false` otherwise. |
-| `commitSkipMarkers` | array | `["[skip ci]", "[ci skip]", "[no ci]", "[skip actions]", "[actions skip]"]` | Markers that cause FerrFlow to skip a commit when computing the next version. Matched case-insensitively, subject line only. |
-| `autoMergeReleases` | boolean | `true` | Enable auto-merge on release PRs (only applies when mode is `"pr"`) |
-| `recoverMissedReleases` | boolean | `false` | Compare versioned files against the last tag instead of just the last commit, recovering releases missed earlier in a monorepo. |
-| `floatingTags` | array | `[]` | Floating tag levels to create on each release: `"major"`, `"minor"`. For example, `["major"]` creates a `v1` tag that always points to the latest `v1.x.y` release. |
-| `orphanedTagStrategy` | string | `"warn"` | How to handle tags pointing to orphaned commits after rebase + force-push: `"warn"`, `"treeHash"`, or `"message"` |
-| `branches` | array | `[]` | Map branches to pre-release channels (see [Pre-release channels](#pre-release-channels)). |
-| `anonymous_telemetry` | boolean | `true` | Send anonymous usage statistics ([details](/docs/legal/telemetry)). No identifying data is collected. The old `telemetry` key is a deprecated alias — prefer `anonymous_telemetry` in new configs. |
+| Field                   | Type    | Default                                                                     | Description                                                                                                                                                                                        |
+| ----------------------- | ------- | --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `remote`                | string  | `"origin"`                                                                  | Git remote to push to                                                                                                                                                                              |
+| `branch`                | string  | auto-detected                                                               | Branch to push to (detected from remote HEAD)                                                                                                                                                      |
+| `tagTemplate`           | string  | `"v{version}"` or `"{name}@v{version}"`                                     | Tag naming pattern. Uses `{version}` and `{name}` placeholders. Defaults to `v{version}` for single-package repos and `{name}@v{version}` for monorepos.                                           |
+| `versioning`            | string  | `"semver"`                                                                  | Default versioning strategy for all packages                                                                                                                                                       |
+| `releaseCommitMode`     | string  | `"commit"`                                                                  | How to handle the release commit: `"commit"`, `"pr"`, or `"none"`                                                                                                                                  |
+| `releaseCommitScope`    | string  | `"grouped"`                                                                 | In a monorepo where several packages are bumped at once, whether to create a single `"grouped"` commit or one commit `"per-package"`. Only matters when multiple packages bump.                    |
+| `forge`                 | string  | `"auto"`                                                                    | Git forge override: `"auto"` detects from the remote URL, `"github"` or `"gitlab"` force a forge (useful for self-hosted instances on custom domains).                                             |
+| `skipCi`                | boolean | depends on mode                                                             | Add `[skip ci]` to release commits. Defaults to `true` when mode is `"commit"`, `false` otherwise.                                                                                                 |
+| `commitSkipMarkers`     | array   | `["[skip ci]", "[ci skip]", "[no ci]", "[skip actions]", "[actions skip]"]` | Markers that cause FerrFlow to skip a commit when computing the next version. Matched case-insensitively, subject line only.                                                                       |
+| `autoMergeReleases`     | boolean | `true`                                                                      | Enable auto-merge on release PRs (only applies when mode is `"pr"`)                                                                                                                                |
+| `recoverMissedReleases` | boolean | `false`                                                                     | Compare versioned files against the last tag instead of just the last commit, recovering releases missed earlier in a monorepo.                                                                    |
+| `floatingTags`          | array   | `[]`                                                                        | Floating tag levels to create on each release: `"major"`, `"minor"`. For example, `["major"]` creates a `v1` tag that always points to the latest `v1.x.y` release.                                |
+| `orphanedTagStrategy`   | string  | `"warn"`                                                                    | How to handle tags pointing to orphaned commits after rebase + force-push: `"warn"`, `"treeHash"`, or `"message"`                                                                                  |
+| `branches`              | array   | `[]`                                                                        | Map branches to pre-release channels (see [Pre-release channels](#pre-release-channels)).                                                                                                          |
+| `anonymous_telemetry`   | boolean | `true`                                                                      | Send anonymous usage statistics ([details](/docs/legal/telemetry)). No identifying data is collected. The old `telemetry` key is a deprecated alias — prefer `anonymous_telemetry` in new configs. |
 
 ### Tag template
 
 The `tagTemplate` field controls how git tags are named. Available placeholders:
 
-| Placeholder | Description |
-|---|---|
+| Placeholder | Description                       |
+| ----------- | --------------------------------- |
 | `{version}` | The version number (e.g. `1.2.3`) |
-| `{name}` | The package name |
+| `{name}`    | The package name                  |
 
 <div class="ferr-tabs">
   <div class="ferr-tab" data-label="JSON"><p class="ferr-tab__label">JSON</p><div class="ferr-tab__body"><pre><code class="language-json">{
@@ -254,11 +254,11 @@ If a floating tag would move backward (e.g. releasing a `v1.1.0` hotfix when `v1
 
 When a branch is rebased and force-pushed, existing tags may point to commits that are no longer part of the branch history. By default, FerrFlow warns about these orphaned tags and skips them. You can configure automatic recovery instead.
 
-| Strategy | Behavior |
-|---|---|
-| `"warn"` | Log a warning identifying the orphaned tag and skip it (default) |
+| Strategy     | Behavior                                                                                            |
+| ------------ | --------------------------------------------------------------------------------------------------- |
+| `"warn"`     | Log a warning identifying the orphaned tag and skip it (default)                                    |
 | `"treeHash"` | Attempt to find a commit on the current branch with the same file tree as the orphaned tag's commit |
-| `"message"` | Attempt to find a commit on the current branch with the same commit message |
+| `"message"`  | Attempt to find a commit on the current branch with the same commit message                         |
 
 <div class="ferr-tabs">
   <div class="ferr-tab" data-label="JSON"><p class="ferr-tab__label">JSON</p><div class="ferr-tab__body"><pre><code class="language-json">{
@@ -293,11 +293,11 @@ git tag -f api@v1.2.0 <correct-commit>
 
 Controls how FerrFlow handles the commit that updates version files and changelogs.
 
-| Mode | Behavior |
-|---|---|
-| `"commit"` | Commits directly to the current branch and pushes (default) |
-| `"pr"` | Creates a `release/` branch and opens a pull request |
-| `"none"` | Only creates tags and releases, does not commit file changes |
+| Mode       | Behavior                                                     |
+| ---------- | ------------------------------------------------------------ |
+| `"commit"` | Commits directly to the current branch and pushes (default)  |
+| `"pr"`     | Creates a `release/` branch and opens a pull request         |
+| `"none"`   | Only creates tags and releases, does not commit file changes |
 
 <div class="ferr-tabs">
   <div class="ferr-tab" data-label="JSON"><p class="ferr-tab__label">JSON</p><div class="ferr-tab__body"><pre><code class="language-json">{
@@ -327,14 +327,14 @@ auto_merge_releases = true
 
 FerrFlow supports multiple versioning strategies, configurable at workspace or package level.
 
-| Strategy | Format | Example progression |
-|---|---|---|
-| `semver` | `MAJOR.MINOR.PATCH` | `1.2.3` → `1.3.0` → `2.0.0` |
-| `calver` | `YYYY.MM.PATCH` | `2026.03.0` → `2026.03.1` → `2026.04.0` |
-| `calver-short` | `YY.MM.PATCH` | `26.03.0` → `26.03.1` |
-| `calver-seq` | `YYYY.MM.SEQ` | `2026.03.1` → `2026.03.2` |
-| `sequential` | `N` | `1` → `2` → `3` |
-| `zerover` | `0.MINOR.PATCH` | `0.1.0` → `0.2.0` (never reaches 1.0) |
+| Strategy       | Format              | Example progression                     |
+| -------------- | ------------------- | --------------------------------------- |
+| `semver`       | `MAJOR.MINOR.PATCH` | `1.2.3` → `1.3.0` → `2.0.0`             |
+| `calver`       | `YYYY.MM.PATCH`     | `2026.03.0` → `2026.03.1` → `2026.04.0` |
+| `calver-short` | `YY.MM.PATCH`       | `26.03.0` → `26.03.1`                   |
+| `calver-seq`   | `YYYY.MM.SEQ`       | `2026.03.1` → `2026.03.2`               |
+| `sequential`   | `N`                 | `1` → `2` → `3`                         |
+| `zerover`      | `0.MINOR.PATCH`     | `0.1.0` → `0.2.0` (never reaches 1.0)   |
 
 <div class="ferr-tabs">
   <div class="ferr-tab" data-label="JSON"><p class="ferr-tab__label">JSON</p><div class="ferr-tab__body"><pre><code class="language-json">{
@@ -363,11 +363,11 @@ The `branches` array maps branch names (or glob patterns) to pre-release channel
 
 Each entry has:
 
-| Field | Type | Description |
-|---|---|---|
-| `name` | string | Branch name or glob pattern (e.g. `"main"`, `"release/*"`) |
-| `channel` | string or `false` | Channel name (`"beta"`, `"rc"`, …), or `false` for a stable release |
-| `prereleaseIdentifier` | string | Strategy for the identifier appended after the channel name |
+| Field                  | Type              | Description                                                         |
+| ---------------------- | ----------------- | ------------------------------------------------------------------- |
+| `name`                 | string            | Branch name or glob pattern (e.g. `"main"`, `"release/*"`)          |
+| `channel`              | string or `false` | Channel name (`"beta"`, `"rc"`, …), or `false` for a stable release |
+| `prereleaseIdentifier` | string            | Strategy for the identifier appended after the channel name         |
 
 <div class="ferr-tabs">
   <div class="ferr-tab" data-label="JSON"><p class="ferr-tab__label">JSON</p><div class="ferr-tab__body"><pre><code class="language-json">{
@@ -388,6 +388,7 @@ channel = false
 name = &quot;next&quot;
 channel = &quot;beta&quot;
 </code></pre>
+
 </div></div>
   <div class="ferr-tab" data-label="JSON5"><p class="ferr-tab__label">JSON5</p><div class="ferr-tab__body"><pre><code class="language-json5">{
   workspace: {
@@ -405,16 +406,16 @@ channel = &quot;beta&quot;
 
 Defines a package to version. You can have one or many.
 
-| Field | Required | Default | Description |
-|---|---|---|---|
-| `name` | yes | — | Package identifier, used in git tag prefix |
-| `path` | yes | — | Relative path to the package directory |
-| `changelog` | no | `{path}/CHANGELOG.md` | Path to the changelog file |
-| `sharedPaths` | no | `[]` | Paths that trigger this package when changed |
-| `dependsOn` | no | `[]` | Package names this package depends on. When a dependency is bumped, this package gets a patch bump automatically. |
-| `versioning` | no | inherited from workspace | Override versioning strategy for this package |
-| `tagTemplate` | no | inherited from workspace | Override tag template for this package |
-| `floatingTags` | no | inherited from workspace | Override floating tags for this package |
+| Field          | Required | Default                  | Description                                                                                                       |
+| -------------- | -------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| `name`         | yes      | —                        | Package identifier, used in git tag prefix                                                                        |
+| `path`         | yes      | —                        | Relative path to the package directory                                                                            |
+| `changelog`    | no       | `{path}/CHANGELOG.md`    | Path to the changelog file                                                                                        |
+| `sharedPaths`  | no       | `[]`                     | Paths that trigger this package when changed                                                                      |
+| `dependsOn`    | no       | `[]`                     | Package names this package depends on. When a dependency is bumped, this package gets a patch bump automatically. |
+| `versioning`   | no       | inherited from workspace | Override versioning strategy for this package                                                                     |
+| `tagTemplate`  | no       | inherited from workspace | Override tag template for this package                                                                            |
+| `floatingTags` | no       | inherited from workspace | Override floating tags for this package                                                                           |
 
 ### `versionedFiles`
 
@@ -447,6 +448,7 @@ format = &quot;toml&quot;
 path = &quot;npm/package.json&quot;
 format = &quot;json&quot;
 </code></pre>
+
 </div></div>
   <div class="ferr-tab" data-label="JSON5"><p class="ferr-tab__label">JSON5</p><div class="ferr-tab__body"><pre><code class="language-json5">{
   package: [
@@ -464,15 +466,15 @@ format = &quot;json&quot;
 </div></div>
 </div>
 
-| `format` | File | Field updated |
-|---|---|---|
-| `toml` | `Cargo.toml`, `pyproject.toml` | `[package].version` or `[project].version` |
-| `json` | `package.json` | `version` |
-| `xml` | `pom.xml` | First `<version>` element |
-| `gradle` | `build.gradle`, `build.gradle.kts` | `version = "..."` |
-| `helm` | `Chart.yaml` | `version` and `appVersion` (when present) |
-| `gomod` | `go.mod` | No file update — version comes from git tags only |
-| `txt` | `VERSION`, `VERSION.txt` | Entire file content replaced |
+| `format` | File                               | Field updated                                     |
+| -------- | ---------------------------------- | ------------------------------------------------- |
+| `toml`   | `Cargo.toml`, `pyproject.toml`     | `[package].version` or `[project].version`        |
+| `json`   | `package.json`                     | `version`                                         |
+| `xml`    | `pom.xml`                          | First `<version>` element                         |
+| `gradle` | `build.gradle`, `build.gradle.kts` | `version = "..."`                                 |
+| `helm`   | `Chart.yaml`                       | `version` and `appVersion` (when present)         |
+| `gomod`  | `go.mod`                           | No file update — version comes from git tags only |
+| `txt`    | `VERSION`, `VERSION.txt`           | Entire file content replaced                      |
 
 ### Tag-only packages
 
@@ -584,28 +586,28 @@ on_failure   = &quot;abort&quot;
 </div></div>
 </div>
 
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `preBump` | string | — | Run after bump calculation, before writing version files |
-| `postBump` | string | — | Run after version files are written |
-| `preCommit` | string | — | Run after changelog, before git commit |
-| `prePublish` | string | — | Run after commit+tag, before push |
-| `postPublish` | string | — | Run after push and release creation |
-| `onFailure` | string | `"abort"` | `"abort"` cancels the release on failure, `"continue"` prints a warning |
+| Field         | Type   | Default   | Description                                                             |
+| ------------- | ------ | --------- | ----------------------------------------------------------------------- |
+| `preBump`     | string | —         | Run after bump calculation, before writing version files                |
+| `postBump`    | string | —         | Run after version files are written                                     |
+| `preCommit`   | string | —         | Run after changelog, before git commit                                  |
+| `prePublish`  | string | —         | Run after commit+tag, before push                                       |
+| `postPublish` | string | —         | Run after push and release creation                                     |
+| `onFailure`   | string | `"abort"` | `"abort"` cancels the release on failure, `"continue"` prints a warning |
 
 ### Environment variables
 
 Every hook receives these variables:
 
-| Variable | Description | Example |
-|---|---|---|
-| `FERRFLOW_PACKAGE` | Package name | `api` |
-| `FERRFLOW_OLD_VERSION` | Version before bump (empty on first release) | `1.2.3` |
-| `FERRFLOW_NEW_VERSION` | Version after bump | `1.3.0` |
-| `FERRFLOW_BUMP_TYPE` | `major`, `minor`, `patch`, or `none` | `minor` |
-| `FERRFLOW_TAG` | Full git tag name | `api@v1.3.0` |
-| `FERRFLOW_DRY_RUN` | `true` if `--dry-run` is set | `false` |
-| `FERRFLOW_PACKAGE_PATH` | Absolute path to package root | `/home/user/repo/packages/api` |
+| Variable                | Description                                  | Example                        |
+| ----------------------- | -------------------------------------------- | ------------------------------ |
+| `FERRFLOW_PACKAGE`      | Package name                                 | `api`                          |
+| `FERRFLOW_OLD_VERSION`  | Version before bump (empty on first release) | `1.2.3`                        |
+| `FERRFLOW_NEW_VERSION`  | Version after bump                           | `1.3.0`                        |
+| `FERRFLOW_BUMP_TYPE`    | `major`, `minor`, `patch`, or `none`         | `minor`                        |
+| `FERRFLOW_TAG`          | Full git tag name                            | `api@v1.3.0`                   |
+| `FERRFLOW_DRY_RUN`      | `true` if `--dry-run` is set                 | `false`                        |
+| `FERRFLOW_PACKAGE_PATH` | Absolute path to package root                | `/home/user/repo/packages/api` |
 
 ### Per-package hooks
 
@@ -642,6 +644,7 @@ path = &quot;packages/api&quot;
 [package.hooks]
 pre_bump = &quot;cargo test&quot;
 </code></pre>
+
 </div></div>
   <div class="ferr-tab" data-label="JSON5"><p class="ferr-tab__label">JSON5</p><div class="ferr-tab__body"><pre><code class="language-json5">{
   workspace: {
@@ -678,20 +681,20 @@ Declarative replacement for the shell-script-in-`postPublish`-hook pattern. Each
 
 Six built-in kinds cover the common publishing targets:
 
-| `kind` | What it does | Idempotent on |
-|---|---|---|
-| `cargo` | `cargo publish` to crates.io or a custom registry | "already uploaded" registry response |
-| `npm` | `npm publish` to npmjs.org, GitHub Packages, or a custom registry | "cannot publish over the previously published versions" |
-| `docker` | `docker buildx build --push` with multi-arch + optional Sigstore | `docker manifest inspect` on each requested tag |
-| `helm` | `helm package` + `helm push` to an OCI registry | `helm show chart` on the new version |
-| `github-release-asset` | `gh release upload --clobber` of a sidecar file | always re-uploads (clobber semantics) |
-| `webhook` | Generic `POST` notifier with `{name}` / `{version}` / `{tag}` / `{env:NAME}` interpolation | none — webhooks are fire-and-forget |
+| `kind`                 | What it does                                                                               | Idempotent on                                           |
+| ---------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------- |
+| `cargo`                | `cargo publish` to crates.io or a custom registry                                          | "already uploaded" registry response                    |
+| `npm`                  | `npm publish` to npmjs.org, GitHub Packages, or a custom registry                          | "cannot publish over the previously published versions" |
+| `docker`               | `docker buildx build --push` with multi-arch + optional Sigstore                           | `docker manifest inspect` on each requested tag         |
+| `helm`                 | `helm package` + `helm push` to an OCI registry                                            | `helm show chart` on the new version                    |
+| `github-release-asset` | `gh release upload --clobber` of a sidecar file                                            | always re-uploads (clobber semantics)                   |
+| `webhook`              | Generic `POST` notifier with `{name}` / `{version}` / `{tag}` / `{env:NAME}` interpolation | none — webhooks are fire-and-forget                     |
 
 All kinds honor `--dry-run` (print the plan, do nothing) and the crash-resume checkpoint (a re-run after a partial failure picks up where it left off).
 
 ### Registries
 
-Token credentials are declared once at the workspace level. Each publisher references a registry by name; FerrFlow validates the token env var is exported *before* invoking the underlying tool.
+Token credentials are declared once at the workspace level. Each publisher references a registry by name; FerrFlow validates the token env var is exported _before_ invoking the underlying tool.
 
 <div class="ferr-tabs">
   <div class="ferr-tab" data-label="JSON"><p class="ferr-tab__label">JSON</p><div class="ferr-tab__body"><pre><code class="language-json">{
@@ -718,23 +721,43 @@ token_env = &quot;CARGO_REGISTRIES_KELLNR_TOKEN&quot;
 url = &quot;https://npm.pkg.github.com&quot;
 token_env = &quot;NODE_AUTH_TOKEN&quot;
 </code></pre>
+
 </div></div>
 </div>
 
 The token value itself never lives in the config file — only the env-var name does. This keeps `ferrflow.json` checked-in safely.
 
+### Multiple registries per package
+
+`publishers` is a list and every entry runs on its own, so to publish one package to several registries you add one entry per target — each with its own `registry` (and therefore its own credentials), each idempotency-checked against that registry.
+
+```json title="ferrflow.json"
+{
+  "package": [
+    {
+      "name": "mylib",
+      "path": "crates/mylib",
+      "versionedFiles": [{ "path": "Cargo.toml", "format": "toml" }],
+      "publishers": [{ "kind": "cargo" }, { "kind": "cargo", "registry": "kellnr" }]
+    }
+  ]
+}
+```
+
+This publishes `mylib` to crates.io (public, default token) **and** the private `kellnr` registry (its own `tokenEnv`). The same fan-out works for every kind — `npm` to npmjs + GitHub Packages, `helm` to two OCI registries, `docker` to two `image` targets (one `docker login` per host).
+
 ### Cargo publisher
 
 ```json title="ferrflow.json"
 {
-  "package": [{
-    "name": "ferrlabs-auth",
-    "path": "crates/auth",
-    "versionedFiles": [{ "path": "Cargo.toml", "format": "toml" }],
-    "publishers": [
-      { "kind": "cargo", "registry": "kellnr" }
-    ]
-  }]
+  "package": [
+    {
+      "name": "ferrlabs-auth",
+      "path": "crates/auth",
+      "versionedFiles": [{ "path": "Cargo.toml", "format": "toml" }],
+      "publishers": [{ "kind": "cargo", "registry": "kellnr" }]
+    }
+  ]
 }
 ```
 
@@ -744,13 +767,15 @@ Omit `registry` to publish to crates.io. `allowDirty: true` adds `--allow-dirty`
 
 ```json title="ferrflow.json"
 {
-  "package": [{
-    "name": "@ferrlabs/ui-react",
-    "path": "packages/react",
-    "publishers": [
-      { "kind": "npm", "registry": "gh-packages", "tag": "next", "access": "public" }
-    ]
-  }]
+  "package": [
+    {
+      "name": "@ferrlabs/ui-react",
+      "path": "packages/react",
+      "publishers": [
+        { "kind": "npm", "registry": "gh-packages", "tag": "next", "access": "public" }
+      ]
+    }
+  ]
 }
 ```
 
@@ -760,17 +785,21 @@ Omit `registry` to publish to npmjs.org. `tag` defaults to `"latest"`. A scoped 
 
 ```json title="ferrflow.json"
 {
-  "package": [{
-    "name": "ferrlabs-auth-api",
-    "path": "crates/auth-api",
-    "publishers": [{
-      "kind": "docker",
-      "image": "ghcr.io/ferrlabs/auth-api",
-      "tags": ["{version}", "{major}", "{minor}", "latest"],
-      "platforms": ["linux/amd64", "linux/arm64"],
-      "sign": "sigstore"
-    }]
-  }]
+  "package": [
+    {
+      "name": "ferrlabs-auth-api",
+      "path": "crates/auth-api",
+      "publishers": [
+        {
+          "kind": "docker",
+          "image": "ghcr.io/ferrlabs/auth-api",
+          "tags": ["{version}", "{major}", "{minor}", "latest"],
+          "platforms": ["linux/amd64", "linux/arm64"],
+          "sign": "sigstore"
+        }
+      ]
+    }
+  ]
 }
 ```
 
@@ -780,15 +809,19 @@ Omit `registry` to publish to npmjs.org. `tag` defaults to `"latest"`. A scoped 
 
 ```json title="ferrflow.json"
 {
-  "package": [{
-    "name": "ferrvault-operator",
-    "path": "operator",
-    "publishers": [{
-      "kind": "helm",
-      "chart": "chart",
-      "registry": "oci://ghcr.io/ferrlabs/charts"
-    }]
-  }]
+  "package": [
+    {
+      "name": "ferrvault-operator",
+      "path": "operator",
+      "publishers": [
+        {
+          "kind": "helm",
+          "chart": "chart",
+          "registry": "oci://ghcr.io/ferrlabs/charts"
+        }
+      ]
+    }
+  ]
 }
 ```
 
@@ -800,7 +833,11 @@ Omit `registry` to publish to npmjs.org. `tag` defaults to `"latest"`. A scoped 
 {
   "publishers": [
     { "kind": "github-release-asset", "path": "sbom.cdx.json" },
-    { "kind": "github-release-asset", "path": "ferrflow-linux-x64.tar.gz.sig", "displayName": "linux-x64.sig" }
+    {
+      "kind": "github-release-asset",
+      "path": "ferrflow-linux-x64.tar.gz.sig",
+      "displayName": "linux-x64.sig"
+    }
   ]
 }
 ```
@@ -811,12 +848,14 @@ Re-uploads use `--clobber` so a retry replaces the previous file rather than fai
 
 ```json title="ferrflow.json"
 {
-  "publishers": [{
-    "kind": "webhook",
-    "url": "https://hooks.slack.com/services/...",
-    "body": { "text": "Released {name}@{version} :rocket:" },
-    "headers": { "Authorization": "Bearer {env:SLACK_TOKEN}" }
-  }]
+  "publishers": [
+    {
+      "kind": "webhook",
+      "url": "https://hooks.slack.com/services/...",
+      "body": { "text": "Released {name}@{version} :rocket:" },
+      "headers": { "Authorization": "Bearer {env:SLACK_TOKEN}" }
+    }
+  ]
 }
 ```
 
@@ -831,7 +870,11 @@ Every command-based publisher — `cargo`, `npm`, `docker`, `helm`, `github-rele
   "publishers": [
     { "kind": "cargo", "registry": "kellnr", "args": ["--locked"] },
     { "kind": "npm", "args": ["--provenance"] },
-    { "kind": "docker", "image": "ghcr.io/ferrlabs/api", "args": ["--build-arg", "PROFILE=release"] }
+    {
+      "kind": "docker",
+      "image": "ghcr.io/ferrlabs/api",
+      "args": ["--build-arg", "PROFILE=release"]
+    }
   ]
 }
 ```
@@ -847,15 +890,17 @@ Set `workspace.deferPublish: true` and `ferrflow release` will **skip** the publ
 ```json title="ferrflow.json"
 {
   "workspace": { "deferPublish": true },
-  "package": [{
-    "name": "my-operator",
-    "path": ".",
-    "versionedFiles": [{ "path": "go.mod", "format": "gomod" }],
-    "publishers": [
-      { "kind": "docker", "image": "ghcr.io/acme/my-operator", "tags": ["{version}", "latest"] },
-      { "kind": "helm", "chart": "charts/my-operator", "registry": "oci://ghcr.io/acme/charts" }
-    ]
-  }]
+  "package": [
+    {
+      "name": "my-operator",
+      "path": ".",
+      "versionedFiles": [{ "path": "go.mod", "format": "gomod" }],
+      "publishers": [
+        { "kind": "docker", "image": "ghcr.io/acme/my-operator", "tags": ["{version}", "latest"] },
+        { "kind": "helm", "chart": "charts/my-operator", "registry": "oci://ghcr.io/acme/charts" }
+      ]
+    }
+  ]
 }
 ```
 
@@ -911,6 +956,7 @@ format = &quot;toml&quot;
 path = &quot;npm/package.json&quot;
 format = &quot;json&quot;
 </code></pre>
+
 </div></div>
   <div class="ferr-tab" data-label="JSON5"><p class="ferr-tab__label">JSON5</p><div class="ferr-tab__body"><pre><code class="language-json5">{
   $schema: &quot;https://ferrflow.com/schema/ferrflow.json&quot;,
@@ -987,6 +1033,7 @@ shared_paths = [&quot;packages/shared/&quot;]
 path = &quot;packages/site/package.json&quot;
 format = &quot;json&quot;
 </code></pre>
+
 </div></div>
   <div class="ferr-tab" data-label="JSON5"><p class="ferr-tab__label">JSON5</p><div class="ferr-tab__body"><pre><code class="language-json5">{
   $schema: &quot;https://ferrflow.com/schema/ferrflow.json&quot;,
