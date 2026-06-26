@@ -894,3 +894,95 @@ mod lockfile_flow {
         }
     }
 }
+
+mod cycle_detection {
+    use crate::config::Config;
+    use crate::monorepo::run::run_release_logic;
+    use crate::test_utils::{commit_file, init_repo, with_cwd};
+    use crate::timing::Timing;
+    use std::path::Path;
+
+    fn write_pkg(dir: &Path, name: &str) {
+        std::fs::create_dir_all(dir.join(name)).unwrap();
+        std::fs::write(
+            dir.join(name).join("package.json"),
+            format!("{{\n  \"name\": \"{name}\",\n  \"version\": \"1.0.0\"\n}}\n"),
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn mutual_dependency_aborts_release_without_writing() {
+        let (dir, _repo) = init_repo();
+        let root = dir.path();
+        write_pkg(root, "api");
+        write_pkg(root, "web");
+        std::fs::write(
+            root.join(".ferrflow"),
+            r#"{"package": [
+                {"name": "api", "path": "api", "dependsOn": ["web"], "versionedFiles": [{"path": "api/package.json", "format": "json"}]},
+                {"name": "web", "path": "web", "dependsOn": ["api"], "versionedFiles": [{"path": "web/package.json", "format": "json"}]}
+            ]}"#,
+        )
+        .unwrap();
+        commit_file(
+            root,
+            "api/feature.txt",
+            "x",
+            "feat: api change",
+            1_972_000_000,
+        );
+
+        let config_path = root.join(".ferrflow");
+        let config = Config::load(root, Some(&config_path)).unwrap();
+
+        // A real (non-dry-run) release: if the cycle were not caught up
+        // front, this would start writing version bumps and tags.
+        let err = with_cwd(root, || {
+            run_release_logic(
+                root,
+                &config,
+                false,
+                false,
+                false,
+                false,
+                false,
+                None,
+                None,
+                false,
+                false,
+                &mut Timing::new(false),
+            )?;
+            Ok(())
+        })
+        .unwrap_err();
+
+        assert_eq!(
+            err.downcast_ref::<crate::error_code::ErrorCode>()
+                .map(|c| c.0),
+            Some(8003),
+            "expected MONOREPO_DEPENDENCY_CYCLE"
+        );
+        let message = err
+            .chain()
+            .map(|cause| cause.to_string())
+            .find(|m| m.starts_with("cycle detected"))
+            .expect("cycle message in the error chain");
+        assert!(
+            message.contains("api") && message.contains("web"),
+            "{message}"
+        );
+
+        // No partial release: both version files are untouched.
+        let api = std::fs::read_to_string(root.join("api/package.json")).unwrap();
+        let web = std::fs::read_to_string(root.join("web/package.json")).unwrap();
+        assert!(
+            api.contains("\"version\": \"1.0.0\""),
+            "api untouched: {api}"
+        );
+        assert!(
+            web.contains("\"version\": \"1.0.0\""),
+            "web untouched: {web}"
+        );
+    }
+}

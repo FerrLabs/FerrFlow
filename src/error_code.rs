@@ -278,6 +278,8 @@ pub const QUERY_PACKAGE_NOT_FOUND: ErrorCode = ErrorCode(7002);
 pub const MONOREPO_PACKAGE_NOT_FOUND: ErrorCode = ErrorCode(8001);
 #[allow(dead_code)]
 pub const MONOREPO_PUSH_FAILED: ErrorCode = ErrorCode(8002);
+#[allow(dead_code)]
+pub const MONOREPO_DEPENDENCY_CYCLE: ErrorCode = ErrorCode(8003);
 
 #[cfg(test)]
 mod tests {

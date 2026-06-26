@@ -349,3 +349,11 @@ A package referenced during release was not found in the configuration.
 ### E8002: Floating tag backward move
 
 A floating tag would move to an older version. Use `--force` to override.
+
+### E8003: Dependency cycle
+
+Two or more packages depend on each other through `dependsOn`, directly or
+transitively, so there is no order in which to release them. The error names the
+cycle, e.g. `cycle detected: api → web → api`. Break the loop by removing one of
+the `dependsOn` edges. The check runs before any version is written, so a cyclic
+configuration never produces a partial release.
