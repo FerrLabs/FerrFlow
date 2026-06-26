@@ -3,22 +3,23 @@ title: Verifying releases
 description: Every FerrFlow release ships Sigstore signatures, a CycloneDX SBOM, and a SLSA provenance attestation. Here's how to verify them.
 ---
 
-
 Every release tarball, the Docker image, the binary completions archive, and the SBOM that ships alongside them are signed via [Sigstore](https://www.sigstore.dev/) keyless signing. There are no public keys to track — the signing identity is the GitHub Actions workload identity running in `FerrLabs/FerrFlow`, anchored in the public [Rekor](https://docs.sigstore.dev/logging/overview/) transparency log.
 
 Available since v5.2.
 
 ## What ships per release
 
-| Artifact | Sidecars |
-|---|---|
-| `ferrflow-linux-x64.tar.gz` | `.sig`, `.crt` |
-| `ferrflow-linux-arm64.tar.gz` | `.sig`, `.crt` |
-| `ferrflow-darwin-x64.tar.gz` | `.sig`, `.crt` |
-| `ferrflow-darwin-arm64.tar.gz` | `.sig`, `.crt` |
-| `ferrflow-windows-x64.zip` | `.sig`, `.crt` |
-| `ferrflow-completions.tar.gz` | `.sig`, `.crt` |
-| `sbom.cdx.json` | `.sig`, `.crt` |
+| Artifact                           | Sidecars                         |
+| ---------------------------------- | -------------------------------- |
+| `ferrflow-linux-x64.tar.gz`        | `.sig`, `.crt`                   |
+| `ferrflow-linux-arm64.tar.gz`      | `.sig`, `.crt`                   |
+| `ferrflow-linux-armv7.tar.gz`      | `.sig`, `.crt`                   |
+| `ferrflow-darwin-x64.tar.gz`       | `.sig`, `.crt`                   |
+| `ferrflow-darwin-arm64.tar.gz`     | `.sig`, `.crt`                   |
+| `ferrflow-windows-x64.zip`         | `.sig`, `.crt`                   |
+| `ferrflow-windows-arm64.zip`       | `.sig`, `.crt`                   |
+| `ferrflow-completions.tar.gz`      | `.sig`, `.crt`                   |
+| `sbom.cdx.json`                    | `.sig`, `.crt`                   |
 | `ghcr.io/ferrlabs/ferrflow:vX.Y.Z` | Cosign signature in GHCR + Rekor |
 
 All sidecars are downloadable from the GitHub Release page next to the binary.

@@ -3,22 +3,23 @@ title: Vérifier les releases
 description: Chaque release FerrFlow embarque des signatures Sigstore, un SBOM CycloneDX et une attestation de provenance SLSA. Voici comment les vérifier.
 ---
 
-
 Chaque tarball de release, l'image Docker, l'archive de complétions binaires et le SBOM qui les accompagne sont signés via [Sigstore](https://www.sigstore.dev/) en signature sans clé. Il n'y a aucune clé publique à suivre — l'identité de signature est celle du workload GitHub Actions qui tourne dans `FerrLabs/FerrFlow`, ancrée dans le journal public de transparence [Rekor](https://docs.sigstore.dev/logging/overview/).
 
 Disponible depuis la v5.2.
 
 ## Ce qui est livré par release
 
-| Artefact | Sidecars |
-|---|---|
-| `ferrflow-linux-x64.tar.gz` | `.sig`, `.crt` |
-| `ferrflow-linux-arm64.tar.gz` | `.sig`, `.crt` |
-| `ferrflow-darwin-x64.tar.gz` | `.sig`, `.crt` |
-| `ferrflow-darwin-arm64.tar.gz` | `.sig`, `.crt` |
-| `ferrflow-windows-x64.zip` | `.sig`, `.crt` |
-| `ferrflow-completions.tar.gz` | `.sig`, `.crt` |
-| `sbom.cdx.json` | `.sig`, `.crt` |
+| Artefact                           | Sidecars                           |
+| ---------------------------------- | ---------------------------------- |
+| `ferrflow-linux-x64.tar.gz`        | `.sig`, `.crt`                     |
+| `ferrflow-linux-arm64.tar.gz`      | `.sig`, `.crt`                     |
+| `ferrflow-linux-armv7.tar.gz`      | `.sig`, `.crt`                     |
+| `ferrflow-darwin-x64.tar.gz`       | `.sig`, `.crt`                     |
+| `ferrflow-darwin-arm64.tar.gz`     | `.sig`, `.crt`                     |
+| `ferrflow-windows-x64.zip`         | `.sig`, `.crt`                     |
+| `ferrflow-windows-arm64.zip`       | `.sig`, `.crt`                     |
+| `ferrflow-completions.tar.gz`      | `.sig`, `.crt`                     |
+| `sbom.cdx.json`                    | `.sig`, `.crt`                     |
 | `ghcr.io/ferrlabs/ferrflow:vX.Y.Z` | Signature cosign dans GHCR + Rekor |
 
 Tous les sidecars sont téléchargeables depuis la page GitHub Release à côté du binaire.
