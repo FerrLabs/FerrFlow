@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.17.1] - 2026-06-26
+
+### Bug Fixes
+
+- fix(site): point sync-ferrflow workflow at Angular benchmarks.ts (#600)
+
 ## [6.17.0] - 2026-06-26
 
 ### Features
