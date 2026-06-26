@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.15.1] - 2026-06-26
+
+### Bug Fixes
+
+- fix(site): switch docs version selector to a dropdown via ui-ng 1.1.0 (#585)
+
 ## [6.15.0] - 2026-06-26
 
 ### Features
