@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.17.0] - 2026-06-26
+
+### Features
+
+- feat(site): document updateLockfiles + sync JSON schema (#598)
+
 ## [6.16.0] - 2026-06-26
 
 ### Features
