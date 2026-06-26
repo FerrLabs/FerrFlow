@@ -18,6 +18,19 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 NPM_DIR="$(dirname "$SCRIPT_DIR")"
 WORK_DIR="$(mktemp -d)"
 
+# Publish the package in the current directory unless that exact version is
+# already on the registry. Makes a re-run after a partial failure safe (and a
+# release that adds a brand-new platform package skip the ones already pushed)
+# instead of dying on "cannot publish over the previously published version".
+publish_if_new() {
+  local name="$1"
+  if npm view "${name}@${VERSION}" version >/dev/null 2>&1; then
+    echo "  ${name}@${VERSION} already on registry — skipping"
+  else
+    npm publish --access public
+  fi
+}
+
 echo "Downloading release binaries for v${VERSION}..."
 
 for archive in "${!ARCHIVES[@]}"; do
@@ -44,7 +57,7 @@ for archive in "${!ARCHIVES[@]}"; do
   cp "${NPM_DIR}/../LICENSE" "${pkg_dir}/LICENSE" 2>/dev/null || true
   cd "$pkg_dir"
   npm version "$VERSION" --no-git-tag-version --allow-same-version
-  npm publish --access public
+  publish_if_new "@ferrflow/${platform}"
   cd - > /dev/null
 done
 
@@ -65,7 +78,7 @@ node -e "
   require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
 "
 
-npm publish --access public
+publish_if_new ferrflow
 
 echo "Publishing brand alias @ferrlabs/ferrflow@${VERSION}..."
 ALIAS_DIR="$(mktemp -d)"
@@ -76,7 +89,7 @@ node -e "
   pkg.name = '@ferrlabs/ferrflow';
   require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
 "
-npm publish --access public
+publish_if_new "@ferrlabs/ferrflow"
 cd - > /dev/null
 rm -rf "$ALIAS_DIR"
 

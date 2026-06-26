@@ -28,7 +28,11 @@ node -e "
   fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
 "
 
-echo "Publishing @ferrlabs/ferrflow-wasm@${VERSION}..."
-npm publish --access public
+if npm view "@ferrlabs/ferrflow-wasm@${VERSION}" version >/dev/null 2>&1; then
+  echo "@ferrlabs/ferrflow-wasm@${VERSION} already on registry — skipping"
+else
+  echo "Publishing @ferrlabs/ferrflow-wasm@${VERSION}..."
+  npm publish --access public
+fi
 
 echo "Published @ferrlabs/ferrflow-wasm@${VERSION}"

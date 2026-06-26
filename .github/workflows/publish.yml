@@ -12,6 +12,9 @@ jobs:
     name: Build ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
     strategy:
+      # One flaky target (e.g. a transient crates.io download) must not cancel
+      # the other six and sink the whole release.
+      fail-fast: false
       matrix:
         include:
           - target: x86_64-unknown-linux-musl
@@ -76,12 +79,28 @@ jobs:
           rm /tmp/cross.tar.gz
       - name: Build (Linux)
         if: matrix.os == 'ubuntu-latest'
-        run: cross build --release --target ${{ matrix.target }}
+        shell: bash
+        run: |
+          n=0
+          until cross build --release --target ${{ matrix.target }}; do
+            n=$((n + 1))
+            [ "$n" -ge 3 ] && { echo "build failed after $n attempts" >&2; exit 1; }
+            echo "build attempt $n failed (likely a transient crate download); retrying in 15s..." >&2
+            sleep 15
+          done
         env:
           FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
       - name: Build (macOS / Windows)
         if: matrix.os != 'ubuntu-latest'
-        run: cargo build --release --target ${{ matrix.target }}
+        shell: bash
+        run: |
+          n=0
+          until cargo build --release --target ${{ matrix.target }}; do
+            n=$((n + 1))
+            [ "$n" -ge 3 ] && { echo "build failed after $n attempts" >&2; exit 1; }
+            echo "build attempt $n failed (likely a transient crate download); retrying in 15s..." >&2
+            sleep 15
+          done
         env:
           FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
       - name: Package (Unix)
