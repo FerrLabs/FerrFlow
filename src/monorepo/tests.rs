@@ -530,6 +530,7 @@ fn make_pkg(name: &str, path: &str, shared: &[&str]) -> PackageConfig {
         hooks: None,
         floating_tags: None,
         publishers: vec![],
+        update_lockfiles: None,
     }
 }
 
@@ -676,4 +677,220 @@ fn parse_force_version_invalid_semver() {
     let fv = "not-a-version";
     let clean = fv.strip_prefix('v').unwrap_or(fv);
     assert!(semver::Version::parse(clean).is_err());
+}
+
+mod lockfile_flow {
+    use crate::formats::lockfiles::{self, UpdateOutcome};
+    use crate::test_utils::{commit_file, git, init_repo, with_cwd};
+    use crate::timing::Timing;
+    use std::path::Path;
+
+    fn program_on_path(program: &str) -> bool {
+        std::process::Command::new(program)
+            .arg("--version")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
+    }
+
+    fn add_bare_remote(dir: &Path) -> tempfile::TempDir {
+        let bare = tempfile::tempdir().unwrap();
+        git(dir, &["init", "--bare", &bare.path().to_string_lossy()]);
+        git(
+            dir,
+            &["remote", "add", "origin", &bare.path().to_string_lossy()],
+        );
+        bare
+    }
+
+    fn write_cargo_workspace(dir: &Path) {
+        std::fs::write(
+            dir.join("Cargo.toml"),
+            "[workspace]\nresolver = \"2\"\nmembers = [\"crates/alpha\", \"crates/beta\"]\n",
+        )
+        .unwrap();
+        for member in ["alpha", "beta"] {
+            let crate_dir = dir.join("crates").join(member);
+            std::fs::create_dir_all(crate_dir.join("src")).unwrap();
+            std::fs::write(
+                crate_dir.join("Cargo.toml"),
+                format!("[package]\nname = \"{member}\"\nversion = \"1.0.0\"\nedition = \"2021\"\n\n[dependencies]\n"),
+            )
+            .unwrap();
+            std::fs::write(crate_dir.join("src").join("lib.rs"), "").unwrap();
+        }
+        std::fs::write(
+            dir.join(".ferrflow"),
+            r#"{"workspace": {"releaseCommitMode": "commit", "updateLockfiles": true}, "package": [
+                {"name": "alpha", "path": "crates/alpha", "versionedFiles": [{"path": "crates/alpha/Cargo.toml", "format": "toml"}], "changelog": "crates/alpha/CHANGELOG.md"},
+                {"name": "beta", "path": "crates/beta", "versionedFiles": [{"path": "crates/beta/Cargo.toml", "format": "toml"}], "changelog": "crates/beta/CHANGELOG.md"}
+            ]}"#,
+        )
+        .unwrap();
+    }
+
+    fn run_release(dir: &Path) -> anyhow::Result<()> {
+        let config = dir.join(".ferrflow");
+        with_cwd(dir, || {
+            crate::monorepo::release(
+                Some(&config),
+                false,
+                false,
+                false,
+                false,
+                None,
+                None,
+                false,
+                false,
+                &mut Timing::new(false),
+            )
+        })
+    }
+
+    fn alpha_version_in_lock(lock: &str) -> Option<String> {
+        let mut in_alpha = false;
+        for line in lock.lines() {
+            let line = line.trim();
+            if line == "[[package]]" {
+                in_alpha = false;
+            } else if line == "name = \"alpha\"" {
+                in_alpha = true;
+            } else if in_alpha && let Some(v) = line.strip_prefix("version = \"") {
+                return Some(v.trim_end_matches('"').to_string());
+            }
+        }
+        None
+    }
+
+    #[test]
+    fn cargo_workspace_refreshes_only_bumped_member() {
+        if !program_on_path("cargo") {
+            return;
+        }
+        let (dir, _repo) = init_repo();
+        let root = dir.path();
+        write_cargo_workspace(root);
+
+        let gen_lock = std::process::Command::new("cargo")
+            .current_dir(root)
+            .args(["generate-lockfile", "--offline"])
+            .output()
+            .unwrap();
+        assert!(
+            gen_lock.status.success(),
+            "generate-lockfile failed: {}",
+            String::from_utf8_lossy(&gen_lock.stderr)
+        );
+
+        commit_file(root, "seed.txt", "x", "chore: seed", 1_970_000_000);
+        commit_file(
+            root,
+            "crates/alpha/feature.txt",
+            "y",
+            "feat: alpha change",
+            1_970_000_001,
+        );
+        let _remote = add_bare_remote(root);
+
+        let before = std::fs::read_to_string(root.join("Cargo.lock")).unwrap();
+        assert_eq!(alpha_version_in_lock(&before).as_deref(), Some("1.0.0"));
+        let beta_before = before.contains("name = \"beta\"");
+
+        run_release(root).unwrap();
+
+        let after = std::fs::read_to_string(root.join("Cargo.lock")).unwrap();
+        assert_eq!(
+            alpha_version_in_lock(&after).as_deref(),
+            Some("1.1.0"),
+            "alpha entry must reflect the bump in Cargo.lock"
+        );
+        assert_eq!(
+            beta_before,
+            after.contains("name = \"beta\""),
+            "beta entry must be untouched"
+        );
+
+        let committed = git(root, &["show", "--name-only", "--format=", "HEAD"]);
+        assert!(
+            committed.contains("Cargo.lock"),
+            "refreshed Cargo.lock must land in the release commit, got: {committed}"
+        );
+    }
+
+    #[test]
+    fn disabled_leaves_lockfile_untouched() {
+        if !program_on_path("cargo") {
+            return;
+        }
+        let (dir, _repo) = init_repo();
+        let root = dir.path();
+        write_cargo_workspace(root);
+        std::fs::write(
+            root.join(".ferrflow"),
+            r#"{"workspace": {"releaseCommitMode": "commit"}, "package": [
+                {"name": "alpha", "path": "crates/alpha", "versionedFiles": [{"path": "crates/alpha/Cargo.toml", "format": "toml"}], "changelog": "crates/alpha/CHANGELOG.md"},
+                {"name": "beta", "path": "crates/beta", "versionedFiles": [{"path": "crates/beta/Cargo.toml", "format": "toml"}], "changelog": "crates/beta/CHANGELOG.md"}
+            ]}"#,
+        )
+        .unwrap();
+
+        let gen_lock = std::process::Command::new("cargo")
+            .current_dir(root)
+            .args(["generate-lockfile", "--offline"])
+            .output()
+            .unwrap();
+        assert!(gen_lock.status.success());
+
+        commit_file(root, "seed.txt", "x", "chore: seed", 1_971_000_000);
+        commit_file(
+            root,
+            "crates/alpha/feature.txt",
+            "y",
+            "feat: alpha change",
+            1_971_000_001,
+        );
+        let _remote = add_bare_remote(root);
+
+        let before = std::fs::read_to_string(root.join("Cargo.lock")).unwrap();
+
+        run_release(root).unwrap();
+
+        let after = std::fs::read_to_string(root.join("Cargo.lock")).unwrap();
+        assert_eq!(
+            before, after,
+            "Cargo.lock must be byte-identical when updateLockfiles is unset"
+        );
+
+        let committed = git(root, &["show", "--name-only", "--format=", "HEAD"]);
+        assert!(
+            !committed.contains("Cargo.lock"),
+            "Cargo.lock must not be staged when the feature is off, got: {committed}"
+        );
+    }
+
+    #[test]
+    fn missing_package_manager_is_not_fatal() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("mix.exs"),
+            "defmodule App.MixProject do\nend\n",
+        )
+        .unwrap();
+        std::fs::write(dir.path().join("mix.lock"), "%{}\n").unwrap();
+
+        let outcome = lockfiles::update_for_manifest(dir.path(), "mix.exs", "app").unwrap();
+        if program_on_path("mix") {
+            assert!(matches!(
+                outcome,
+                UpdateOutcome::Updated { .. } | UpdateOutcome::Failed { .. }
+            ));
+        } else {
+            assert_eq!(
+                outcome,
+                UpdateOutcome::NotOnPath {
+                    program: "mix".to_string()
+                }
+            );
+        }
+    }
 }

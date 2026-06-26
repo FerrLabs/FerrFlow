@@ -174,6 +174,7 @@ fn collect_package(path_default: &str, monorepo: bool) -> PackageConfig {
         hooks: None,
         floating_tags: None,
         publishers: vec![],
+        update_lockfiles: None,
     }
 }
 

@@ -215,6 +215,7 @@ fn effective_versioning_inherits_workspace() {
         hooks: None,
         floating_tags: None,
         publishers: vec![],
+        update_lockfiles: None,
     };
     assert_eq!(
         pkg.effective_versioning(&ws, &[]),
@@ -240,6 +241,7 @@ fn effective_versioning_package_overrides() {
         hooks: None,
         floating_tags: None,
         publishers: vec![],
+        update_lockfiles: None,
     };
     assert_eq!(
         pkg.effective_versioning(&ws, &[]),
@@ -262,6 +264,7 @@ fn effective_versioning_autodetects_from_tags_when_unset() {
         hooks: None,
         floating_tags: None,
         publishers: vec![],
+        update_lockfiles: None,
     };
     let tags = vec!["v2024.04.18", "v2024.05.01"];
     assert_eq!(
@@ -285,6 +288,7 @@ fn effective_versioning_falls_back_to_semver_without_tags() {
         hooks: None,
         floating_tags: None,
         publishers: vec![],
+        update_lockfiles: None,
     };
     assert_eq!(
         pkg.effective_versioning(&ws, &[]),
@@ -309,6 +313,7 @@ fn make_pkg(name: &str, tag_template: Option<&str>) -> PackageConfig {
         hooks: None,
         floating_tags: None,
         publishers: vec![],
+        update_lockfiles: None,
     }
 }
 
@@ -348,6 +353,46 @@ fn tag_package_overrides_workspace() {
     let pkg = make_pkg("api", Some("{name}/v{version}"));
     assert_eq!(pkg.tag_for_version(&ws, true, "2.0.0"), "api/v2.0.0");
     assert_eq!(pkg.tag_prefix(&ws, true), "api/v");
+}
+
+#[test]
+fn update_lockfiles_defaults_off() {
+    let ws = WorkspaceConfig::default();
+    let pkg = make_pkg("api", None);
+    assert!(!pkg.effective_update_lockfiles(&ws));
+}
+
+#[test]
+fn update_lockfiles_inherits_workspace_when_unset() {
+    let ws = WorkspaceConfig {
+        update_lockfiles: true,
+        ..WorkspaceConfig::default()
+    };
+    let pkg = make_pkg("api", None);
+    assert!(pkg.effective_update_lockfiles(&ws));
+}
+
+#[test]
+fn update_lockfiles_package_opts_out() {
+    let ws = WorkspaceConfig {
+        update_lockfiles: true,
+        ..WorkspaceConfig::default()
+    };
+    let mut pkg = make_pkg("api", None);
+    pkg.update_lockfiles = Some(false);
+    assert!(!pkg.effective_update_lockfiles(&ws));
+}
+
+#[test]
+fn update_lockfiles_alias_parses() {
+    let cfg: Config = serde_json::from_str(
+        r#"{"workspace": {"updateLockfiles": true}, "package": [
+            {"name": "api", "path": ".", "updateLockfiles": false}
+        ]}"#,
+    )
+    .unwrap();
+    assert!(cfg.workspace.update_lockfiles);
+    assert_eq!(cfg.packages[0].update_lockfiles, Some(false));
 }
 
 #[test]
@@ -524,6 +569,7 @@ fn json_serializes_camel_case() {
             hooks: None,
             floating_tags: None,
             publishers: vec![],
+            update_lockfiles: None,
         }],
     };
     let serialized = handler.serialize(&config).unwrap();
@@ -571,6 +617,7 @@ fn toml_keeps_snake_case() {
             hooks: None,
             floating_tags: None,
             publishers: vec![],
+            update_lockfiles: None,
         }],
     };
     let serialized = handler.serialize(&config).unwrap();
@@ -1177,6 +1224,7 @@ fn tag_prefix_no_version_placeholder() {
         hooks: None,
         floating_tags: None,
         publishers: vec![],
+        update_lockfiles: None,
     };
     // When template has no {version}, prefix is the entire template
     assert_eq!(pkg.tag_prefix(&ws, false), "release-latest");
@@ -1197,6 +1245,7 @@ fn tag_for_version_replaces_placeholders() {
         hooks: None,
         floating_tags: None,
         publishers: vec![],
+        update_lockfiles: None,
     };
     assert_eq!(pkg.tag_for_version(&ws, true, "1.2.3"), "api/v1.2.3");
 }

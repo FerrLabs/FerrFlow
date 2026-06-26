@@ -274,6 +274,7 @@ mod tests {
             hooks: None,
             floating_tags: None,
             publishers: vec![],
+            update_lockfiles: None,
         }
     }
 

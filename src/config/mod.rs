@@ -229,6 +229,7 @@ impl Config {
                     hooks: None,
                     floating_tags: None,
                     publishers: vec![],
+                    update_lockfiles: None,
                 }]
             },
         }

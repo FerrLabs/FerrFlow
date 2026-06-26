@@ -435,6 +435,15 @@ pub(super) fn run_release_logic(
                 }
             }
 
+            if pkg.effective_update_lockfiles(&config.workspace) {
+                refresh_lockfiles(
+                    pkg,
+                    root,
+                    &mut files_to_commit,
+                    files_per_package.entry(pkg.name.clone()).or_default(),
+                );
+            }
+
             let changelog_render = ChangelogRender {
                 config: config.workspace.changelog.as_ref(),
                 forge_base: forge_base.clone(),
@@ -784,5 +793,41 @@ fn finish(dry_run: bool, out: RunOutput) -> Result<Option<RunOutput>> {
     } else {
         out.print();
         Ok(None)
+    }
+}
+
+pub(super) fn refresh_lockfiles(
+    pkg: &PackageConfig,
+    root: &Path,
+    files_to_commit: &mut Vec<String>,
+    pkg_files: &mut Vec<String>,
+) {
+    use crate::formats::lockfiles::{self, UpdateOutcome};
+
+    let mut handled: HashSet<String> = HashSet::new();
+    for vf in &pkg.versioned_files {
+        let outcome = match lockfiles::update_for_manifest(root, &vf.path, &pkg.name) {
+            Ok(outcome) => outcome,
+            Err(err) => {
+                tracing::warn!(package = %pkg.name, manifest = %vf.path, error = %err, "lockfile update skipped");
+                continue;
+            }
+        };
+        match outcome {
+            UpdateOutcome::Updated { lockfile_rel } => {
+                if handled.insert(lockfile_rel.clone()) {
+                    tracing::info!(package = %pkg.name, lockfile = %lockfile_rel, "refreshed lockfile");
+                    files_to_commit.push(lockfile_rel.clone());
+                    pkg_files.push(lockfile_rel);
+                }
+            }
+            UpdateOutcome::NotOnPath { program } => {
+                tracing::warn!(package = %pkg.name, program = %program, "package manager not on PATH; lockfile left stale");
+            }
+            UpdateOutcome::Failed { program, detail } => {
+                tracing::warn!(package = %pkg.name, program = %program, detail = %detail, "lockfile update failed; lockfile left stale");
+            }
+            UpdateOutcome::NoLockfile | UpdateOutcome::UnsupportedManifest => {}
+        }
     }
 }
