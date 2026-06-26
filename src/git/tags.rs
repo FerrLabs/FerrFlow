@@ -316,7 +316,7 @@ pub(super) fn find_last_tag_with_cache(
         let commit_oid = match resolve_tag_to_commit(repo, raw_oid) {
             Some(oid) => oid,
             None => {
-                eprintln!(
+                tracing::warn!(
                     "Warning: tag '{}' points to missing commit {} (likely garbage-collected). Skipping.\n  \
                      Hint: set 'orphanedTagStrategy' to 'treeHash' or 'message' for automatic recovery.\n  \
                      See https://ferrflow.com/docs/configuration/config-file#orphaned-tag-strategy",
@@ -330,7 +330,7 @@ pub(super) fn find_last_tag_with_cache(
         let commit = match repo.find_commit(commit_oid) {
             Ok(c) => c,
             Err(_) => {
-                eprintln!(
+                tracing::warn!(
                     "Warning: tag '{}' points to missing commit {} (likely garbage-collected). Skipping.\n  \
                      Hint: set 'orphanedTagStrategy' to 'treeHash' or 'message' for automatic recovery.\n  \
                      See https://ferrflow.com/docs/configuration/config-file#orphaned-tag-strategy",
@@ -348,11 +348,12 @@ pub(super) fn find_last_tag_with_cache(
         } else {
             let short = &commit_oid.to_string()[..7].to_string();
             if strategy == OrphanedTagStrategy::Warn {
-                eprintln!(
+                tracing::warn!(
                     "Warning: tag '{}' points to orphaned commit {} (not reachable from HEAD).\n  \
                      Hint: set 'orphanedTagStrategy' to 'treeHash' or 'message' for automatic recovery.\n  \
                      See https://ferrflow.com/docs/configuration/config-file#orphaned-tag-strategy",
-                    tag_name, short
+                    tag_name,
+                    short
                 );
                 continue;
             }
@@ -363,7 +364,7 @@ pub(super) fn find_last_tag_with_cache(
                         OrphanedTagStrategy::Message => "message",
                         OrphanedTagStrategy::Warn => unreachable!(),
                     };
-                    eprintln!(
+                    tracing::info!(
                         "Info: tag '{}' was orphaned but matched commit {} on current branch via {}.",
                         tag_name,
                         &matched_oid.to_string()[..7],
@@ -384,10 +385,13 @@ pub(super) fn find_last_tag_with_cache(
                         OrphanedTagStrategy::Message => "message",
                         OrphanedTagStrategy::Warn => unreachable!(),
                     };
-                    eprintln!(
+                    tracing::warn!(
                         "Warning: tag '{}' points to orphaned commit {}. No match found via {}. Skipping.\n  \
                          Hint: re-tag manually with 'git tag -f {} <correct-commit>'",
-                        tag_name, short, strategy_name, tag_name
+                        tag_name,
+                        short,
+                        strategy_name,
+                        tag_name
                     );
                     continue;
                 }
