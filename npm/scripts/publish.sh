@@ -20,7 +20,7 @@ echo "Downloading release binaries for v${VERSION}..."
 
 for archive in "${!ARCHIVES[@]}"; do
   platform="${ARCHIVES[$archive]}"
-  echo "  ${archive} -> @ferrlabs/ferrflow-${platform}"
+  echo "  ${archive} -> @ferrflow/${platform}"
 
   gh release download "v${VERSION}" -p "$archive" -D "$WORK_DIR"
 
@@ -64,7 +64,20 @@ node -e "
 
 npm publish --access public
 
-echo "Published ferrflow@${VERSION} with all platform packages"
+echo "Publishing brand alias @ferrlabs/ferrflow@${VERSION}..."
+ALIAS_DIR="$(mktemp -d)"
+cp -a "${NPM_DIR}/." "${ALIAS_DIR}/"
+cd "$ALIAS_DIR"
+node -e "
+  const pkg = JSON.parse(require('fs').readFileSync('package.json', 'utf8'));
+  pkg.name = '@ferrlabs/ferrflow';
+  require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+"
+npm publish --access public
+cd - > /dev/null
+rm -rf "$ALIAS_DIR"
+
+echo "Published ferrflow@${VERSION} (+ @ferrlabs/ferrflow alias) with all platform packages"
 
 # Cleanup
 rm -rf "$WORK_DIR"
