@@ -25,6 +25,7 @@ mod checkpoint;
 mod drafts;
 mod execute;
 mod forced;
+mod graph;
 mod lock;
 mod plan;
 mod release_json;
@@ -84,6 +85,8 @@ pub(super) fn run_release_logic(
         };
         return finish(dry_run, out);
     }
+
+    let release_order = graph::release_order(&config.packages).map_err(graph::Cycle::into_error)?;
 
     let repo = open_repo(root)?;
 
@@ -208,7 +211,12 @@ pub(super) fn run_release_logic(
         })
         .collect::<Result<Vec<_>>>()?;
 
-    for (pkg_idx, (pkg, plan)) in config.packages.iter().zip(plans).enumerate() {
+    let mut plans: Vec<Option<PackagePlan>> = plans.into_iter().map(Some).collect();
+    for &pkg_idx in &release_order {
+        let pkg = &config.packages[pkg_idx];
+        let plan = plans[pkg_idx]
+            .take()
+            .expect("release_order visits each package exactly once");
         let recovered = match &plan {
             PackagePlan::Skipped { recovered, .. } => *recovered,
             PackagePlan::Bump(bump_plan) => bump_plan.recovered,
