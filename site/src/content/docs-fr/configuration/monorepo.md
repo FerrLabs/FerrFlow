@@ -3,7 +3,6 @@ title: Monorepo
 description: Versionner plusieurs packages indépendamment dans un seul repository.
 ---
 
-
 FerrFlow considère un repository comme un monorepo lorsque la configuration définit plus d'un package. Chaque package est versionné indépendamment en fonction de son propre historique git.
 
 ## Isolation des packages
@@ -33,6 +32,7 @@ path = &quot;packages/api&quot;
 name = &quot;site&quot;
 path = &quot;packages/site&quot;
 </code></pre>
+
 </div></div>
   <div class="ferr-tab" data-label="JSON5"><p class="ferr-tab__label">JSON5</p><div class="ferr-tab__body"><pre><code class="language-json5">{
   package: [
@@ -88,6 +88,7 @@ name = &quot;site&quot;
 path = &quot;packages/site&quot;
 shared_paths = [&quot;packages/shared/&quot;]
 </code></pre>
+
 </div></div>
   <div class="ferr-tab" data-label="JSON5"><p class="ferr-tab__label">JSON5</p><div class="ferr-tab__body"><pre><code class="language-json5">{
   package: [
@@ -157,6 +158,7 @@ name = &quot;app&quot;
 path = &quot;packages/app&quot;
 depends_on = [&quot;cli&quot;]
 </code></pre>
+
 </div></div>
   <div class="ferr-tab" data-label="JSON5"><p class="ferr-tab__label">JSON5</p><div class="ferr-tab__body"><pre><code class="language-json5">{
   package: [
@@ -195,6 +197,16 @@ depends_on = [&quot;cli&quot;]
 
 <aside class="ferr-aside ferr-aside--note"><div class="ferr-aside__body"><p><code>dependsOn</code> est different de <code>sharedPaths</code>. Les chemins partages declenchent un bump quand des fichiers dans le repertoire partage changent. <code>dependsOn</code> declenche un bump quand un autre <strong>package</strong> est publie, independamment des fichiers modifies.</p>
 </div></aside>
+
+### Cycles de dépendances
+
+`dependsOn` doit décrire un graphe orienté acyclique. Si deux packages dépendent l'un de l'autre — directement ou transitivement — il n'existe aucun ordre de release possible : FerrFlow s'arrête alors avec l'erreur `E8003` en nommant la boucle :
+
+```
+cycle detected: api → web → api
+```
+
+La vérification s'exécute avant toute écriture de version : une configuration cyclique ne produit jamais de release partielle. Cassez la boucle en supprimant l'une des arêtes `dependsOn`. Sinon, le graphe est publié dépendances d'abord : un package est toujours publié après les packages dont il dépend.
 
 ## Format des tags git
 
@@ -283,6 +295,7 @@ name = &quot;site&quot;
 path = &quot;packages/site&quot;
 tag_template = &quot;site-v{version}&quot;
 </code></pre>
+
 </div></div>
   <div class="ferr-tab" data-label="JSON5"><p class="ferr-tab__label">JSON5</p><div class="ferr-tab__body"><pre><code class="language-json5">{
   workspace: {
@@ -309,12 +322,13 @@ tag_template = &quot;site-v{version}&quot;
   tagTemplate: &quot;{name}@v{version}&quot;
 
 package:
-  - name: api
-    path: packages/api
-    versioning: calver
-  - name: site
-    path: packages/site
-    tagTemplate: &quot;site-v{version}&quot;
+
+- name: api
+  path: packages/api
+  versioning: calver
+- name: site
+path: packages/site
+tagTemplate: &quot;site-v{version}&quot;
 </code></pre>
 </div></div>
 </div>

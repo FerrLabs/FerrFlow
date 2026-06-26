@@ -3,7 +3,6 @@ title: Monorepo
 description: Version multiple packages independently in a single repository.
 ---
 
-
 FerrFlow treats a repository as a monorepo when the config defines more than one package. Each package is versioned independently based on its own git history.
 
 ## Package isolation
@@ -33,6 +32,7 @@ path = &quot;packages/api&quot;
 name = &quot;site&quot;
 path = &quot;packages/site&quot;
 </code></pre>
+
 </div></div>
   <div class="ferr-tab" data-label="JSON5"><p class="ferr-tab__label">JSON5</p><div class="ferr-tab__body"><pre><code class="language-json5">{
   package: [
@@ -88,6 +88,7 @@ name = &quot;site&quot;
 path = &quot;packages/site&quot;
 shared_paths = [&quot;packages/shared/&quot;]
 </code></pre>
+
 </div></div>
   <div class="ferr-tab" data-label="JSON5"><p class="ferr-tab__label">JSON5</p><div class="ferr-tab__body"><pre><code class="language-json5">{
   package: [
@@ -157,6 +158,7 @@ name = &quot;app&quot;
 path = &quot;packages/app&quot;
 depends_on = [&quot;cli&quot;]
 </code></pre>
+
 </div></div>
   <div class="ferr-tab" data-label="JSON5"><p class="ferr-tab__label">JSON5</p><div class="ferr-tab__body"><pre><code class="language-json5">{
   package: [
@@ -195,6 +197,16 @@ depends_on = [&quot;cli&quot;]
 
 <aside class="ferr-aside ferr-aside--note"><div class="ferr-aside__body"><p><code>dependsOn</code> differs from <code>sharedPaths</code>. Shared paths trigger a bump when files in the shared directory change. <code>dependsOn</code> triggers a bump when another <strong>package</strong> is released, regardless of which files changed.</p>
 </div></aside>
+
+### Dependency cycles
+
+`dependsOn` must describe a directed acyclic graph. If two packages depend on each other — directly or transitively — there is no order in which to release them, so FerrFlow stops with error `E8003` and names the loop:
+
+```
+cycle detected: api → web → api
+```
+
+The check runs before any version is written, so a cyclic configuration never produces a partial release. Break the loop by removing one of the `dependsOn` edges. Otherwise the graph is released dependencies-first: a package is always released after the packages it depends on.
 
 ## Git tag format
 
@@ -283,6 +295,7 @@ name = &quot;site&quot;
 path = &quot;packages/site&quot;
 tag_template = &quot;site-v{version}&quot;
 </code></pre>
+
 </div></div>
   <div class="ferr-tab" data-label="JSON5"><p class="ferr-tab__label">JSON5</p><div class="ferr-tab__body"><pre><code class="language-json5">{
   workspace: {
@@ -309,12 +322,13 @@ tag_template = &quot;site-v{version}&quot;
   tagTemplate: &quot;{name}@v{version}&quot;
 
 package:
-  - name: api
-    path: packages/api
-    versioning: calver
-  - name: site
-    path: packages/site
-    tagTemplate: &quot;site-v{version}&quot;
+
+- name: api
+  path: packages/api
+  versioning: calver
+- name: site
+path: packages/site
+tagTemplate: &quot;site-v{version}&quot;
 </code></pre>
 </div></div>
 </div>
