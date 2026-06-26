@@ -4,6 +4,17 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.18.0] - 2026-06-26
+
+### Features
+
+- feat(npm): publish CLI as unscoped ferrflow with @ferrflow/* platform packages (#606)
+- feat(publish): auto-scope by triggering tag, accept multiple packages and --all (#602)
+
+### Bug Fixes
+
+- fix(deps): bump memmap2 to 0.9.11 (RUSTSEC-2026-0186) (#604)
+
 ## [5.17.0] - 2026-06-25
 
 ### Features
