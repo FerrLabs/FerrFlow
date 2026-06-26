@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.16.0] - 2026-06-26
+
+### Features
+
+- feat(site): list Windows arm64 and Linux armv7 release artifacts (#596)
+
 ## [6.15.1] - 2026-06-26
 
 ### Bug Fixes
