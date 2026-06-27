@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.18.3] - 2026-06-27
+
+### Bug Fixes
+
+- fix(docker): read packages-read secret from file (buildah lacks env= mount support) (#609)
+
 ## [6.18.2] - 2026-06-26
 
 ### Bug Fixes
