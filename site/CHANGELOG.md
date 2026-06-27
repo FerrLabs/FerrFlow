@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.19.0] - 2026-06-27
+
+### Features
+
+- feat(site): consume shared chrome + migrate to @angular/localize runtime i18n (#614)
+
 ## [6.18.4] - 2026-06-27
 
 ### Bug Fixes
