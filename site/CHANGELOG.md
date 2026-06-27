@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.18.4] - 2026-06-27
+
+### Bug Fixes
+
+- fix(site): keep the navbar sticky at the top on scroll (#611)
+
 ## [6.18.3] - 2026-06-27
 
 ### Bug Fixes
