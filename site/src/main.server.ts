@@ -1,3 +1,4 @@
+import '@angular/localize/init';
 import '@angular/platform-server/init';
 import { render } from '@analogjs/router/server';
 

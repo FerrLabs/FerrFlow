@@ -1,36 +1,35 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import { Lang } from '../i18n/translations';
-import { ShellComponent } from './shell.component';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+  LOCALE_ID,
+} from '@angular/core';
+import { SiteShellComponent } from '@ferrlabs/ui-ng';
 
 @Component({
   selector: 'flr-legal-layout',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ShellComponent],
+  imports: [SiteShellComponent],
   template: `
-    <flr-shell
-      [lang]="lang()"
-      [title]="title()"
-      [description]="description()"
-      [canonical]="canonical()"
-      [enHref]="enHref()"
-      [frHref]="frHref()"
-    >
+    <flr-site-shell [title]="title()" [description]="description()">
       <div class="legal-main">
         @if (draft()) {
           <div class="legal-draft">
-            <strong>{{ lang() === 'fr' ? 'Brouillon' : 'Draft' }}</strong> — {{ draftNotice() }}
+            <strong>{{ draftLabel }}</strong> — {{ draftNotice() }}
           </div>
         }
         <header class="legal-header">
           <p class="mono legal-eyebrow">{{ eyebrow() }}</p>
           <h1 class="legal-title">{{ title() }}</h1>
-          <p class="mono legal-meta">{{ updatedLabel() }}: {{ lastUpdatedFmt() }}</p>
+          <p class="mono legal-meta">{{ updatedLabel }}: {{ lastUpdatedFmt() }}</p>
         </header>
         <article class="legal-prose">
           <ng-content />
         </article>
       </div>
-    </flr-shell>
+    </flr-site-shell>
   `,
   styles: `
     .legal-main {
@@ -85,31 +84,25 @@ import { ShellComponent } from './shell.component';
   `,
 })
 export class LegalLayoutComponent {
-  readonly lang = input<Lang>('en');
   readonly title = input('');
   readonly description = input('');
-  readonly canonical = input<string | null>(null);
   readonly lastUpdated = input('');
   readonly draft = input(false);
-  readonly enHref = input('/');
-  readonly frHref = input('/fr/');
 
-  protected readonly eyebrow = computed(() =>
-    this.lang() === 'fr' ? 'Document légal' : 'Legal document',
+  private readonly locale = inject(LOCALE_ID);
+
+  readonly eyebrow = input($localize`:@@legal.eyebrow:Legal document`);
+  readonly draftNotice = input(
+    $localize`:@@legal.draftNotice:initial text, undergoing legal review. Clauses may change.`,
   );
-  protected readonly updatedLabel = computed(() =>
-    this.lang() === 'fr' ? 'Dernière mise à jour' : 'Last updated',
-  );
-  protected readonly draftNotice = computed(() =>
-    this.lang() === 'fr'
-      ? 'texte initial, en cours de validation juridique. Les clauses peuvent évoluer.'
-      : 'initial text, undergoing legal review. Clauses may change.',
-  );
+
+  protected readonly draftLabel = $localize`:@@legal.draft:Draft`;
+  protected readonly updatedLabel = $localize`:@@legal.lastUpdated:Last updated`;
+
   protected readonly lastUpdatedFmt = computed(() => {
     const raw = this.lastUpdated();
     if (!raw) return '';
-    const locale = this.lang() === 'fr' ? 'fr-FR' : 'en-US';
-    return new Date(raw).toLocaleDateString(locale, {
+    return new Date(raw).toLocaleDateString(this.locale, {
       day: 'numeric',
       month: 'long',
       year: 'numeric',

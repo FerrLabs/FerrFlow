@@ -1,26 +1,18 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { ShellComponent } from '../components/shell.component';
+import { SiteShellComponent } from '@ferrlabs/ui-ng';
 import { LandingComponent } from '../components/landing.component';
-import { t } from '../i18n/translations';
 
 @Component({
-  selector: 'flr-home-en',
+  selector: 'flr-home',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ShellComponent, LandingComponent],
+  imports: [SiteShellComponent, LandingComponent],
   template: `
-    <flr-shell
-      lang="en"
-      [title]="title"
-      [description]="description"
-      canonical="https://ferrflow.com/"
-      enHref="/"
-      frHref="/fr/"
-    >
-      <flr-landing lang="en" />
-    </flr-shell>
+    <flr-site-shell [title]="title" [description]="description">
+      <flr-landing />
+    </flr-site-shell>
   `,
 })
-export default class HomeEnPage {
-  protected readonly title = t('en', 'meta.title');
-  protected readonly description = t('en', 'meta.description');
+export default class HomePage {
+  protected readonly title = $localize`:@@meta.title:FerrFlow — Universal semantic versioning CLI`;
+  protected readonly description = $localize`:@@meta.description:FerrFlow is an open-source CLI that bumps versions, generates changelogs, and ships releases — across 14+ file formats, monorepos, and CI. One Rust binary, any language, git-driven.`;
 }

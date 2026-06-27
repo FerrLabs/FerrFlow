@@ -1,5 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import { Lang } from '../i18n/translations';
+import { ChangeDetectionStrategy, Component, computed } from '@angular/core';
 import {
   benchmarks,
   type BenchmarkCell,
@@ -167,7 +166,10 @@ interface SrTableRow {
           <flr-perf-chart [config]="chartConfig()" />
           <table class="sr-only">
             <caption>
-              Median latency, {{ defaultCmdLabel() }}
+              Median latency,
+              {{
+                defaultCmdLabel()
+              }}
             </caption>
             <thead>
               <tr>
@@ -213,9 +215,9 @@ interface SrTableRow {
             the IO cost of actually mutating files.
           </li>
           <li>
-            <strong>Single-threaded comparison.</strong> FerrFlow runs with
-            <code>--jobs 1</code> in the chart above, so it's measured like the single-threaded JS
-            tools. Its real-world parallel numbers are reported separately.
+            <strong>Single-threaded comparison.</strong> FerrFlow runs with <code>--jobs 1</code> in
+            the chart above, so it's measured like the single-threaded JS tools. Its real-world
+            parallel numbers are reported separately.
           </li>
           <li>
             <strong>Reproducible</strong> — the full pipeline is in
@@ -280,8 +282,12 @@ interface SrTableRow {
                 @for (row of installRows(); track row.tool) {
                   <tr>
                     <th class="fix-label">{{ row.tool }}</th>
-                    <td [class.is-ours]="row.isOurs"><span class="lat">{{ row.npm }}</span></td>
-                    <td [class.is-ours]="row.isOurs"><span class="lat">{{ row.binary }}</span></td>
+                    <td [class.is-ours]="row.isOurs">
+                      <span class="lat">{{ row.npm }}</span>
+                    </td>
+                    <td [class.is-ours]="row.isOurs">
+                      <span class="lat">{{ row.binary }}</span>
+                    </td>
                   </tr>
                 }
               </tbody>
@@ -542,8 +548,6 @@ interface SrTableRow {
   `,
 })
 export class PerformanceComponent {
-  readonly lang = input<Lang>('en');
-
   protected readonly versionLabel = benchmarks.ferrflow_version.replace('ferrflow ', 'v');
   protected readonly binarySize = benchmarks.ferrflow_binary_size_mb;
   protected readonly updated = new Date(benchmarks.timestamp).toLocaleDateString('en-US', {

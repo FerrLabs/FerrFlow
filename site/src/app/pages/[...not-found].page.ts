@@ -1,23 +1,29 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { ShellComponent } from '../components/shell.component';
+import { SiteShellComponent } from '@ferrlabs/ui-ng';
 
 @Component({
   selector: 'flr-not-found',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ShellComponent],
+  imports: [SiteShellComponent],
   template: `
-    <flr-shell lang="en" title="404 — FerrFlow" description="This page doesn't exist.">
+    <flr-site-shell [title]="title" [description]="description">
       <section class="error-page">
-        <p class="kicker">Error 404</p>
-        <h1>Page not found</h1>
-        <p class="lede">The route you tried doesn't exist on ferrflow.com.</p>
+        <p class="kicker" i18n="@@notfound.kicker">Error 404</p>
+        <h1 i18n="@@notfound.heading">Page not found</h1>
+        <p class="lede" i18n="@@notfound.lede">
+          The route you tried doesn't exist on ferrflow.com.
+        </p>
         <ul class="links">
-          <li><a href="/">← Back to ferrflow.com</a></li>
-          <li><a href="/docs/introduction/">Read the docs</a></li>
-          <li><a href="https://github.com/FerrLabs/FerrFlow/releases">Latest releases</a></li>
+          <li><a href="/" i18n="@@notfound.back">← Back to ferrflow.com</a></li>
+          <li><a href="/docs/introduction/" i18n="@@notfound.docs">Read the docs</a></li>
+          <li>
+            <a href="https://github.com/FerrLabs/FerrFlow/releases" i18n="@@notfound.releases"
+              >Latest releases</a
+            >
+          </li>
         </ul>
       </section>
-    </flr-shell>
+    </flr-site-shell>
   `,
   styles: `
     .error-page {
@@ -62,4 +68,7 @@ import { ShellComponent } from '../components/shell.component';
     }
   `,
 })
-export default class NotFoundPage {}
+export default class NotFoundPage {
+  protected readonly title = $localize`:@@notfound.metaTitle:404 — FerrFlow`;
+  protected readonly description = $localize`:@@notfound.metaDescription:This page doesn't exist.`;
+}

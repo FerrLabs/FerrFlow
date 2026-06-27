@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { injectContent, MarkdownComponent } from '@analogjs/content';
+import { injectLocale } from '@analogjs/router/tokens';
 import { DocsPageComponent } from '../../../docs/docs-page.component';
 
 interface DocAttributes {
@@ -9,13 +10,12 @@ interface DocAttributes {
 }
 
 @Component({
-  selector: 'flr-docs-page-en-v4',
+  selector: 'flr-docs-page-v4',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [DocsPageComponent, MarkdownComponent],
   template: `
     @if (post(); as post) {
       <flr-docs-page
-        lang="en"
         version="v4"
         [slug]="post.slug"
         [title]="post.attributes.title"
@@ -26,8 +26,10 @@ interface DocAttributes {
     }
   `,
 })
-export default class DocsPageEnV4 {
+export default class DocsPageV4 {
+  private readonly subdirectory = injectLocale() === 'fr' ? 'docs-fr-v4' : 'docs-v4';
+
   protected readonly post = toSignal(
-    injectContent<DocAttributes>({ param: 'slug', subdirectory: 'docs-v4' }),
+    injectContent<DocAttributes>({ param: 'slug', subdirectory: this.subdirectory }),
   );
 }

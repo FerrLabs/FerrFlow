@@ -15,7 +15,6 @@ interface DocAttributes {
   template: `
     @if (post(); as post) {
       <flr-docs-page
-        lang="en"
         version="v0"
         [slug]="post.slug"
         [title]="post.attributes.title"

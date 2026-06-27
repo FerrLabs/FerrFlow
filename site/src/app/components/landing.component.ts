@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import { Lang, t } from '../i18n/translations';
+import { ChangeDetectionStrategy, Component, computed, inject, LOCALE_ID } from '@angular/core';
+import { resolveLocale, withLocaleBase } from '@ferrlabs/ui-ng';
 import { benchmarks } from '../data/benchmarks';
 
 interface HeroStat {
@@ -18,8 +18,6 @@ interface InstallCell {
   readonly k: string;
   readonly cmd: string;
 }
-
-const FEATURE_KEYS = ['01', '02', '03', '04', '05', '06'] as const;
 
 const FORMATS = [
   'Cargo.toml',
@@ -46,17 +44,22 @@ const FORMATS = [
         <div class="hero-grid">
           <div class="hero-left">
             <h1 class="hero-title">
-              {{ tr('hero.h1') }}
+              <span i18n="@@hero.h1">Release.</span>
               <br />
-              <span class="hero-italic">{{ tr('hero.h2') }}</span>
+              <span class="hero-italic" i18n="@@hero.h2">Automatically.</span>
             </h1>
-            <p class="hero-sub">{{ tr('hero.sub') }}</p>
+            <p class="hero-sub" i18n="@@hero.sub">
+              Conventional commits in, semantic versions out. FerrFlow reads your git history, bumps
+              versions across your monorepo, writes changelogs, tags, and ships GitHub releases —
+              straight from CI.
+            </p>
 
             <div class="hero-actions">
               <a href="https://github.com/FerrLabs/FerrFlow" class="btn-primary mono">
-                <span class="hero-prompt">$</span>{{ tr('hero.cta1') }}
+                <span class="hero-prompt">$</span
+                ><span i18n="@@hero.cta1">cargo install ferrflow</span>
               </a>
-              <a [href]="docsHref()" class="btn-ghost">{{ tr('hero.cta2') }}</a>
+              <a [href]="docsHref" class="btn-ghost" i18n="@@hero.cta2">Read the docs</a>
             </div>
 
             <div class="hero-stats">
@@ -81,13 +84,16 @@ const FORMATS = [
                 <span class="terminal-prompt">$</span><span>ferrflow release</span>
               </div>
               <div class="terminal-line is-dim">
-                <span class="terminal-prompt">→</span><span>{{ tr('terminal.reading') }}</span>
+                <span class="terminal-prompt">→</span
+                ><span i18n="@@terminal.reading">reading 184 commits since last release...</span>
               </div>
               <div class="terminal-line is-dim">
-                <span class="terminal-prompt">→</span><span>{{ tr('terminal.detected') }}</span>
+                <span class="terminal-prompt">→</span
+                ><span i18n="@@terminal.detected">detected: 12 features, 9 fixes, 1 breaking</span>
               </div>
               <div class="terminal-line is-dim">
-                <span class="terminal-prompt">→</span><span>{{ tr('terminal.scanning') }}</span>
+                <span class="terminal-prompt">→</span
+                ><span i18n="@@terminal.scanning">scanning 4 packages...</span>
               </div>
               <div class="terminal-line is-ok">
                 <span class="terminal-prompt is-ok">✓</span
@@ -106,10 +112,14 @@ const FORMATS = [
                 ><span>bump admin v0.8.2 → v0.8.3 (patch)</span>
               </div>
               <div class="terminal-line is-dim">
-                <span class="terminal-prompt">→</span><span>{{ tr('terminal.generating') }}</span>
+                <span class="terminal-prompt">→</span
+                ><span i18n="@@terminal.generating"
+                  >generating changelogs, tagging, pushing...</span
+                >
               </div>
               <div class="terminal-line is-ok">
-                <span class="terminal-prompt is-ok">✓</span><span>{{ tr('terminal.published') }}</span>
+                <span class="terminal-prompt is-ok">✓</span
+                ><span i18n="@@terminal.published">4 GitHub releases published · 0.42s</span>
               </div>
             </div>
           </div>
@@ -119,7 +129,7 @@ const FORMATS = [
 
     <section class="formats-strip">
       <div class="container formats-row">
-        <span class="mono formats-eyebrow">{{ tr('formats.label') }}</span>
+        <span class="mono formats-eyebrow" i18n="@@formats.label">Reads natively</span>
         <div class="formats-chips">
           @for (f of formats; track f) {
             <span class="mono formats-chip">{{ f }}</span>
@@ -130,14 +140,16 @@ const FORMATS = [
 
     <section id="features" class="features-section">
       <div class="container">
-        <p class="mono section-eyebrow">{{ tr('features.eyebrow') }}</p>
+        <p class="mono section-eyebrow" i18n="@@features.eyebrow">№ 02 — Features</p>
         <div class="features-header">
-          <h2 class="section-title">{{ tr('features.title') }}</h2>
-          <p class="features-sub">{{ tr('features.sub') }}</p>
+          <h2 class="section-title" i18n="@@features.title">Everything you need to release.</h2>
+          <p class="features-sub" i18n="@@features.sub">
+            Single binary. Zero plugins. Drop into any CI and go.
+          </p>
         </div>
 
         <div class="features-grid">
-          @for (cell of features(); track cell.key) {
+          @for (cell of features; track cell.key) {
             <div class="feature-cell" [attr.data-i]="cell.i">
               <span class="mono feature-key">— {{ cell.key }}</span>
               <h3 class="feature-title">{{ cell.title }}</h3>
@@ -150,12 +162,14 @@ const FORMATS = [
 
     <section id="install" class="install-section">
       <div class="container">
-        <p class="mono section-eyebrow">{{ tr('install.eyebrow') }}</p>
-        <h2 class="section-title">{{ tr('install.title') }}</h2>
-        <p class="install-sub">{{ tr('install.sub') }}</p>
+        <p class="mono section-eyebrow" i18n="@@install.eyebrow">№ 03 — Install</p>
+        <h2 class="section-title" i18n="@@install.title">Install in seconds.</h2>
+        <p class="install-sub" i18n="@@install.sub">
+          Works on Linux, macOS, and Windows. Available as a GitHub Action and a GitLab CI template.
+        </p>
 
         <div class="install-grid">
-          @for (cell of installCells(); track cell.k) {
+          @for (cell of installCells; track cell.k) {
             <div class="install-cell">
               <div class="mono install-key">{{ cell.k }}</div>
               <code class="mono install-cmd">
@@ -493,7 +507,7 @@ const FORMATS = [
   `,
 })
 export class LandingComponent {
-  readonly lang = input<Lang>('en');
+  private readonly locale = resolveLocale(inject(LOCALE_ID));
 
   protected readonly formats = FORMATS;
 
@@ -511,35 +525,58 @@ export class LandingComponent {
       : `~${Math.round(parseFloat(benchmarks.ferrflow_binary_size_mb))} MB`,
   );
 
-  protected readonly docsHref = computed(() =>
-    this.lang() === 'fr' ? '/fr/docs/introduction/' : '/docs/introduction/',
-  );
+  protected readonly docsHref = withLocaleBase(this.locale, '/docs/introduction/');
 
   protected readonly heroStats = computed<readonly HeroStat[]>(() => [
-    { k: this.tr('hero.stat.latest'), v: this.ferrflowVersion() },
-    { k: this.tr('hero.stat.license'), v: 'MPL-2.0' },
-    { k: this.tr('hero.stat.lang'), v: 'Rust' },
-    { k: this.tr('hero.stat.size'), v: this.ferrflowBinarySize() },
+    { k: $localize`:@@hero.stat.latest:Latest`, v: this.ferrflowVersion() },
+    { k: $localize`:@@hero.stat.license:License`, v: 'MPL-2.0' },
+    { k: $localize`:@@hero.stat.lang:Lang`, v: 'Rust' },
+    { k: $localize`:@@hero.stat.size:Size`, v: this.ferrflowBinarySize() },
   ]);
 
-  protected readonly features = computed<readonly FeatureCell[]>(() => {
-    const lang = this.lang();
-    return FEATURE_KEYS.map((key, i) => ({
-      i,
-      key,
-      title: t(lang, `features.${key}.title`),
-      body: t(lang, `features.${key}.body`),
-    }));
-  });
+  protected readonly features: readonly FeatureCell[] = [
+    {
+      i: 0,
+      key: '01',
+      title: $localize`:@@features.01.title:Semantic versioning`,
+      body: $localize`:@@features.01.body:Reads conventional commits and determines the right bump. Supports semver, calver, sequential, and zerover.`,
+    },
+    {
+      i: 1,
+      key: '02',
+      title: $localize`:@@features.02.title:Monorepo native`,
+      body: $localize`:@@features.02.body:Version multiple packages independently with shared paths, dependency chains, and per-package changelogs.`,
+    },
+    {
+      i: 2,
+      key: '03',
+      title: $localize`:@@features.03.title:Multi-forge`,
+      body: $localize`:@@features.03.body:GitHub, GitLab, self-hosted forges. Tags, releases, PR preview comments — natively supported.`,
+    },
+    {
+      i: 3,
+      key: '04',
+      title: $localize`:@@features.04.title:14+ version files`,
+      body: $localize`:@@features.04.body:Cargo.toml, package.json, pyproject.toml, Chart.yaml, mix.exs, gemspec, pubspec.yaml — bumped automatically.`,
+    },
+    {
+      i: 4,
+      key: '05',
+      title: $localize`:@@features.05.title:Pre-release channels`,
+      body: $localize`:@@features.05.body:Branch-based or flag-based: alpha, beta, rc, dev. Floating tags never moved by pre-releases.`,
+    },
+    {
+      i: 5,
+      key: '06',
+      title: $localize`:@@features.06.title:Open source`,
+      body: $localize`:@@features.06.body:MPL-2.0. Self-host, fork, audit. The Rust binary handles GitHub OIDC directly — minimal runners work out of the box.`,
+    },
+  ];
 
-  protected readonly installCells = computed<readonly InstallCell[]>(() => [
+  protected readonly installCells: readonly InstallCell[] = [
     { k: 'Cargo', cmd: 'cargo install ferrflow' },
     { k: 'npm', cmd: 'npm install -D ferrflow' },
     { k: 'Docker', cmd: 'docker run ghcr.io/ferrlabs/ferrflow' },
     { k: 'GitHub', cmd: `uses: FerrLabs/FerrFlow@${this.ferrflowMajor()}` },
-  ]);
-
-  protected tr(key: string): string {
-    return t(this.lang(), key);
-  }
+  ];
 }
