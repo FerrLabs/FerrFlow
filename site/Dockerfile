@@ -15,8 +15,8 @@ COPY packages/site/package.json ./packages/site/
 # a build-arg, so it never lands in an image layer or the build log. pnpm won't
 # expand it from the committed .npmrc, so it's written to a trusted config for
 # the install and removed in the same layer.
-RUN --mount=type=secret,id=packages-read,env=NODE_AUTH_TOKEN \
-    pnpm config set "//npm.pkg.github.com/:_authToken" "${NODE_AUTH_TOKEN}" \
+RUN --mount=type=secret,id=packages-read \
+    pnpm config set "//npm.pkg.github.com/:_authToken" "$(cat /run/secrets/packages-read)" \
     && pnpm install --frozen-lockfile --filter @ferrflow/site... \
     && pnpm config delete "//npm.pkg.github.com/:_authToken"
 
