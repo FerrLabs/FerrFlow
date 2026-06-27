@@ -123,10 +123,13 @@ import { Lang, t, TranslationKey } from '../i18n/translations';
     </header>
   `,
   styles: `
-    .nav {
+    :host {
+      display: block;
       position: sticky;
       top: 0;
       z-index: 50;
+    }
+    .nav {
       background: rgba(250, 248, 244, 0.65);
       -webkit-backdrop-filter: saturate(140%) blur(14px);
       backdrop-filter: saturate(140%) blur(14px);
