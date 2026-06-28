@@ -20,6 +20,14 @@ use std::process::Command;
 use super::{PublishContext, PublishOutcome};
 use crate::error_code::{self, ErrorCodeExt};
 
+/// Total `cargo publish` attempts before giving up on a transient failure.
+const MAX_PUBLISH_ATTEMPTS: u32 = 3;
+
+/// Backoff before retry N (seconds). Sized for private-registry index lag:
+/// after a dependency is published, sparse-index propagation can take a few
+/// seconds, during which a dependent's publish fails to resolve it.
+const PUBLISH_RETRY_BACKOFF_SECS: [u64; 2] = [5, 15];
+
 pub fn run(
     registry: Option<&str>,
     allow_dirty: bool,
@@ -68,37 +76,55 @@ pub fn run(
     }
     cmd.args(extra_args);
 
-    let output = cmd.output().with_context(|| {
-        format!(
-            "spawn `cargo publish` failed (is cargo in PATH?) for {}",
-            ctx.package_name
-        )
-    })?;
-    let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
-    let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
+    let mut attempt: u32 = 0;
+    loop {
+        attempt += 1;
+        let output = cmd.output().with_context(|| {
+            format!(
+                "spawn `cargo publish` failed (is cargo in PATH?) for {}",
+                ctx.package_name
+            )
+        })?;
+        let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
+        let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
 
-    if output.status.success() {
-        return Ok(PublishOutcome::Published {
-            url: derive_crate_url(ctx.package_name, ctx.new_version, registry),
-        });
+        if output.status.success() {
+            return Ok(PublishOutcome::Published {
+                url: derive_crate_url(ctx.package_name, ctx.new_version, registry),
+            });
+        }
+
+        if classify_already_published(&stderr) {
+            return Ok(PublishOutcome::Skipped {
+                reason: format!(
+                    "{}@{} already exists on {}",
+                    ctx.package_name, ctx.new_version, registry_label
+                ),
+            });
+        }
+
+        if attempt < MAX_PUBLISH_ATTEMPTS && classify_transient(&stderr) {
+            let backoff = PUBLISH_RETRY_BACKOFF_SECS
+                .get((attempt - 1) as usize)
+                .copied()
+                .unwrap_or(15);
+            eprintln!(
+                "  ↻ {} publish hit a transient registry error on {} (attempt {attempt}/{MAX_PUBLISH_ATTEMPTS}); \
+                 retrying in {backoff}s — likely index lag on a just-published dependency",
+                ctx.package_name, registry_label
+            );
+            std::thread::sleep(std::time::Duration::from_secs(backoff));
+            continue;
+        }
+
+        return Err(anyhow!(
+            "cargo publish failed for {} on {}: {}",
+            ctx.package_name,
+            registry_label,
+            first_meaningful_line(&stderr, &stdout)
+        ))
+        .error_code(error_code::CONFIG_INVALID_PATH);
     }
-
-    if classify_already_published(&stderr) {
-        return Ok(PublishOutcome::Skipped {
-            reason: format!(
-                "{}@{} already exists on {}",
-                ctx.package_name, ctx.new_version, registry_label
-            ),
-        });
-    }
-
-    Err(anyhow!(
-        "cargo publish failed for {} on {}: {}",
-        ctx.package_name,
-        registry_label,
-        first_meaningful_line(&stderr, &stdout)
-    ))
-    .error_code(error_code::CONFIG_INVALID_PATH)
 }
 
 /// Recognize the various phrasings cargo + private registries use to
@@ -112,6 +138,32 @@ fn classify_already_published(stderr: &str) -> bool {
         "crate version is already on registry",
         "already published",
         "version already exists",
+    ];
+    let lower = stderr.to_ascii_lowercase();
+    needles.iter().any(|n| lower.contains(n))
+}
+
+/// Recognize failures that are worth retrying rather than aborting the
+/// release: a private registry's sparse index lagging behind a
+/// just-published dependency (so a dependent can't resolve it yet), plus
+/// generic network blips. A genuinely missing/misconfigured dependency
+/// matches too and will simply fail again after the retries are spent —
+/// the cost is a slower failure, the benefit is surviving index lag
+/// without a manual whole-release re-run.
+fn classify_transient(stderr: &str) -> bool {
+    let needles = [
+        "no matching package named",
+        "failed to select a version",
+        "required by package",
+        "failed to verify package",
+        "spurious network error",
+        "error trying to connect",
+        "connection reset",
+        "connection refused",
+        "timed out",
+        "502 bad gateway",
+        "503 service",
+        "504 gateway",
     ];
     let lower = stderr.to_ascii_lowercase();
     needles.iter().any(|n| lower.contains(n))
@@ -243,6 +295,24 @@ mod tests {
         ));
         assert!(!classify_already_published("error: network unreachable"));
         assert!(!classify_already_published(""));
+    }
+
+    #[test]
+    fn classify_transient_recognizes_index_lag_and_network() {
+        // kellnr index lag: dependent published before its dep is indexed.
+        assert!(classify_transient(
+            "error: failed to verify package tarball\n\nCaused by:\n  no matching package named `ferrlabs-errors` found\n  ... required by package `ferrlabs-auth v0.8.0`"
+        ));
+        assert!(classify_transient(
+            "error: failed to select a version for the requirement `ferrlabs-db = \"^0.4\"`"
+        ));
+        assert!(classify_transient("error: 503 Service Unavailable"));
+        // A version that's already up is not "transient" — it's a skip.
+        assert!(!classify_transient(
+            "error: crate version `0.1.0` is already uploaded"
+        ));
+        assert!(!classify_transient("error: missing field `description`"));
+        assert!(!classify_transient(""));
     }
 
     #[test]
