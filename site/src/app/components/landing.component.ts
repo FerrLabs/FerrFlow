@@ -531,7 +531,7 @@ export class LandingComponent {
     { k: $localize`:@@hero.stat.latest:Latest`, v: this.ferrflowVersion() },
     { k: $localize`:@@hero.stat.license:License`, v: 'MPL-2.0' },
     { k: $localize`:@@hero.stat.lang:Lang`, v: 'Rust' },
-    { k: $localize`:@@hero.stat.size:Size`, v: this.ferrflowBinarySize() },
+    { k: $localize`:@@hero.stat.size:Download`, v: this.ferrflowBinarySize() },
   ]);
 
   protected readonly features: readonly FeatureCell[] = [

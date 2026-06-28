@@ -30,7 +30,7 @@
   "hero.stat.latest": "Dernière",
   "hero.stat.license": "Licence",
   "hero.stat.lang": "Langage",
-  "hero.stat.size": "Taille",
+  "hero.stat.size": "Téléchargement",
   "terminal.reading": "lecture de 184 commits depuis la dernière release...",
   "terminal.detected": "détecté : 12 features, 9 fixes, 1 breaking",
   "terminal.scanning": "analyse de 4 packages...",
