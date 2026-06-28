@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.22.1] - 2026-06-28
+
+### Bug Fixes
+
+- fix(publish): retry cargo publish on transient registry index lag (#622)
+
 ## [5.22.0] - 2026-06-26
 
 ### Features
