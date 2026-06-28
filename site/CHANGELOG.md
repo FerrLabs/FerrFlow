@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.19.1] - 2026-06-28
+
+### Bug Fixes
+
+- fix(site): label hero size stat as Download to disambiguate from on-disk size (#617)
+
 ## [6.19.0] - 2026-06-27
 
 ### Features
