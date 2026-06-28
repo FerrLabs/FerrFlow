@@ -451,7 +451,7 @@ jobs:
     name: Benchmark
     needs: test
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
