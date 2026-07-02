@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.19.4] - 2026-07-02
+
+### Bug Fixes
+
+- fix(site): restrict perf comparison chart to the shared command (check) (#627)
+
 ## [6.19.3] - 2026-07-02
 
 ### Bug Fixes
