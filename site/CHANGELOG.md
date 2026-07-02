@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.19.3] - 2026-07-02
+
+### Bug Fixes
+
+- fix(site): emit chrome design tokens with @theme static so Tailwind keeps them (#625)
+
 ## [6.19.2] - 2026-06-28
 
 ### Bug Fixes
