@@ -10,7 +10,7 @@
 @import 'tailwindcss';
 @import '@ferrlabs/ui-ng/docs/styles.css';
 
-@theme {
+@theme static {
   --font-sans: 'Fraunces', Georgia, ui-serif, serif;
   --font-display: 'Fraunces', Georgia, ui-serif, serif;
   --font-mono: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
