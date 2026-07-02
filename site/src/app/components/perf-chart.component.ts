@@ -28,18 +28,20 @@ const FF_ACCENT = '#e8733a';
   selector: 'flr-perf-chart',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="perf-pills">
-      @for (c of config().commands; track c) {
-        <button
-          type="button"
-          class="perf-pill"
-          [class.is-active]="c === activeCmd"
-          (click)="selectCmd(c)"
-        >
-          {{ config().commandLabels[c] ?? c }}
-        </button>
-      }
-    </div>
+    @if (config().commands.length > 1) {
+      <div class="perf-pills">
+        @for (c of config().commands; track c) {
+          <button
+            type="button"
+            class="perf-pill"
+            [class.is-active]="c === activeCmd"
+            (click)="selectCmd(c)"
+          >
+            {{ config().commandLabels[c] ?? c }}
+          </button>
+        }
+      </div>
+    }
     <div class="perf-legend">
       @for (tool of config().tools; track tool) {
         <span class="perf-leg">

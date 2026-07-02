@@ -88,6 +88,7 @@ function buildGrid(): Grid {
   const fixtures = new Set<string>();
   const tools = new Set<string>();
   const commands = new Set<string>();
+  const comparableCommands = new Set<string>();
   const cells: Record<string, BenchmarkCell> = {};
 
   for (const [key, cell] of Object.entries(data)) {
@@ -96,7 +97,10 @@ function buildGrid(): Grid {
     if (p.method !== preferredMethod(p.tool)) continue;
     fixtures.add(p.fixture);
     tools.add(p.tool);
-    if (p.cmd) commands.add(p.cmd);
+    if (p.cmd) {
+      commands.add(p.cmd);
+      if (p.tool !== 'ferrflow') comparableCommands.add(p.cmd);
+    }
     cells[`${p.fixture}|${p.tool}|${p.cmd}`] = cell;
   }
 
@@ -109,7 +113,9 @@ function buildGrid(): Grid {
     if (b === 'ferrflow') return 1;
     return a.localeCompare(b);
   });
-  const orderedCommands = Array.from(commands).sort();
+  const orderedCommands = Array.from(commands)
+    .filter((c) => comparableCommands.has(c))
+    .sort();
 
   return { cells, fixtures: orderedFixtures, tools: orderedTools, commands: orderedCommands };
 }
