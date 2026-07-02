@@ -17,21 +17,21 @@ const KNOWN_TOOLS = [
 ] as const;
 
 const FIXTURE_LABELS: Record<string, string> = {
-  single: 'Single package',
-  'mono-small': 'Monorepo · small (5 packages)',
-  'mono-medium': 'Monorepo · medium (20 packages)',
-  'mono-large': 'Monorepo · large (50 packages)',
-  'mono-50-5k': 'Monorepo · 50 packages × 5k commits',
+  single: 'Single package · 100 commits',
+  'mono-small': 'Monorepo · 10 packages × 100 commits',
+  'mono-medium': 'Monorepo · 50 packages × 500 commits',
   'mono-100-1k': 'Monorepo · 100 packages × 1k commits',
+  'mono-50-5k': 'Monorepo · 50 packages × 5k commits',
+  'mono-large': 'Monorepo · 200 packages × 10k commits',
 };
 
 const FIXTURE_SHORT: Record<string, string> = {
-  single: 'Single',
-  'mono-small': 'Mono · 5',
-  'mono-medium': 'Mono · 20',
-  'mono-large': 'Mono · 50',
-  'mono-50-5k': '50 × 5k',
+  single: '1 × 100',
+  'mono-small': '10 × 100',
+  'mono-medium': '50 × 500',
   'mono-100-1k': '100 × 1k',
+  'mono-50-5k': '50 × 5k',
+  'mono-large': '200 × 10k',
 };
 
 const COMMAND_LABELS: Record<string, string> = {
