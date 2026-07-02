@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.19.5] - 2026-07-02
+
+### Bug Fixes
+
+- fix(site): show accurate packages × commits in perf fixture labels (#629)
+
 ## [6.19.4] - 2026-07-02
 
 ### Bug Fixes
