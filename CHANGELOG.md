@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.22.2] - 2026-07-03
+
+### Refactoring
+
+- refactor(formats): share a format-preserving splice helper across handlers (#631)
+
 ## [5.22.1] - 2026-06-28
 
 ### Bug Fixes
