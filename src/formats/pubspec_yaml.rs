@@ -24,23 +24,7 @@ impl VersionFile for PubspecYamlVersionFile {
     }
 
     fn write_version(&self, file_path: &Path, version: &str) -> Result<()> {
-        let content = std::fs::read_to_string(file_path)
-            .with_context(|| format!("Cannot read {}", file_path.display()))
-            .error_code(error_code::PUBSPEC_READ)?;
-        if !version_re().is_match(&content) {
-            Err(anyhow::anyhow!(
-                "No top-level version: key found in {}",
-                file_path.display()
-            ))
-            .error_code(error_code::PUBSPEC_VERSION_NOT_FOUND)?;
-        }
-        let new_content = version_re().replace(&content, |caps: &regex::Captures| {
-            format!("{}{}{}{}", &caps[1], &caps[2], version, &caps[4])
-        });
-        std::fs::write(file_path, new_content.as_ref())
-            .with_context(|| format!("Cannot write {}", file_path.display()))
-            .error_code(error_code::PUBSPEC_WRITE)?;
-        Ok(())
+        super::splice::write_via_splice(self, file_path, version, None)
     }
 
     fn read_version_from_bytes(&self, content: &[u8], filename: &str) -> Result<String> {
@@ -52,6 +36,28 @@ impl VersionFile for PubspecYamlVersionFile {
             .map(|c| c[3].to_string())
             .ok_or_else(|| anyhow::anyhow!("No top-level version: key found in {filename}"))
             .error_code(error_code::PUBSPEC_VERSION_NOT_FOUND)
+    }
+}
+
+impl super::splice::FormatPreservingEditor for PubspecYamlVersionFile {
+    fn locate_version(
+        &self,
+        content: &str,
+        _selector: Option<&str>,
+    ) -> Result<std::ops::Range<usize>> {
+        version_re()
+            .captures(content)
+            .map(|c| c.get(3).unwrap().range())
+            .ok_or_else(|| anyhow::anyhow!("No top-level version: key found"))
+            .error_code(error_code::PUBSPEC_VERSION_NOT_FOUND)
+    }
+
+    fn read_error(&self) -> crate::error_code::ErrorCode {
+        error_code::PUBSPEC_READ
+    }
+
+    fn write_error(&self) -> crate::error_code::ErrorCode {
+        error_code::PUBSPEC_WRITE
     }
 }
 

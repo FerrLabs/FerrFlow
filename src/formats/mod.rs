@@ -10,6 +10,7 @@ pub mod lockfiles;
 pub mod mix_exs;
 pub mod package_swift;
 pub mod pubspec_yaml;
+mod splice;
 pub mod toml_format;
 pub mod txt;
 pub mod xml;
