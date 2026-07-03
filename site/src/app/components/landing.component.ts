@@ -195,7 +195,7 @@ const FORMATS = [
       min-width: 0;
     }
     .hero-title {
-      font-family: var(--font-serif);
+      font-family: var(--font-display);
       font-weight: 900;
       font-size: clamp(48px, 6.5vw, 96px);
       line-height: 0.95;
@@ -350,7 +350,7 @@ const FORMATS = [
       margin: 0 0 28px;
     }
     .section-title {
-      font-family: var(--font-serif);
+      font-family: var(--font-display);
       font-weight: 900;
       font-size: clamp(40px, 6vw, 88px);
       line-height: 0.94;
@@ -405,7 +405,7 @@ const FORMATS = [
       margin-bottom: 16px;
     }
     .feature-title {
-      font-family: var(--font-serif);
+      font-family: var(--font-display);
       font-weight: 700;
       font-size: 24px;
       letter-spacing: -0.02em;
