@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.19.7] - 2026-07-03
+
+### Bug Fixes
+
+- fix(site): update WASM package name to @ferrflow/wasm in legacy docs (#634)
+
 ## [6.19.6] - 2026-07-03
 
 ### Bug Fixes
