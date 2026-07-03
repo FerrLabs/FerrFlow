@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.19.8] - 2026-07-03
+
+### Refactoring
+
+- refactor(site): consume @ferrlabs/ui-foundation fonts instead of local @fontsource (#636)
+
 ## [6.19.7] - 2026-07-03
 
 ### Bug Fixes
