@@ -22,29 +22,7 @@ impl VersionFile for MixExsVersionFile {
     }
 
     fn write_version(&self, file_path: &Path, version: &str) -> Result<()> {
-        let content = std::fs::read_to_string(file_path)
-            .with_context(|| format!("Cannot read {}", file_path.display()))
-            .error_code(error_code::MIX_EXS_READ)?;
-        if !version_re().is_match(&content) {
-            Err(anyhow::anyhow!(
-                "No `version: \"…\"` literal found in {}",
-                file_path.display()
-            ))
-            .error_code(error_code::MIX_EXS_VERSION_NOT_FOUND)?;
-        }
-        let mut replaced = false;
-        let new_content = version_re().replace_all(&content, |caps: &regex::Captures| {
-            if replaced {
-                caps.get(0).unwrap().as_str().to_string()
-            } else {
-                replaced = true;
-                format!("{}{}{}{}", &caps[1], &caps[2], version, &caps[4])
-            }
-        });
-        std::fs::write(file_path, new_content.as_ref())
-            .with_context(|| format!("Cannot write {}", file_path.display()))
-            .error_code(error_code::MIX_EXS_WRITE)?;
-        Ok(())
+        super::splice::write_via_splice(self, file_path, version, None)
     }
 
     fn read_version_from_bytes(&self, content: &[u8], filename: &str) -> Result<String> {
@@ -56,6 +34,28 @@ impl VersionFile for MixExsVersionFile {
             .map(|c| c[3].to_string())
             .ok_or_else(|| anyhow::anyhow!("No `version: \"…\"` literal found in {filename}"))
             .error_code(error_code::MIX_EXS_VERSION_NOT_FOUND)
+    }
+}
+
+impl super::splice::FormatPreservingEditor for MixExsVersionFile {
+    fn locate_version(
+        &self,
+        content: &str,
+        _selector: Option<&str>,
+    ) -> Result<std::ops::Range<usize>> {
+        version_re()
+            .captures(content)
+            .map(|c| c.get(3).unwrap().range())
+            .ok_or_else(|| anyhow::anyhow!("No `version: \"…\"` literal found"))
+            .error_code(error_code::MIX_EXS_VERSION_NOT_FOUND)
+    }
+
+    fn read_error(&self) -> crate::error_code::ErrorCode {
+        error_code::MIX_EXS_READ
+    }
+
+    fn write_error(&self) -> crate::error_code::ErrorCode {
+        error_code::MIX_EXS_WRITE
     }
 }
 
