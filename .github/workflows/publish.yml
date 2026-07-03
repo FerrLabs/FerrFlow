@@ -77,8 +77,32 @@ jobs:
             https://github.com/cross-rs/cross/releases/latest/download/cross-x86_64-unknown-linux-musl.tar.gz
           tar xz -C "$HOME/.cargo/bin" -f /tmp/cross.tar.gz
           rm /tmp/cross.tar.gz
+      - name: Generate fixtures (PGO profiling workload, x64-linux only)
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        uses: FerrLabs/Fixtures@7db03266c337749bef6f0d5c1e956b112b337b9c # v1
+        with:
+          definitions: tests/fixtures/definitions
+      - name: Install musl tools (PGO x64-linux)
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+      - name: Build x64-linux (PGO, #619)
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        shell: bash
+        run: |
+          if ! bash scripts/pgo-build.sh x86_64-unknown-linux-musl; then
+            echo "::warning::PGO build failed — falling back to LTO-only cross build for x64-linux"
+            n=0
+            until cross build --release --target x86_64-unknown-linux-musl; do
+              n=$((n + 1))
+              [ "$n" -ge 3 ] && { echo "fallback build failed after $n attempts" >&2; exit 1; }
+              echo "fallback build attempt $n failed; retrying in 15s..." >&2
+              sleep 15
+            done
+          fi
+        env:
+          FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
       - name: Build (Linux)
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-latest' && matrix.target != 'x86_64-unknown-linux-musl'
         shell: bash
         run: |
           n=0
