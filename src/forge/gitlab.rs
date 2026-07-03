@@ -62,7 +62,7 @@ impl Forge for GitLabForge {
         _target_commitish: Option<&str>,
     ) -> Result<ReleaseResult> {
         if draft {
-            eprintln!(
+            tracing::warn!(
                 "{}",
                 "Warning: --draft is not supported on GitLab. The release will be created as \
                  published immediately. Use a tag-protected branch or a manual approval gate if \

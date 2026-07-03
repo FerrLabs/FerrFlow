@@ -108,10 +108,11 @@ pub fn run(
                 .get((attempt - 1) as usize)
                 .copied()
                 .unwrap_or(15);
-            eprintln!(
+            tracing::warn!(
                 "  ↻ {} publish hit a transient registry error on {} (attempt {attempt}/{MAX_PUBLISH_ATTEMPTS}); \
                  retrying in {backoff}s — likely index lag on a just-published dependency",
-                ctx.package_name, registry_label
+                ctx.package_name,
+                registry_label
             );
             std::thread::sleep(std::time::Duration::from_secs(backoff));
             continue;
