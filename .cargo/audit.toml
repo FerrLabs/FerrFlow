@@ -1,0 +1,8 @@
+[advisories]
+ignore = [
+    # TODO: remove once the transitive dependency that pulls proc-macro-error2
+    # migrates off it. RUSTSEC-2026-0173 is an unmaintained-crate warning (not a
+    # vulnerability) on a dep we don't use directly; it drifts in and out of the
+    # tree with registry state, so it's ignored rather than pinned.
+    "RUSTSEC-2026-0173",
+]
