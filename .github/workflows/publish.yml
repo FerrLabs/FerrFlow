@@ -79,7 +79,7 @@ jobs:
           rm /tmp/cross.tar.gz
       - name: Generate fixtures (PGO profiling workload, x64-linux only)
         if: matrix.target == 'x86_64-unknown-linux-musl'
-        uses: FerrLabs/Fixtures@v1
+        uses: FerrLabs/Fixtures@7db03266c337749bef6f0d5c1e956b112b337b9c # v1
         with:
           definitions: tests/fixtures/definitions
       - name: Install musl tools (PGO x64-linux)
