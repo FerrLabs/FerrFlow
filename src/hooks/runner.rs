@@ -17,7 +17,7 @@ pub fn run_hook(
     working_dir: &Path,
 ) -> Result<()> {
     if dry_run {
-        println!(
+        tracing::info!(
             "  {} {} {}",
             "⊙".dimmed(),
             format!("[{}]", point.label()).dimmed(),
@@ -26,7 +26,7 @@ pub fn run_hook(
         return Ok(());
     }
 
-    println!(
+    tracing::info!(
         "  {} {} {}",
         "▸".cyan(),
         format!("[{}]", point.label()).cyan(),
@@ -115,7 +115,7 @@ fn handle_failure(
         ))
         .error_code(error_code::HOOK_FAILED)?,
         OnFailure::Continue => {
-            eprintln!(
+            tracing::warn!(
                 "{}",
                 format!(
                     "  Warning: hook [{}] failed (exit {}): {}",

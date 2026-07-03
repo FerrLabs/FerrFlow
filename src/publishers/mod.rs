@@ -71,7 +71,7 @@ pub fn run_all(publishers: &[PublisherConfig], ctx: &PublishContext<'_>) -> Resu
     if publishers.is_empty() {
         return Ok(());
     }
-    println!(
+    tracing::info!(
         "  {} {} publishers:",
         "→".cyan(),
         publishers.len().to_string().cyan()
@@ -82,16 +82,16 @@ pub fn run_all(publishers: &[PublisherConfig], ctx: &PublishContext<'_>) -> Resu
         match run(p, ctx) {
             Ok(PublishOutcome::Published { url }) => {
                 let suffix = url.as_deref().unwrap_or("");
-                println!("    [{kind}] {preview} → {} {suffix}", "published".green());
+                tracing::info!("    [{kind}] {preview} → {} {suffix}", "published".green());
             }
             Ok(PublishOutcome::Skipped { reason }) => {
-                println!("    [{kind}] {preview} → {} ({reason})", "skipped".yellow());
+                tracing::info!("    [{kind}] {preview} → {} ({reason})", "skipped".yellow());
             }
             Ok(PublishOutcome::DryRun) => {
-                println!("    [{kind}] {preview} {}", "(dry-run)".dimmed());
+                tracing::info!("    [{kind}] {preview} {}", "(dry-run)".dimmed());
             }
             Err(e) => {
-                eprintln!("    [{kind}] {} {e:#}", "ERROR".red());
+                tracing::error!("    [{kind}] {} {e:#}", "ERROR".red());
                 return Err(e);
             }
         }
