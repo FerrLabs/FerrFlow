@@ -7,17 +7,17 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 WASM_DIR="${REPO_DIR}/ferrflow-wasm"
 
-echo "Building @ferrlabs/ferrflow-wasm@${VERSION}..."
+echo "Building @ferrflow/wasm@${VERSION}..."
 
 cd "$WASM_DIR"
-wasm-pack build --target bundler --scope ferrlabs
+wasm-pack build --target bundler --scope ferrflow
 
 cd pkg
 
 node -e "
   const fs = require('fs');
   const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-  pkg.name = '@ferrlabs/ferrflow-wasm';
+  pkg.name = '@ferrflow/wasm';
   pkg.version = '${VERSION}';
   pkg.repository = {
     type: 'git',
@@ -28,11 +28,11 @@ node -e "
   fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
 "
 
-if npm view "@ferrlabs/ferrflow-wasm@${VERSION}" version >/dev/null 2>&1; then
-  echo "@ferrlabs/ferrflow-wasm@${VERSION} already on registry — skipping"
+if npm view "@ferrflow/wasm@${VERSION}" version >/dev/null 2>&1; then
+  echo "@ferrflow/wasm@${VERSION} already on registry — skipping"
 else
-  echo "Publishing @ferrlabs/ferrflow-wasm@${VERSION}..."
+  echo "Publishing @ferrflow/wasm@${VERSION}..."
   npm publish --access public
 fi
 
-echo "Published @ferrlabs/ferrflow-wasm@${VERSION}"
+echo "Published @ferrflow/wasm@${VERSION}"

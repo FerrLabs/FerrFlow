@@ -330,7 +330,7 @@ jobs:
         run: bash npm/scripts/publish.sh "${{ steps.version.outputs.value }}"
 
   publish-wasm:
-    name: Publish @ferrlabs/ferrflow-wasm
+    name: Publish @ferrflow/wasm
     needs: upload
     runs-on: ubuntu-latest
     steps:

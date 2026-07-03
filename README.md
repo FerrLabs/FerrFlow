@@ -48,8 +48,6 @@ cargo install ferrflow
 npm install -D ferrflow
 ```
 
-(`@ferrlabs/ferrflow` is kept as a published alias for the same package.)
-
 **Docker**
 
 ```bash
