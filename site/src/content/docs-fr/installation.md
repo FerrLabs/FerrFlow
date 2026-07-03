@@ -3,7 +3,6 @@ title: Installation
 description: Comment installer FerrFlow en local ou en CI.
 ---
 
-
 ## Installation locale
 
 <div class="ferr-tabs">
@@ -15,7 +14,7 @@ description: Comment installer FerrFlow en local ou en CI.
 npm install -D @ferrlabs/ferrflow
 </code></pre>
 </div></div>
-  <div class="ferr-tab" data-label="WASM (navigateur)"><p class="ferr-tab__label">WASM (navigateur)</p><div class="ferr-tab__body"><pre><code class="language-bash">npm install @ferrlabs/ferrflow-wasm
+  <div class="ferr-tab" data-label="WASM (navigateur)"><p class="ferr-tab__label">WASM (navigateur)</p><div class="ferr-tab__body"><pre><code class="language-bash">npm install @ferrflow/wasm
 </code></pre>
 <p>Utilisez FerrFlow directement dans le navigateur — parsez les commits, calculez les incréments de version et générez des changelogs côté client sans backend.</p>
 </div></div>
