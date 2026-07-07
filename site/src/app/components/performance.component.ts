@@ -145,21 +145,21 @@ interface SrTableRow {
   template: `
     <main class="perf-main">
       <header class="perf-header">
-        <p class="eyebrow">Benchmarks</p>
-        <h1>How fast is <em>FerrFlow</em>?</h1>
-        <p class="lead">
+        <p class="eyebrow" i18n="@@perf.eyebrow">Benchmarks</p>
+        <h1 i18n="@@perf.h1">How fast is <em>FerrFlow</em>?</h1>
+        <p class="lead" i18n="@@perf.lead">
           Side-by-side comparison against the JavaScript ecosystem release tools, measured with
           <a href="https://github.com/sharkdp/hyperfine">hyperfine</a> on the same hardware, the
           same commits, and the same fixtures. Numbers refresh on every FerrFlow release.
         </p>
-        <p class="updated">
+        <p class="updated" i18n="@@perf.updated">
           Last update: <strong>{{ updated }}</strong> · ferrflow <code>{{ versionLabel }}</code> ·
           binary size <code>{{ binarySize }} MB</code>
         </p>
       </header>
 
       @if (!hasCompetitors()) {
-        <aside class="perf-note">
+        <aside class="perf-note" i18n="@@perf.note">
           <strong>Heads up.</strong> The snapshot below was captured before competitor benchmarks
           landed in CI. Only FerrFlow rows are shown for now. The next release after
           <a href="https://github.com/FerrLabs/FerrFlow/pull/451">FerrFlow#451</a> will populate the
@@ -171,7 +171,7 @@ interface SrTableRow {
         <section class="perf-chart" aria-label="Latency comparison by command">
           <flr-perf-chart [config]="chartConfig()" />
           <table class="sr-only">
-            <caption>
+            <caption i18n="@@perf.srCaption">
               Median latency,
               {{
                 defaultCmdLabel()
@@ -200,32 +200,34 @@ interface SrTableRow {
       }
 
       <section class="perf-method">
-        <h2>How we measure</h2>
+        <h2 i18n="@@perf.method.title">How we measure</h2>
         <ul>
-          <li>
+          <li i18n="@@perf.method.hyperfine">
             <strong>Hyperfine</strong> with 3 warmup runs and 10 timed runs per (fixture × tool ×
             command) cell. Median latency reported.
           </li>
-          <li>
+          <li i18n="@@perf.method.rss">
             <strong>Peak RSS</strong> via <code>/usr/bin/time -v</code> on a single subsequent run.
           </li>
-          <li>
+          <li i18n="@@perf.method.fixtures">
             <strong>Fixtures</strong> are generated from
             <a href="https://github.com/FerrLabs/Fixtures">FerrLabs/Fixtures</a> with deterministic
-            conventional-commit history (no flaky inputs).
+            conventional-commit history (no flaky inputs). The commit count in each fixture label is
+            the number of commits <em>since the last release tag</em> — the exact window FerrFlow
+            walks to compute a bump, not the repository's total history.
           </li>
-          <li>
+          <li i18n="@@perf.method.commands">
             <strong>All commands</strong> are no-op-ish dry runs: <code>ferrflow check</code>,
             <code>semantic-release --dry-run --no-ci</code>, <code>changesets status</code>,
             <code>standard-version --dry-run</code>, etc. So we're comparing the planning cost, not
             the IO cost of actually mutating files.
           </li>
-          <li>
+          <li i18n="@@perf.method.singleThread">
             <strong>Single-threaded comparison.</strong> FerrFlow runs with <code>--jobs 1</code> in
             the chart above, so it's measured like the single-threaded JS tools. Its real-world
             parallel numbers are reported separately.
           </li>
-          <li>
+          <li i18n="@@perf.method.reproducible">
             <strong>Reproducible</strong> — the full pipeline is in
             <a href="https://github.com/FerrLabs/Benchmarks">FerrLabs/Benchmarks</a>; results land
             as artifacts on every <code>main</code> push and in each release notes.
@@ -235,8 +237,8 @@ interface SrTableRow {
 
       @if (hasParallel()) {
         <section class="perf-section">
-          <h2>Parallel mode</h2>
-          <p class="lead">
+          <h2 i18n="@@perf.parallel.title">Parallel mode</h2>
+          <p class="lead" i18n="@@perf.parallel.lead">
             The comparison pins FerrFlow to a single thread (<code>--jobs 1</code>) so it's
             apples-to-apples with the single-threaded JS tools. In real CI it uses every core —
             here's the same <code>release --dry-run</code> on all {{ runnerCores() }} cores of the
@@ -246,10 +248,10 @@ interface SrTableRow {
             <table>
               <thead>
                 <tr>
-                  <th>Fixture</th>
-                  <th>1 thread</th>
-                  <th class="is-ours">{{ runnerCores() }} cores</th>
-                  <th>Speedup</th>
+                  <th i18n="@@perf.parallel.thFixture">Fixture</th>
+                  <th i18n="@@perf.parallel.thSingle">1 thread</th>
+                  <th class="is-ours" i18n="@@perf.parallel.thCores">{{ runnerCores() }} cores</th>
+                  <th i18n="@@perf.parallel.thSpeedup">Speedup</th>
                 </tr>
               </thead>
               <tbody>
@@ -269,8 +271,8 @@ interface SrTableRow {
 
       @if (hasInstallSizes()) {
         <section class="perf-section">
-          <h2>Install footprint</h2>
-          <p class="perf-footprint-lead">
+          <h2 i18n="@@perf.install.title">Install footprint</h2>
+          <p class="perf-footprint-lead" i18n="@@perf.install.lead">
             Disk size after install. <code>release-please</code> appears here only — its runtime
             can't be benched offline (it needs the GitHub API to resolve the latest release), so
             footprint is the fair comparison we can publish.
@@ -279,9 +281,9 @@ interface SrTableRow {
             <table>
               <thead>
                 <tr>
-                  <th>Tool</th>
-                  <th>npm install</th>
-                  <th>Native binary</th>
+                  <th i18n="@@perf.install.thTool">Tool</th>
+                  <th i18n="@@perf.install.thNpm">npm install</th>
+                  <th i18n="@@perf.install.thBinary">Native binary</th>
                 </tr>
               </thead>
               <tbody>
@@ -303,25 +305,25 @@ interface SrTableRow {
       }
 
       <section class="perf-footnote">
-        <h2>Why FerrFlow ships smaller numbers</h2>
+        <h2 i18n="@@perf.footnote.title">Why FerrFlow ships smaller numbers</h2>
         <ul>
-          <li>
+          <li i18n="@@perf.footnote.nativeBinary">
             <strong>Native binary.</strong> No Node.js boot, no npm install, no plugin discovery. A
             <code>ferrflow check</code> on a 50-package monorepo finishes before
             <code>node --version</code> would have warmed up.
           </li>
-          <li>
-            <strong>libgit2 in-process.</strong> Tag enumeration and commit walking happen via
-            libgit2 in the same process. Competitors shell out to <code>git</code> per call;
+          <li i18n="@@perf.footnote.gitoxide">
+            <strong>gitoxide in-process.</strong> Tag enumeration and commit walking happen via
+            gitoxide in the same process. Competitors shell out to <code>git</code> per call;
             process-spawn overhead dominates on dense histories.
           </li>
-          <li>
+          <li i18n="@@perf.footnote.singleTool">
             <strong>Single tool, not a plugin tree.</strong> semantic-release pulls a chain of
             analyzers, notes generators, npm publishers and changelog writers — each with its own
             require() cost. FerrFlow's pipeline is one Rust crate.
           </li>
         </ul>
-        <p class="cta">
+        <p class="cta" i18n="@@perf.cta">
           Numbers updating every release. See the
           <a href="https://github.com/FerrLabs/FerrFlow/releases/latest">latest release notes</a>
           for the full table including baseline delta.
