@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.20.0] - 2026-07-07
+
+### Features
+
+- feat(i18n): translate the performance page to French (#646)
+
 ## [6.19.9] - 2026-07-06
 
 ### Bug Fixes
