@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.20.1] - 2026-07-11
+
+### Bug Fixes
+
+- fix(deps): update dependency marked to v18 (#572)
+
 ## [6.20.0] - 2026-07-07
 
 ### Features
