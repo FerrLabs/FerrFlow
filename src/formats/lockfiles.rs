@@ -146,10 +146,7 @@ fn locate_lockfile(repo_root: &Path, manifest_dir: &Path, filename: &str) -> Opt
         if dir == repo_root {
             return None;
         }
-        match dir.parent() {
-            Some(parent) => dir = parent,
-            None => return None,
-        }
+        dir = dir.parent()?;
     }
 }
 
