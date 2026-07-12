@@ -4,6 +4,15 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.25.0] - 2026-07-12
+
+### Features
+
+- feat(obs): migrate monorepo report output to tracing (#642)
+- feat(obs): migrate monorepo run progress lines to tracing (#643)
+- feat(obs): migrate validate output to tracing (#641)
+- feat(obs): migrate main error printer and timing breakdown to tracing (#644)
+
 ## [5.24.0] - 2026-07-12
 
 ### Features
