@@ -72,14 +72,14 @@ fn main() {
                 .map(|c| c.to_string())
                 .collect();
 
-            eprintln!("error[{}]: {}", code, msgs[0]);
+            tracing::error!("error[{}]: {}", code, msgs[0]);
             for msg in &msgs[1..] {
-                eprintln!("  {msg}");
+                tracing::error!("  {msg}");
             }
-            eprintln!();
-            eprintln!("  For help: {}", code.doc_url());
+            tracing::error!("");
+            tracing::error!("  For help: {}", code.doc_url());
         } else {
-            eprintln!("Error: {err:?}");
+            tracing::error!("Error: {err:?}");
         }
 
         std::process::exit(1);

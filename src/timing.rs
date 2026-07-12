@@ -65,21 +65,21 @@ impl Timing {
             .max()
             .unwrap_or(0);
 
-        eprintln!();
-        eprintln!("Timing breakdown:");
+        tracing::info!("");
+        tracing::info!("Timing breakdown:");
         for stage in &self.stages {
             match stage {
                 Stage::Measured(name, d) => {
-                    eprintln!("  {name:<label_width$}  {:>6} ms", d.as_millis());
+                    tracing::info!("  {name:<label_width$}  {:>6} ms", d.as_millis());
                 }
                 Stage::Skipped(name, reason) => {
-                    eprintln!("  {name:<label_width$}  — ({reason})");
+                    tracing::info!("  {name:<label_width$}  — ({reason})");
                 }
             }
         }
         let rule = "─".repeat(label_width + 12);
-        eprintln!("  {rule}");
-        eprintln!(
+        tracing::info!("  {rule}");
+        tracing::info!(
             "  {:<label_width$}  {:>6} ms",
             "total",
             self.total().as_millis()
