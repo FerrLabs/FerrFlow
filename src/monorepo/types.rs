@@ -34,7 +34,7 @@ impl RunOutput {
             return;
         }
         for line in &self.text_lines {
-            println!("{line}");
+            tracing::info!("{line}");
         }
     }
 }
