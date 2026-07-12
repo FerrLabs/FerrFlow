@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.25.1] - 2026-07-12
+
+### Bug Fixes
+
+- fix(deps): bump gix to 0.85 and gix-traverse to 0.59 (#647)
+
 ## [5.25.0] - 2026-07-12
 
 ### Features
