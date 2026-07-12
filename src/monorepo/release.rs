@@ -35,11 +35,11 @@ pub fn release(
 
     if !json {
         if dry_run {
-            println!("{}", "FerrFlow — Release (dry run)".bold().blue());
+            tracing::info!("{}", "FerrFlow — Release (dry run)".bold().blue());
         } else {
-            println!("{}", "FerrFlow — Release".bold().green());
+            tracing::info!("{}", "FerrFlow — Release".bold().green());
         }
-        println!();
+        tracing::info!("");
     }
 
     let single_shot = dry_run
@@ -102,7 +102,7 @@ pub fn release(
                 if attempt < MAX_RELEASE_REGENERATE_ATTEMPTS
                     && crate::git::is_push_rejected_error(&e) =>
             {
-                eprintln!();
+                tracing::warn!("");
                 tracing::warn!(
                     "{}",
                     format!(

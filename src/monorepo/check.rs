@@ -26,8 +26,8 @@ pub fn check(
     let config = timing.stage("load config", || Config::load(&root, config_path))?;
 
     if !json {
-        println!("{}", "FerrFlow — Check (dry run)".bold().blue());
-        println!();
+        tracing::info!("{}", "FerrFlow — Check (dry run)".bold().blue());
+        tracing::info!("");
     }
 
     let variant = if json { "json" } else { "text" };
@@ -86,6 +86,6 @@ fn print_cached(hit: &CachedRun) {
         return;
     }
     for line in &hit.text_lines {
-        println!("{line}");
+        tracing::info!("{line}");
     }
 }
