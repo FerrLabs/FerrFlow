@@ -16,15 +16,15 @@ pub(super) fn output_result(result: &ValidationResult, json: bool) -> Result<()>
 }
 
 fn print_text_result(result: &ValidationResult) {
-    println!();
-    println!("{}", "ferrflow validate".bold());
-    println!();
+    tracing::info!("");
+    tracing::info!("{}", "ferrflow validate".bold());
+    tracing::info!("");
 
     if let Some(ref cf) = result.config_file {
-        println!("  {} config parsed ({})", "✓".green(), cf);
+        tracing::info!("  {} config parsed ({})", "✓".green(), cf);
     }
     if result.package_count > 0 {
-        println!(
+        tracing::info!(
             "  {} {} package{} found",
             "✓".green(),
             result.package_count,
@@ -33,20 +33,20 @@ fn print_text_result(result: &ValidationResult) {
     }
 
     for e in &result.errors {
-        println!("  {} {}: {}", "✗".red(), e.path, e.message);
+        tracing::info!("  {} {}: {}", "✗".red(), e.path, e.message);
     }
     for w in &result.warnings {
-        println!("  {} {}: {}", "⚠".yellow(), w.path, w.message);
+        tracing::info!("  {} {}: {}", "⚠".yellow(), w.path, w.message);
     }
     for s in &result.suggestions {
-        println!("  {} {}: {}", "◆".cyan(), s.path, s.message);
+        tracing::info!("  {} {}: {}", "◆".cyan(), s.path, s.message);
     }
 
     if result.errors.is_empty() && result.warnings.is_empty() && result.suggestions.is_empty() {
-        println!("  {} no issues found", "✓".green());
+        tracing::info!("  {} no issues found", "✓".green());
     }
 
-    println!();
+    tracing::info!("");
     let parts: Vec<String> = [
         (result.errors.len(), "error"),
         (result.warnings.len(), "warning"),
@@ -58,9 +58,9 @@ fn print_text_result(result: &ValidationResult) {
     .collect();
 
     if parts.is_empty() {
-        println!("  {}", "all checks passed".green().bold());
+        tracing::info!("  {}", "all checks passed".green().bold());
     } else {
-        println!("  {}", parts.join(", "));
+        tracing::info!("  {}", parts.join(", "));
     }
-    println!();
+    tracing::info!("");
 }
