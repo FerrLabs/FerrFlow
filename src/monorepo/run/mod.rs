@@ -165,12 +165,12 @@ pub(super) fn run_release_logic(
 
     let quiet = json || release_json;
 
-    if verbose && !quiet && !changed_files.is_empty() {
-        println!("Changed files in last commit:");
+    if !quiet && !changed_files.is_empty() {
+        tracing::debug!("Changed files in last commit:");
         for f in &changed_files {
-            println!("  {}", f.dimmed());
+            tracing::debug!("  {}", f.dimmed());
         }
-        println!();
+        tracing::debug!("");
     }
 
     let mut any_bumped = false;
@@ -221,8 +221,8 @@ pub(super) fn run_release_logic(
             PackagePlan::Skipped { recovered, .. } => *recovered,
             PackagePlan::Bump(bump_plan) => bump_plan.recovered,
         };
-        if recovered && verbose && !quiet {
-            println!(
+        if recovered && !quiet {
+            tracing::debug!(
                 "{} {} — recovering missed release",
                 "↻".cyan(),
                 pkg.name.cyan()
@@ -233,8 +233,8 @@ pub(super) fn run_release_logic(
             PackagePlan::Skipped { reason, .. } => {
                 match reason {
                     SkipReason::NotTouched => {
-                        if verbose && !quiet {
-                            println!(
+                        if !quiet {
+                            tracing::debug!(
                                 "{} {} — not touched, skipping",
                                 "○".dimmed(),
                                 pkg.name.dimmed()
@@ -242,8 +242,12 @@ pub(super) fn run_release_logic(
                         }
                     }
                     SkipReason::NoNewCommits => {
-                        if verbose && !quiet {
-                            println!("{} {} — no new commits", "○".dimmed(), pkg.name.dimmed());
+                        if !quiet {
+                            tracing::debug!(
+                                "{} {} — no new commits",
+                                "○".dimmed(),
+                                pkg.name.dimmed()
+                            );
                         }
                     }
                     SkipReason::NoReleasableCommits => {
@@ -256,8 +260,12 @@ pub(super) fn run_release_logic(
                         }
                     }
                     SkipReason::VersionUnchanged => {
-                        if verbose && !quiet {
-                            println!("{} {} — version unchanged", "○".dimmed(), pkg.name.dimmed());
+                        if !quiet {
+                            tracing::debug!(
+                                "{} {} — version unchanged",
+                                "○".dimmed(),
+                                pkg.name.dimmed()
+                            );
                         }
                     }
                 }
