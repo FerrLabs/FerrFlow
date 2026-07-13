@@ -141,6 +141,13 @@ pub const GITLAB_MR_MISSING_FIELD: ErrorCode = ErrorCode(3104);
 pub const GITLAB_MERGE_MR: ErrorCode = ErrorCode(3105);
 
 #[allow(dead_code)]
+pub const GITEA_CREATE_RELEASE: ErrorCode = ErrorCode(3201);
+#[allow(dead_code)]
+pub const GITEA_LIST_RELEASES: ErrorCode = ErrorCode(3202);
+#[allow(dead_code)]
+pub const GITEA_PUBLISH_RELEASE: ErrorCode = ErrorCode(3203);
+
+#[allow(dead_code)]
 pub const TOML_READ: ErrorCode = ErrorCode(4101);
 #[allow(dead_code)]
 pub const TOML_PARSE: ErrorCode = ErrorCode(4102);
