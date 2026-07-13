@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.23.0] - 2026-07-13
+
+### Features
+
+- feat(site): document expanded release hook points in config reference (#664)
+
 ## [6.22.2] - 2026-07-13
 
 ### Bug Fixes
