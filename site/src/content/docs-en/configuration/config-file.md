@@ -536,13 +536,25 @@ generate changelog
   ↓
 pre_commit      ← review staged changes, run linters
   ↓
-git commit + tag
+git commit
+  ↓
+post_commit     ← react to the release commit
+  ↓
+pre_tag         ← smoke-test the bumped tree before the tag lands
+  ↓
+git tag
+  ↓
+post_tag        ← cargo publish before push (recoverable if it fails)
   ↓
 pre_publish     ← run tests against tagged commit, build artifacts
   ↓
 git push + create release
   ↓
 post_publish    ← push Docker images, notify Slack, publish packages
+
+pre_release     ← (PR mode) after the release PR opens, before merge
+on_success      ← once, after the whole release completes cleanly
+on_error        ← once, when the release fails ($FERRFLOW_ERROR_CODE)
 ```
 
 ### Configuration
@@ -587,14 +599,20 @@ on_failure   = &quot;abort&quot;
 </div></div>
 </div>
 
-| Field         | Type   | Default   | Description                                                             |
-| ------------- | ------ | --------- | ----------------------------------------------------------------------- |
-| `preBump`     | string | —         | Run after bump calculation, before writing version files                |
-| `postBump`    | string | —         | Run after version files are written                                     |
-| `preCommit`   | string | —         | Run after changelog, before git commit                                  |
-| `prePublish`  | string | —         | Run after commit+tag, before push                                       |
-| `postPublish` | string | —         | Run after push and release creation                                     |
-| `onFailure`   | string | `"abort"` | `"abort"` cancels the release on failure, `"continue"` prints a warning |
+| Field         | Type   | Default   | Description                                                                             |
+| ------------- | ------ | --------- | --------------------------------------------------------------------------------------- |
+| `preBump`     | string | —         | Run after bump calculation, before writing version files                                |
+| `postBump`    | string | —         | Run after version files are written                                                     |
+| `preCommit`   | string | —         | Run after changelog, before git commit                                                  |
+| `postCommit`  | string | —         | Run after the release commit, before tagging                                            |
+| `preTag`      | string | —         | Run after the commit, immediately before `git tag`                                      |
+| `postTag`     | string | —         | Run after tags are created, before push                                                 |
+| `prePublish`  | string | —         | Run after commit+tag, before push                                                       |
+| `postPublish` | string | —         | Run after push and release creation                                                     |
+| `preRelease`  | string | —         | PR mode only: after the release PR opens, before merge (once per run)                   |
+| `onSuccess`   | string | —         | Run once after the whole release completes cleanly                                      |
+| `onError`     | string | —         | Run once when the release fails; sets `FERRFLOW_ERROR_CODE` (once per run)              |
+| `onFailure`   | string | `"abort"` | Strategy — `"abort"` cancels the release on hook failure, `"continue"` prints a warning |
 
 ### Environment variables
 
@@ -609,6 +627,11 @@ Every hook receives these variables:
 | `FERRFLOW_TAG`          | Full git tag name                            | `api@v1.3.0`                   |
 | `FERRFLOW_DRY_RUN`      | `true` if `--dry-run` is set                 | `false`                        |
 | `FERRFLOW_PACKAGE_PATH` | Absolute path to package root                | `/home/user/repo/packages/api` |
+| `FERRFLOW_ERROR_CODE`   | Error code, set only for `onError`           | `E2005`                        |
+
+For the once-per-run hooks (`preRelease`, `onSuccess`, `onError`) the per-package variables are empty and `FERRFLOW_TAG` holds every released tag joined by commas.
+
+`onFailure` is the failure **strategy** (`abort` / `continue`), not a command. The command that runs _when_ a release fails is `onError`, which receives the failing `FERRFLOW_ERROR_CODE`.
 
 ### Per-package hooks
 
