@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.21.0] - 2026-07-13
+
+### Features
+
+- feat(site): document --log-format flag and logging behavior (#659)
+
 ## [6.20.4] - 2026-07-13
 
 ### Bug Fixes
