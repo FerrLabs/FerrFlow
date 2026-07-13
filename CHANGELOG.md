@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.28.0] - 2026-07-13
+
+### Features
+
+- feat(hooks): add pre-tag, post-tag, post-commit, pre-release, on-success, on-error hook points (#657)
+
 ## [5.27.1] - 2026-07-13
 
 ### Bug Fixes
