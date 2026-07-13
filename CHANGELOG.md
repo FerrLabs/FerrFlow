@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.27.1] - 2026-07-13
+
+### Bug Fixes
+
+- fix(wasm): make tracing facade non-optional so the wasm build compiles (#655)
+
 ## [5.27.0] - 2026-07-13
 
 ### Features
