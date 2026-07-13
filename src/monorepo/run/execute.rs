@@ -103,6 +103,8 @@ pub(super) fn execute_release(plan: &mut ReleasePlan<'_>) -> Result<()> {
         } else if plan.verbose {
             tracing::info!("  ↻ Resumed: skipping commit (already done)");
         }
+        run_package_hooks(plan, HookPoint::PostCommit)?;
+        run_package_hooks(plan, HookPoint::PreTag)?;
         if !checkpoint_is_done(plan, Phase::TagsCreated) {
             create_release_tags(plan)?;
             create_and_move_floating_tags(plan, &mut floating_tag_names)?;
@@ -110,9 +112,10 @@ pub(super) fn execute_release(plan: &mut ReleasePlan<'_>) -> Result<()> {
         } else if plan.verbose {
             tracing::info!("  ↻ Resumed: skipping tag creation (already done)");
         }
+        run_package_hooks(plan, HookPoint::PostTag)?;
     }
 
-    run_pre_publish_hooks(plan)?;
+    run_package_hooks(plan, HookPoint::PrePublish)?;
 
     if !plan.dry_run {
         if !checkpoint_is_done(plan, Phase::ReleasesCreated) {
@@ -260,6 +263,7 @@ fn run_commit_or_pr(
                             forge_instance.mr_noun(),
                             mr.id.to_string().cyan()
                         ));
+                        run_release_summary_hook(plan, HookPoint::PreRelease)?;
                         if plan.config.workspace.auto_merge_releases {
                             match forge_instance.enable_auto_merge(&mr) {
                                 Ok(()) => {
@@ -371,15 +375,15 @@ fn create_and_move_floating_tags(
     Ok(())
 }
 
-fn run_pre_publish_hooks(plan: &mut ReleasePlan<'_>) -> Result<()> {
+fn run_package_hooks(plan: &ReleasePlan<'_>, point: HookPoint) -> Result<()> {
     for (ctx, pkg_idx) in plan.hook_contexts {
         let pkg = &plan.config.packages[*pkg_idx];
         let ws_hooks = plan.config.workspace.hooks.as_ref();
         let pkg_hooks = pkg.hooks.as_ref();
         let on_failure = resolve_on_failure(pkg_hooks, ws_hooks);
-        if let Some(cmd) = resolve_hook(pkg_hooks, ws_hooks, HookPoint::PrePublish) {
+        if let Some(cmd) = resolve_hook(pkg_hooks, ws_hooks, point) {
             run_hook(
-                HookPoint::PrePublish,
+                point,
                 &cmd,
                 ctx,
                 on_failure,
@@ -388,6 +392,29 @@ fn run_pre_publish_hooks(plan: &mut ReleasePlan<'_>) -> Result<()> {
                 plan.root,
             )?;
         }
+    }
+    Ok(())
+}
+
+fn run_release_summary_hook(plan: &ReleasePlan<'_>, point: HookPoint) -> Result<()> {
+    let ws_hooks = plan.config.workspace.hooks.as_ref();
+    if let Some(cmd) = resolve_hook(None, ws_hooks, point) {
+        let on_failure = resolve_on_failure(None, ws_hooks);
+        let tags: Vec<String> = plan
+            .tags_to_create
+            .iter()
+            .map(|(t, _, _, _, _, _, _)| t.clone())
+            .collect();
+        let ctx = HookContext::release_summary(plan.root, &tags, plan.dry_run);
+        run_hook(
+            point,
+            &cmd,
+            &ctx,
+            on_failure,
+            plan.dry_run,
+            plan.verbose,
+            plan.root,
+        )?;
     }
     Ok(())
 }
@@ -648,6 +675,9 @@ pub(super) fn print_dry_run_hooks(plan: &ReleasePlan<'_>) -> Result<()> {
         let on_failure = resolve_on_failure(pkg_hooks, ws_hooks);
         for point in [
             HookPoint::PreCommit,
+            HookPoint::PostCommit,
+            HookPoint::PreTag,
+            HookPoint::PostTag,
             HookPoint::PrePublish,
             HookPoint::PostPublish,
         ] {

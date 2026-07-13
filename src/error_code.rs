@@ -32,6 +32,11 @@ impl<T> ErrorCodeExt<T> for anyhow::Result<T> {
 }
 
 #[allow(dead_code)]
+pub fn code_from_error(err: &anyhow::Error) -> Option<String> {
+    err.downcast_ref::<ErrorCode>().map(ToString::to_string)
+}
+
+#[allow(dead_code)]
 pub const CONFIG_NOT_FOUND: ErrorCode = ErrorCode(1001);
 #[allow(dead_code)]
 pub const CONFIG_PARSE_JSON: ErrorCode = ErrorCode(1002);
@@ -322,5 +327,19 @@ mod tests {
         let err = anyhow::anyhow!("plain error");
         let code = err.downcast_ref::<ErrorCode>().copied();
         assert!(code.is_none());
+    }
+
+    #[test]
+    fn code_from_error_finds_wrapped_code() {
+        let err = anyhow::anyhow!("boom")
+            .context(ErrorCode(2004))
+            .context("while pushing");
+        assert_eq!(code_from_error(&err).as_deref(), Some("E2004"));
+    }
+
+    #[test]
+    fn code_from_error_none_when_absent() {
+        let err = anyhow::anyhow!("plain").context("still plain");
+        assert!(code_from_error(&err).is_none());
     }
 }

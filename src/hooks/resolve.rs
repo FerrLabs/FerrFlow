@@ -12,8 +12,14 @@ pub fn resolve_hook(
             HookPoint::PreBump => h.pre_bump.as_ref(),
             HookPoint::PostBump => h.post_bump.as_ref(),
             HookPoint::PreCommit => h.pre_commit.as_ref(),
+            HookPoint::PostCommit => h.post_commit.as_ref(),
+            HookPoint::PreTag => h.pre_tag.as_ref(),
+            HookPoint::PostTag => h.post_tag.as_ref(),
             HookPoint::PrePublish => h.pre_publish.as_ref(),
             HookPoint::PostPublish => h.post_publish.as_ref(),
+            HookPoint::PreRelease => h.pre_release.as_ref(),
+            HookPoint::OnSuccess => h.on_success.as_ref(),
+            HookPoint::OnError => h.on_error.as_ref(),
         }
     }
 
@@ -125,29 +131,34 @@ mod tests {
             pre_bump: Some("a".into()),
             post_bump: Some("b".into()),
             pre_commit: Some("c".into()),
+            post_commit: Some("f".into()),
+            pre_tag: Some("g".into()),
+            post_tag: Some("h".into()),
             pre_publish: Some("d".into()),
             post_publish: Some("e".into()),
+            pre_release: Some("i".into()),
+            on_success: Some("j".into()),
+            on_error: Some("k".into()),
             on_failure: None,
         };
-        assert_eq!(
-            resolve_hook(Some(&hooks), None, HookPoint::PreBump).as_deref(),
-            Some("a")
-        );
-        assert_eq!(
-            resolve_hook(Some(&hooks), None, HookPoint::PostBump).as_deref(),
-            Some("b")
-        );
-        assert_eq!(
-            resolve_hook(Some(&hooks), None, HookPoint::PreCommit).as_deref(),
-            Some("c")
-        );
-        assert_eq!(
-            resolve_hook(Some(&hooks), None, HookPoint::PrePublish).as_deref(),
-            Some("d")
-        );
-        assert_eq!(
-            resolve_hook(Some(&hooks), None, HookPoint::PostPublish).as_deref(),
-            Some("e")
-        );
+        for (point, expected) in [
+            (HookPoint::PreBump, "a"),
+            (HookPoint::PostBump, "b"),
+            (HookPoint::PreCommit, "c"),
+            (HookPoint::PostCommit, "f"),
+            (HookPoint::PreTag, "g"),
+            (HookPoint::PostTag, "h"),
+            (HookPoint::PrePublish, "d"),
+            (HookPoint::PostPublish, "e"),
+            (HookPoint::PreRelease, "i"),
+            (HookPoint::OnSuccess, "j"),
+            (HookPoint::OnError, "k"),
+        ] {
+            assert_eq!(
+                resolve_hook(Some(&hooks), None, point).as_deref(),
+                Some(expected),
+                "hook point {point:?}"
+            );
+        }
     }
 }

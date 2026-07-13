@@ -6,7 +6,7 @@ use std::path::Path;
 use crate::changelog::{
     ChangelogRender, GitLog, build_section_with, compute_changelog_update, update_changelog_with,
 };
-use crate::config::{Config, PackageConfig};
+use crate::config::{Config, OnFailure, PackageConfig};
 use crate::conventional_commits::BumpType;
 use crate::diff::unified_diff;
 use crate::formats::{get_handler, render_new_version, write_version};
@@ -395,6 +395,7 @@ pub(super) fn run_release_logic(
                 .to_string_lossy()
                 .into_owned(),
             channel: prerelease_ctx.channel.clone(),
+            error_code: None,
         };
 
         let ws_hooks = config.workspace.hooks.as_ref();
@@ -655,12 +656,50 @@ pub(super) fn run_release_logic(
         let release_start = std::time::Instant::now();
         let release_result = execute_release(&mut plan);
         timing.record("release commit phase", release_start.elapsed());
-        release_result?;
-        // Release finished cleanly — drop the checkpoint so the next
-        // run starts from scratch instead of trying to resume a
-        // finished release.
-        if !dry_run {
-            Checkpoint::delete(root)?;
+
+        let released_tags: Vec<String> = tags_to_create
+            .iter()
+            .map(|(t, _, _, _, _, _, _)| t.clone())
+            .collect();
+        let ws_hooks = config.workspace.hooks.as_ref();
+        match release_result {
+            Ok(()) => {
+                // Release finished cleanly — drop the checkpoint so the
+                // next run starts from scratch instead of trying to
+                // resume a finished release.
+                if !dry_run {
+                    Checkpoint::delete(root)?;
+                }
+                if let Some(cmd) = resolve_hook(None, ws_hooks, HookPoint::OnSuccess) {
+                    let ctx = HookContext::release_summary(root, &released_tags, dry_run);
+                    let on_failure = resolve_on_failure(None, ws_hooks);
+                    run_hook(
+                        HookPoint::OnSuccess,
+                        &cmd,
+                        &ctx,
+                        on_failure,
+                        dry_run,
+                        verbose,
+                        root,
+                    )?;
+                }
+            }
+            Err(err) => {
+                if let Some(cmd) = resolve_hook(None, ws_hooks, HookPoint::OnError) {
+                    let mut ctx = HookContext::release_summary(root, &released_tags, dry_run);
+                    ctx.error_code = crate::error_code::code_from_error(&err);
+                    let _ = run_hook(
+                        HookPoint::OnError,
+                        &cmd,
+                        &ctx,
+                        OnFailure::Continue,
+                        dry_run,
+                        verbose,
+                        root,
+                    );
+                }
+                return Err(err);
+            }
         }
     } else if dry_run && any_bumped {
         let plan = ReleasePlan {

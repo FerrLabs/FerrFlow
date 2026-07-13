@@ -390,6 +390,18 @@
           "type": "string",
           "description": "Run after changelog generation, before git commit."
         },
+        "postCommit": {
+          "type": "string",
+          "description": "Run after the release commit is created, before tagging."
+        },
+        "preTag": {
+          "type": "string",
+          "description": "Run after the release commit, immediately before git tag."
+        },
+        "postTag": {
+          "type": "string",
+          "description": "Run after tags are created, before push."
+        },
         "prePublish": {
           "type": "string",
           "description": "Run after commit and tag, before push."
@@ -397,6 +409,18 @@
         "postPublish": {
           "type": "string",
           "description": "Run after push and release creation."
+        },
+        "preRelease": {
+          "type": "string",
+          "description": "Run after the release pull request is opened (PR mode), before merge."
+        },
+        "onSuccess": {
+          "type": "string",
+          "description": "Run once after the release completes successfully."
+        },
+        "onError": {
+          "type": "string",
+          "description": "Run once when the release fails; receives FERRFLOW_ERROR_CODE."
         },
         "onFailure": {
           "type": "string",

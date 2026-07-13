@@ -1,10 +1,10 @@
 {
   "meta": {
     "name": "hooks-ordering",
-    "description": "All five hook points are defined to verify lifecycle ordering"
+    "description": "All lifecycle hook points fire without breaking a commit-mode release"
   },
   "config": {
-    "content": "{\n  \"workspace\": {\n    \"hooks\": {\n      \"preBump\": \"echo pre-bump\",\n      \"postBump\": \"echo post-bump\",\n      \"preCommit\": \"echo pre-commit\",\n      \"prePublish\": \"echo pre-publish\",\n      \"postPublish\": \"echo post-publish\"\n    }\n  },\n  \"package\": [\n    {\"name\": \"app\", \"path\": \".\", \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]}\n  ]\n}\n"
+    "content": "{\n  \"workspace\": {\n    \"hooks\": {\n      \"preBump\": \"echo pre-bump\",\n      \"postBump\": \"echo post-bump\",\n      \"preCommit\": \"echo pre-commit\",\n      \"postCommit\": \"echo post-commit\",\n      \"preTag\": \"echo pre-tag\",\n      \"postTag\": \"echo post-tag\",\n      \"prePublish\": \"echo pre-publish\",\n      \"postPublish\": \"echo post-publish\",\n      \"onSuccess\": \"echo on-success\"\n    }\n  },\n  \"package\": [\n    {\"name\": \"app\", \"path\": \".\", \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]}\n  ]\n}\n"
   },
   "packages": [
     { "name": "app", "path": ".", "initial_version": "1.0.0", "tag": "v1.0.0" }
