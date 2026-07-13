@@ -3,7 +3,6 @@ title: Configuration
 description: Référence complète du fichier de configuration FerrFlow.
 ---
 
-
 FerrFlow supporte six formats de fichier de configuration, recherch\u00e9s dans cet ordre :
 
 1. `ferrflow.json`
@@ -106,11 +105,11 @@ L'avantage principal des configs TS/JS : les **hooks sous forme de fonctions**. 
 ```ts title="ferrflow.ts"
 export default {
   workspace: {
-    tagTemplate: "v{version}",
+    tagTemplate: 'v{version}',
     hooks: {
       postPublish: async (ctx) => {
-        await fetch("https://hooks.slack.com/services/...", {
-          method: "POST",
+        await fetch('https://hooks.slack.com/services/...', {
+          method: 'POST',
           body: JSON.stringify({
             text: `Released ${ctx.package}@${ctx.newVersion}`,
           }),
@@ -120,9 +119,9 @@ export default {
   },
   package: [
     {
-      name: "my-app",
-      path: ".",
-      versionedFiles: [{ path: "package.json", format: "json" }],
+      name: 'my-app',
+      path: '.',
+      versionedFiles: [{ path: 'package.json', format: 'json' }],
     },
   ],
 };
@@ -132,17 +131,17 @@ export default {
 
 Les hooks en fonction re\u00e7oivent un objet de contexte avec ces champs :
 
-| Champ | Type | Description |
-|---|---|---|
-| `package` | string | Nom du package |
-| `oldVersion` | string | Version avant le bump (vide pour la premi\u00e8re release) |
-| `newVersion` | string | Version apr\u00e8s le bump |
-| `bumpType` | string | `major`, `minor`, `patch`, ou `none` |
-| `tag` | string | Nom complet du tag git |
-| `dryRun` | boolean | Vrai si `--dry-run` est actif |
-| `packagePath` | string | Chemin absolu vers la racine du package |
-| `channel` | string ou null | Nom du channel de pr\u00e9-release |
-| `isPrerelease` | boolean | Vrai si c'est une pr\u00e9-release |
+| Champ          | Type           | Description                                                |
+| -------------- | -------------- | ---------------------------------------------------------- |
+| `package`      | string         | Nom du package                                             |
+| `oldVersion`   | string         | Version avant le bump (vide pour la premi\u00e8re release) |
+| `newVersion`   | string         | Version apr\u00e8s le bump                                 |
+| `bumpType`     | string         | `major`, `minor`, `patch`, ou `none`                       |
+| `tag`          | string         | Nom complet du tag git                                     |
+| `dryRun`       | boolean        | Vrai si `--dry-run` est actif                              |
+| `packagePath`  | string         | Chemin absolu vers la racine du package                    |
+| `channel`      | string ou null | Nom du channel de pr\u00e9-release                         |
+| `isPrerelease` | boolean        | Vrai si c'est une pr\u00e9-release                         |
 
 Les hooks sous forme de commandes shell et de fonctions peuvent \u00eatre m\u00e9lang\u00e9s dans la m\u00eame config.
 
@@ -150,30 +149,30 @@ Les hooks sous forme de commandes shell et de fonctions peuvent \u00eatre m\u00e
 
 Paramètres globaux qui s'appliquent à tous les packages.
 
-| Champ | Type | Défaut | Description |
-|---|---|---|---|
-| `remote` | string | `"origin"` | Remote git vers lequel pousser |
-| `branch` | string | auto-détecté | Branche vers laquelle pousser (détectée depuis le HEAD du remote) |
-| `tagTemplate` | string | `"v{version}"` ou `"{name}@v{version}"` | Modèle de nommage des tags. Utilise les placeholders `{version}` et `{name}`. Par défaut `v{version}` pour les repos mono-package et `{name}@v{version}` pour les monorepos. |
-| `versioning` | string | `"semver"` | Stratégie de versionnage par défaut pour tous les packages |
-| `releaseCommitMode` | string | `"commit"` | Gestion du commit de release : `"commit"`, `"pr"` ou `"none"` |
-| `releaseCommitScope` | string | `"grouped"` | Dans un monorepo où plusieurs packages sont bumpés en même temps, créer un seul commit `"grouped"` ou un commit `"per-package"`. N'a d'effet que quand plusieurs packages bumpent. |
-| `forge` | string | `"auto"` | Forçage du forge git : `"auto"` détecte depuis l'URL du remote, `"github"` ou `"gitlab"` forcent un forge (utile pour les instances auto-hébergées sur domaine personnalisé). |
-| `skipCi` | boolean | dépend du mode | Ajouter `[skip ci]` aux commits de release. Par défaut `true` en mode `"commit"`, `false` sinon. |
-| `commitSkipMarkers` | array | `["[skip ci]", "[ci skip]", "[no ci]", "[skip actions]", "[actions skip]"]` | Marqueurs qui font ignorer un commit par FerrFlow lors du calcul de la prochaine version. Comparaison insensible à la casse, sur la ligne de sujet uniquement. |
-| `autoMergeReleases` | boolean | `true` | Activer l'auto-merge sur les PR de release (uniquement en mode `"pr"`) |
-| `recoverMissedReleases` | boolean | `false` | Comparer les fichiers versionnés au dernier tag plutôt qu'au seul dernier commit, pour rattraper des releases manquées plus tôt dans un monorepo. |
-| `branches` | array | `[]` | Associe des branches à des canaux de pré-release (voir [Canaux de pré-release](#canaux-de-pré-release)). |
-| `anonymous_telemetry` | boolean | `true` | Envoyer des statistiques d'usage anonymes ([détails](/fr/docs/legal/telemetry)). Aucune donnée identifiante n'est collectée. L'ancienne clé `telemetry` est un alias déprécié — préférez `anonymous_telemetry` dans les nouvelles configs. |
+| Champ                   | Type    | Défaut                                                                      | Description                                                                                                                                                                                                                                                                                                                                      |
+| ----------------------- | ------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `remote`                | string  | `"origin"`                                                                  | Remote git vers lequel pousser                                                                                                                                                                                                                                                                                                                   |
+| `branch`                | string  | auto-détecté                                                                | Branche vers laquelle pousser (détectée depuis le HEAD du remote)                                                                                                                                                                                                                                                                                |
+| `tagTemplate`           | string  | `"v{version}"` ou `"{name}@v{version}"`                                     | Modèle de nommage des tags. Utilise les placeholders `{version}` et `{name}`. Par défaut `v{version}` pour les repos mono-package et `{name}@v{version}` pour les monorepos.                                                                                                                                                                     |
+| `versioning`            | string  | `"semver"`                                                                  | Stratégie de versionnage par défaut pour tous les packages                                                                                                                                                                                                                                                                                       |
+| `releaseCommitMode`     | string  | `"commit"`                                                                  | Gestion du commit de release : `"commit"`, `"pr"` ou `"none"`                                                                                                                                                                                                                                                                                    |
+| `releaseCommitScope`    | string  | `"grouped"`                                                                 | Dans un monorepo où plusieurs packages sont bumpés en même temps, créer un seul commit `"grouped"` ou un commit `"per-package"`. N'a d'effet que quand plusieurs packages bumpent.                                                                                                                                                               |
+| `forge`                 | string  | `"auto"`                                                                    | Forçage du forge git : `"auto"` détecte depuis l'URL du remote ; `"github"`, `"gitlab"` ou `"gitea"` (Gitea / Forgejo / Codeberg) forcent un forge — utile pour les instances auto-hébergées sur domaine personnalisé. L'auth Gitea utilise `GITEA_TOKEN` ou `FORGEJO_TOKEN`, et couvre la création de release (le mode PR reste GitHub/GitLab). |
+| `skipCi`                | boolean | dépend du mode                                                              | Ajouter `[skip ci]` aux commits de release. Par défaut `true` en mode `"commit"`, `false` sinon.                                                                                                                                                                                                                                                 |
+| `commitSkipMarkers`     | array   | `["[skip ci]", "[ci skip]", "[no ci]", "[skip actions]", "[actions skip]"]` | Marqueurs qui font ignorer un commit par FerrFlow lors du calcul de la prochaine version. Comparaison insensible à la casse, sur la ligne de sujet uniquement.                                                                                                                                                                                   |
+| `autoMergeReleases`     | boolean | `true`                                                                      | Activer l'auto-merge sur les PR de release (uniquement en mode `"pr"`)                                                                                                                                                                                                                                                                           |
+| `recoverMissedReleases` | boolean | `false`                                                                     | Comparer les fichiers versionnés au dernier tag plutôt qu'au seul dernier commit, pour rattraper des releases manquées plus tôt dans un monorepo.                                                                                                                                                                                                |
+| `branches`              | array   | `[]`                                                                        | Associe des branches à des canaux de pré-release (voir [Canaux de pré-release](#canaux-de-pré-release)).                                                                                                                                                                                                                                         |
+| `anonymous_telemetry`   | boolean | `true`                                                                      | Envoyer des statistiques d'usage anonymes ([détails](/fr/docs/legal/telemetry)). Aucune donnée identifiante n'est collectée. L'ancienne clé `telemetry` est un alias déprécié — préférez `anonymous_telemetry` dans les nouvelles configs.                                                                                                       |
 
 ### Modèle de tag
 
 Le champ `tagTemplate` contrôle le nommage des tags git. Placeholders disponibles :
 
-| Placeholder | Description |
-|---|---|
+| Placeholder | Description                        |
+| ----------- | ---------------------------------- |
 | `{version}` | Le numéro de version (ex. `1.2.3`) |
-| `{name}` | Le nom du package |
+| `{name}`    | Le nom du package                  |
 
 <div class="ferr-tabs">
   <div class="ferr-tab" data-label="JSON"><p class="ferr-tab__label">JSON</p><div class="ferr-tab__body"><pre><code class="language-json">{
@@ -223,11 +222,11 @@ tag_template = &quot;{name}@v{version}&quot;
 
 Contrôle la façon dont FerrFlow gère le commit qui met à jour les fichiers de version et les changelogs.
 
-| Mode | Comportement |
-|---|---|
-| `"commit"` | Commit directement sur la branche courante et pousse (par défaut) |
-| `"pr"` | Crée une branche `release/` et ouvre une pull request |
-| `"none"` | Crée uniquement les tags et les releases, ne commit pas les changements de fichiers |
+| Mode       | Comportement                                                                        |
+| ---------- | ----------------------------------------------------------------------------------- |
+| `"commit"` | Commit directement sur la branche courante et pousse (par défaut)                   |
+| `"pr"`     | Crée une branche `release/` et ouvre une pull request                               |
+| `"none"`   | Crée uniquement les tags et les releases, ne commit pas les changements de fichiers |
 
 <div class="ferr-tabs">
   <div class="ferr-tab" data-label="JSON"><p class="ferr-tab__label">JSON</p><div class="ferr-tab__body"><pre><code class="language-json">{
@@ -257,14 +256,14 @@ auto_merge_releases = true
 
 FerrFlow supporte plusieurs stratégies de versionnage, configurables au niveau du workspace ou du package.
 
-| Stratégie | Format | Progression exemple |
-|---|---|---|
-| `semver` | `MAJOR.MINOR.PATCH` | `1.2.3` → `1.3.0` → `2.0.0` |
-| `calver` | `YYYY.MM.PATCH` | `2026.03.0` → `2026.03.1` → `2026.04.0` |
-| `calver-short` | `YY.MM.PATCH` | `26.03.0` → `26.03.1` |
-| `calver-seq` | `YYYY.MM.SEQ` | `2026.03.1` → `2026.03.2` |
-| `sequential` | `N` | `1` → `2` → `3` |
-| `zerover` | `0.MINOR.PATCH` | `0.1.0` → `0.2.0` (n'atteint jamais 1.0) |
+| Stratégie      | Format              | Progression exemple                      |
+| -------------- | ------------------- | ---------------------------------------- |
+| `semver`       | `MAJOR.MINOR.PATCH` | `1.2.3` → `1.3.0` → `2.0.0`              |
+| `calver`       | `YYYY.MM.PATCH`     | `2026.03.0` → `2026.03.1` → `2026.04.0`  |
+| `calver-short` | `YY.MM.PATCH`       | `26.03.0` → `26.03.1`                    |
+| `calver-seq`   | `YYYY.MM.SEQ`       | `2026.03.1` → `2026.03.2`                |
+| `sequential`   | `N`                 | `1` → `2` → `3`                          |
+| `zerover`      | `0.MINOR.PATCH`     | `0.1.0` → `0.2.0` (n'atteint jamais 1.0) |
 
 <div class="ferr-tabs">
   <div class="ferr-tab" data-label="JSON"><p class="ferr-tab__label">JSON</p><div class="ferr-tab__body"><pre><code class="language-json">{
@@ -293,11 +292,11 @@ Le tableau `branches` associe des noms de branches (ou des motifs glob) à des c
 
 Chaque entrée comporte :
 
-| Champ | Type | Description |
-|---|---|---|
-| `name` | string | Nom de branche ou motif glob (ex. `"main"`, `"release/*"`) |
-| `channel` | string ou `false` | Nom de canal (`"beta"`, `"rc"`, …), ou `false` pour une release stable |
-| `prereleaseIdentifier` | string | Stratégie de l'identifiant ajouté après le nom du canal |
+| Champ                  | Type              | Description                                                            |
+| ---------------------- | ----------------- | ---------------------------------------------------------------------- |
+| `name`                 | string            | Nom de branche ou motif glob (ex. `"main"`, `"release/*"`)             |
+| `channel`              | string ou `false` | Nom de canal (`"beta"`, `"rc"`, …), ou `false` pour une release stable |
+| `prereleaseIdentifier` | string            | Stratégie de l'identifiant ajouté après le nom du canal                |
 
 <div class="ferr-tabs">
   <div class="ferr-tab" data-label="JSON"><p class="ferr-tab__label">JSON</p><div class="ferr-tab__body"><pre><code class="language-json">{
@@ -335,14 +334,14 @@ channel = &quot;beta&quot;
 
 Définit un package à versionner. Vous pouvez en avoir un ou plusieurs.
 
-| Champ | Requis | Défaut | Description |
-|---|---|---|---|
-| `name` | oui | — | Identifiant du package, utilisé dans le préfixe du tag git |
-| `path` | oui | — | Chemin relatif vers le répertoire du package |
-| `changelog` | non | `{path}/CHANGELOG.md` | Chemin vers le fichier changelog |
-| `sharedPaths` | non | `[]` | Chemins qui déclenchent ce package lorsqu'ils sont modifiés |
-| `versioning` | non | hérité du workspace | Surcharger la stratégie de versionnage pour ce package |
-| `tagTemplate` | non | hérité du workspace | Surcharger le modèle de tag pour ce package |
+| Champ         | Requis | Défaut                | Description                                                 |
+| ------------- | ------ | --------------------- | ----------------------------------------------------------- |
+| `name`        | oui    | —                     | Identifiant du package, utilisé dans le préfixe du tag git  |
+| `path`        | oui    | —                     | Chemin relatif vers le répertoire du package                |
+| `changelog`   | non    | `{path}/CHANGELOG.md` | Chemin vers le fichier changelog                            |
+| `sharedPaths` | non    | `[]`                  | Chemins qui déclenchent ce package lorsqu'ils sont modifiés |
+| `versioning`  | non    | hérité du workspace   | Surcharger la stratégie de versionnage pour ce package      |
+| `tagTemplate` | non    | hérité du workspace   | Surcharger le modèle de tag pour ce package                 |
 
 ### `versionedFiles`
 
@@ -392,15 +391,15 @@ format = &quot;json&quot;
 </div></div>
 </div>
 
-| `format` | Fichier | Champ mis à jour |
-|---|---|---|
-| `toml` | `Cargo.toml`, `pyproject.toml` | `[package].version` ou `[project].version` |
-| `json` | `package.json` | `version` |
-| `xml` | `pom.xml` | Premier élément `<version>` |
-| `gradle` | `build.gradle`, `build.gradle.kts` | `version = "..."` |
-| `helm` | `Chart.yaml` | `version` et `appVersion` (si présent) |
-| `gomod` | `go.mod` | Pas de mise à jour de fichier — la version vient uniquement des tags git |
-| `txt` | `VERSION`, `VERSION.txt` | Contenu entier du fichier remplacé |
+| `format` | Fichier                            | Champ mis à jour                                                         |
+| -------- | ---------------------------------- | ------------------------------------------------------------------------ |
+| `toml`   | `Cargo.toml`, `pyproject.toml`     | `[package].version` ou `[project].version`                               |
+| `json`   | `package.json`                     | `version`                                                                |
+| `xml`    | `pom.xml`                          | Premier élément `<version>`                                              |
+| `gradle` | `build.gradle`, `build.gradle.kts` | `version = "..."`                                                        |
+| `helm`   | `Chart.yaml`                       | `version` et `appVersion` (si présent)                                   |
+| `gomod`  | `go.mod`                           | Pas de mise à jour de fichier — la version vient uniquement des tags git |
+| `txt`    | `VERSION`, `VERSION.txt`           | Contenu entier du fichier remplacé                                       |
 
 ### Packages versionnés par tag uniquement
 
@@ -512,28 +511,28 @@ on_failure   = &quot;abort&quot;
 </div></div>
 </div>
 
-| Champ | Type | Défaut | Description |
-|---|---|---|---|
-| `preBump` | string | — | Exécuté après le calcul du bump, avant l'écriture des fichiers de version |
-| `postBump` | string | — | Exécuté après l'écriture des fichiers de version |
-| `preCommit` | string | — | Exécuté après le changelog, avant le commit git |
-| `prePublish` | string | — | Exécuté après le commit+tag, avant le push |
-| `postPublish` | string | — | Exécuté après le push et la création de la release |
-| `onFailure` | string | `"abort"` | `"abort"` annule la release en cas d'échec, `"continue"` affiche un avertissement |
+| Champ         | Type   | Défaut    | Description                                                                       |
+| ------------- | ------ | --------- | --------------------------------------------------------------------------------- |
+| `preBump`     | string | —         | Exécuté après le calcul du bump, avant l'écriture des fichiers de version         |
+| `postBump`    | string | —         | Exécuté après l'écriture des fichiers de version                                  |
+| `preCommit`   | string | —         | Exécuté après le changelog, avant le commit git                                   |
+| `prePublish`  | string | —         | Exécuté après le commit+tag, avant le push                                        |
+| `postPublish` | string | —         | Exécuté après le push et la création de la release                                |
+| `onFailure`   | string | `"abort"` | `"abort"` annule la release en cas d'échec, `"continue"` affiche un avertissement |
 
 ### Variables d'environnement
 
 Chaque hook reçoit ces variables :
 
-| Variable | Description | Exemple |
-|---|---|---|
-| `FERRFLOW_PACKAGE` | Nom du package | `api` |
-| `FERRFLOW_OLD_VERSION` | Version avant le bump (vide pour la première release) | `1.2.3` |
-| `FERRFLOW_NEW_VERSION` | Version après le bump | `1.3.0` |
-| `FERRFLOW_BUMP_TYPE` | `major`, `minor`, `patch` ou `none` | `minor` |
-| `FERRFLOW_TAG` | Nom complet du tag git | `api@v1.3.0` |
-| `FERRFLOW_DRY_RUN` | `true` si `--dry-run` est activé | `false` |
-| `FERRFLOW_PACKAGE_PATH` | Chemin absolu vers la racine du package | `/home/user/repo/packages/api` |
+| Variable                | Description                                           | Exemple                        |
+| ----------------------- | ----------------------------------------------------- | ------------------------------ |
+| `FERRFLOW_PACKAGE`      | Nom du package                                        | `api`                          |
+| `FERRFLOW_OLD_VERSION`  | Version avant le bump (vide pour la première release) | `1.2.3`                        |
+| `FERRFLOW_NEW_VERSION`  | Version après le bump                                 | `1.3.0`                        |
+| `FERRFLOW_BUMP_TYPE`    | `major`, `minor`, `patch` ou `none`                   | `minor`                        |
+| `FERRFLOW_TAG`          | Nom complet du tag git                                | `api@v1.3.0`                   |
+| `FERRFLOW_DRY_RUN`      | `true` si `--dry-run` est activé                      | `false`                        |
+| `FERRFLOW_PACKAGE_PATH` | Chemin absolu vers la racine du package               | `/home/user/repo/packages/api` |
 
 ### Hooks par package
 
