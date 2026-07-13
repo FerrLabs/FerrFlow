@@ -23,7 +23,7 @@ jobs:
     outputs:
       version: ${{ steps.tag.outputs.version }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           fetch-depth: 0
       - id: tag
@@ -39,7 +39,7 @@ jobs:
 
   scan:
     needs: version
-    uses: FerrLabs/.github/.github/workflows/reusable-sonarqube-scan.yml@main
+    uses: FerrLabs/.github/.github/workflows/reusable-sonarqube-scan.yml@2a5ffda5cd587332696bda4ad16063839d2f4139 # main
     with:
       runner: ubuntu-latest
       project-key: ferrflow

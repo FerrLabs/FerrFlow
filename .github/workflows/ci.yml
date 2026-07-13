@@ -21,12 +21,12 @@ jobs:
     if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
         with:
           components: clippy, rustfmt
-      - uses: Swatinem/rust-cache@v2
-      - uses: taiki-e/install-action@v2
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+      - uses: taiki-e/install-action@43aecc8d72668fbcfe75c31400bc4f890f1c5853 # v2
         with:
           tool: cargo-nextest
       - name: Format check
@@ -45,10 +45,10 @@ jobs:
     if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - uses: taiki-e/install-action@v2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+      - uses: taiki-e/install-action@43aecc8d72668fbcfe75c31400bc4f890f1c5853 # v2
         with:
           tool: cargo-audit,cargo-deny,cargo-machete
       - name: cargo audit (RustSec advisories)
@@ -64,15 +64,15 @@ jobs:
     if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
       - name: Build ferrflow
         run: cargo build --release
         env:
           FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
       - name: Upload binary
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: ferrflow-binary
           path: target/release/ferrflow
@@ -83,17 +83,17 @@ jobs:
     if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - uses: taiki-e/install-action@v2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+      - uses: taiki-e/install-action@43aecc8d72668fbcfe75c31400bc4f890f1c5853 # v2
         with:
           tool: cargo-tarpaulin
       - name: Generate coverage
         run: cargo tarpaulin --out xml --skip-clean
         env:
           FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
-      - uses: codecov/codecov-action@v7
+      - uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7
         with:
           files: cobertura.xml
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -105,18 +105,18 @@ jobs:
     if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
 
       - name: Cache generated fixtures
         id: fixture-cache
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: fixtures-generated
           key: fixtures-${{ hashFiles('tests/fixtures/definitions/**') }}
 
       - name: Generate fixtures
         if: steps.fixture-cache.outputs.cache-hit != 'true'
-        uses: FerrLabs/Fixtures@v1
+        uses: FerrLabs/Fixtures@7db03266c337749bef6f0d5c1e956b112b337b9c # v1
         with:
           definitions: tests/fixtures/definitions
 
@@ -136,7 +136,7 @@ jobs:
           fi
 
       - name: Upload generated fixtures
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: fixtures-generated
           path: fixtures-generated/
@@ -149,12 +149,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v8
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: ferrflow-binary
           path: bin/
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: fixtures-generated
           path: fixtures-generated/
@@ -172,7 +172,7 @@ jobs:
 
       - name: Upload snapshot diffs
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: fixture-diffs-monorepo
           path: fixture-diffs/
@@ -185,12 +185,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v8
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: ferrflow-binary
           path: bin/
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: fixtures-generated
           path: fixtures-generated/
@@ -208,7 +208,7 @@ jobs:
 
       - name: Upload snapshot diffs
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: fixture-diffs-single
           path: fixture-diffs/
@@ -221,12 +221,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v8
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: ferrflow-binary
           path: bin/
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: fixtures-generated
           path: fixtures-generated/
@@ -244,7 +244,7 @@ jobs:
 
       - name: Upload snapshot diffs
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: fixture-diffs-config
           path: fixture-diffs/
@@ -257,12 +257,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v8
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: ferrflow-binary
           path: bin/
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: fixtures-generated
           path: fixtures-generated/
@@ -284,7 +284,7 @@ jobs:
 
       - name: Upload snapshot diffs
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: fixture-diffs-advanced
           path: fixture-diffs/
@@ -302,9 +302,9 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
       - name: Compile bench binary (no run)
         run: cargo bench --bench ferrflow_benchmarks --no-run
       - name: Locate compiled binary
@@ -327,7 +327,7 @@ jobs:
           echo "bin=$bin" >> "$GITHUB_OUTPUT"
           # Strip the hash so the matrix doesn't have to re-derive it.
           cp "$bin" target/release/deps/ferrflow_benchmarks
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: micro-bench-binary
           path: target/release/deps/ferrflow_benchmarks
@@ -356,7 +356,7 @@ jobs:
           - validate
           - full_check_flow
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: micro-bench-binary
           path: bench-bin/
@@ -388,7 +388,7 @@ jobs:
             echo "::error::no well-formed benchmark rows captured; bench exit was ${bench_exit}"
             exit 1
           fi
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: micro-partial-${{ matrix.group }}
           path: output.txt
@@ -402,8 +402,8 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v8
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           pattern: micro-partial-*
           merge-multiple: true
@@ -423,7 +423,7 @@ jobs:
         continue-on-error: true
       - name: Download baseline
         if: steps.find-baseline.outputs.run_id
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: criterion-baseline
           path: baseline/
@@ -453,10 +453,10 @@ jobs:
     runs-on: ubuntu-latest
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
     steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version: '24'
       # Cache ~/.npm so the competitor npm-global installs that
@@ -476,7 +476,7 @@ jobs:
           key: bench-npm-cache-${{ hashFiles('.github/workflows/ci.yml', 'benchmarks/fixtures/definitions/*.json') }}
           restore-keys: |
             bench-npm-cache-
-      - uses: FerrLabs/Benchmarks@v5
+      - uses: FerrLabs/Benchmarks@90ce64396c762ad04a8a89a86a5739c664e0d50f # v5
         with:
           type: full
           definitions: benchmarks/fixtures/definitions
@@ -509,7 +509,7 @@ jobs:
       contents: write
       id-token: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           fetch-depth: 0
           # Don't bake GITHUB_TOKEN into the git remote â€” ferrflow's OIDC
@@ -518,8 +518,8 @@ jobs:
           # to GITHUB_TOKEN (i.e. github-actions[bot]) which isn't in the
           # branch-rule bypass list and can't push to main.
           persist-credentials: false
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
       - name: Build ferrflow
         run: cargo build --release
         env:
@@ -532,7 +532,7 @@ jobs:
           FERRFLOW_BOT: "true"
       - name: Download benchmark summary
         if: needs.benchmark.result == 'success'
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: benchmark-release-summary
           path: benchmark-summary/
