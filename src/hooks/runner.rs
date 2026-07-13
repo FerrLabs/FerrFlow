@@ -52,7 +52,11 @@ pub fn run_hook(
         .env("FERRFLOW_DRY_RUN", ctx.dry_run.to_string())
         .env("FERRFLOW_PACKAGE_PATH", &ctx.package_path)
         .env("FERRFLOW_CHANNEL", ctx.channel.as_deref().unwrap_or(""))
-        .env("FERRFLOW_IS_PRERELEASE", ctx.channel.is_some().to_string());
+        .env("FERRFLOW_IS_PRERELEASE", ctx.channel.is_some().to_string())
+        .env(
+            "FERRFLOW_ERROR_CODE",
+            ctx.error_code.as_deref().unwrap_or(""),
+        );
 
     if verbose {
         let status = cmd

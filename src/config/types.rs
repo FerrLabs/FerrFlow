@@ -21,10 +21,22 @@ pub struct HooksConfig {
     pub post_bump: Option<String>,
     #[serde(alias = "preCommit")]
     pub pre_commit: Option<String>,
+    #[serde(alias = "postCommit")]
+    pub post_commit: Option<String>,
+    #[serde(alias = "preTag")]
+    pub pre_tag: Option<String>,
+    #[serde(alias = "postTag")]
+    pub post_tag: Option<String>,
     #[serde(alias = "prePublish")]
     pub pre_publish: Option<String>,
     #[serde(alias = "postPublish")]
     pub post_publish: Option<String>,
+    #[serde(alias = "preRelease")]
+    pub pre_release: Option<String>,
+    #[serde(alias = "onSuccess")]
+    pub on_success: Option<String>,
+    #[serde(alias = "onError")]
+    pub on_error: Option<String>,
     #[serde(default, alias = "onFailure")]
     pub on_failure: Option<OnFailure>,
 }
