@@ -4,6 +4,14 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.27.0] - 2026-07-13
+
+### Features
+
+- feat(forge): add Gitea/Forgejo release support (#653)
+- feat(obs): migrate status command output to tracing (#651)
+- feat(obs): migrate misc root status output to tracing (#650)
+
 ## [5.26.0] - 2026-07-13
 
 ### Features
