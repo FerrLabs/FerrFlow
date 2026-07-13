@@ -36,7 +36,7 @@ pub fn generate_only(config_path: Option<&Path>, dry_run: bool) -> Result<()> {
     let config = Config::load(&root, config_path)?;
 
     if config.packages.is_empty() {
-        println!(
+        tracing::warn!(
             "{}",
             "No packages configured. Run `ferrflow init` to create a ferrflow config.".yellow()
         );
@@ -101,7 +101,7 @@ pub fn generate_only(config_path: Option<&Path>, dry_run: bool) -> Result<()> {
         let changelog_path = match &pkg.changelog {
             Some(rel) => crate::formats::join_within_repo(&root, rel)?,
             None => {
-                println!(
+                tracing::warn!(
                     "{}",
                     format!(
                         "  No changelog configured for '{}', defaulting to CHANGELOG.md.",
@@ -458,7 +458,7 @@ pub fn update_changelog_with(
     let section = build_section_with(new_version, commits, render);
 
     if dry_run {
-        println!(
+        tracing::info!(
             "  [dry-run] Would update {}: {}",
             changelog_path.display(),
             section.trim()
@@ -470,7 +470,7 @@ pub fn update_changelog_with(
     let new_content = splice_section(&existing, &section);
 
     std::fs::write(changelog_path, new_content)?;
-    println!("  ✓ Updated {}", changelog_path.display());
+    tracing::info!("  ✓ Updated {}", changelog_path.display());
     Ok(())
 }
 
