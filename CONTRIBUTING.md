@@ -91,6 +91,32 @@ Use the [feature request template](https://github.com/FerrLabs/FerrFlow/issues/n
 
 See [SECURITY.md](SECURITY.md) for reporting vulnerabilities.
 
+### Supply-chain audits
+
+CI runs `cargo audit`, `cargo deny`, `cargo machete`, and `cargo vet` on every
+PR. `cargo vet` checks that every dependency in `Cargo.lock` is either audited
+by a trusted source (Mozilla, Google, the Bytecode Alliance — imported in
+`supply-chain/config.toml`) or explicitly exempted.
+
+When you add or bump a dependency, `cargo vet --locked` will fail until the new
+crate is accounted for. To resolve it locally:
+
+```bash
+cargo install cargo-vet   # once
+cargo vet                  # shows what's missing
+cargo vet certify          # record your own audit of a crate you reviewed
+# or, to trust it on faith for now:
+cargo vet add-exemption <crate> <version>
+```
+
+Commit the resulting changes to `supply-chain/`. Prefer a real audit
+(`certify`) for small crates you can read; use an exemption when a full review
+isn't practical. Run `cargo vet prune` periodically to drop exemptions that
+imported audits now cover.
+
+Release artifacts carry [SLSA build provenance](https://ferrflow.com/docs/verifying-releases/#slsa-build-provenance);
+verify a downloaded binary with `gh attestation verify`.
+
 ## License
 
 By contributing, you agree that your contributions will be licensed under the [MPL-2.0 License](LICENSE).

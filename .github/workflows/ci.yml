@@ -50,13 +50,15 @@ jobs:
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
       - uses: taiki-e/install-action@43aecc8d72668fbcfe75c31400bc4f890f1c5853 # v2
         with:
-          tool: cargo-audit,cargo-deny,cargo-machete
+          tool: cargo-audit,cargo-deny,cargo-machete,cargo-vet
       - name: cargo audit (RustSec advisories)
         run: cargo audit --deny warnings
       - name: cargo deny (licenses + bans + sources)
         run: cargo deny --all-features check
       - name: cargo machete (unused deps)
         run: cargo machete
+      - name: cargo vet (supply-chain audit)
+        run: cargo vet --locked
 
   build:
     name: Build Release Binary
