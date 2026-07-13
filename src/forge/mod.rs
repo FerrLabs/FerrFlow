@@ -1,3 +1,4 @@
+pub mod gitea;
 pub mod github;
 pub mod gitlab;
 
@@ -65,6 +66,8 @@ pub fn detect_forge_from_url(url: &str) -> Option<ForgeKind> {
         Some(ForgeKind::Github)
     } else if url.contains("gitlab.com") {
         Some(ForgeKind::Gitlab)
+    } else if url.contains("codeberg.org") || url.contains("gitea.io") {
+        Some(ForgeKind::Gitea)
     } else {
         None
     }
@@ -140,7 +143,9 @@ pub fn web_base_url(remote_url: &str) -> Option<String> {
     let host = extract_host(remote_url)?;
     let slug = extract_repo_slug(remote_url)?;
     match kind {
-        ForgeKind::Github | ForgeKind::Gitlab => Some(format!("https://{host}/{slug}")),
+        ForgeKind::Github | ForgeKind::Gitlab | ForgeKind::Gitea => {
+            Some(format!("https://{host}/{slug}"))
+        }
         ForgeKind::Auto => None,
     }
 }
@@ -154,6 +159,14 @@ pub fn resolve_token(kind: ForgeKind) -> Option<String> {
     match kind {
         ForgeKind::Github => std::env::var("GITHUB_TOKEN").ok().filter(|t| !t.is_empty()),
         ForgeKind::Gitlab => std::env::var("GITLAB_TOKEN").ok().filter(|t| !t.is_empty()),
+        ForgeKind::Gitea => std::env::var("GITEA_TOKEN")
+            .ok()
+            .filter(|t| !t.is_empty())
+            .or_else(|| {
+                std::env::var("FORGEJO_TOKEN")
+                    .ok()
+                    .filter(|t| !t.is_empty())
+            }),
         ForgeKind::Auto => None,
     }
 }
@@ -183,6 +196,15 @@ pub fn build_forge(kind: ForgeKind, token: String, slug: String, host: String) -
         ForgeKind::Gitlab => {
             let api_base = format!("https://{host}/api/v4");
             Box::new(gitlab::GitLabForge {
+                token,
+                slug,
+                api_base,
+                agent,
+            })
+        }
+        ForgeKind::Gitea => {
+            let api_base = format!("https://{host}/api/v1");
+            Box::new(gitea::GiteaForge {
                 token,
                 slug,
                 api_base,
@@ -229,6 +251,34 @@ mod tests {
         assert_eq!(
             detect_forge_from_url("git@gitlab.com:owner/repo.git"),
             Some(ForgeKind::Gitlab)
+        );
+    }
+
+    #[test]
+    fn detect_gitea_codeberg() {
+        assert_eq!(
+            detect_forge_from_url("https://codeberg.org/owner/repo.git"),
+            Some(ForgeKind::Gitea)
+        );
+        assert_eq!(
+            detect_forge_from_url("git@codeberg.org:owner/repo.git"),
+            Some(ForgeKind::Gitea)
+        );
+    }
+
+    #[test]
+    fn detect_gitea_io() {
+        assert_eq!(
+            detect_forge_from_url("https://gitea.io/owner/repo.git"),
+            Some(ForgeKind::Gitea)
+        );
+    }
+
+    #[test]
+    fn gitea_web_base_url() {
+        assert_eq!(
+            web_base_url("https://codeberg.org/owner/repo.git").as_deref(),
+            Some("https://codeberg.org/owner/repo")
         );
     }
 
@@ -357,6 +407,36 @@ mod tests {
             std::env::remove_var("GITLAB_TOKEN");
         }
         assert_eq!(result, Some("gl-tok".to_string()));
+    }
+
+    #[test]
+    fn resolve_token_gitea_from_gitea_token() {
+        let _lock = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        unsafe {
+            std::env::remove_var("FERRFLOW_TOKEN");
+            std::env::remove_var("FORGEJO_TOKEN");
+            std::env::set_var("GITEA_TOKEN", "gitea-tok");
+        }
+        let result = resolve_token(ForgeKind::Gitea);
+        unsafe {
+            std::env::remove_var("GITEA_TOKEN");
+        }
+        assert_eq!(result, Some("gitea-tok".to_string()));
+    }
+
+    #[test]
+    fn resolve_token_gitea_falls_back_to_forgejo_token() {
+        let _lock = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        unsafe {
+            std::env::remove_var("FERRFLOW_TOKEN");
+            std::env::remove_var("GITEA_TOKEN");
+            std::env::set_var("FORGEJO_TOKEN", "forgejo-tok");
+        }
+        let result = resolve_token(ForgeKind::Gitea);
+        unsafe {
+            std::env::remove_var("FORGEJO_TOKEN");
+        }
+        assert_eq!(result, Some("forgejo-tok".to_string()));
     }
 
     #[test]

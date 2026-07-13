@@ -9,6 +9,8 @@ pub enum ForgeKind {
     Github,
     #[serde(alias = "GitLab")]
     Gitlab,
+    #[serde(alias = "Gitea", alias = "forgejo", alias = "Forgejo")]
+    Gitea,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]

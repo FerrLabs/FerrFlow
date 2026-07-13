@@ -239,6 +239,24 @@ The GitLab MR response was missing the `iid` field.
 
 Could not merge the release MR via the GitLab API.
 
+## Gitea API Errors (E3200--E3299)
+
+Covers Gitea, Forgejo, and Codeberg (the API is shared).
+
+### E3201: Failed to create Gitea release
+
+The Gitea Releases API (`POST /api/v1/repos/{owner}/{repo}/releases`) returned an error.
+
+**Fix**: Check that `GITEA_TOKEN` / `FORGEJO_TOKEN` (or `FERRFLOW_TOKEN`) is set and has write access to the repository.
+
+### E3202: Failed to list Gitea releases
+
+The Gitea API returned an error while listing releases to find a draft.
+
+### E3203: Failed to publish Gitea release
+
+Could not clear the draft flag on a Gitea release via the API.
+
 ## Version File Errors (E4000--E4799)
 
 ### TOML (E4101--E4105)
