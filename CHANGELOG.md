@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.26.0] - 2026-07-13
+
+### Features
+
+- feat(obs): migrate misc root status output to tracing (#650)
+
 ## [5.25.1] - 2026-07-12
 
 ### Bug Fixes
