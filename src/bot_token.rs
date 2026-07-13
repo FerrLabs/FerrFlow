@@ -192,7 +192,7 @@ pub fn ensure_bot_token() -> Result<()> {
     } else {
         format!(" (expires at {})", issued.expires_at)
     };
-    println!("Authenticated as ferrflow[bot]{repo_note}{expires_note}.");
+    tracing::info!("Authenticated as ferrflow[bot]{repo_note}{expires_note}.");
 
     configure_bot_git_identity();
 

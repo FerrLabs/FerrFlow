@@ -37,7 +37,7 @@ pub fn run(
         let tag = pkg.tag_for_version(&config.workspace, config.is_monorepo(), &version);
         let package_path = root.join(&pkg.path);
 
-        println!(
+        tracing::info!(
             "{} {} @ {}",
             "publish".bold(),
             pkg.name.cyan(),
@@ -57,7 +57,7 @@ pub fn run(
     }
 
     if ran == 0 {
-        println!(
+        tracing::warn!(
             "{}",
             "No publishers configured on any package — nothing to publish.".yellow()
         );

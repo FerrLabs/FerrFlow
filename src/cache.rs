@@ -136,7 +136,7 @@ pub fn clear_cwd() -> Result<()> {
     let repo = crate::git::open_repo(&std::env::current_dir()?)?;
     let dir = cache_dir(&repo);
     clear(&repo)?;
-    println!("Cleared FerrFlow cache at {}", dir.display());
+    tracing::info!("Cleared FerrFlow cache at {}", dir.display());
     Ok(())
 }
 

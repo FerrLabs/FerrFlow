@@ -244,7 +244,7 @@ pub fn sync_cwd(config_path: Option<&Path>) -> Result<()> {
         .unwrap_or_default();
     let manifest = Manifest::new(packages, now_utc_iso8601(), commit);
     write_atomic(&path, &manifest)?;
-    println!(
+    tracing::info!(
         "Wrote {} package version(s) to {}",
         manifest.packages.len(),
         path.display()
