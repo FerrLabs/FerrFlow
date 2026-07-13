@@ -31,7 +31,7 @@ pub fn run(
     let config = timing.stage("load config", || Config::load(&root, config_path))?;
 
     if config.packages.is_empty() {
-        println!(
+        tracing::warn!(
             "{}",
             "No packages configured. Run `ferrflow init` to create a ferrflow config.".yellow()
         );
@@ -104,7 +104,7 @@ fn print_text(statuses: &[PackageStatus]) {
             Some(tag) => format!("(tag: {})", tag),
             None => "(no tag)".to_string(),
         };
-        println!(
+        tracing::info!(
             "{} {:<20} v{}   {}",
             dot,
             s.name,
