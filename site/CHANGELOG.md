@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.22.0] - 2026-07-13
+
+### Features
+
+- feat(site): document Gitea/Forgejo forge in config reference (#661)
+
 ## [6.21.0] - 2026-07-13
 
 ### Features
