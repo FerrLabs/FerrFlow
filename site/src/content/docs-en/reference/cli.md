@@ -232,11 +232,38 @@ ferrflow completions <SHELL>
 
 These flags work with all commands:
 
-| Flag              | Description                                                                                                                                                      |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--dry-run`       | Show what would happen without making any changes                                                                                                                |
-| `--verbose`, `-v` | Verbose output, including commit hashes and file diffs                                                                                                           |
-| `--config <PATH>` | Path to a custom config file (default: auto-detected). Also accepts the `FERRFLOW_CONFIG` env variable.                                                          |
-| `--jobs <N>`      | Max threads for CPU-parallel work (per-package planning). Default: all logical cores; `1` forces single-threaded. Also accepts the `FERRFLOW_JOBS` env variable. |
-| `--version`       | Print the FerrFlow version and exit                                                                                                                              |
-| `--help`, `-h`    | Print help                                                                                                                                                       |
+| Flag                    | Description                                                                                                                                                                             |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--dry-run`             | Show what would happen without making any changes                                                                                                                                       |
+| `--verbose`, `-v`       | Verbose output, including commit hashes and file diffs                                                                                                                                  |
+| `--log-format <FORMAT>` | Diagnostic output format on stderr: `human` (default, colored) or `json` (one structured event per line). Command **data** (`--json`, `version` / `tag` values) always stays on stdout. |
+| `--config <PATH>`       | Path to a custom config file (default: auto-detected). Also accepts the `FERRFLOW_CONFIG` env variable.                                                                                 |
+| `--jobs <N>`            | Max threads for CPU-parallel work (per-package planning). Default: all logical cores; `1` forces single-threaded. Also accepts the `FERRFLOW_JOBS` env variable.                        |
+| `--version`             | Print the FerrFlow version and exit                                                                                                                                                     |
+| `--help`, `-h`          | Print help                                                                                                                                                                              |
+
+## Logging & output
+
+FerrFlow separates **data** from **logs** across the two output streams:
+
+- **stdout** carries data — the `--json` output of `check` / `release` / `status` / `validate`, and the value printed by `version` and `tag`. Capture it in scripts: `V=$(ferrflow version)`.
+- **stderr** carries the human status report and every diagnostic event.
+
+So you can capture the machine result and the run log independently:
+
+```bash
+ferrflow check --json > result.json 2> run.log
+```
+
+`--log-format json` renders each diagnostic as one structured JSON event per line on stderr, ready for Datadog / Loki / CloudWatch:
+
+```json
+{
+  "timestamp": "2026-01-01T00:00:00Z",
+  "level": "INFO",
+  "fields": { "message": "✓ Updated CHANGELOG.md" },
+  "target": "ferrflow::changelog"
+}
+```
+
+`--verbose` (or a `RUST_LOG` filter such as `RUST_LOG=ferrflow::git=trace`) controls which levels are shown.

@@ -201,11 +201,38 @@ ferrflow completions <SHELL>
 
 Ces options fonctionnent avec toutes les commandes :
 
-| Option            | Description                                                                                                                                                                                             |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--dry-run`       | Montrer ce qui se passerait sans effectuer de changements                                                                                                                                               |
-| `--verbose`, `-v` | Sortie détaillée, incluant les hashes de commits et les diffs de fichiers                                                                                                                               |
-| `--config <PATH>` | Chemin vers un fichier de configuration personnalisé (défaut : auto-détecté). Accepte aussi la variable d'environnement `FERRFLOW_CONFIG`.                                                              |
-| `--jobs <N>`      | Nombre max de threads pour le travail CPU-parallèle (planification par paquet). Défaut : tous les cœurs logiques ; `1` force le mono-thread. Accepte aussi la variable d'environnement `FERRFLOW_JOBS`. |
-| `--version`       | Afficher la version de FerrFlow et quitter                                                                                                                                                              |
-| `--help`, `-h`    | Afficher l'aide                                                                                                                                                                                         |
+| Option                  | Description                                                                                                                                                                                                               |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--dry-run`             | Montrer ce qui se passerait sans effectuer de changements                                                                                                                                                                 |
+| `--verbose`, `-v`       | Sortie détaillée, incluant les hashes de commits et les diffs de fichiers                                                                                                                                                 |
+| `--log-format <FORMAT>` | Format de la sortie de diagnostic sur stderr : `human` (défaut, coloré) ou `json` (un événement structuré par ligne). Les **données** des commandes (`--json`, valeurs de `version` / `tag`) restent toujours sur stdout. |
+| `--config <PATH>`       | Chemin vers un fichier de configuration personnalisé (défaut : auto-détecté). Accepte aussi la variable d'environnement `FERRFLOW_CONFIG`.                                                                                |
+| `--jobs <N>`            | Nombre max de threads pour le travail CPU-parallèle (planification par paquet). Défaut : tous les cœurs logiques ; `1` force le mono-thread. Accepte aussi la variable d'environnement `FERRFLOW_JOBS`.                   |
+| `--version`             | Afficher la version de FerrFlow et quitter                                                                                                                                                                                |
+| `--help`, `-h`          | Afficher l'aide                                                                                                                                                                                                           |
+
+## Logging & sortie
+
+FerrFlow sépare les **données** des **logs** sur les deux flux de sortie :
+
+- **stdout** porte les données — la sortie `--json` de `check` / `release` / `status` / `validate`, et la valeur affichée par `version` et `tag`. Capturez-la dans vos scripts : `V=$(ferrflow version)`.
+- **stderr** porte le rapport humain et chaque événement de diagnostic.
+
+Vous pouvez ainsi capturer le résultat machine et le journal d'exécution indépendamment :
+
+```bash
+ferrflow check --json > result.json 2> run.log
+```
+
+`--log-format json` rend chaque diagnostic sous forme d'un événement JSON structuré par ligne sur stderr, prêt pour Datadog / Loki / CloudWatch :
+
+```json
+{
+  "timestamp": "2026-01-01T00:00:00Z",
+  "level": "INFO",
+  "fields": { "message": "✓ Updated CHANGELOG.md" },
+  "target": "ferrflow::changelog"
+}
+```
+
+`--verbose` (ou un filtre `RUST_LOG` comme `RUST_LOG=ferrflow::git=trace`) contrôle les niveaux affichés.
