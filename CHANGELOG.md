@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.28.1] - 2026-07-14
+
+### Bug Fixes
+
+- fix(ci): stabilize cargo-vet supply-chain job (#660)
+
 ## [5.28.0] - 2026-07-13
 
 ### Features
