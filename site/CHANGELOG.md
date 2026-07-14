@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.24.1] - 2026-07-14
+
+### Bug Fixes
+
+- fix(site): align favicon and app icons with navbar commit-graph logo (#669)
+
 ## [6.24.0] - 2026-07-14
 
 ### Features
