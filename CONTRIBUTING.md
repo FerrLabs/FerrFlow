@@ -95,11 +95,11 @@ See [SECURITY.md](SECURITY.md) for reporting vulnerabilities.
 
 CI runs `cargo audit`, `cargo deny`, `cargo machete`, and `cargo vet` on every
 PR. `cargo vet` checks that every dependency in `Cargo.lock` is either audited
-by a trusted source (Mozilla, Google, the Bytecode Alliance — imported in
+by a trusted source (Mozilla and the Bytecode Alliance — imported in
 `supply-chain/config.toml`) or explicitly exempted.
 
-When you add or bump a dependency, `cargo vet --locked` will fail until the new
-crate is accounted for. To resolve it locally:
+When you add or bump a dependency, `cargo vet` will fail until the new crate is
+accounted for. To resolve it locally:
 
 ```bash
 cargo install cargo-vet   # once

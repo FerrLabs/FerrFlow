@@ -58,7 +58,7 @@ jobs:
       - name: cargo machete (unused deps)
         run: cargo machete
       - name: cargo vet (supply-chain audit)
-        run: cargo vet --locked
+        run: cargo vet
 
   build:
     name: Build Release Binary
