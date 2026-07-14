@@ -478,7 +478,7 @@ jobs:
           key: bench-npm-cache-${{ hashFiles('.github/workflows/ci.yml', 'benchmarks/fixtures/definitions/*.json') }}
           restore-keys: |
             bench-npm-cache-
-      - uses: FerrLabs/Benchmarks@90ce64396c762ad04a8a89a86a5739c664e0d50f # v5
+      - uses: FerrLabs/Benchmarks@39918d084f48dc4e1ce63fe7c353088e10b03958 # v5 + Fixtures v1.1.1 (graph mode)
         with:
           type: full
           definitions: benchmarks/fixtures/definitions
