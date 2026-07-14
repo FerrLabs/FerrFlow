@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.25.0] - 2026-07-14
+
+### Features
+
+- feat(site): label the complex dependency-graph benchmark fixture (#671)
+
 ## [6.24.1] - 2026-07-14
 
 ### Bug Fixes
