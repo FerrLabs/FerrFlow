@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.24.0] - 2026-07-14
+
+### Features
+
+- feat(site): add /why comparison page vs semantic-release, release-please, Changesets (#667)
+
 ## [6.23.2] - 2026-07-13
 
 ### Bug Fixes
