@@ -18,6 +18,7 @@ export function ferrflowChrome(): SiteChromeConfig {
     navLinks: [
       { label: $localize`:@@nav.docs:Docs`, href: '/docs/introduction' },
       { label: $localize`:@@nav.performance:Performance`, href: '/performance' },
+      { label: $localize`:@@nav.why:Why FerrFlow`, href: '/why' },
       {
         label: $localize`:@@nav.github:GitHub`,
         href: 'https://github.com/FerrLabs/FerrFlow',
