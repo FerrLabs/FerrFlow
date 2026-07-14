@@ -1,0 +1,30 @@
+{
+  "meta": {
+    "name": "complex",
+    "description": "50 packages wired as a dependency DAG (core spine + leaves). Only ferrflow is given the dependency graph (via dependsOn in ferrflow.json); the competitors run over the same packages without inter-package edges, so this fixture measures ferrflow's version-cascade path specifically.",
+    "default_branch": "main"
+  },
+  "generate": {
+    "packages": 50,
+    "commits": 300,
+    "seed": 20250714,
+    "graph": true
+  },
+  "tool_configs": {
+    "ferrflow": {},
+    "changesets": {
+      "package.json": "{\"name\":\"root\",\"private\":true,\"workspaces\":[\"packages/*\"]}",
+      ".changeset/config.json": "{\"$schema\":\"https://unpkg.com/@changesets/config@3.0.0/schema.json\",\"changelog\":\"@changesets/cli/changelog\",\"commit\":false,\"fixed\":[],\"linked\":[],\"access\":\"restricted\",\"baseBranch\":\"main\",\"updateInternalDependencies\":\"patch\",\"ignore\":[]}"
+    },
+    "semantic-release": {
+      "package.json": "{\"name\":\"root\",\"version\":\"0.1.0\",\"private\":true}",
+      ".releaserc.json": "{\"branches\":[\"main\"],\"plugins\":[\"@semantic-release/commit-analyzer\",\"@semantic-release/release-notes-generator\"]}"
+    },
+    "standard-version": {
+      "package.json": "{\"name\":\"root\",\"version\":\"0.1.0\",\"private\":true}"
+    },
+    "commit-and-tag-version": {
+      "package.json": "{\"name\":\"root\",\"version\":\"0.1.0\",\"private\":true}"
+    }
+  }
+}
