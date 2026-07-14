@@ -23,6 +23,7 @@ const FIXTURE_LABELS: Record<string, string> = {
   'mono-100-1k': 'Monorepo · 100 packages × 1k commits',
   'mono-50-5k': 'Monorepo · 50 packages × 5k commits',
   'mono-large': 'Monorepo · 200 packages × 10k commits',
+  complex: 'Monorepo · dependency graph · 50 packages × 300 commits',
 };
 
 const FIXTURE_SHORT: Record<string, string> = {
@@ -32,6 +33,7 @@ const FIXTURE_SHORT: Record<string, string> = {
   'mono-100-1k': '100 × 1k',
   'mono-50-5k': '50 × 5k',
   'mono-large': '200 × 10k',
+  complex: '50 × 300 · graph',
 };
 
 const COMMAND_LABELS: Record<string, string> = {
