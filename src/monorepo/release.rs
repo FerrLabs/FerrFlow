@@ -6,6 +6,7 @@ use crate::config::Config;
 use crate::git::{get_repo_root, open_repo};
 use crate::timing::Timing;
 
+use super::run::checkpoint::Checkpoint;
 use super::run::run_release_logic;
 
 const MAX_RELEASE_REGENERATE_ATTEMPTS: usize = 3;
@@ -107,7 +108,7 @@ pub fn release(
                     "{}",
                     format!(
                         "Release attempt {attempt}/{MAX_RELEASE_REGENERATE_ATTEMPTS} \
-                         pushed onto a stale '{}': {e}",
+                         pushed onto a stale '{}': {e:#}",
                         config.workspace.branch,
                     )
                     .yellow()
@@ -151,5 +152,146 @@ fn cleanup_failed_release_attempt(
 
     let target_branch = crate::git::resolve_current_branch(&repo, &config.workspace.branch);
     crate::git::reset_branch_to_remote(&repo, &config.workspace.remote, &target_branch)?;
+
+    // The tags and the release commit this checkpoint recorded are gone, so
+    // it has to go with them. A surviving `TagsCreated` makes the next
+    // attempt skip tag creation and then push tags that were just deleted
+    // (E2006), which also leaves floating tags stranded.
+    Checkpoint::delete(root)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::monorepo::run::checkpoint::Phase;
+    use std::collections::HashSet;
+
+    fn git(dir: &Path, args: &[&str]) -> String {
+        let out = std::process::Command::new("git")
+            .current_dir(dir)
+            .args(args)
+            .env("GIT_AUTHOR_NAME", "t")
+            .env("GIT_AUTHOR_EMAIL", "t@t.t")
+            .env("GIT_COMMITTER_NAME", "t")
+            .env("GIT_COMMITTER_EMAIL", "t@t.t")
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "git {args:?} failed: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        String::from_utf8_lossy(&out.stdout).to_string()
+    }
+
+    fn commit(dir: &Path, file: &str) {
+        std::fs::write(dir.join(file), file).unwrap();
+        git(dir, &["add", "--", file]);
+        git(dir, &["commit", "-m", &format!("add {file}")]);
+    }
+
+    fn config() -> Config {
+        serde_json::from_str(r#"{"workspace":{"branch":"main","remote":"origin"}}"#).unwrap()
+    }
+
+    // A release attempt that got as far as creating tags, then lost the
+    // push. Mirrors what the regenerate loop hands to the cleanup.
+    fn repo_with_failed_attempt() -> (tempfile::TempDir, std::path::PathBuf, HashSet<String>) {
+        let base = tempfile::tempdir().unwrap();
+
+        let remote = base.path().join("remote.git");
+        std::fs::create_dir_all(&remote).unwrap();
+        git(&remote, &["init", "--bare", "-b", "main"]);
+
+        let local = base.path().join("local");
+        std::fs::create_dir_all(&local).unwrap();
+        git(&local, &["init", "-b", "main"]);
+        git(
+            &local,
+            &["remote", "add", "origin", remote.to_str().unwrap()],
+        );
+        commit(&local, "base.txt");
+        git(&local, &["push", "origin", "main:main"]);
+
+        let pre_attempt_tags: HashSet<String> =
+            crate::git::collect_all_tags(&open_repo(&local).unwrap())
+                .into_iter()
+                .collect();
+
+        commit(&local, "release.txt");
+        git(&local, &["tag", "-a", "v1.1.1", "-m", "Release 1.1.1"]);
+        git(&local, &["tag", "-a", "v1", "-m", "Release 1.1.1"]);
+
+        let head = git(&local, &["rev-parse", "HEAD~1"]).trim().to_string();
+        let mut cp = Checkpoint::new(head, vec!["v1.1.1".to_string()]);
+        cp.advance(Phase::TagsCreated);
+        cp.save(&local).unwrap();
+
+        (base, local, pre_attempt_tags)
+    }
+
+    // The regression behind #662: cleanup deleted the tags but left the
+    // checkpoint at TagsCreated, so the next attempt skipped tag creation
+    // and pushed a v1.1.1 that no longer existed (E2006).
+    #[test]
+    fn cleanup_drops_the_checkpoint_that_recorded_the_deleted_tags() {
+        let (_base, local, pre) = repo_with_failed_attempt();
+        assert!(Checkpoint::load(&local).unwrap().is_some());
+
+        cleanup_failed_release_attempt(&local, &config(), &pre).unwrap();
+
+        assert!(
+            Checkpoint::load(&local).unwrap().is_none(),
+            "a checkpoint surviving the cleanup makes the next attempt skip tag creation"
+        );
+    }
+
+    #[test]
+    fn cleanup_deletes_the_tags_the_failed_attempt_created() {
+        let (_base, local, pre) = repo_with_failed_attempt();
+
+        cleanup_failed_release_attempt(&local, &config(), &pre).unwrap();
+
+        let after: HashSet<String> = crate::git::collect_all_tags(&open_repo(&local).unwrap())
+            .into_iter()
+            .collect();
+        assert!(!after.contains("v1.1.1"), "versioned tag must be gone");
+        assert!(!after.contains("v1"), "floating tag must be gone");
+    }
+
+    // Tags that predate the attempt are not ours to delete.
+    #[test]
+    fn cleanup_keeps_tags_that_existed_before_the_attempt() {
+        let base = tempfile::tempdir().unwrap();
+        let remote = base.path().join("remote.git");
+        std::fs::create_dir_all(&remote).unwrap();
+        git(&remote, &["init", "--bare", "-b", "main"]);
+
+        let local = base.path().join("local");
+        std::fs::create_dir_all(&local).unwrap();
+        git(&local, &["init", "-b", "main"]);
+        git(
+            &local,
+            &["remote", "add", "origin", remote.to_str().unwrap()],
+        );
+        commit(&local, "base.txt");
+        git(&local, &["tag", "-a", "v1.1.0", "-m", "Release 1.1.0"]);
+        git(&local, &["push", "origin", "main:main"]);
+
+        let pre: HashSet<String> = crate::git::collect_all_tags(&open_repo(&local).unwrap())
+            .into_iter()
+            .collect();
+
+        commit(&local, "release.txt");
+        git(&local, &["tag", "-a", "v1.1.1", "-m", "Release 1.1.1"]);
+
+        cleanup_failed_release_attempt(&local, &config(), &pre).unwrap();
+
+        let after: HashSet<String> = crate::git::collect_all_tags(&open_repo(&local).unwrap())
+            .into_iter()
+            .collect();
+        assert!(after.contains("v1.1.0"), "pre-existing tag must survive");
+        assert!(!after.contains("v1.1.1"), "attempt tag must be gone");
+    }
 }

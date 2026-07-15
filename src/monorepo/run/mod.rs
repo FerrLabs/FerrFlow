@@ -21,7 +21,7 @@ use super::types::{CheckCommit, CheckPackage, CheckResult, RunOutput};
 use super::util::{auto_stage_new_files, collect_dirty_files};
 
 mod cascade;
-mod checkpoint;
+pub(super) mod checkpoint;
 mod drafts;
 mod execute;
 mod forced;
