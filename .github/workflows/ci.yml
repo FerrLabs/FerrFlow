@@ -507,6 +507,15 @@ jobs:
           fi
           mkdir -p shard-fixtures
           cp -r "bench-fixtures/$FIXTURE" shard-fixtures/
+          # The floor rides along in every shard, never as a shard of its own:
+          # startup is a property of this runner, and shards land on different
+          # machines, so subtracting one shard's floor from another's total
+          # would measure the hardware gap instead of the work.
+          if [[ ! -d "bench-fixtures/floor" ]]; then
+            echo "::error::generated fixtures contain no 'floor'"
+            exit 1
+          fi
+          cp -r bench-fixtures/floor shard-fixtures/
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version: '24'
@@ -527,7 +536,7 @@ jobs:
           key: bench-npm-cache-${{ hashFiles('.github/workflows/ci.yml', 'benchmarks/fixtures/definitions/*.json') }}
           restore-keys: |
             bench-npm-cache-
-      - uses: FerrLabs/Benchmarks@3d9a4fa078bb94993b8a7f78633aad2a7c740feb # v5 + Fixtures v1.1.1 + sharding + cold-cache benchmark
+      - uses: FerrLabs/Benchmarks@e1237b5e267fe331ea7dd78bbd313c3bf0ff2c72 # v5 + Fixtures v1.1.1 + sharding + cold-cache + startup/work split
         with:
           type: full
           definitions: benchmarks/fixtures/definitions
@@ -567,7 +576,7 @@ jobs:
         with:
           pattern: bench-partial-*
           path: partials/
-      - uses: FerrLabs/Benchmarks@3d9a4fa078bb94993b8a7f78633aad2a7c740feb # v5 + Fixtures v1.1.1 + sharding + cold-cache benchmark
+      - uses: FerrLabs/Benchmarks@e1237b5e267fe331ea7dd78bbd313c3bf0ff2c72 # v5 + Fixtures v1.1.1 + sharding + cold-cache + startup/work split
         with:
           type: full
           definitions: benchmarks/fixtures/definitions
