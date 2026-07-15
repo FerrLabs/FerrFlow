@@ -451,13 +451,21 @@ jobs:
 
   benchmark:
     name: Benchmark
-    needs: test
+    # Depends on `build` purely to reuse its release binary: the benchmark used
+    # to compile its own identical copy. Wall-clock is a wash (we wait for
+    # `build` instead of compiling alongside it) — what this buys is one less
+    # full release compile per run.
+    needs: [test, build]
     runs-on: ubuntu-latest
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
       - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: ferrflow-binary
+          path: bin/
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version: '24'
@@ -478,13 +486,14 @@ jobs:
           key: bench-npm-cache-${{ hashFiles('.github/workflows/ci.yml', 'benchmarks/fixtures/definitions/*.json') }}
           restore-keys: |
             bench-npm-cache-
-      - uses: FerrLabs/Benchmarks@39918d084f48dc4e1ce63fe7c353088e10b03958 # v5 + Fixtures v1.1.1 (graph mode)
+      - uses: FerrLabs/Benchmarks@eef0ec737c69a69b7282a900475d05e64bada905 # v5 + Fixtures v1.1.1 (graph mode) + binary-dir
         with:
           type: full
           definitions: benchmarks/fixtures/definitions
           ferrflow-token: ${{ secrets.GITHUB_TOKEN }}
           skip-competitors: false
           verbose: true
+          binary-dir: bin
         env:
           FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
 
