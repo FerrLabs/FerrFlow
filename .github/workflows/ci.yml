@@ -537,6 +537,12 @@ jobs:
           binary-dir: bin
           fixtures-dir: shard-fixtures
           shard: true
+          # Sharding put wall-clock back at the slowest fixture (~4.5 min), so
+          # spend the headroom on samples: 30 runs tightens the median's
+          # standard error by ~1.7x over the action's default of 10. The slowest
+          # shard lands around ~9-10 min — still well under the ~19.5 min the
+          # unsharded job used to take.
+          runs: 30
         env:
           FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
       - name: Upload shard results
