@@ -20,6 +20,7 @@ export interface PerfChartConfig {
   readonly commandLabels: Record<string, string>;
   readonly toolColors: Record<string, string>;
   readonly defaultCmd: string;
+  readonly runs: number;
 }
 
 const FF_ACCENT = '#e8733a';
@@ -53,12 +54,13 @@ const FF_ACCENT = '#e8733a';
       <canvas
         #canvas
         role="img"
-        aria-label="Grouped bar chart of median latency per fixture per tool, logarithmic scale"
+        i18n-aria-label="@@perf.chart.ariaLabel"
+        aria-label="Grouped bar chart of median latency per fixture per tool, linear scale"
       ></canvas>
     </div>
-    <p class="perf-chart-note">
-      Median of 10 hyperfine runs · log scale · FerrFlow pinned to <code>--jobs 1</code> · lower is
-      better
+    <p class="perf-chart-note" i18n="@@perf.chart.note">
+      Median of {{ config().runs }} hyperfine runs · linear scale · cold cache · FerrFlow pinned to
+      <code>--jobs 1</code> · lower is better
     </p>
   `,
   styles: `
@@ -219,17 +221,9 @@ export class PerfChartComponent {
         },
         scales: {
           y: {
-            type: 'logarithmic',
-            ticks: {
-              callback: (v) => {
-                const n = Number(v);
-                return [1, 10, 100, 1000, 10000].includes(n)
-                  ? n < 1000
-                    ? `${n} ms`
-                    : `${n / 1000} s`
-                  : '';
-              },
-            },
+            type: 'linear',
+            beginAtZero: true,
+            ticks: { callback: (v) => fmt(Number(v)) },
           },
           x: { grid: { display: false } },
         },

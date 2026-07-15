@@ -55,6 +55,9 @@ const TOOL_COLORS: Record<string, string> = {
 
 const PREFERRED_METHOD: Record<string, string> = { ferrflow: 'binary' };
 const PARALLEL_CMD = 'release-dry-run';
+const CACHED_CMD = 'check';
+const DEFAULT_WARMUP = 3;
+const DEFAULT_RUNS = 30;
 
 interface ParsedKey {
   readonly fixture: string;
@@ -126,6 +129,12 @@ interface ParallelRow {
   readonly fixture: string;
   readonly single: BenchmarkCell;
   readonly parallel: ParallelCell;
+}
+
+interface CachedRow {
+  readonly fixture: string;
+  readonly cold: BenchmarkCell;
+  readonly warm: ParallelCell;
 }
 
 interface InstallRow {
@@ -205,8 +214,14 @@ interface SrTableRow {
         <h2 i18n="@@perf.method.title">How we measure</h2>
         <ul>
           <li i18n="@@perf.method.hyperfine">
-            <strong>Hyperfine</strong> with 3 warmup runs and 10 timed runs per (fixture × tool ×
-            command) cell. Median latency reported.
+            <strong>Hyperfine</strong> with {{ warmup() }} warmup runs and {{ runs() }} timed runs
+            per (fixture × tool × command) cell. Median latency reported.
+          </li>
+          <li i18n="@@perf.method.coldCache">
+            <strong>Cold cache.</strong> FerrFlow memoises its analysis under
+            <code>.git/ferrflow-cache</code>. That cache is dropped before every timed run, so the
+            comparison measures the work itself — none of the other tools has an equivalent to hide
+            behind. The warm numbers are reported separately below.
           </li>
           <li i18n="@@perf.method.rss">
             <strong>Peak RSS</strong> via <code>/usr/bin/time -v</code> on a single subsequent run.
@@ -228,6 +243,22 @@ interface SrTableRow {
             <strong>Single-threaded comparison.</strong> FerrFlow runs with <code>--jobs 1</code> in
             the chart above, so it's measured like the single-threaded JS tools. Its real-world
             parallel numbers are reported separately.
+          </li>
+          <li i18n="@@perf.method.notLikeForLike">
+            <strong
+              >Two cells are not like-for-like, and we'd rather say so than quietly win.</strong
+            >
+            On <code>200 × 10k</code>, <code>changesets status</code> is faster than FerrFlow — but
+            our fixtures ship no <code>.changeset/*.md</code> files, so it resolves the workspace
+            and stops without reading a single commit. Its time barely moves across a 100× range of
+            history because it isn't looking at history at all. That cuts the other way too: every
+            row where we beat it by 30× is measuring <code>npx</code> and Node startup, not release
+            planning. On <code>50 × 300 · graph</code>, FerrFlow is slower than
+            <code>commit-and-tag-version</code> because it's the only tool doing the job — resolving
+            a 50-package dependency cascade and recovering missed releases across the history. The
+            others emit one bump and have no notion of a dependency graph. We're fixing the fixtures
+            (<a href="https://github.com/FerrLabs/Fixtures/issues/141">Fixtures#141</a>); until
+            then, read those two cells as a measurement gap, not a verdict.
           </li>
           <li i18n="@@perf.method.reproducible">
             <strong>Reproducible</strong> — the full pipeline is in
@@ -263,6 +294,42 @@ interface SrTableRow {
                     <td>{{ fmt(row.single) }}</td>
                     <td class="is-ours">{{ fmt(row.parallel) }}</td>
                     <td>{{ speedup(row.single, row.parallel) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      }
+
+      @if (hasCached()) {
+        <section class="perf-section">
+          <h2 i18n="@@perf.cache.title">Warm cache</h2>
+          <p class="lead" i18n="@@perf.cache.lead">
+            Every number above is measured cold. In practice a repository rarely moves between two
+            <code>ferrflow check</code> calls, so FerrFlow keeps the result of its last analysis in
+            <code>.git/ferrflow-cache</code> and reuses it while <code>HEAD</code>, the tags and the
+            config are unchanged. This is what a second call costs on an unchanged repo — it's a
+            real property of the tool, but it isn't a like-for-like comparison, so it stays out of
+            the chart.
+          </p>
+          <div class="perf-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th i18n="@@perf.cache.thFixture">Fixture</th>
+                  <th i18n="@@perf.cache.thCold">Cold</th>
+                  <th class="is-ours" i18n="@@perf.cache.thWarm">Cached</th>
+                  <th i18n="@@perf.cache.thSpeedup">Speedup</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of cachedRows(); track row.fixture) {
+                  <tr>
+                    <td>{{ fixtureLabel(row.fixture) }}</td>
+                    <td>{{ fmt(row.cold) }}</td>
+                    <td class="is-ours">{{ fmt(row.warm) }}</td>
+                    <td>{{ speedup(row.cold, row.warm) }}</td>
                   </tr>
                 }
               </tbody>
@@ -604,6 +671,7 @@ export class PerformanceComponent {
       commandLabels: COMMAND_LABELS,
       toolColors: TOOL_COLORS,
       defaultCmd: this.defaultCmd(),
+      runs: this.runs(),
     };
   });
 
@@ -619,6 +687,9 @@ export class PerformanceComponent {
   });
 
   protected readonly runnerCores = computed(() => benchmarks.runner_cores ?? null);
+
+  protected readonly warmup = computed(() => benchmarks.warmup ?? DEFAULT_WARMUP);
+  protected readonly runs = computed(() => benchmarks.runs ?? DEFAULT_RUNS);
 
   protected readonly parallelRows = computed<readonly ParallelRow[]>(() => {
     const parallelData = benchmarks.ferrflow_parallel ?? {};
@@ -647,6 +718,20 @@ export class PerformanceComponent {
     const cores = this.runnerCores();
     return this.parallelRows().length > 0 && cores !== null && cores > 1;
   });
+
+  protected readonly cachedRows = computed<readonly CachedRow[]>(() => {
+    const cachedData = benchmarks.ferrflow_cached ?? {};
+    const { cells, fixtures } = this.grid();
+    return fixtures
+      .map((fixture): CachedRow | null => {
+        const warm = cachedData[`${fixture}-${CACHED_CMD}`];
+        const cold = cells[`${fixture}|ferrflow|${CACHED_CMD}`];
+        return warm && cold ? { fixture, cold, warm } : null;
+      })
+      .filter((r): r is CachedRow => r !== null);
+  });
+
+  protected readonly hasCached = computed(() => this.cachedRows().length > 0);
 
   protected readonly installRows = computed<readonly InstallRow[]>(() => {
     const installSizes: Record<string, InstallSize> = benchmarks.install_sizes ?? {};
