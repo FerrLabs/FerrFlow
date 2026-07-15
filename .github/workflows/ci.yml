@@ -449,23 +449,64 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           comment-always: true
 
-  benchmark:
-    name: Benchmark
-    # Depends on `build` purely to reuse its release binary: the benchmark used
-    # to compile its own identical copy. Wall-clock is a wash (we wait for
-    # `build` instead of compiling alongside it) — what this buys is one less
-    # full release compile per run.
-    needs: [test, build]
+  bench-fixtures:
+    name: Generate Benchmark Fixtures
+    needs: test
     runs-on: ubuntu-latest
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
-      - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
-      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+      - name: Generate benchmark fixtures
+        uses: FerrLabs/Fixtures@3d9971a22666f2d5d262d5a308920af191e16a4a # v1.1.1
+        with:
+          definitions: benchmarks/fixtures/definitions
+          generated-dir: bench-fixtures
+      - name: Upload benchmark fixtures
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: bench-fixtures
+          path: bench-fixtures/
+          include-hidden-files: true
+          retention-days: 1
+          if-no-files-found: error
+
+  benchmark:
+    name: Benchmark - ${{ matrix.fixture }}
+    # One shard per fixture, so wall-clock is the slowest fixture rather than
+    # the sum of all of them (mono-large dominates). Sharded per fixture and
+    # never per tool: ferrflow-vs-competitor only means something when both ran
+    # on the same machine, so every fixture's tools stay inside one runner.
+    #
+    # No Rust toolchain here on purpose: the binary comes from `build` and the
+    # fixtures from `bench-fixtures`, so nothing in this job compiles.
+    needs: [test, build, bench-fixtures]
+    runs-on: ubuntu-latest
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+    strategy:
+      fail-fast: false
+      matrix:
+        fixture: [single, mono-small, mono-medium, mono-100-1k, mono-50-5k, mono-large, complex]
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: ferrflow-binary
           path: bin/
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: bench-fixtures
+          path: bench-fixtures/
+      - name: Isolate this shard's fixture
+        env:
+          FIXTURE: ${{ matrix.fixture }}
+        run: |
+          if [[ ! -d "bench-fixtures/$FIXTURE" ]]; then
+            echo "::error::generated fixtures contain no '$FIXTURE'"
+            ls -la bench-fixtures || true
+            exit 1
+          fi
+          mkdir -p shard-fixtures
+          cp -r "bench-fixtures/$FIXTURE" shard-fixtures/
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version: '24'
@@ -486,7 +527,7 @@ jobs:
           key: bench-npm-cache-${{ hashFiles('.github/workflows/ci.yml', 'benchmarks/fixtures/definitions/*.json') }}
           restore-keys: |
             bench-npm-cache-
-      - uses: FerrLabs/Benchmarks@eef0ec737c69a69b7282a900475d05e64bada905 # v5 + Fixtures v1.1.1 (graph mode) + binary-dir
+      - uses: FerrLabs/Benchmarks@ba4238c7dfaab33a62aba9490cbe152ec8382e1a # v5 + Fixtures v1.1.1 (graph mode) + sharding
         with:
           type: full
           definitions: benchmarks/fixtures/definitions
@@ -494,12 +535,42 @@ jobs:
           skip-competitors: false
           verbose: true
           binary-dir: bin
+          fixtures-dir: shard-fixtures
+          shard: true
+        env:
+          FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
+      - name: Upload shard results
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: bench-partial-${{ matrix.fixture }}
+          path: benchmarks/results/latest.json
+          retention-days: 1
+          if-no-files-found: error
+
+  benchmark-aggregate:
+    name: Benchmark (aggregate)
+    # Merges the shards and runs the regression check, comment and uploads once
+    # over the whole result — the shards deliberately skip all of that.
+    needs: benchmark
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: bench-partial-*
+          path: partials/
+      - uses: FerrLabs/Benchmarks@ba4238c7dfaab33a62aba9490cbe152ec8382e1a # v5 + Fixtures v1.1.1 (graph mode) + sharding
+        with:
+          type: full
+          definitions: benchmarks/fixtures/definitions
+          ferrflow-token: ${{ secrets.GITHUB_TOKEN }}
+          merge-partials: partials
         env:
           FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
 
   release:
     name: Release
-    needs: [test, fixture-monorepo, fixture-single, fixture-config, fixture-advanced, benchmark]
+    needs: [test, fixture-monorepo, fixture-single, fixture-config, fixture-advanced, benchmark-aggregate]
     runs-on: ubuntu-latest
     concurrency:
       group: release-${{ github.workflow }}-${{ github.ref }}
@@ -511,7 +582,7 @@ jobs:
       needs.fixture-single.result == 'success' &&
       needs.fixture-config.result == 'success' &&
       needs.fixture-advanced.result == 'success' &&
-      (needs.benchmark.result == 'success' || needs.benchmark.result == 'skipped') &&
+      (needs.benchmark-aggregate.result == 'success' || needs.benchmark-aggregate.result == 'skipped') &&
       (
         (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
         github.event_name == 'workflow_dispatch'
@@ -542,14 +613,14 @@ jobs:
         env:
           FERRFLOW_BOT: "true"
       - name: Download benchmark summary
-        if: needs.benchmark.result == 'success'
+        if: needs.benchmark-aggregate.result == 'success'
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: benchmark-release-summary
           path: benchmark-summary/
         continue-on-error: true
       - name: Append benchmark results to draft release
-        if: needs.benchmark.result == 'success'
+        if: needs.benchmark-aggregate.result == 'success'
         id: append-bench
         run: |
           BENCH_FILE="benchmark-summary/release-summary.md"
