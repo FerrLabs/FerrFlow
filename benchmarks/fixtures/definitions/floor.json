@@ -1,0 +1,25 @@
+{
+  "meta": {
+    "name": "floor",
+    "description": "Startup floor: 1 package, 1 commit since the last tag. The smallest real job each tool can be given, so its median is the fixed cost of invoking the tool at all.",
+    "default_branch": "main"
+  },
+  "generate": {
+    "packages": 1,
+    "commits": 1
+  },
+  "tool_configs": {
+    "ferrflow": {
+      "ferrflow.json": "{\"package\":[{\"name\":\"myapp\",\"path\":\".\",\"changelog\":\"CHANGELOG.md\",\"versioned_files\":[{\"path\":\"package.json\",\"format\":\"json\"}]}]}"
+    },
+    "changesets": {
+      "package.json": "{\"name\":\"myapp\",\"version\":\"0.1.0\",\"private\":true}",
+      ".changeset/config.json": "{\"$schema\":\"https://unpkg.com/@changesets/config@3.0.0/schema.json\",\"changelog\":\"@changesets/cli/changelog\",\"commit\":false,\"fixed\":[],\"linked\":[],\"access\":\"restricted\",\"baseBranch\":\"main\",\"updateInternalDependencies\":\"patch\",\"ignore\":[]}",
+      ".changeset/initial.md": "---\n\"myapp\": patch\n---\n\nseed changeset so `changesets status` exits 0 on this single-package fixture\n"
+    },
+    "semantic-release": {
+      "package.json": "{\"name\":\"myapp\",\"version\":\"0.1.0\",\"private\":true}",
+      ".releaserc.json": "{\"branches\":[\"main\"],\"plugins\":[\"@semantic-release/commit-analyzer\",\"@semantic-release/release-notes-generator\"]}"
+    }
+  }
+}
