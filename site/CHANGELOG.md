@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.27.0] - 2026-07-15
+
+### Features
+
+- feat(ci): dispatch Renovate when the rebase box is ticked (#683)
+
 ## [6.26.1] - 2026-07-15
 
 ### Bug Fixes
