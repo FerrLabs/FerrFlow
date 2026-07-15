@@ -11,7 +11,7 @@ url = "https://raw.githubusercontent.com/bytecodealliance/wasmtime/main/supply-c
 url = "https://raw.githubusercontent.com/mozilla/supply-chain/main/audits.toml"
 
 [policy.ferrflow]
-audit-as-crates-io = true
+audit-as-crates-io = false
 
 [[exemptions.aho-corasick]]
 version = "1.1.4"
@@ -279,10 +279,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.fastrand]]
 version = "2.4.1"
-criteria = "safe-to-deploy"
-
-[[exemptions.ferrflow]]
-version = "5.28.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.filetime]]
