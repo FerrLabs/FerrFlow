@@ -651,20 +651,28 @@ export class PerformanceComponent {
   protected readonly chartConfig = computed<PerfChartConfig>(() => {
     const { cells, fixtures, tools, commands } = this.grid();
     const data: Record<string, Record<string, Record<string, number>>> = {};
+    const startup: Record<string, Record<string, Record<string, number>>> = {};
     for (const fix of fixtures) {
       for (const cmd of commands) {
         const row: Record<string, number> = {};
+        const startupRow: Record<string, number> = {};
         for (const tool of tools) {
           const cell = cells[`${fix}|${tool}|${cmd}`];
-          if (cell) row[tool] = cell.median_ms;
+          if (!cell) continue;
+          row[tool] = cell.median_ms;
+          if (cell.startup_ms !== undefined) startupRow[tool] = cell.startup_ms;
         }
         if (Object.keys(row).length > 0) {
           (data[fix] ??= {})[cmd] = row;
+        }
+        if (Object.keys(startupRow).length > 0) {
+          (startup[fix] ??= {})[cmd] = startupRow;
         }
       }
     }
     return {
       data,
+      startup,
       fixtures,
       commands,
       tools,

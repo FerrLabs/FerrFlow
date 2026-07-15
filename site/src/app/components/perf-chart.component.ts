@@ -13,6 +13,7 @@ import { Chart, registerables, type ChartDataset, type Plugin } from 'chart.js';
 
 export interface PerfChartConfig {
   readonly data: Record<string, Record<string, Record<string, number>>>;
+  readonly startup: Record<string, Record<string, Record<string, number>>>;
   readonly fixtures: readonly string[];
   readonly commands: readonly string[];
   readonly tools: readonly string[];
@@ -24,6 +25,7 @@ export interface PerfChartConfig {
 }
 
 const FF_ACCENT = '#e8733a';
+const STARTUP_FILL = '#e2e8f0';
 
 @Component({
   selector: 'flr-perf-chart',
@@ -49,6 +51,12 @@ const FF_ACCENT = '#e8733a';
           <span class="perf-leg-dot" [style.background]="colorFor(tool)"></span>{{ tool }}
         </span>
       }
+      @if (isSplit()) {
+        <span class="perf-leg">
+          <span class="perf-leg-dot is-startup"></span
+          ><span i18n="@@perf.chart.legStartup">startup</span>
+        </span>
+      }
     </div>
     <div class="perf-canvas-wrap">
       <canvas
@@ -58,10 +66,19 @@ const FF_ACCENT = '#e8733a';
         aria-label="Grouped bar chart of median latency per fixture per tool, linear scale"
       ></canvas>
     </div>
-    <p class="perf-chart-note" i18n="@@perf.chart.note">
-      Median of {{ config().runs }} hyperfine runs · linear scale · cold cache · FerrFlow pinned to
-      <code>--jobs 1</code> · lower is better
-    </p>
+    @if (isSplit()) {
+      <p class="perf-chart-note" i18n="@@perf.chart.noteSplit">
+        Median of {{ config().runs }} hyperfine runs · linear scale · cold cache · FerrFlow pinned
+        to <code>--jobs 1</code> · lower is better. Each bar is startup (process spawn, runtime
+        boot, module loading) plus the work itself, measured against a one-package one-commit floor
+        fixture. The total is what you wait for; the split is where it goes.
+      </p>
+    } @else {
+      <p class="perf-chart-note" i18n="@@perf.chart.note">
+        Median of {{ config().runs }} hyperfine runs · linear scale · cold cache · FerrFlow pinned
+        to <code>--jobs 1</code> · lower is better
+      </p>
+    }
   `,
   styles: `
     :host {
@@ -116,6 +133,10 @@ const FF_ACCENT = '#e8733a';
       border-radius: 2px;
       display: inline-block;
     }
+    .perf-leg-dot.is-startup {
+      background: #e2e8f0;
+      border: 1px solid #cbd5e1;
+    }
     .perf-canvas-wrap {
       position: relative;
       width: 100%;
@@ -166,17 +187,52 @@ export class PerfChartComponent {
     }
   }
 
+  protected isSplit(): boolean {
+    return Object.values(this.config().startup).some((byCmd) =>
+      Object.values(byCmd).some((byTool) => Object.keys(byTool).length > 0),
+    );
+  }
+
+  private total(fixture: string, tool: string): number | null {
+    return this.config().data[fixture]?.[this.activeCmd]?.[tool] ?? null;
+  }
+
+  private startupOf(fixture: string, tool: string): number | null {
+    return this.config().startup[fixture]?.[this.activeCmd]?.[tool] ?? null;
+  }
+
   private datasets(): ChartDataset<'bar', (number | null)[]>[] {
     const cfg = this.config();
-    const cmd = this.activeCmd;
-    return cfg.tools.map((tool) => ({
-      label: tool,
-      data: cfg.fixtures.map((f) =>
-        cfg.data[f] && cfg.data[f][cmd] ? (cfg.data[f][cmd][tool] ?? null) : null,
-      ),
-      backgroundColor: this.colorFor(tool),
-      borderRadius: 3,
-    }));
+    if (!this.isSplit()) {
+      return cfg.tools.map((tool) => ({
+        label: tool,
+        data: cfg.fixtures.map((f) => this.total(f, tool)),
+        backgroundColor: this.colorFor(tool),
+        borderRadius: 3,
+      }));
+    }
+    // Two datasets per tool sharing one stack id: Chart.js then draws one bar
+    // per tool split in two, rather than stacking every tool into one column.
+    return cfg.tools.flatMap((tool) => [
+      {
+        label: `${tool} · startup`,
+        data: cfg.fixtures.map((f) => this.startupOf(f, tool)),
+        backgroundColor: STARTUP_FILL,
+        stack: tool,
+      },
+      {
+        label: tool,
+        data: cfg.fixtures.map((f) => {
+          const total = this.total(f, tool);
+          if (total == null) return null;
+          const startup = this.startupOf(f, tool);
+          return startup == null ? total : Math.max(total - startup, 0);
+        }),
+        backgroundColor: this.colorFor(tool),
+        stack: tool,
+        borderRadius: 3,
+      },
+    ]);
   }
 
   private build(): void {
@@ -184,19 +240,23 @@ export class PerfChartComponent {
     const fmt = (v: number | null): string =>
       v == null ? '' : v < 1000 ? `${Math.round(v)} ms` : `${(v / 1000).toFixed(2)} s`;
 
+    // The label above ferrflow's bar reads the total, not the top segment: once
+    // the bar is split, dataset 'ferrflow' carries work only.
+    const totals = () => cfg.fixtures.map((f) => this.total(f, 'ferrflow'));
     const ffLabels: Plugin<'bar'> = {
       id: 'ffLabels',
       afterDatasetsDraw(chart) {
         const di = chart.data.datasets.findIndex((d) => d.label === 'ferrflow');
         if (di < 0) return;
         const meta = chart.getDatasetMeta(di);
+        const values = totals();
         const c = chart.ctx;
         c.save();
         c.fillStyle = FF_ACCENT;
         c.font = `500 11px ${getComputedStyle(document.body).fontFamily}`;
         c.textAlign = 'center';
         meta.data.forEach((bar, i) => {
-          const v = chart.data.datasets[di].data[i] as number | null;
+          const v = values[i];
           if (v == null) return;
           c.fillText(fmt(v), bar.x, bar.y - 6);
         });
@@ -223,9 +283,10 @@ export class PerfChartComponent {
           y: {
             type: 'linear',
             beginAtZero: true,
+            stacked: this.isSplit(),
             ticks: { callback: (v) => fmt(Number(v)) },
           },
-          x: { grid: { display: false } },
+          x: { grid: { display: false }, stacked: this.isSplit() },
         },
       },
       plugins: [ffLabels],

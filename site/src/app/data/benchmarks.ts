@@ -4,6 +4,8 @@ export interface BenchmarkCell {
   readonly median_ms: number;
   readonly stddev_ms: number;
   readonly memory_mb: string | number;
+  readonly startup_ms?: number;
+  readonly work_ms?: number;
 }
 
 export interface ParallelCell {

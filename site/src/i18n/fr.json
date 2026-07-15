@@ -18,6 +18,8 @@
   "perf.srCaption": "Latence médiane, {$INTERPOLATION}",
   "perf.chart.ariaLabel": "Graphe en barres groupées de la latence médiane par fixture et par outil, échelle linéaire",
   "perf.chart.note": "Médiane de {$INTERPOLATION} runs hyperfine · échelle linéaire · cache froid · FerrFlow épinglé à {$START_TAG_CODE}--jobs 1{$CLOSE_TAG_CODE} · plus bas est meilleur",
+  "perf.chart.noteSplit": "Médiane de {$INTERPOLATION} runs hyperfine · échelle linéaire · cache froid · FerrFlow épinglé à {$START_TAG_CODE}--jobs 1{$CLOSE_TAG_CODE} · plus bas est meilleur. Chaque barre est le démarrage (lancement du processus, boot du runtime, chargement des modules) plus le travail lui-même, mesuré contre une fixture plancher d'un package et un commit. Le total est ce que vous attendez ; le découpage dit où il part.",
+  "perf.chart.legStartup": "démarrage",
   "perf.method.title": "Comment on mesure",
   "perf.method.hyperfine": "{$START_TAG_STRONG}Hyperfine{$CLOSE_TAG_STRONG} avec {$INTERPOLATION} runs de warmup et {$INTERPOLATION_1} runs chronométrés par cellule (fixture × outil × commande). Latence médiane rapportée.",
   "perf.method.coldCache": "{$START_TAG_STRONG}Cache froid.{$CLOSE_TAG_STRONG} FerrFlow mémoïse son analyse dans {$START_TAG_CODE}.git/ferrflow-cache{$CLOSE_TAG_CODE}. Ce cache est vidé avant chaque run chronométré, pour que la comparaison mesure le travail lui-même — aucun des autres outils n'a d'équivalent derrière lequel s'abriter. Les chiffres à chaud sont rapportés séparément plus bas.",
