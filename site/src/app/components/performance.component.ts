@@ -249,11 +249,12 @@ interface SrTableRow {
               >Two cells are not like-for-like, and we'd rather say so than quietly win.</strong
             >
             On <code>200 × 10k</code>, <code>changesets status</code> is faster than FerrFlow — but
-            our fixtures ship no <code>.changeset/*.md</code> files, so it resolves the workspace
-            and stops without reading a single commit. Its time barely moves across a 100× range of
-            history because it isn't looking at history at all. That cuts the other way too: every
-            row where we beat it by 30× is measuring <code>npx</code> and Node startup, not release
-            planning. On <code>50 × 300 · graph</code>, FerrFlow is slower than
+            changesets plans releases from <code>.changeset/*.md</code> files you write by hand, and
+            never from commits. Six of our seven fixtures give it none, so it reports
+            <em>no packages to be bumped</em> and stops. Its time tracks package count, not history:
+            it barely moves across a 100× range of commits, because it isn't reading them. That cuts
+            the other way too — most of every row where we beat it is <code>npx</code> and Node
+            startup, not release planning. On <code>50 × 300 · graph</code>, FerrFlow is slower than
             <code>commit-and-tag-version</code> because it's the only tool doing the job — resolving
             a 50-package dependency cascade and recovering missed releases across the history. The
             others emit one bump and have no notion of a dependency graph. We're fixing the fixtures
