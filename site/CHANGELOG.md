@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.26.0] - 2026-07-15
+
+### Features
+
+- feat(site): split each benchmark bar into startup and work (#682)
+
 ## [6.25.10] - 2026-07-15
 
 ### Bug Fixes
