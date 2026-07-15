@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.29.1] - 2026-07-15
+
+### Bug Fixes
+
+- fix(ci): treat ferrflow as first-party in cargo-vet (#666)
+
 ## [5.29.0] - 2026-07-14
 
 ### Features
