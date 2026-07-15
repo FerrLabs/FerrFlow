@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.25.10] - 2026-07-15
+
+### Bug Fixes
+
+- fix(site): correct the changesets claim in the benchmark methodology (#681)
+
 ## [6.25.9] - 2026-07-15
 
 ### Bug Fixes
