@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.27.1] - 2026-07-15
+
+### Bug Fixes
+
+- fix(site): match the /performance container on /why (#685)
+
 ## [6.27.0] - 2026-07-15
 
 ### Features
