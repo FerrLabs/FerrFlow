@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.25.5] - 2026-07-15
+
+### Refactoring
+
+- refactor(site): use the shared comparison header on /why (#674)
+
 ## [6.25.4] - 2026-07-15
 
 ### Bug Fixes
