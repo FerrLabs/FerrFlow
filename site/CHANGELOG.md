@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.25.6] - 2026-07-15
+
+### Bug Fixes
+
+- fix(ci): rebase and retry when the benchmark sync races a merge to main (#680)
+
 ## [6.25.5] - 2026-07-15
 
 ### Refactoring
