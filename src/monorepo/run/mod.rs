@@ -142,18 +142,16 @@ pub(super) fn run_release_logic(
         .unwrap_or_default();
 
     let all_tags = collect_all_tags(&repo);
-    // Build the HEAD ancestor set once so the per-package find_*_tag calls
-    // below can skip their per-tag graph_descendant_of walk. On dense
-    // monorepos (mono-large: 200 pkg × 10k commits) this is the
-    // difference between 1.8 s and a couple hundred ms for the tag-bound
-    // commands.
-    let head_ancestors = crate::git::build_head_ancestors(&repo).ok();
     // Pre-collect all tags + their commit OIDs in one tag_foreach scan
     // so the per-package find_*_tag / get_*_since_tag calls below don't
     // each repeat that scan. Coupled with the ancestor set, the per-pkg
     // lookups collapse from O(tags) callbacks + O(commits) walk to O(1)
     // hash hits.
     let tag_index = timing.stage("build TagIndex", || crate::git::TagIndex::build(&repo).ok());
+    let fallback_ancestors = match &tag_index {
+        Some(_) => None,
+        None => crate::git::build_head_ancestors(&repo).ok(),
+    };
 
     let target_branch = if prerelease_ctx.is_prerelease() {
         current_branch.clone()
@@ -195,7 +193,10 @@ pub(super) fn run_release_logic(
         config,
         root,
         tag_index: tag_index.as_ref(),
-        head_ancestors: head_ancestors.as_ref(),
+        head_ancestors: tag_index
+            .as_ref()
+            .map(|idx| &idx.ancestors)
+            .or(fallback_ancestors.as_ref()),
         all_tags: &all_tags,
         prerelease_ctx: &prerelease_ctx,
         forced: &forced,
