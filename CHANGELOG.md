@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.29.3] - 2026-07-15
+
+### Bug Fixes
+
+- perf(ci): raise benchmark runs to 30 (#672)
+
 ## [5.29.2] - 2026-07-15
 
 ### Bug Fixes
