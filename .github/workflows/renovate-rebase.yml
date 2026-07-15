@@ -1,0 +1,12 @@
+name: Renovate rebase now
+
+on:
+  pull_request:
+    types: [edited]
+
+jobs:
+  dispatch:
+    uses: FerrLabs/.github/.github/workflows/reusable-renovate-dispatch.yml@a4b4a70d116127cd49f09ad6f363ac55fd8f6501 # main
+    with:
+      runner: ubuntu-latest
+    secrets: inherit
