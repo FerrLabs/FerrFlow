@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.31.1] - 2026-07-15
+
+### Bug Fixes
+
+- perf(monorepo): reuse the tag index ancestor set instead of walking twice (#683)
+
 ## [5.31.0] - 2026-07-15
 
 ### Features
