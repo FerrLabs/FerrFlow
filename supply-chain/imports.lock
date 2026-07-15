@@ -1,6 +1,20 @@
 
 # cargo-vet imports lock
 
+[[publisher.toml_edit]]
+version = "0.25.13+spec-1.1.0"
+when = "2026-07-14"
+user-id = 6743
+user-login = "epage"
+user-name = "Ed Page"
+
+[[publisher.toml_writer]]
+version = "1.1.2+spec-1.1.0"
+when = "2026-07-14"
+user-id = 6743
+user-login = "epage"
+user-name = "Ed Page"
+
 [[audits.bytecode-alliance.audits.adler2]]
 who = "Alex Crichton <alex@alexcrichton.com>"
 criteria = "safe-to-deploy"
