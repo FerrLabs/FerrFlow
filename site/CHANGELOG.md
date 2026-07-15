@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.25.9] - 2026-07-15
+
+### Bug Fixes
+
+- fix(site): plot cold benchmark data on a linear scale (#678)
+
 ## [6.25.8] - 2026-07-15
 
 ### Bug Fixes
