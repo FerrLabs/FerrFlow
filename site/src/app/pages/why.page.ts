@@ -29,9 +29,14 @@ import {
   `,
   styles: `
     .why-main {
-      max-width: 960px;
+      max-width: 1080px;
       margin: 0 auto;
       padding: 64px 24px 96px;
+    }
+    @media (max-width: 720px) {
+      .why-main {
+        padding: 48px 16px 64px;
+      }
     }
   `,
 })
