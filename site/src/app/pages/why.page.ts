@@ -13,16 +13,11 @@ import {
   template: `
     <flr-site-shell [title]="title" [description]="description">
       <main class="why-main">
-        <header class="why-header">
-          <p class="eyebrow" i18n="@@why.flow.eyebrow">Comparison</p>
-          <h1 i18n="@@why.flow.h1">Why <em>FerrFlow</em>?</h1>
-          <p class="lead" i18n="@@why.flow.lead">
-            A single native binary, language-agnostic across 14+ manifest formats, driven purely by
-            conventional commits. Here is how it lines up against the JavaScript-ecosystem release
-            tools, feature by feature.
-          </p>
-        </header>
         <flr-comparison-table
+          [eyebrow]="eyebrow"
+          [heading]="heading"
+          headingAccent="FerrFlow"
+          [lead]="lead"
           [columns]="columns"
           [groups]="groups"
           [yesLabel]="yesLabel"
@@ -38,38 +33,15 @@ import {
       margin: 0 auto;
       padding: 64px 24px 96px;
     }
-    .why-header {
-      margin-bottom: 40px;
-    }
-    .eyebrow {
-      margin: 0 0 8px;
-      font-size: 13px;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--color-primary-600, #e8733a);
-    }
-    .why-header h1 {
-      margin: 0 0 16px;
-      font-size: clamp(28px, 5vw, 40px);
-      line-height: 1.1;
-    }
-    .why-header h1 em {
-      font-style: normal;
-      color: var(--color-primary-600, #e8733a);
-    }
-    .lead {
-      margin: 0;
-      max-width: 60ch;
-      font-size: 17px;
-      line-height: 1.6;
-      color: var(--color-ink-2, #475569);
-    }
   `,
 })
 export default class WhyPage {
   protected readonly title = $localize`:@@why.flow.metaTitle:Why FerrFlow — vs semantic-release, release-please, Changesets`;
   protected readonly description = $localize`:@@why.flow.metaDescription:A feature-by-feature comparison of FerrFlow against semantic-release, release-please and Changesets — file formats, monorepos, runtime and release workflow.`;
+
+  protected readonly eyebrow = $localize`:@@why.flow.eyebrow:Comparison`;
+  protected readonly heading = $localize`:@@why.flow.h1:Why FerrFlow?`;
+  protected readonly lead = $localize`:@@why.flow.lead:A single native binary, language-agnostic across 14+ manifest formats, driven purely by conventional commits. Here is how it lines up against the JavaScript-ecosystem release tools, feature by feature.`;
 
   protected readonly yesLabel = $localize`:@@why.cell.yes:Yes`;
   protected readonly noLabel = $localize`:@@why.cell.no:No`;

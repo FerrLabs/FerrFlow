@@ -106,7 +106,7 @@
   "why.flow.metaTitle": "Pourquoi FerrFlow — face à semantic-release, release-please, Changesets",
   "why.flow.metaDescription": "Un comparatif fonctionnalité par fonctionnalité de FerrFlow face à semantic-release, release-please et Changesets — formats de fichiers, monorepos, runtime et workflow de release.",
   "why.flow.eyebrow": "Comparatif",
-  "why.flow.h1": "Pourquoi {$START_EMPHASISED_TEXT}FerrFlow{$CLOSE_EMPHASISED_TEXT} ?",
+  "why.flow.h1": "Pourquoi FerrFlow ?",
   "why.flow.lead": "Un seul binaire natif, agnostique du langage sur 14+ formats de manifeste, piloté uniquement par les commits conventionnels. Voici comment il se compare aux outils de release de l'écosystème JavaScript, fonctionnalité par fonctionnalité.",
   "why.flow.g.commits": "Commits & versioning",
   "why.flow.f.conventional": "Piloté par les commits conventionnels",
