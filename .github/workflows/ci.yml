@@ -527,7 +527,7 @@ jobs:
           key: bench-npm-cache-${{ hashFiles('.github/workflows/ci.yml', 'benchmarks/fixtures/definitions/*.json') }}
           restore-keys: |
             bench-npm-cache-
-      - uses: FerrLabs/Benchmarks@ba4238c7dfaab33a62aba9490cbe152ec8382e1a # v5 + Fixtures v1.1.1 (graph mode) + sharding
+      - uses: FerrLabs/Benchmarks@3d9a4fa078bb94993b8a7f78633aad2a7c740feb # v5 + Fixtures v1.1.1 + sharding + cold-cache benchmark
         with:
           type: full
           definitions: benchmarks/fixtures/definitions
@@ -537,12 +537,14 @@ jobs:
           binary-dir: bin
           fixtures-dir: shard-fixtures
           shard: true
-          # Sharding put wall-clock back at the slowest fixture (~4.5 min), so
-          # spend the headroom on samples: 30 runs tightens the median's
-          # standard error by ~1.7x over the action's default of 10. The slowest
-          # shard lands around ~9-10 min — still well under the ~19.5 min the
-          # unsharded job used to take.
+          # Sharding put wall-clock back at the slowest fixture, so spend the
+          # headroom on samples: 30 runs tightens the median's standard error
+          # by ~1.7x over the action's default of 10.
           runs: 30
+          # The action defaults to 2. Three is what the published methodology
+          # has always claimed, and the extra pass is cheap now that each shard
+          # only carries one fixture.
+          warmup: 3
         env:
           FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
       - name: Upload shard results
@@ -565,7 +567,7 @@ jobs:
         with:
           pattern: bench-partial-*
           path: partials/
-      - uses: FerrLabs/Benchmarks@ba4238c7dfaab33a62aba9490cbe152ec8382e1a # v5 + Fixtures v1.1.1 (graph mode) + sharding
+      - uses: FerrLabs/Benchmarks@3d9a4fa078bb94993b8a7f78633aad2a7c740feb # v5 + Fixtures v1.1.1 + sharding + cold-cache benchmark
         with:
           type: full
           definitions: benchmarks/fixtures/definitions
