@@ -652,6 +652,7 @@ dependencies = [
  "colored",
  "criterion",
  "gix",
+ "gix-diff",
  "gix-traverse",
  "glob-match",
  "hex",
