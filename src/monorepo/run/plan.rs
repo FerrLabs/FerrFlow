@@ -7,7 +7,6 @@ use crate::formats::read_version;
 use crate::git::{
     Repository, TagIndex, find_highest_semver_tag_with_cache, get_changed_files_since_oid,
     get_changed_files_since_tag, get_commits_since_last_stable_tag, get_commits_since_last_tag,
-    get_commits_since_oid,
 };
 use crate::prerelease::PrereleaseContext;
 use crate::versioning::compute_next_version;
@@ -106,6 +105,7 @@ pub(super) struct PlanInputs<'a> {
     pub changed_files: &'a [String],
     pub short_hash: &'a str,
     pub changed_files_cache: &'a ChangedFilesCache,
+    pub commit_walk: &'a crate::git::CommitWalkCache,
 }
 
 fn changed_files_since_oid_cached(
@@ -201,7 +201,7 @@ pub(super) fn compute_plan(
     let commits_since_stable = || -> Result<Vec<GitLog>> {
         if let (Some(idx), OrphanedTagStrategy::Warn) = (inputs.tag_index, strategy) {
             let stop = idx.find_last_stable_tag_commit(&tag_search_prefix, strategy);
-            get_commits_since_oid(repo, stop, &skip_markers)
+            inputs.commit_walk.commits_since(repo, stop)
         } else {
             get_commits_since_last_stable_tag(
                 repo,
@@ -215,7 +215,7 @@ pub(super) fn compute_plan(
     let commits_since_any = || -> Result<Vec<GitLog>> {
         if let (Some(idx), OrphanedTagStrategy::Warn) = (inputs.tag_index, strategy) {
             let stop = idx.find_last_tag_commit(&tag_search_prefix, strategy);
-            get_commits_since_oid(repo, stop, &skip_markers)
+            inputs.commit_walk.commits_since(repo, stop)
         } else {
             get_commits_since_last_tag(
                 repo,
@@ -376,6 +376,7 @@ mod tests {
         config: Config,
         root: std::path::PathBuf,
         cache: ChangedFilesCache,
+        commit_walk: crate::git::CommitWalkCache,
     }
 
     fn build_inputs<'a>(
@@ -397,6 +398,7 @@ mod tests {
             forced,
             changed_files,
             short_hash: "deadbee",
+            commit_walk: &fx.commit_walk,
             changed_files_cache: &fx.cache,
         }
     }
@@ -458,12 +460,15 @@ mod tests {
         );
 
         let config = Config::load(&root, Some(&root.join(".ferrflow"))).unwrap();
+        let commit_walk =
+            crate::git::CommitWalkCache::new(config.workspace.effective_commit_skip_markers());
         let fx = Fixture {
             _dir: dir,
             repo,
             config,
             root: root.clone(),
             cache: ChangedFilesCache::default(),
+            commit_walk,
         };
 
         let all_tags = collect_all_tags(&fx.repo);
@@ -511,12 +516,15 @@ mod tests {
         commit_file(&root, "broken/feat.rs", "x", "feat: broken", 1_950_000_200);
 
         let config = Config::load(&root, Some(&root.join(".ferrflow"))).unwrap();
+        let commit_walk =
+            crate::git::CommitWalkCache::new(config.workspace.effective_commit_skip_markers());
         let fx = Fixture {
             _dir: dir,
             repo,
             config,
             root: root.clone(),
             cache: ChangedFilesCache::default(),
+            commit_walk,
         };
 
         let all_tags = collect_all_tags(&fx.repo);

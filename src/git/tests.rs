@@ -663,6 +663,87 @@ fn get_changed_files_since_tag_nested_paths_are_full_and_unquoted() {
     assert_eq!(files, vec!["packages/café/index.js".to_string()]);
 }
 
+fn assert_walks_agree(repo: &Repository, cache: &CommitWalkCache, stop: Option<gix::ObjectId>) {
+    let markers = crate::config::default_commit_skip_markers();
+    let direct = get_commits_since_oid(repo, stop, &markers).unwrap();
+    let cached = cache.commits_since(repo, stop).unwrap();
+    let pairs = |logs: &[GitLog]| {
+        logs.iter()
+            .map(|l| (l.hash.clone(), l.message.clone()))
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(pairs(&cached), pairs(&direct), "stop = {stop:?}");
+}
+
+#[test]
+fn commit_walk_cache_matches_direct_walk_on_linear_history() {
+    let (dir, repo) = init_repo();
+    create_commit_in_repo(&repo, dir.path(), "a.txt", "feat: a");
+    let stop = repo.head_id().unwrap().detach();
+    create_commit_in_repo(&repo, dir.path(), "b.txt", "fix: b");
+    create_commit_in_repo(&repo, dir.path(), "c.txt", "feat: c");
+
+    let cache = CommitWalkCache::new(crate::config::default_commit_skip_markers());
+    assert_walks_agree(&repo, &cache, None);
+    assert_walks_agree(&repo, &cache, Some(stop));
+    assert_walks_agree(&repo, &cache, Some(repo.head_id().unwrap().detach()));
+}
+
+#[test]
+fn commit_walk_cache_matches_direct_walk_across_merges() {
+    let (dir, repo) = init_repo();
+    create_commit_in_repo(&repo, dir.path(), "a.txt", "feat: a");
+    let base = repo.head_id().unwrap().detach();
+    git(dir.path(), &["checkout", "-q", "-b", "side"]);
+    create_commit_in_repo(&repo, dir.path(), "b.txt", "feat: b");
+    let side = repo.head_id().unwrap().detach();
+    git(dir.path(), &["checkout", "-q", "-"]);
+    create_commit_in_repo(&repo, dir.path(), "c.txt", "feat: c");
+    git(
+        dir.path(),
+        &["merge", "-q", "--no-ff", "side", "-m", "chore: merge side"],
+    );
+    create_commit_in_repo(&repo, dir.path(), "d.txt", "feat: d");
+
+    let cache = CommitWalkCache::new(crate::config::default_commit_skip_markers());
+    for stop in [None, Some(base), Some(side)] {
+        assert_walks_agree(&repo, &cache, stop);
+    }
+}
+
+#[test]
+fn commit_walk_cache_matches_direct_walk_for_stop_outside_head_ancestry() {
+    let (dir, repo) = init_repo();
+    create_commit_in_repo(&repo, dir.path(), "a.txt", "feat: a");
+    git(dir.path(), &["checkout", "-q", "-b", "orphan"]);
+    create_commit_in_repo(&repo, dir.path(), "b.txt", "feat: b");
+    let orphan = repo.head_id().unwrap().detach();
+    git(dir.path(), &["checkout", "-q", "-"]);
+    create_commit_in_repo(&repo, dir.path(), "c.txt", "feat: c");
+
+    let cache = CommitWalkCache::new(crate::config::default_commit_skip_markers());
+    for _ in 0..3 {
+        assert_walks_agree(&repo, &cache, Some(orphan));
+    }
+}
+
+#[test]
+fn commit_walk_cache_applies_skip_markers() {
+    let (dir, repo) = init_repo();
+    create_commit_in_repo(&repo, dir.path(), "a.txt", "feat: a");
+    let stop = repo.head_id().unwrap().detach();
+    create_commit_in_repo(&repo, dir.path(), "b.txt", "chore: bump [skip ci]");
+    create_commit_in_repo(&repo, dir.path(), "c.txt", "feat: c");
+
+    let cache = CommitWalkCache::new(crate::config::default_commit_skip_markers());
+    for _ in 0..3 {
+        assert_walks_agree(&repo, &cache, Some(stop));
+    }
+    let cached = cache.commits_since(&repo, Some(stop)).unwrap();
+    assert!(cached.iter().all(|l| !l.message.contains("[skip ci]")));
+    assert!(cached.iter().any(|l| l.message.contains("feat: c")));
+}
+
 #[test]
 fn get_changed_files_empty_for_merge_commits() {
     let (dir, repo) = init_repo();

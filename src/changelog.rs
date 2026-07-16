@@ -9,6 +9,7 @@ use anyhow::Result;
 use chrono::Local;
 use std::path::Path;
 
+#[derive(Clone)]
 pub struct GitLog {
     pub hash: String,
     pub message: String,
