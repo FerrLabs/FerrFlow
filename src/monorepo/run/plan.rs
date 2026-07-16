@@ -12,8 +12,9 @@ use crate::git::{
 use crate::prerelease::PrereleaseContext;
 use crate::versioning::compute_next_version;
 use gix::ObjectId;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
+use std::sync::{Arc, Mutex};
 
 use super::super::util::{is_package_touched, pick_higher_semver, tags_for_package};
 use super::forced::{Forced, forced_version_for};
@@ -92,6 +93,8 @@ impl PackagePlan {
     }
 }
 
+pub(super) type ChangedFilesCache = Mutex<HashMap<Option<ObjectId>, Arc<Vec<String>>>>;
+
 pub(super) struct PlanInputs<'a> {
     pub config: &'a Config,
     pub root: &'a Path,
@@ -102,6 +105,27 @@ pub(super) struct PlanInputs<'a> {
     pub forced: &'a Option<Forced<'a>>,
     pub changed_files: &'a [String],
     pub short_hash: &'a str,
+    pub changed_files_cache: &'a ChangedFilesCache,
+}
+
+fn changed_files_since_oid_cached(
+    repo: &Repository,
+    last_tag_oid: Option<ObjectId>,
+    cache: &ChangedFilesCache,
+) -> Result<Arc<Vec<String>>> {
+    if let Some(hit) = cache
+        .lock()
+        .expect("changed-files cache poisoned")
+        .get(&last_tag_oid)
+    {
+        return Ok(Arc::clone(hit));
+    }
+    let files = Arc::new(get_changed_files_since_oid(repo, last_tag_oid)?);
+    cache
+        .lock()
+        .expect("changed-files cache poisoned")
+        .insert(last_tag_oid, Arc::clone(&files));
+    Ok(files)
 }
 
 pub(super) fn compute_plan(
@@ -119,14 +143,18 @@ pub(super) fn compute_plan(
 
     if !touched && config.workspace.recover_missed_releases && is_monorepo {
         let strategy = config.workspace.orphaned_tag_strategy;
-        let files_since_tag = if let (Some(idx), OrphanedTagStrategy::Warn) =
-            (inputs.tag_index, strategy)
-        {
-            let last_oid = idx.find_last_tag_commit(&tag_search_prefix, strategy);
-            get_changed_files_since_oid(repo, last_oid)?
-        } else {
-            get_changed_files_since_tag(repo, &tag_search_prefix, strategy, inputs.head_ancestors)?
-        };
+        let files_since_tag =
+            if let (Some(idx), OrphanedTagStrategy::Warn) = (inputs.tag_index, strategy) {
+                let last_oid = idx.find_last_tag_commit(&tag_search_prefix, strategy);
+                changed_files_since_oid_cached(repo, last_oid, inputs.changed_files_cache)?
+            } else {
+                Arc::new(get_changed_files_since_tag(
+                    repo,
+                    &tag_search_prefix,
+                    strategy,
+                    inputs.head_ancestors,
+                )?)
+            };
         if is_package_touched(pkg, &files_since_tag, true) {
             touched = true;
             recovered = true;
@@ -347,6 +375,7 @@ mod tests {
         repo: crate::git::Repository,
         config: Config,
         root: std::path::PathBuf,
+        cache: ChangedFilesCache,
     }
 
     fn build_inputs<'a>(
@@ -368,6 +397,7 @@ mod tests {
             forced,
             changed_files,
             short_hash: "deadbee",
+            changed_files_cache: &fx.cache,
         }
     }
 
@@ -433,6 +463,7 @@ mod tests {
             repo,
             config,
             root: root.clone(),
+            cache: ChangedFilesCache::default(),
         };
 
         let all_tags = collect_all_tags(&fx.repo);
@@ -485,6 +516,7 @@ mod tests {
             repo,
             config,
             root: root.clone(),
+            cache: ChangedFilesCache::default(),
         };
 
         let all_tags = collect_all_tags(&fx.repo);
