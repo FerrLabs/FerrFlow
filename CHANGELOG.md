@@ -4,6 +4,17 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.31.3] - 2026-07-16
+
+### Bug Fixes
+
+- perf(git): resolve local tag targets in-process instead of spawning rev-list (#693)
+- perf(monorepo): share one decoded commit walk across touched packages (#692)
+
+### Refactoring
+
+- refactor(git): compute changed files with an in-process gix tree diff (#689)
+
 ## [5.31.2] - 2026-07-16
 
 ### Bug Fixes
