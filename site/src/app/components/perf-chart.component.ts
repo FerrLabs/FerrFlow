@@ -51,12 +51,6 @@ const STARTUP_FILL = '#e2e8f0';
           <span class="perf-leg-dot" [style.background]="colorFor(tool)"></span>{{ tool }}
         </span>
       }
-      @if (isSplit()) {
-        <span class="perf-leg">
-          <span class="perf-leg-dot is-startup"></span
-          ><span i18n="@@perf.chart.legStartup">startup</span>
-        </span>
-      }
     </div>
     <div class="perf-canvas-wrap">
       <canvas
@@ -69,9 +63,10 @@ const STARTUP_FILL = '#e2e8f0';
     @if (isSplit()) {
       <p class="perf-chart-note" i18n="@@perf.chart.noteSplit">
         Median of {{ config().runs }} hyperfine runs · linear scale · cold cache · FerrFlow pinned
-        to <code>--jobs 1</code> · lower is better. Each bar is startup (process spawn, runtime
-        boot, module loading) plus the work itself, measured against a one-package one-commit floor
-        fixture. The total is what you wait for; the split is where it goes.
+        to <code>--jobs 1</code> · lower is better. The pale segment at the foot of each bar is that
+        tool's startup — process spawn, runtime boot, module loading — measured against a
+        one-package one-commit floor fixture; the coloured segment above it is the work. The total
+        is what you wait for; the split is where it goes.
       </p>
     } @else {
       <p class="perf-chart-note" i18n="@@perf.chart.note">
@@ -132,10 +127,6 @@ const STARTUP_FILL = '#e2e8f0';
       height: 10px;
       border-radius: 2px;
       display: inline-block;
-    }
-    .perf-leg-dot.is-startup {
-      background: #e2e8f0;
-      border: 1px solid #cbd5e1;
     }
     .perf-canvas-wrap {
       position: relative;
