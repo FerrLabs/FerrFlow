@@ -189,6 +189,7 @@ pub(super) fn run_release_logic(
     let compute_start = std::time::Instant::now();
 
     let thread_safe_repo = repo.clone().into_sync();
+    let changed_files_cache = plan::ChangedFilesCache::default();
     let plan_inputs = PlanInputs {
         config,
         root,
@@ -202,6 +203,7 @@ pub(super) fn run_release_logic(
         forced: &forced,
         changed_files: &changed_files,
         short_hash: &short_hash,
+        changed_files_cache: &changed_files_cache,
     };
     let plans: Vec<PackagePlan> = config
         .packages
