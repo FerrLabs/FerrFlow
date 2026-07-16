@@ -623,6 +623,64 @@ fn get_changed_files_since_tag_only_new() {
 }
 
 #[test]
+fn get_changed_files_since_tag_lists_deletions() {
+    let (dir, repo) = init_repo();
+    create_commit_in_repo(&repo, dir.path(), "a.txt", "first");
+    create_commit_in_repo(&repo, dir.path(), "b.txt", "second");
+    create_lightweight_tag(&repo, "v1.0.0");
+    git(dir.path(), &["rm", "-q", "--", "a.txt"]);
+    git(dir.path(), &["commit", "-m", "remove a"]);
+
+    let files = get_changed_files_since_tag(&repo, "v", OrphanedTagStrategy::Warn, None).unwrap();
+    assert!(files.contains(&"a.txt".to_string()));
+    assert!(!files.contains(&"b.txt".to_string()));
+}
+
+#[test]
+fn get_changed_files_since_tag_lists_both_sides_of_a_rename() {
+    let (dir, repo) = init_repo();
+    create_commit_in_repo(&repo, dir.path(), "old.txt", "first");
+    create_lightweight_tag(&repo, "v1.0.0");
+    git(dir.path(), &["mv", "old.txt", "new.txt"]);
+    git(dir.path(), &["commit", "-m", "rename"]);
+
+    let files = get_changed_files_since_tag(&repo, "v", OrphanedTagStrategy::Warn, None).unwrap();
+    assert!(files.contains(&"old.txt".to_string()));
+    assert!(files.contains(&"new.txt".to_string()));
+}
+
+#[test]
+fn get_changed_files_since_tag_nested_paths_are_full_and_unquoted() {
+    let (dir, repo) = init_repo();
+    create_commit_in_repo(&repo, dir.path(), "a.txt", "first");
+    create_lightweight_tag(&repo, "v1.0.0");
+    std::fs::create_dir_all(dir.path().join("packages/café")).unwrap();
+    std::fs::write(dir.path().join("packages/café/index.js"), "x").unwrap();
+    git(dir.path(), &["add", "--", "packages"]);
+    git(dir.path(), &["commit", "-m", "add nested"]);
+
+    let files = get_changed_files_since_tag(&repo, "v", OrphanedTagStrategy::Warn, None).unwrap();
+    assert_eq!(files, vec!["packages/café/index.js".to_string()]);
+}
+
+#[test]
+fn get_changed_files_empty_for_merge_commits() {
+    let (dir, repo) = init_repo();
+    create_commit_in_repo(&repo, dir.path(), "a.txt", "first");
+    git(dir.path(), &["checkout", "-q", "-b", "side"]);
+    create_commit_in_repo(&repo, dir.path(), "b.txt", "second");
+    git(dir.path(), &["checkout", "-q", "-"]);
+    create_commit_in_repo(&repo, dir.path(), "c.txt", "third");
+    git(
+        dir.path(),
+        &["merge", "-q", "--no-ff", "side", "-m", "merge side"],
+    );
+
+    let files = get_changed_files(&repo).unwrap();
+    assert!(files.is_empty());
+}
+
+#[test]
 fn walks_stay_correct_with_commit_graph_present() {
     let (dir, repo) = init_repo();
     create_commit_in_repo(&repo, dir.path(), "a.txt", "feat: first");
