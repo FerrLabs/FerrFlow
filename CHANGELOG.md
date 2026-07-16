@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.31.4] - 2026-07-16
+
+### Bug Fixes
+
+- fix(ci): trust all epage crates in cargo vet (#697)
+
 ## [5.31.3] - 2026-07-16
 
 ### Bug Fixes
