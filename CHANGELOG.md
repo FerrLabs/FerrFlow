@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.31.2] - 2026-07-16
+
+### Bug Fixes
+
+- perf(monorepo): memoize the recover-missed-releases diff per tag commit (#685)
+
 ## [5.31.1] - 2026-07-15
 
 ### Bug Fixes
