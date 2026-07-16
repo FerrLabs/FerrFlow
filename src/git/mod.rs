@@ -1,4 +1,5 @@
 mod auth;
+mod commit_walk;
 mod commits;
 mod diff;
 mod fetch;
@@ -12,6 +13,7 @@ mod validate;
 pub use validate::ensure_safe_refname_fragment;
 
 pub use auth::get_remote_url;
+pub use commit_walk::CommitWalkCache;
 #[allow(unused_imports)]
 pub use commits::{
     GitLog, create_branch_and_commit, create_branch_and_commits, create_commit,

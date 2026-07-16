@@ -190,6 +190,8 @@ pub(super) fn run_release_logic(
 
     let thread_safe_repo = repo.clone().into_sync();
     let changed_files_cache = plan::ChangedFilesCache::default();
+    let commit_walk =
+        crate::git::CommitWalkCache::new(config.workspace.effective_commit_skip_markers());
     let plan_inputs = PlanInputs {
         config,
         root,
@@ -204,6 +206,7 @@ pub(super) fn run_release_logic(
         changed_files: &changed_files,
         short_hash: &short_hash,
         changed_files_cache: &changed_files_cache,
+        commit_walk: &commit_walk,
     };
     let plans: Vec<PackagePlan> = config
         .packages
