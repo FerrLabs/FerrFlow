@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.27.3] - 2026-07-16
+
+### Bug Fixes
+
+- fix(site): drop startup from the chart legend (#686)
+
 ## [6.27.2] - 2026-07-15
 
 ### Bug Fixes
