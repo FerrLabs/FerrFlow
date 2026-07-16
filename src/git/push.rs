@@ -10,16 +10,19 @@ use super::repo::Repository;
 use super::retry::retry_transient;
 use super::shell::run_git;
 
-fn local_tag_target_sha(repo: &Repository, tag: &str) -> Result<String> {
-    let workdir = repo
-        .workdir()
-        .ok_or_else(|| anyhow!("Bare repositories are not supported"))?;
-    let out = run_git(
-        workdir,
-        &["rev-list", "-n", "1", &format!("refs/tags/{tag}")],
-    )
-    .with_context(|| format!("could not resolve tag '{tag}' to a commit"))?;
-    Ok(out.trim().to_string())
+// Resolved in-process via gix rather than `git rev-list -n 1` per tag: this
+// runs once per pushed tag, and each process spawn costs 10-20ms on Windows —
+// seconds on a 200-package release. Fully peeling matters: an annotated tag's
+// ref points at the tag object, while the remote comparison below uses the
+// ls-remote `^{}` (commit) form.
+pub(super) fn local_tag_target_sha(repo: &Repository, tag: &str) -> Result<String> {
+    let reference = repo
+        .find_reference(&format!("refs/tags/{tag}"))
+        .with_context(|| format!("could not resolve tag '{tag}' to a commit"))?;
+    let id = reference
+        .into_fully_peeled_id()
+        .with_context(|| format!("could not peel tag '{tag}' to a commit"))?;
+    Ok(id.to_string())
 }
 
 pub(super) fn parse_ls_remote_tags(stdout: &str) -> HashMap<String, String> {

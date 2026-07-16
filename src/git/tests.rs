@@ -1,5 +1,5 @@
 use super::auth::{configure_git_command, extract_url_password, server_config_url, token_for_url};
-use super::push::{fetch_and_rebase, parse_ls_remote_tags};
+use super::push::{fetch_and_rebase, local_tag_target_sha, parse_ls_remote_tags};
 use super::repo::Repository;
 use super::retry::{is_transient_git_error, retry_transient};
 use super::tags::{find_highest_semver_tag, find_last_tag, is_floating_tag, is_prerelease_tag};
@@ -166,6 +166,47 @@ fn create_lightweight_tag(repo: &Repository, tag_name: &str) {
 fn create_annotated_tag(repo: &Repository, tag_name: &str, message: &str) {
     let workdir = repo.workdir().expect("workdir");
     git(workdir, &["tag", "-a", tag_name, "-m", message]);
+}
+
+// ── local_tag_target_sha — feeds the diverged-tag check in push_tags ──
+//
+// The remote side of that comparison uses ls-remote's dereferenced `^{}`
+// entry, i.e. the commit. If the local side resolves an annotated tag to
+// the tag OBJECT instead of peeling to the commit, every annotated tag
+// looks diverged from a remote it is actually in sync with.
+#[test]
+fn local_tag_target_sha_peels_annotated_tags_to_the_commit() {
+    let (dir, repo) = init_repo();
+    create_commit_in_repo(&repo, dir.path(), "a.txt", "feat: a");
+    create_annotated_tag(&repo, "v1.0.0", "Release 1.0.0");
+
+    let head = git(dir.path(), &["rev-parse", "HEAD"]).trim().to_string();
+    let tag_obj = git(dir.path(), &["rev-parse", "refs/tags/v1.0.0"])
+        .trim()
+        .to_string();
+    assert_ne!(head, tag_obj, "annotated tag must be its own object");
+
+    let sha = local_tag_target_sha(&repo, "v1.0.0").expect("resolves");
+    assert_eq!(sha, head, "must peel to the commit, not the tag object");
+}
+
+#[test]
+fn local_tag_target_sha_resolves_lightweight_tags() {
+    let (dir, repo) = init_repo();
+    create_commit_in_repo(&repo, dir.path(), "a.txt", "feat: a");
+    create_lightweight_tag(&repo, "v1.0.0");
+
+    let head = git(dir.path(), &["rev-parse", "HEAD"]).trim().to_string();
+    let sha = local_tag_target_sha(&repo, "v1.0.0").expect("resolves");
+    assert_eq!(sha, head);
+}
+
+#[test]
+fn local_tag_target_sha_errors_on_a_missing_tag() {
+    let (dir, repo) = init_repo();
+    create_commit_in_repo(&repo, dir.path(), "a.txt", "feat: a");
+    drop(dir);
+    assert!(local_tag_target_sha(&repo, "v9.9.9").is_err());
 }
 
 // -----------------------------------------------------------------------
