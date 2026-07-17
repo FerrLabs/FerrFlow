@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.32.1] - 2026-07-17
+
+### Bug Fixes
+
+- fix(cli): stop the error printer from burying the message under its code (#700)
+
 ## [5.32.0] - 2026-07-17
 
 ### Features
