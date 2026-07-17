@@ -13,6 +13,8 @@ pub struct WorkspaceConfig {
     pub remote: String,
     #[serde(default = "default_branch")]
     pub branch: String,
+    // Telemetry was removed in v5.33; the key stays accepted so existing
+    // configs neither warn nor fail schema validation. Nothing reads it.
     #[serde(default = "default_telemetry", alias = "telemetry")]
     pub anonymous_telemetry: bool,
     #[serde(default)]

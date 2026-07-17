@@ -19,8 +19,6 @@ pub mod manifest;
 #[cfg(feature = "cli")]
 pub mod publishers;
 #[cfg(feature = "cli")]
-pub mod telemetry;
-#[cfg(feature = "cli")]
 pub mod validate;
 
 #[cfg(all(test, feature = "cli"))]

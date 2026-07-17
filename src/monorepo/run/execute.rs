@@ -12,7 +12,6 @@ use crate::git::{
     tag_exists,
 };
 use crate::hooks::{HookContext, HookPoint, resolve_hook, resolve_on_failure, run_hook};
-use crate::telemetry;
 use crate::versioning::truncate_version;
 
 use super::checkpoint::{Checkpoint, Phase};
@@ -126,7 +125,6 @@ pub(super) fn execute_release(plan: &mut ReleasePlan<'_>) -> Result<()> {
         }
     }
 
-    emit_release_telemetry(plan);
     if !checkpoint_is_done(plan, Phase::PostPublishDone) {
         run_post_publish_hooks(plan)?;
         checkpoint_advance(plan, Phase::PostPublishDone)?;
@@ -590,21 +588,6 @@ fn process_release_tag(
                 result: None,
             }
         }
-    }
-}
-
-fn emit_release_telemetry(plan: &ReleasePlan<'_>) {
-    if !plan.config.workspace.anonymous_telemetry {
-        return;
-    }
-    for (_, _, _, pkg_name, version, commit_count, _) in plan.tags_to_create {
-        telemetry::send_event(
-            telemetry::EventType::Release,
-            None,
-            Some(*commit_count),
-            Some(pkg_name.clone()),
-            Some(version.clone()),
-        );
     }
 }
 

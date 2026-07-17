@@ -13,7 +13,6 @@ use crate::formats::{get_handler, render_new_version, write_version};
 use crate::git::{collect_all_tags, fetch_tags, get_changed_files, open_repo, tag_exists};
 use crate::hooks::{HookContext, HookPoint, resolve_hook, resolve_on_failure, run_hook};
 use crate::prerelease::PrereleaseContext;
-use crate::telemetry;
 use crate::timing::Timing;
 use crate::versioning::truncate_version;
 
@@ -521,16 +520,6 @@ pub(super) fn run_release_logic(
                 commits.len() as i32,
                 is_prerelease,
             ));
-        }
-
-        if config.workspace.anonymous_telemetry {
-            telemetry::send_event(
-                telemetry::EventType::VersionBump,
-                None,
-                Some(commits.len() as i32),
-                None,
-                None,
-            );
         }
 
         hook_contexts.push((hook_ctx, pkg_idx));

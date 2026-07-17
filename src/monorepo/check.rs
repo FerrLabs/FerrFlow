@@ -5,7 +5,6 @@ use std::path::Path;
 use crate::cache::{self, CachedRun};
 use crate::config::Config;
 use crate::git::{get_repo_root, open_repo};
-use crate::telemetry;
 use crate::timing::Timing;
 
 use super::preview::post_preview_comment;
@@ -44,9 +43,6 @@ pub fn check(
         if comment {
             post_preview_comment(&repo, &config, &root);
         }
-        if config.workspace.anonymous_telemetry {
-            telemetry::send_event(telemetry::EventType::Check, None, None, None, None);
-        }
         return Ok(());
     }
 
@@ -71,10 +67,6 @@ pub fn check(
 
     if comment {
         post_preview_comment(&repo, &config, &root);
-    }
-
-    if config.workspace.anonymous_telemetry {
-        telemetry::send_event(telemetry::EventType::Check, None, None, None, None);
     }
 
     Ok(())

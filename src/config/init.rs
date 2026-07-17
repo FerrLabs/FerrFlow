@@ -2,7 +2,6 @@ use anyhow::Result;
 use std::path::PathBuf;
 
 use crate::error_code::{self, ErrorCodeExt};
-use crate::telemetry;
 
 use super::Config;
 use super::format::{CONFIG_FORMATS, ConfigFileFormat, format_handler};
@@ -249,10 +248,6 @@ pub fn init(format: Option<ConfigFileFormat>, manifest: bool) -> Result<()> {
     }
 
     println!("Run: ferrflow check");
-
-    if config.workspace.anonymous_telemetry {
-        telemetry::send_event(telemetry::EventType::Init, None, None, None, None);
-    }
 
     Ok(())
 }

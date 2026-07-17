@@ -20,7 +20,6 @@ mod publish;
 mod publishers;
 mod query;
 mod status;
-mod telemetry;
 mod timing;
 mod validate;
 mod versioning;
@@ -38,42 +37,19 @@ use cli::Cli;
 
 fn main() {
     let cli = Cli::parse();
-    let command_name = cli.command.name();
 
     logging::init_logging(cli.verbose, cli.log_format);
     concurrency::init(cli.jobs);
 
-    telemetry::maybe_print_first_run_notice();
-
     let result = cli.run();
 
     if let Err(err) = result {
-        let code = err.downcast_ref::<error_code::ErrorCode>().copied();
-
-        let error_code_str = code.map(|c| c.to_string());
-        let mut metadata = serde_json::Map::new();
-        metadata.insert("command".into(), command_name.into());
-        if let Some(ref code_str) = error_code_str {
-            metadata.insert("error_code".into(), code_str.clone().into());
-        }
-        telemetry::send_event(
-            telemetry::EventType::Error,
-            Some(serde_json::Value::Object(metadata)),
-            None,
-            None,
-            None,
-        );
-
-        telemetry::flush();
-
         for line in error_report::error_report_lines(&err) {
             tracing::error!("{line}");
         }
 
         std::process::exit(1);
     }
-
-    telemetry::flush();
 }
 
 #[cfg(test)]
