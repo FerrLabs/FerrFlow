@@ -609,7 +609,6 @@ jobs:
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
       - name: Build ferrflow
         run: cargo build --release
-        env:
       # Git identity is configured by the binary itself (see
       # ensure_bot_token in src/bot_token.rs) when FERRFLOW_BOT=true.
       - name: Run ferrflow release
