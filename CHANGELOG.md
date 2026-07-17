@@ -4,6 +4,14 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.33.2] - 2026-07-17
+
+### Bug Fixes
+
+- fix(schema): accept the snake_case spellings serde already accepts (#721)
+- perf(build): fat LTO and panic=abort for the release profile (#720)
+- fix(ci): retry cosign signing and sweep orphaned draft releases (#719)
+
 ## [5.33.1] - 2026-07-17
 
 ### Bug Fixes
