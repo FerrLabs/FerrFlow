@@ -99,6 +99,20 @@ user-id = 6743
 user-login = "epage"
 user-name = "Ed Page"
 
+[[publisher.regex]]
+version = "1.13.1"
+when = "2026-07-15"
+user-id = 189
+user-login = "BurntSushi"
+user-name = "Andrew Gallant"
+
+[[publisher.regex-automata]]
+version = "0.4.16"
+when = "2026-07-15"
+user-id = 189
+user-login = "BurntSushi"
+user-name = "Andrew Gallant"
+
 [[publisher.serde_spanned]]
 version = "1.1.1"
 when = "2026-03-31"
