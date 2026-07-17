@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use crate::error_code::{self, ErrorCodeExt};
 
 mod format;
+mod groups;
 #[cfg(feature = "cli")]
 mod init;
 #[cfg(feature = "cli")]
@@ -17,6 +18,8 @@ mod workspace;
 
 #[allow(unused_imports)]
 pub use format::{ConfigFileFormat, ConfigFormatHandler, format_handler};
+#[allow(unused_imports)]
+pub use groups::{GroupKind, PackageGroup};
 #[cfg(feature = "cli")]
 pub use init::init;
 #[cfg(feature = "cli")]

@@ -25,6 +25,7 @@ mod drafts;
 mod execute;
 mod forced;
 mod graph;
+mod groups;
 mod lock;
 mod plan;
 mod release_json;
@@ -83,6 +84,13 @@ pub(super) fn run_release_logic(
             ],
         };
         return finish(dry_run, out);
+    }
+
+    if let Err(errors) = config.validate_groups() {
+        return Err(anyhow::anyhow!(
+            "invalid linked/fixed groups:\n  - {}",
+            errors.join("\n  - ")
+        ));
     }
 
     let release_order = graph::release_order(&config.packages).map_err(graph::Cycle::into_error)?;
@@ -217,6 +225,7 @@ pub(super) fn run_release_logic(
         .collect::<Result<Vec<_>>>()?;
 
     let mut plans: Vec<Option<PackagePlan>> = plans.into_iter().map(Some).collect();
+    groups::apply_groups(config, root, &mut plans);
     for &pkg_idx in &release_order {
         let pkg = &config.packages[pkg_idx];
         let plan = plans[pkg_idx]
