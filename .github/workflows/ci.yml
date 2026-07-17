@@ -118,7 +118,7 @@ jobs:
 
       - name: Generate fixtures
         if: steps.fixture-cache.outputs.cache-hit != 'true'
-        uses: FerrLabs/Fixtures@7db03266c337749bef6f0d5c1e956b112b337b9c # v1
+        uses: FerrLabs/Fixtures@dbe382d75ee6631dd87f937d7d29358b1c58c73e # v1.2.0 (packed repos)
         with:
           definitions: tests/fixtures/definitions
 
@@ -457,7 +457,7 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
       - name: Generate benchmark fixtures
-        uses: FerrLabs/Fixtures@3d9971a22666f2d5d262d5a308920af191e16a4a # v1.1.1
+        uses: FerrLabs/Fixtures@dbe382d75ee6631dd87f937d7d29358b1c58c73e # v1.2.0 (packed repos)
         with:
           definitions: benchmarks/fixtures/definitions
           generated-dir: bench-fixtures
