@@ -19,7 +19,6 @@ pub fn check(
     comment: bool,
     timing: &mut Timing,
 ) -> Result<()> {
-    crate::bot_token::ensure_bot_token()?;
     let repo = timing.stage("open_repo", || open_repo(&std::env::current_dir()?))?;
     let root = get_repo_root(&repo)?;
     let config = timing.stage("load config", || Config::load(&root, config_path))?;
