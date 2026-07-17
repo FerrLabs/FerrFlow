@@ -251,25 +251,20 @@ pub(super) fn compute_plan(
             });
         }
 
-        let strategy = pkg.effective_versioning(
-            &config.workspace,
-            &tags_for_package(inputs.all_tags, &tag_search_prefix),
-        );
-
         let bump = commits
             .iter()
             .map(|c| determine_bump(&c.message))
             .max()
             .unwrap_or(BumpType::None);
 
-        if bump == BumpType::None && !is_date_or_seq(strategy) {
+        if bump == BumpType::None && !is_date_or_seq(pkg_strategy) {
             return Ok(PackagePlan::Skipped {
                 reason: SkipReason::NoReleasableCommits,
                 recovered,
             });
         }
 
-        let base_version = compute_next_version(&current_version, bump, strategy)?;
+        let base_version = compute_next_version(&current_version, bump, pkg_strategy)?;
 
         let (new_version, is_prerelease) = if prerelease {
             let tag_prefix = pkg.tag_prefix(&config.workspace, is_monorepo);
@@ -300,12 +295,8 @@ pub(super) fn compute_plan(
     let strategy_label = if forced_ver_for_pkg.is_some() {
         "forced".to_string()
     } else {
-        let strategy = pkg.effective_versioning(
-            &config.workspace,
-            &tags_for_package(inputs.all_tags, &tag_search_prefix),
-        );
-        if is_date_or_seq(strategy) {
-            format!("{strategy:?}").to_lowercase()
+        if is_date_or_seq(pkg_strategy) {
+            format!("{pkg_strategy:?}").to_lowercase()
         } else {
             bump.to_string()
         }
