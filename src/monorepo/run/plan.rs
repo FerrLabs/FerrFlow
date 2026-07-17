@@ -168,10 +168,9 @@ pub(super) fn compute_plan(
         });
     }
 
-    let pkg_strategy = pkg.effective_versioning(
-        &config.workspace,
-        &tags_for_package(inputs.all_tags, &tag_search_prefix),
-    );
+    let pkg_strategy = pkg.effective_versioning(&config.workspace, || {
+        tags_for_package(inputs.all_tags, &tag_search_prefix)
+    });
 
     let file_version = pkg
         .versioned_files
