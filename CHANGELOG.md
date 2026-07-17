@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.32.3] - 2026-07-17
+
+### Bug Fixes
+
+- fix(ci): trust prolific first-party-adjacent publishers in cargo vet (#708)
+
 ## [5.32.2] - 2026-07-17
 
 ### Bug Fixes
