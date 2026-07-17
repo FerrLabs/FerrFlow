@@ -4,6 +4,16 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.33.0] - 2026-07-17
+
+### Features
+
+- feat: remove telemetry (#716)
+
+### Bug Fixes
+
+- fix(ci): drop the empty env block left by the telemetry removal (#717)
+
 ## [5.32.3] - 2026-07-17
 
 ### Bug Fixes
