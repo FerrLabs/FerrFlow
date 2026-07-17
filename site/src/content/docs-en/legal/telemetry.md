@@ -1,68 +1,26 @@
 ---
 title: Telemetry
-description: What FerrFlow collects, how data is anonymized, and how to opt out.
+description: FerrFlow no longer collects telemetry. What older versions sent, and how to opt out on those versions.
 ---
 
+**FerrFlow does not collect telemetry.** Starting with v5.33, the CLI makes no network requests of its own beyond the git and forge operations you explicitly ask for. There is nothing to opt out of, no environment variable to set, and no data to worry about.
 
-FerrFlow collects anonymous usage telemetry to help improve the tool. This page explains exactly what is sent, how it is anonymized, and how to disable it.
+## If you run a version before v5.33
 
-## What is collected
+Versions up to v5.32 sent anonymous usage events (command type, commit count, a SHA-256 hash of the git remote URL) to `api.ferrflow.com`. No source code, file names, commit messages, IP-based profiles, or personal information were ever collected. On those versions you can opt out with either:
 
-Each time you run a command, FerrFlow may send a single event containing:
+```bash
+export FERRFLOW_TELEMETRY=0
+# or the cross-tool convention
+export DO_NOT_TRACK=1
+```
 
-| Field | Description |
-|-------|-------------|
-| `event_type` | The action performed: `check`, `release`, `version_bump`, or `init` |
-| `commits_count` | Number of commits since the last release |
-| `repo_hash` | A SHA-256 hash of your git remote URL (see below) |
+or per repository in `ferrflow.json`:
 
-Only fields relevant to the command are included. Empty fields are omitted.
+```json
+{ "workspace": { "anonymous_telemetry": false } }
+```
 
-## How data is anonymized
+## Why it was removed
 
-Your repository URL is **never sent in plain text**. FerrFlow computes a SHA-256 hash of the git remote URL and sends only the resulting hex digest. This lets us count unique repositories without knowing which repositories they are.
-
-No source code, file names, commit messages, branch names, package names, version numbers, IP addresses, or personal information are ever collected or stored.
-
-## Where data is sent
-
-Events are sent as a POST request to `https://api.ferrflow.com/events`. The request is asynchronous and non-blocking — it never slows down your workflow. If the request fails, it is silently discarded.
-
-## How to opt out
-
-You can disable telemetry entirely using either an environment variable or your config file.
-
-### Environment variable
-
-<div class="ferr-tabs">
-  <div class="ferr-tab" data-label="Linux / macOS"><p class="ferr-tab__label">Linux / macOS</p><div class="ferr-tab__body"><pre><code class="language-bash">export FERRFLOW_ANONYMOUS_TELEMETRY=false
-</code></pre>
-</div></div>
-  <div class="ferr-tab" data-label="Windows"><p class="ferr-tab__label">Windows</p><div class="ferr-tab__body"><pre><code class="language-powershell">$env:FERRFLOW_ANONYMOUS_TELEMETRY = &quot;false&quot;
-</code></pre>
-</div></div>
-</div>
-
-Accepted values to disable: `false`, `0`, `off`, `no` (case-insensitive).
-
-FerrFlow also honors the standard [`DO_NOT_TRACK`](https://consoledonottrack.com/) environment variable — `DO_NOT_TRACK=1` disables telemetry without any FerrFlow-specific configuration. `FERRFLOW_TELEMETRY=false` is kept as a fallback for backwards compatibility with v0/v1 configs.
-
-The first time FerrFlow runs against a repo with telemetry enabled, it prints a one-line notice pointing here.
-
-### Config file
-
-<div class="ferr-tabs">
-  <div class="ferr-tab" data-label="JSON"><p class="ferr-tab__label">JSON</p><div class="ferr-tab__body"><pre><code class="language-json">{
-  &quot;workspace&quot;: {
-    &quot;telemetry&quot;: false
-  }
-}
-</code></pre>
-</div></div>
-  <div class="ferr-tab" data-label="TOML"><p class="ferr-tab__label">TOML</p><div class="ferr-tab__body"><pre><code class="language-toml">[workspace]
-telemetry = false
-</code></pre>
-</div></div>
-</div>
-
-Either method is sufficient to disable telemetry. If the config file disables it, the environment variable cannot re-enable it, and vice versa.
+The telemetry added measurable latency to every command for monorepo users, and the useful signal it provided is available without it: error diagnostics link to per-code documentation pages, and adoption is visible through release downloads. Removing it was simpler and more honest than fixing it. The `anonymous_telemetry` config key remains accepted (and ignored) so existing configurations stay valid.

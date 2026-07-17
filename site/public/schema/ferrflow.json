@@ -25,24 +25,38 @@
         },
         "anonymous_telemetry": {
           "type": "boolean",
-          "description": "Send anonymous usage statistics to improve FerrFlow. No identifying data is collected.",
-          "default": true
+          "description": "Deprecated and ignored: telemetry was removed from FerrFlow in v5.33. The key remains accepted so existing configs stay valid.",
+          "default": true,
+          "deprecated": true
         },
         "telemetry": {
           "type": "boolean",
-          "description": "Deprecated: use anonymous_telemetry instead.",
-          "default": true
+          "description": "Deprecated and ignored: telemetry was removed from FerrFlow in v5.33. The key remains accepted so existing configs stay valid.",
+          "default": true,
+          "deprecated": true
         },
         "versioning": {
           "type": "string",
           "description": "Default versioning strategy for all packages.",
-          "enum": ["semver", "calver", "calver-short", "calver-seq", "sequential", "zerover"],
+          "enum": [
+            "semver",
+            "calver",
+            "calver-short",
+            "calver-seq",
+            "sequential",
+            "zerover"
+          ],
           "default": "semver"
         },
         "tagTemplate": {
           "type": "string",
           "description": "Tag template. Use {name} for package name and {version} for version. Default: 'v{version}' for single repos, '{name}@v{version}' for monorepos.",
-          "examples": ["v{version}", "{name}@v{version}", "{name}/v{version}", "release-{version}"]
+          "examples": [
+            "v{version}",
+            "{name}@v{version}",
+            "{name}/v{version}",
+            "release-{version}"
+          ]
         },
         "recoverMissedReleases": {
           "type": "boolean",
@@ -52,13 +66,20 @@
         "releaseCommitMode": {
           "type": "string",
           "description": "How to commit version bumps and changelog updates. 'commit' pushes directly to the branch, 'pr' creates a pull request, 'none' skips committing entirely.",
-          "enum": ["commit", "pr", "none"],
+          "enum": [
+            "commit",
+            "pr",
+            "none"
+          ],
           "default": "commit"
         },
         "releaseCommitScope": {
           "type": "string",
           "description": "In monorepo mode, whether to create a single grouped commit for all packages or one commit per package. Only affects behavior when multiple packages are bumped.",
-          "enum": ["grouped", "per-package"],
+          "enum": [
+            "grouped",
+            "per-package"
+          ],
           "default": "grouped"
         },
         "autoMergeReleases": {
@@ -73,26 +94,39 @@
         "commitSkipMarkers": {
           "type": "array",
           "description": "Markers in a commit subject line that cause FerrFlow to skip the commit when computing the next version. Matched case-insensitively, subject line only. Defaults to ['[skip ci]', '[ci skip]', '[no ci]', '[skip actions]', '[actions skip]'].",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
         "floatingTags": {
           "type": "array",
           "description": "Floating tag levels to create/move on each release. Each level produces a tag pointing to the latest matching release (e.g. 'major' creates a v1 tag for v1.2.3).",
           "items": {
             "type": "string",
-            "enum": ["major", "minor"]
+            "enum": [
+              "major",
+              "minor"
+            ]
           },
           "default": []
         },
         "forge": {
           "type": "string",
           "description": "Git forge type. 'auto' detects from the remote URL. Use 'github' or 'gitlab' to override (useful for self-hosted instances with custom domains).",
-          "enum": ["auto", "github", "gitlab"],
+          "enum": [
+            "auto",
+            "github",
+            "gitlab"
+          ],
           "default": "auto"
         },
         "orphanedTagStrategy": {
           "type": "string",
-          "enum": ["warn", "treeHash", "message"],
+          "enum": [
+            "warn",
+            "treeHash",
+            "message"
+          ],
           "description": "How to handle tags pointing to orphaned commits (after rebase + force-push). 'warn' logs a warning and skips. 'treeHash' attempts recovery by matching the commit's tree hash. 'message' attempts recovery by matching the commit message.",
           "default": "warn"
         },
@@ -107,7 +141,9 @@
         "manifest_file": {
           "type": "string",
           "description": "Opt-in single-file source of truth for per-package versions, relative to the repo root (e.g. '.ferrflow.manifest.json'). When set, `ferrflow release` writes a full version snapshot to this file as part of the release commit, validates it against the versioned files at release start (a divergence is a hard error — run `ferrflow sync-manifest` to repair), and `status` / `version` read current versions from it. Omit to leave all behaviour unchanged.",
-          "examples": [".ferrflow.manifest.json"]
+          "examples": [
+            ".ferrflow.manifest.json"
+          ]
         },
         "updateLockfiles": {
           "type": "boolean",
@@ -120,8 +156,13 @@
           "additionalProperties": {
             "type": "object",
             "properties": {
-              "url": { "type": "string" },
-              "tokenEnv": { "type": "string", "description": "Name of the env var holding the registry token. The token value is never read from config." }
+              "url": {
+                "type": "string"
+              },
+              "tokenEnv": {
+                "type": "string",
+                "description": "Name of the env var holding the registry token. The token value is never read from config."
+              }
             },
             "additionalProperties": false
           }
@@ -131,7 +172,9 @@
           "description": "Map branches to pre-release channels. When FerrFlow runs on a branch matching a configured name/pattern, it uses the corresponding channel.",
           "items": {
             "type": "object",
-            "required": ["name"],
+            "required": [
+              "name"
+            ],
             "properties": {
               "name": {
                 "type": "string",
@@ -139,8 +182,15 @@
               },
               "channel": {
                 "oneOf": [
-                  { "type": "boolean", "const": false, "description": "Stable release (no pre-release suffix)." },
-                  { "type": "string", "description": "Pre-release channel name (e.g. 'beta', 'dev', 'rc')." }
+                  {
+                    "type": "boolean",
+                    "const": false,
+                    "description": "Stable release (no pre-release suffix)."
+                  },
+                  {
+                    "type": "string",
+                    "description": "Pre-release channel name (e.g. 'beta', 'dev', 'rc')."
+                  }
                 ],
                 "description": "false for stable releases, string for pre-release channel name.",
                 "default": false
@@ -148,7 +198,12 @@
               "prereleaseIdentifier": {
                 "type": "string",
                 "description": "Strategy for the pre-release identifier after the channel name.",
-                "enum": ["increment", "timestamp", "short-hash", "timestamp-hash"],
+                "enum": [
+                  "increment",
+                  "timestamp",
+                  "short-hash",
+                  "timestamp-hash"
+                ],
                 "default": "increment"
               }
             },
@@ -164,8 +219,15 @@
               "description": "Map commit-type prefixes to section labels, or false to hide. Keys: feat, fix, perf, docs, refactor, security. When omitted, defaults to feat -> Features and fix -> Bug Fixes (Breaking Changes always shown). 'security' applies to security: and fix(security): commits.",
               "additionalProperties": {
                 "oneOf": [
-                  { "type": "string", "description": "Section heading label for this commit type." },
-                  { "type": "boolean", "const": false, "description": "Hide this commit type from the changelog." }
+                  {
+                    "type": "string",
+                    "description": "Section heading label for this commit type."
+                  },
+                  {
+                    "type": "boolean",
+                    "const": false,
+                    "description": "Hide this commit type from the changelog."
+                  }
                 ]
               }
             },
@@ -195,7 +257,10 @@
       "description": "List of packages to version. Use one entry for single repos, multiple for monorepos.",
       "items": {
         "type": "object",
-        "required": ["name", "path"],
+        "required": [
+          "name",
+          "path"
+        ],
         "properties": {
           "name": {
             "type": "string",
@@ -206,7 +271,10 @@
             "description": "Path to the package root, relative to the repo root. Use \".\" for single repos."
           },
           "changelog": {
-            "type": ["string", "null"],
+            "type": [
+              "string",
+              "null"
+            ],
             "description": "Path to the changelog file, relative to the repo root."
           },
           "versionedFiles": {
@@ -214,7 +282,10 @@
             "description": "Files that contain the package version to update on release.",
             "items": {
               "type": "object",
-              "required": ["path", "format"],
+              "required": [
+                "path",
+                "format"
+              ],
               "properties": {
                 "path": {
                   "type": "string",
@@ -264,19 +335,34 @@
           "versioning": {
             "type": "string",
             "description": "Versioning strategy for this package. Overrides workspace default.",
-            "enum": ["semver", "calver", "calver-short", "calver-seq", "sequential", "zerover"]
+            "enum": [
+              "semver",
+              "calver",
+              "calver-short",
+              "calver-seq",
+              "sequential",
+              "zerover"
+            ]
           },
           "tagTemplate": {
             "type": "string",
             "description": "Tag template for this package. Use {name} for package name and {version} for version. Overrides workspace default.",
-            "examples": ["v{version}", "{name}@v{version}", "{name}/v{version}", "release-{version}"]
+            "examples": [
+              "v{version}",
+              "{name}@v{version}",
+              "{name}/v{version}",
+              "release-{version}"
+            ]
           },
           "floatingTags": {
             "type": "array",
             "description": "Floating tag levels for this package. Overrides workspace default.",
             "items": {
               "type": "string",
-              "enum": ["major", "minor"]
+              "enum": [
+                "major",
+                "minor"
+              ]
             }
           },
           "hooks": {
@@ -285,7 +371,9 @@
           "publishers": {
             "type": "array",
             "description": "Declarative publish targets evaluated after the GitHub Release is created. Each entry is a self-contained intent — see $defs/publisher for the kinds.",
-            "items": { "$ref": "#/$defs/publisher" },
+            "items": {
+              "$ref": "#/$defs/publisher"
+            },
             "default": []
           },
           "updateLockfiles": {
@@ -302,73 +390,199 @@
       "oneOf": [
         {
           "type": "object",
-          "required": ["kind"],
+          "required": [
+            "kind"
+          ],
           "properties": {
-            "kind": { "const": "cargo" },
-            "registry": { "type": "string" },
-            "allowDirty": { "type": "boolean", "default": false },
-            "noVerify": { "type": "boolean", "default": false, "description": "Pass cargo publish --no-verify. Set for multi-crate batch releases so inter-dependent crates don't fail on registry-index propagation timing." },
-            "args": { "type": "array", "items": { "type": "string" }, "description": "Extra flags appended verbatim to the underlying cargo publish invocation. Escape hatch for options FerrFlow doesn't model natively.", "default": [] }
+            "kind": {
+              "const": "cargo"
+            },
+            "registry": {
+              "type": "string"
+            },
+            "allowDirty": {
+              "type": "boolean",
+              "default": false
+            },
+            "noVerify": {
+              "type": "boolean",
+              "default": false,
+              "description": "Pass cargo publish --no-verify. Set for multi-crate batch releases so inter-dependent crates don't fail on registry-index propagation timing."
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Extra flags appended verbatim to the underlying cargo publish invocation. Escape hatch for options FerrFlow doesn't model natively.",
+              "default": []
+            }
           },
           "additionalProperties": false
         },
         {
           "type": "object",
-          "required": ["kind"],
+          "required": [
+            "kind"
+          ],
           "properties": {
-            "kind": { "const": "npm" },
-            "registry": { "type": "string" },
-            "tag": { "type": "string" },
-            "access": { "type": "string", "enum": ["public", "restricted"] },
-            "args": { "type": "array", "items": { "type": "string" }, "description": "Extra flags appended verbatim to the underlying npm publish invocation. Escape hatch for options FerrFlow doesn't model natively.", "default": [] }
+            "kind": {
+              "const": "npm"
+            },
+            "registry": {
+              "type": "string"
+            },
+            "tag": {
+              "type": "string"
+            },
+            "access": {
+              "type": "string",
+              "enum": [
+                "public",
+                "restricted"
+              ]
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Extra flags appended verbatim to the underlying npm publish invocation. Escape hatch for options FerrFlow doesn't model natively.",
+              "default": []
+            }
           },
           "additionalProperties": false
         },
         {
           "type": "object",
-          "required": ["kind", "image"],
+          "required": [
+            "kind",
+            "image"
+          ],
           "properties": {
-            "kind": { "const": "docker" },
-            "image": { "type": "string" },
-            "tags": { "type": "array", "items": { "type": "string" }, "default": ["{version}"] },
-            "platforms": { "type": "array", "items": { "type": "string" } },
-            "context": { "type": "string", "default": "." },
-            "dockerfile": { "type": "string", "default": "Dockerfile" },
-            "sign": { "type": "string", "enum": ["none", "sigstore"], "default": "none" },
-            "args": { "type": "array", "items": { "type": "string" }, "description": "Extra flags appended verbatim to the underlying docker buildx build invocation (before the build-context positional). Escape hatch for options FerrFlow doesn't model natively.", "default": [] }
+            "kind": {
+              "const": "docker"
+            },
+            "image": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": [
+                "{version}"
+              ]
+            },
+            "platforms": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "context": {
+              "type": "string",
+              "default": "."
+            },
+            "dockerfile": {
+              "type": "string",
+              "default": "Dockerfile"
+            },
+            "sign": {
+              "type": "string",
+              "enum": [
+                "none",
+                "sigstore"
+              ],
+              "default": "none"
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Extra flags appended verbatim to the underlying docker buildx build invocation (before the build-context positional). Escape hatch for options FerrFlow doesn't model natively.",
+              "default": []
+            }
           },
           "additionalProperties": false
         },
         {
           "type": "object",
-          "required": ["kind", "registry"],
+          "required": [
+            "kind",
+            "registry"
+          ],
           "properties": {
-            "kind": { "const": "helm" },
-            "chart": { "type": "string", "default": "." },
-            "registry": { "type": "string" },
-            "args": { "type": "array", "items": { "type": "string" }, "description": "Extra flags appended verbatim to the underlying helm push invocation. Escape hatch for options FerrFlow doesn't model natively.", "default": [] }
+            "kind": {
+              "const": "helm"
+            },
+            "chart": {
+              "type": "string",
+              "default": "."
+            },
+            "registry": {
+              "type": "string"
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Extra flags appended verbatim to the underlying helm push invocation. Escape hatch for options FerrFlow doesn't model natively.",
+              "default": []
+            }
           },
           "additionalProperties": false
         },
         {
           "type": "object",
-          "required": ["kind", "path"],
+          "required": [
+            "kind",
+            "path"
+          ],
           "properties": {
-            "kind": { "const": "github-release-asset" },
-            "path": { "type": "string" },
-            "displayName": { "type": "string" },
-            "args": { "type": "array", "items": { "type": "string" }, "description": "Extra flags appended verbatim to the underlying gh release upload invocation. Escape hatch for options FerrFlow doesn't model natively.", "default": [] }
+            "kind": {
+              "const": "github-release-asset"
+            },
+            "path": {
+              "type": "string"
+            },
+            "displayName": {
+              "type": "string"
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Extra flags appended verbatim to the underlying gh release upload invocation. Escape hatch for options FerrFlow doesn't model natively.",
+              "default": []
+            }
           },
           "additionalProperties": false
         },
         {
           "type": "object",
-          "required": ["kind", "url"],
+          "required": [
+            "kind",
+            "url"
+          ],
           "properties": {
-            "kind": { "const": "webhook" },
-            "url": { "type": "string" },
+            "kind": {
+              "const": "webhook"
+            },
+            "url": {
+              "type": "string"
+            },
             "body": {},
-            "headers": { "type": "object", "additionalProperties": { "type": "string" } }
+            "headers": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
           },
           "additionalProperties": false
         }
@@ -425,7 +639,10 @@
         "onFailure": {
           "type": "string",
           "description": "Behavior when a hook exits non-zero.",
-          "enum": ["abort", "continue"],
+          "enum": [
+            "abort",
+            "continue"
+          ],
           "default": "abort"
         }
       },
