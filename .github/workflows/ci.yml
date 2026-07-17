@@ -536,7 +536,7 @@ jobs:
           key: bench-npm-cache-${{ hashFiles('.github/workflows/ci.yml', 'benchmarks/fixtures/definitions/*.json') }}
           restore-keys: |
             bench-npm-cache-
-      - uses: FerrLabs/Benchmarks@5a4746ea75afca8edcdae739a255af93909ad96f # v5.5.1 + startup/work split + seeded changesets + semantic-release file:// remote
+      - uses: FerrLabs/Benchmarks@e7e235f16c9fe5fcfe510a2c3ee82a6b05f1788b # v5.6.1 + telemetry disabled in runs
         with:
           type: full
           definitions: benchmarks/fixtures/definitions
@@ -576,7 +576,7 @@ jobs:
         with:
           pattern: bench-partial-*
           path: partials/
-      - uses: FerrLabs/Benchmarks@5a4746ea75afca8edcdae739a255af93909ad96f # v5.5.1 + startup/work split + seeded changesets + semantic-release file:// remote
+      - uses: FerrLabs/Benchmarks@e7e235f16c9fe5fcfe510a2c3ee82a6b05f1788b # v5.6.1 + telemetry disabled in runs
         with:
           type: full
           definitions: benchmarks/fixtures/definitions
