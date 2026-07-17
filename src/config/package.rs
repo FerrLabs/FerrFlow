@@ -61,14 +61,14 @@ impl PackageConfig {
     /// Note: zerover is intentionally excluded from auto-detection because it
     /// is ambiguous with semver (both use `X.Y.Z`). Users must opt-in
     /// explicitly via config.
-    pub fn effective_versioning(
+    pub fn effective_versioning<'t>(
         &self,
         workspace: &WorkspaceConfig,
-        tags: &[&str],
+        tags: impl FnOnce() -> Vec<&'t str>,
     ) -> VersioningStrategy {
         self.versioning
             .or(workspace.versioning)
-            .or_else(|| crate::versioning::detect_strategy_from_tags(tags))
+            .or_else(|| crate::versioning::detect_strategy_from_tags(&tags()))
             .unwrap_or_default()
     }
 

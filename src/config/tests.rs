@@ -218,7 +218,7 @@ fn effective_versioning_inherits_workspace() {
         update_lockfiles: None,
     };
     assert_eq!(
-        pkg.effective_versioning(&ws, &[]),
+        pkg.effective_versioning(&ws, Vec::new),
         VersioningStrategy::Calver
     );
 }
@@ -244,9 +244,34 @@ fn effective_versioning_package_overrides() {
         update_lockfiles: None,
     };
     assert_eq!(
-        pkg.effective_versioning(&ws, &[]),
+        pkg.effective_versioning(&ws, Vec::new),
         VersioningStrategy::Zerover
     );
+}
+
+#[test]
+fn effective_versioning_does_not_read_tags_when_strategy_is_configured() {
+    let ws = WorkspaceConfig {
+        versioning: Some(VersioningStrategy::Calver),
+        ..WorkspaceConfig::default()
+    };
+    let pkg = PackageConfig {
+        name: "a".into(),
+        path: ".".into(),
+        versioned_files: vec![],
+        changelog: None,
+        shared_paths: vec![],
+        depends_on: vec![],
+        versioning: None,
+        tag_template: None,
+        hooks: None,
+        floating_tags: None,
+        publishers: vec![],
+        update_lockfiles: None,
+    };
+    let strategy =
+        pkg.effective_versioning(&ws, || panic!("tags scanned despite configured strategy"));
+    assert_eq!(strategy, VersioningStrategy::Calver);
 }
 
 #[test]
@@ -268,7 +293,7 @@ fn effective_versioning_autodetects_from_tags_when_unset() {
     };
     let tags = vec!["v2024.04.18", "v2024.05.01"];
     assert_eq!(
-        pkg.effective_versioning(&ws, &tags),
+        pkg.effective_versioning(&ws, || tags.clone()),
         VersioningStrategy::Calver
     );
 }
@@ -291,7 +316,7 @@ fn effective_versioning_falls_back_to_semver_without_tags() {
         update_lockfiles: None,
     };
     assert_eq!(
-        pkg.effective_versioning(&ws, &[]),
+        pkg.effective_versioning(&ws, Vec::new),
         VersioningStrategy::Semver
     );
 }
