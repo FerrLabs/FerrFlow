@@ -72,7 +72,8 @@ pub enum Commands {
         #[arg(long)]
         channel: Option<String>,
         /// Create releases as drafts (GitHub only). A subsequent `ferrflow release`
-        /// without --draft will detect and publish existing drafts automatically.
+        /// without --draft detects and publishes the draft for the version being
+        /// released — older drafts left by failed runs are not swept up.
         /// On GitLab this is a no-op — the release is published immediately
         /// (the GitLab releases API has no draft state); a warning is printed.
         #[arg(long)]
