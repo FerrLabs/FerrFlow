@@ -11,7 +11,7 @@ items_after_test_module = "allow"
 
 [package]
 name = "ferrflow"
-version = "5.31.4"
+version = "5.32.0"
 edition = "2024"
 description = "Universal semantic versioning for monorepos and classic repos"
 license = "MPL-2.0"
