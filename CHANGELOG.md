@@ -4,6 +4,18 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.32.2] - 2026-07-17
+
+### Bug Fixes
+
+- fix(ci): trust all BurntSushi crates in cargo vet (#705)
+- fix(wasm): gate the migrate module behind the cli feature (#702)
+- fix(cli): stop the error printer from burying the message under its code (#700)
+
+### Refactoring
+
+- refactor(monorepo): compute the per-package versioning strategy once (#707)
+
 ## [5.32.1] - 2026-07-17
 
 ### Bug Fixes
