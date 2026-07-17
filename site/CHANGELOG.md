@@ -1,5 +1,15 @@
 # Changelog
 
+## [6.28.0] - 2026-07-17
+
+### Features
+
+- feat(site): document the migrate command (#690)
+
+### Bug Fixes
+
+- fix(site): refresh FerrFlow v5.32.0 release data
+
 ## [6.27.5] - 2026-07-17
 
 ### Bug Fixes
