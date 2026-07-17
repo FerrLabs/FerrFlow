@@ -187,6 +187,10 @@ pub enum CacheCommand {
 }
 
 impl Commands {
+    pub fn needs_bot_token(&self) -> bool {
+        matches!(self, Commands::Release { .. } | Commands::Check { .. })
+    }
+
     #[cfg(test)]
     pub fn name(&self) -> &'static str {
         match self {
@@ -300,6 +304,19 @@ impl Cli {
 mod tests {
     use super::*;
     use clap::Parser;
+
+    #[test]
+    fn only_push_capable_commands_need_the_bot_token() {
+        let needs = |args: &[&str]| Cli::parse_from(args).command.needs_bot_token();
+        assert!(needs(&["ferrflow", "release"]));
+        assert!(needs(&["ferrflow", "check"]));
+        assert!(!needs(&["ferrflow", "status"]));
+        assert!(!needs(&["ferrflow", "version"]));
+        assert!(!needs(&["ferrflow", "tag"]));
+        assert!(!needs(&["ferrflow", "validate"]));
+        assert!(!needs(&["ferrflow", "changelog"]));
+        assert!(!needs(&["ferrflow", "init"]));
+    }
 
     fn parse(args: &[&str]) -> Cli {
         Cli::try_parse_from(args).unwrap()

@@ -174,7 +174,10 @@ pub fn ensure_bot_token() -> Result<()> {
         .issue()
         .context("failed to obtain FerrFlow bot token")?;
 
-    // SAFETY: set_var is marked unsafe in edition 2024. This is single-threaded
+    // SAFETY: set_var mutates the process environment, which is UB (#710) if
+    // another thread is concurrently reading or writing it. main() calls this
+    // before concurrency::init spawns the rayon pool, so no other thread is
+    // alive at this point. The EXCHANGED guard above keeps it one-shot.
     unsafe {
         std::env::set_var("GITHUB_TOKEN", &issued.token);
         std::env::set_var("FERRFLOW_TOKEN", &issued.token);
