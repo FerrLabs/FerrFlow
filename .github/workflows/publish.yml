@@ -193,13 +193,28 @@ jobs:
         run: |
           set -euo pipefail
           shopt -s nullglob
+          # Retry: Sigstore hiccups ("stream error: INTERNAL_ERROR") killed
+          # this step twice (v5.2.2, v5.3.0) and orphaned their drafts — the
+          # known failure mode here is transient, so give it three shots.
+          sign_with_retry() {
+            local artifact="$1" attempt
+            for attempt in 1 2 3; do
+              if cosign sign-blob --yes \
+                  --output-signature "${artifact}.sig" \
+                  --output-certificate "${artifact}.crt" \
+                  "$artifact"; then
+                return 0
+              fi
+              echo "::warning::cosign signing failed for ${artifact} (attempt ${attempt}/3)"
+              sleep $((attempt * 10))
+            done
+            echo "cosign signing failed for ${artifact} after 3 attempts" >&2
+            return 1
+          }
           for artifact in artifacts/ferrflow-*.tar.gz artifacts/ferrflow-*.zip; do
             [ -f "$artifact" ] || continue
             echo "Signing $artifact"
-            cosign sign-blob --yes \
-              --output-signature "${artifact}.sig" \
-              --output-certificate "${artifact}.crt" \
-              "$artifact"
+            sign_with_retry "$artifact"
           done
 
       - name: Install cyclonedx-cli for SBOM
@@ -228,10 +243,19 @@ jobs:
         env:
           COSIGN_EXPERIMENTAL: "1"
         run: |
-          cosign sign-blob --yes \
-            --output-signature artifacts/sbom.cdx.json.sig \
-            --output-certificate artifacts/sbom.cdx.json.crt \
-            artifacts/sbom.cdx.json
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            if cosign sign-blob --yes \
+                --output-signature artifacts/sbom.cdx.json.sig \
+                --output-certificate artifacts/sbom.cdx.json.crt \
+                artifacts/sbom.cdx.json; then
+              exit 0
+            fi
+            echo "::warning::cosign SBOM signing failed (attempt ${attempt}/3)"
+            sleep $((attempt * 10))
+          done
+          echo "cosign SBOM signing failed after 3 attempts" >&2
+          exit 1
       - name: Wait for draft release to be visible
         # Defense against the race where this workflow (push:tags) fires
         # before `ferrflow release --draft` (running in the CI workflow
@@ -314,6 +338,32 @@ jobs:
         env:
           FERRFLOW_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish any orphaned older draft releases
+        # A transient failure earlier in this job (a cosign hiccup, an
+        # upload error) leaves a fully-cut draft with nothing to ever
+        # publish it — v5.2.2 and v5.3.0 sat orphaned for six weeks (#718):
+        # the ferrflow step above only publishes the draft for the tag
+        # being released. Any draft with a semver tag strictly older than
+        # the current one is such an orphan — its release commit and tag
+        # are on main, only its Publish run died. Publish them (never as
+        # latest) and warn loudly so the underlying failure still gets
+        # looked at.
+        run: |
+          set -euo pipefail
+          TAG="${{ github.ref_name }}"
+          gh release list --limit 200 --json tagName,isDraft \
+            --jq '.[] | select(.isDraft) | .tagName' | while IFS= read -r draft; do
+            [ -n "$draft" ] || continue
+            [ "$draft" = "$TAG" ] && continue
+            case "$draft" in v[0-9]*) ;; *) continue ;; esac
+            newest=$(printf '%s\n%s\n' "$draft" "$TAG" | sort -V | tail -1)
+            [ "$newest" = "$TAG" ] || continue
+            echo "::warning::Publishing orphaned draft release $draft (left behind by a failed Publish run)"
+            gh release edit "$draft" --draft=false --latest=false
+          done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   publish-crate:
     name: Publish crates.io
