@@ -162,6 +162,10 @@
               "tokenEnv": {
                 "type": "string",
                 "description": "Name of the env var holding the registry token. The token value is never read from config."
+              },
+              "token_env": {
+                "type": "string",
+                "description": "Snake_case form of `tokenEnv` — both spellings are accepted. Name of the env var holding the registry token. The token value is never read from config."
               }
             },
             "additionalProperties": false
@@ -198,6 +202,17 @@
               "prereleaseIdentifier": {
                 "type": "string",
                 "description": "Strategy for the pre-release identifier after the channel name.",
+                "enum": [
+                  "increment",
+                  "timestamp",
+                  "short-hash",
+                  "timestamp-hash"
+                ],
+                "default": "increment"
+              },
+              "prerelease_identifier": {
+                "type": "string",
+                "description": "Snake_case form of `prereleaseIdentifier` — both spellings are accepted. Strategy for the pre-release identifier after the channel name.",
                 "enum": [
                   "increment",
                   "timestamp",
@@ -245,9 +260,106 @@
               "type": "boolean",
               "description": "Emit a keep-a-changelog compare footer ([1.2.3]: <forge>/compare/v1.2.2...v1.2.3) when the forge is known and a previous tag exists.",
               "default": false
+            },
+            "group_by_scope": {
+              "type": "boolean",
+              "description": "Snake_case form of `groupByScope` — both spellings are accepted. Group bullets by commit scope using an inline bold prefix (- **api:** add events endpoint). Scopeless commits render first.",
+              "default": false
+            },
+            "include_commit_links": {
+              "type": "boolean",
+              "description": "Snake_case form of `includeCommitLinks` — both spellings are accepted. Append a commit link to each bullet (([abc1234](<forge>/commit/abc1234))) when the forge is known. Silently omitted when the remote forge cannot be resolved.",
+              "default": false
+            },
+            "include_compare_link": {
+              "type": "boolean",
+              "description": "Snake_case form of `includeCompareLink` — both spellings are accepted. Emit a keep-a-changelog compare footer ([1.2.3]: <forge>/compare/v1.2.2...v1.2.3) when the forge is known and a previous tag exists.",
+              "default": false
             }
           },
           "additionalProperties": false
+        },
+        "tag_template": {
+          "type": "string",
+          "description": "Snake_case form of `tagTemplate` — both spellings are accepted. Tag template. Use {name} for package name and {version} for version. Default: 'v{version}' for single repos, '{name}@v{version}' for monorepos.",
+          "examples": [
+            "v{version}",
+            "{name}@v{version}",
+            "{name}/v{version}",
+            "release-{version}"
+          ]
+        },
+        "recover_missed_releases": {
+          "type": "boolean",
+          "description": "Snake_case form of `recoverMissedReleases` — both spellings are accepted. Compare files against the last tag instead of just the last commit, recovering missed releases in monorepos.",
+          "default": false
+        },
+        "release_commit_mode": {
+          "type": "string",
+          "description": "Snake_case form of `releaseCommitMode` — both spellings are accepted. How to commit version bumps and changelog updates. 'commit' pushes directly to the branch, 'pr' creates a pull request, 'none' skips committing entirely.",
+          "enum": [
+            "commit",
+            "pr",
+            "none"
+          ],
+          "default": "commit"
+        },
+        "release_commit_scope": {
+          "type": "string",
+          "description": "Snake_case form of `releaseCommitScope` — both spellings are accepted. In monorepo mode, whether to create a single grouped commit for all packages or one commit per package. Only affects behavior when multiple packages are bumped.",
+          "enum": [
+            "grouped",
+            "per-package"
+          ],
+          "default": "grouped"
+        },
+        "auto_merge_releases": {
+          "type": "boolean",
+          "description": "Snake_case form of `autoMergeReleases` — both spellings are accepted. Automatically merge release PRs when releaseCommitMode is 'pr'.",
+          "default": true
+        },
+        "skip_ci": {
+          "type": "boolean",
+          "description": "Snake_case form of `skipCi` — both spellings are accepted. Append [skip ci] to the release commit message. Defaults to true in 'commit' mode, false in 'pr' mode."
+        },
+        "commit_skip_markers": {
+          "type": "array",
+          "description": "Snake_case form of `commitSkipMarkers` — both spellings are accepted. Markers in a commit subject line that cause FerrFlow to skip the commit when computing the next version. Matched case-insensitively, subject line only. Defaults to ['[skip ci]', '[ci skip]', '[no ci]', '[skip actions]', '[actions skip]'].",
+          "items": {
+            "type": "string"
+          }
+        },
+        "floating_tags": {
+          "type": "array",
+          "description": "Snake_case form of `floatingTags` — both spellings are accepted. Floating tag levels to create/move on each release. Each level produces a tag pointing to the latest matching release (e.g. 'major' creates a v1 tag for v1.2.3).",
+          "items": {
+            "type": "string",
+            "enum": [
+              "major",
+              "minor"
+            ]
+          },
+          "default": []
+        },
+        "orphaned_tag_strategy": {
+          "type": "string",
+          "enum": [
+            "warn",
+            "treeHash",
+            "message"
+          ],
+          "description": "Snake_case form of `orphanedTagStrategy` — both spellings are accepted. How to handle tags pointing to orphaned commits (after rebase + force-push). 'warn' logs a warning and skips. 'treeHash' attempts recovery by matching the commit's tree hash. 'message' attempts recovery by matching the commit message.",
+          "default": "warn"
+        },
+        "defer_publish": {
+          "type": "boolean",
+          "description": "Snake_case form of `deferPublish` — both spellings are accepted. When true, `ferrflow release` does not run the configured publishers inline — it defers them to a separate `ferrflow publish` invocation (e.g. a CI job that carries the docker/helm/npm build toolchain the release job lacks). `ferrflow publish` always runs the publishers regardless of this flag.",
+          "default": false
+        },
+        "update_lockfiles": {
+          "type": "boolean",
+          "description": "Snake_case form of `updateLockfiles` — both spellings are accepted. When true, after `ferrflow release` bumps a manifest (Cargo.toml, package.json, pyproject.toml, Gemfile, mix.exs) it refreshes the sibling lockfile (Cargo.lock, package-lock.json / pnpm-lock.yaml / yarn.lock, poetry.lock / uv.lock, Gemfile.lock, mix.lock) with the package manager's offline / lockfile-only mode and stages it in the same release commit. A missing package manager or an unresolvable offline update is warned about, never fatal. Set per-package `updateLockfiles: false` to opt a single package out.",
+          "default": false
         }
       },
       "additionalProperties": false
@@ -379,6 +491,86 @@
           "updateLockfiles": {
             "type": "boolean",
             "description": "Per-package override for workspace.updateLockfiles. Set false to skip lockfile refresh for this package even when the workspace default is on; set true to refresh only this package when the workspace default is off. Omit to inherit the workspace setting."
+          },
+          "versioned_files": {
+            "type": "array",
+            "description": "Snake_case form of `versionedFiles` — both spellings are accepted. Files that contain the package version to update on release.",
+            "items": {
+              "type": "object",
+              "required": [
+                "path",
+                "format"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "description": "Path to the version file, relative to the repo root."
+                },
+                "format": {
+                  "type": "string",
+                  "description": "File format used to locate and update the version field.",
+                  "enum": [
+                    "csproj",
+                    "toml",
+                    "json",
+                    "xml",
+                    "gradle",
+                    "gomod",
+                    "helm",
+                    "chartyaml",
+                    "pubspecyaml",
+                    "mixexs",
+                    "gemspec",
+                    "packageswift",
+                    "txt"
+                  ]
+                },
+                "selector": {
+                  "type": "string",
+                  "description": "Optional selector to disambiguate which version is bumped. xml: a slash-delimited tag path like '/project/version' (or '//tag' for first-anywhere); txt: a regex with one capture group around the version. Without a selector, xml uses a Maven-aware default (first <version> direct child of root)."
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "shared_paths": {
+            "type": "array",
+            "description": "Snake_case form of `sharedPaths` — both spellings are accepted. Paths whose changes should trigger a version bump for this package (monorepo only).",
+            "items": {
+              "type": "string"
+            }
+          },
+          "depends_on": {
+            "type": "array",
+            "description": "Snake_case form of `dependsOn` — both spellings are accepted. Package names this package depends on. When a dependency is bumped, this package gets a patch bump automatically.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tag_template": {
+            "type": "string",
+            "description": "Snake_case form of `tagTemplate` — both spellings are accepted. Tag template for this package. Use {name} for package name and {version} for version. Overrides workspace default.",
+            "examples": [
+              "v{version}",
+              "{name}@v{version}",
+              "{name}/v{version}",
+              "release-{version}"
+            ]
+          },
+          "floating_tags": {
+            "type": "array",
+            "description": "Snake_case form of `floatingTags` — both spellings are accepted. Floating tag levels for this package. Overrides workspace default.",
+            "items": {
+              "type": "string",
+              "enum": [
+                "major",
+                "minor"
+              ]
+            }
+          },
+          "update_lockfiles": {
+            "type": "boolean",
+            "description": "Snake_case form of `updateLockfiles` — both spellings are accepted. Per-package override for workspace.updateLockfiles. Set false to skip lockfile refresh for this package even when the workspace default is on; set true to refresh only this package when the workspace default is off. Omit to inherit the workspace setting."
           }
         },
         "additionalProperties": false
@@ -416,6 +608,16 @@
               },
               "description": "Extra flags appended verbatim to the underlying cargo publish invocation. Escape hatch for options FerrFlow doesn't model natively.",
               "default": []
+            },
+            "allow_dirty": {
+              "type": "boolean",
+              "default": false,
+              "description": "Snake_case form of `allowDirty` — both spellings are accepted."
+            },
+            "no_verify": {
+              "type": "boolean",
+              "default": false,
+              "description": "Snake_case form of `noVerify` — both spellings are accepted. Pass cargo publish --no-verify. Set for multi-crate batch releases so inter-dependent crates don't fail on registry-index propagation timing."
             }
           },
           "additionalProperties": false
@@ -639,6 +841,59 @@
         "onFailure": {
           "type": "string",
           "description": "Behavior when a hook exits non-zero.",
+          "enum": [
+            "abort",
+            "continue"
+          ],
+          "default": "abort"
+        },
+        "pre_bump": {
+          "type": "string",
+          "description": "Snake_case form of `preBump` — both spellings are accepted. Run after bump calculation, before writing version files."
+        },
+        "post_bump": {
+          "type": "string",
+          "description": "Snake_case form of `postBump` — both spellings are accepted. Run after writing version files, before changelog generation."
+        },
+        "pre_commit": {
+          "type": "string",
+          "description": "Snake_case form of `preCommit` — both spellings are accepted. Run after changelog generation, before git commit."
+        },
+        "post_commit": {
+          "type": "string",
+          "description": "Snake_case form of `postCommit` — both spellings are accepted. Run after the release commit is created, before tagging."
+        },
+        "pre_tag": {
+          "type": "string",
+          "description": "Snake_case form of `preTag` — both spellings are accepted. Run after the release commit, immediately before git tag."
+        },
+        "post_tag": {
+          "type": "string",
+          "description": "Snake_case form of `postTag` — both spellings are accepted. Run after tags are created, before push."
+        },
+        "pre_publish": {
+          "type": "string",
+          "description": "Snake_case form of `prePublish` — both spellings are accepted. Run after commit and tag, before push."
+        },
+        "post_publish": {
+          "type": "string",
+          "description": "Snake_case form of `postPublish` — both spellings are accepted. Run after push and release creation."
+        },
+        "pre_release": {
+          "type": "string",
+          "description": "Snake_case form of `preRelease` — both spellings are accepted. Run after the release pull request is opened (PR mode), before merge."
+        },
+        "on_success": {
+          "type": "string",
+          "description": "Snake_case form of `onSuccess` — both spellings are accepted. Run once after the release completes successfully."
+        },
+        "on_error": {
+          "type": "string",
+          "description": "Snake_case form of `onError` — both spellings are accepted. Run once when the release fails; receives FERRFLOW_ERROR_CODE."
+        },
+        "on_failure": {
+          "type": "string",
+          "description": "Snake_case form of `onFailure` — both spellings are accepted. Behavior when a hook exits non-zero.",
           "enum": [
             "abort",
             "continue"
