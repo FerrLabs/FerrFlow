@@ -81,6 +81,18 @@ pub struct WorkspaceConfig {
     /// `package.updateLockfiles = false` to opt a single package out.
     #[serde(default, alias = "updateLockfiles")]
     pub update_lockfiles: bool,
+    /// Packages that share a version line when co-released. When any
+    /// member of a group has a releasable commit, every member is bumped
+    /// to the same version (the highest resulting version across the
+    /// group). Names stay distinct. Each inner array is one group.
+    #[serde(default)]
+    pub linked: Vec<Vec<String>>,
+    /// Packages locked to an identical version forever. Behaves like
+    /// [`linked`](Self::linked) but is intended for packages that must
+    /// never diverge; `ferrflow validate` warns when their versions have
+    /// drifted apart. Each inner array is one group.
+    #[serde(default)]
+    pub fixed: Vec<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]

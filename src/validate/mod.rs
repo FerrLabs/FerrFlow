@@ -17,9 +17,9 @@ pub use source::{
 };
 
 use checks::{
-    check_changelog_paths, check_duplicate_names, check_duplicate_paths, check_package_paths,
-    check_shared_paths, check_suggestions, check_tag_templates, check_version_consistency,
-    check_versioned_files, check_versioned_files_exist,
+    check_changelog_paths, check_duplicate_names, check_duplicate_paths, check_groups,
+    check_package_paths, check_shared_paths, check_suggestions, check_tag_templates,
+    check_version_consistency, check_versioned_files, check_versioned_files_exist,
 };
 use output::output_result;
 
@@ -87,6 +87,7 @@ pub fn run(
     entries.extend(check_version_consistency(&versions));
     entries.extend(check_changelog_paths(&config, source.as_ref()));
     entries.extend(check_shared_paths(&config, source.as_ref()));
+    entries.extend(check_groups(&config, &versions));
     entries.extend(check_suggestions(&config));
 
     let mut result = ValidationResult::from_entries(entries);

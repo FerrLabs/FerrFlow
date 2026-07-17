@@ -360,6 +360,26 @@
           "type": "boolean",
           "description": "Snake_case form of `updateLockfiles` — both spellings are accepted. When true, after `ferrflow release` bumps a manifest (Cargo.toml, package.json, pyproject.toml, Gemfile, mix.exs) it refreshes the sibling lockfile (Cargo.lock, package-lock.json / pnpm-lock.yaml / yarn.lock, poetry.lock / uv.lock, Gemfile.lock, mix.lock) with the package manager's offline / lockfile-only mode and stages it in the same release commit. A missing package manager or an unresolvable offline update is warned about, never fatal. Set per-package `updateLockfiles: false` to opt a single package out.",
           "default": false
+        },
+        "linked": {
+          "type": "array",
+          "description": "Groups of packages that share a version line when co-released. When any member of a group has a releasable commit, every member is bumped to the same version (the highest resulting version across the group). Package names stay distinct. Each inner array is one group and must list at least two package names; a package may appear in only one linked/fixed group.",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "fixed": {
+          "type": "array",
+          "description": "Groups of packages locked to an identical version forever. Behaves like `linked`, but is intended for packages that must never diverge; `ferrflow validate` warns when a fixed group's versions have drifted apart. Each inner array is one group and must list at least two package names; a package may appear in only one linked/fixed group.",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
         }
       },
       "additionalProperties": false

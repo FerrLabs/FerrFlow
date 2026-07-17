@@ -254,6 +254,55 @@ pub(super) fn check_shared_paths(config: &Config, source: &dyn FileSource) -> Ve
     entries
 }
 
+pub(super) fn check_groups(config: &Config, versions: &PackageVersionMap) -> Vec<ValidationEntry> {
+    let mut entries = Vec::new();
+
+    if let Err(errors) = config.validate_groups() {
+        for message in errors {
+            entries.push(ValidationEntry {
+                level: ValidationLevel::Error,
+                path: "(config)".to_string(),
+                message,
+            });
+        }
+        return entries;
+    }
+
+    for group in config.package_groups() {
+        if group.kind != crate::config::GroupKind::Fixed {
+            continue;
+        }
+        let member_versions: Vec<(&String, &String)> = group
+            .members
+            .iter()
+            .filter_map(|name| {
+                versions
+                    .get(name)
+                    .and_then(|f| f.first())
+                    .map(|(_, v)| (name, v))
+            })
+            .collect();
+        if let Some((_, first)) = member_versions.first()
+            && member_versions.iter().any(|(_, v)| v != first)
+        {
+            let listed = member_versions
+                .iter()
+                .map(|(name, v)| format!("{name}={v}"))
+                .collect::<Vec<_>>()
+                .join(", ");
+            entries.push(ValidationEntry {
+                level: ValidationLevel::Warning,
+                path: "(config)".to_string(),
+                message: format!(
+                    "fixed group has drifted versions ({listed}); the next release will realign them"
+                ),
+            });
+        }
+    }
+
+    entries
+}
+
 pub(super) fn check_suggestions(config: &Config) -> Vec<ValidationEntry> {
     let mut entries = Vec::new();
     for pkg in &config.packages {
