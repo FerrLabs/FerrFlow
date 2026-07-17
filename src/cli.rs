@@ -157,6 +157,26 @@ pub enum Commands {
     /// repair a manifest that diverged from the package files (e.g. after
     /// a crashed release).
     SyncManifest,
+    /// Generate a ferrflow config from another release tool's config
+    Migrate {
+        /// Source tool (auto-detected if omitted)
+        #[arg(long, value_enum)]
+        from: Option<MigrateSourceArg>,
+    },
+}
+
+#[derive(Clone, Copy, clap::ValueEnum)]
+pub enum MigrateSourceArg {
+    #[value(name = "semantic-release")]
+    SemanticRelease,
+}
+
+impl From<MigrateSourceArg> for crate::config::MigrateSource {
+    fn from(arg: MigrateSourceArg) -> Self {
+        match arg {
+            MigrateSourceArg::SemanticRelease => crate::config::MigrateSource::SemanticRelease,
+        }
+    }
 }
 
 #[derive(Subcommand)]
@@ -180,6 +200,7 @@ impl Commands {
             Commands::Completions { .. } => "completions",
             Commands::Cache { .. } => "cache",
             Commands::SyncManifest => "sync-manifest",
+            Commands::Migrate { .. } => "migrate",
         }
     }
 }
@@ -268,6 +289,7 @@ impl Cli {
                 CacheCommand::Clear => crate::cache::clear_cwd(),
             },
             Commands::SyncManifest => crate::manifest::sync_cwd(self.config.as_deref()),
+            Commands::Migrate { from } => crate::config::migrate(from.map(Into::into)),
         }
     }
 }

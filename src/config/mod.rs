@@ -9,6 +9,7 @@ mod format;
 mod init;
 #[cfg(feature = "cli")]
 mod loader_js;
+mod migrate;
 mod package;
 mod types;
 mod workspace;
@@ -17,6 +18,7 @@ mod workspace;
 pub use format::{ConfigFileFormat, ConfigFormatHandler, format_handler};
 #[cfg(feature = "cli")]
 pub use init::init;
+pub use migrate::{Source as MigrateSource, migrate};
 pub use package::{FileFormat, FloatingTagLevel, PackageConfig, VersionedFile, VersioningStrategy};
 #[allow(unused_imports)]
 pub use types::{

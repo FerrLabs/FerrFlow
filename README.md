@@ -129,6 +129,15 @@ ferrflow init --format toml
 ferrflow init --format dotfile # generates .ferrflow
 ```
 
+Already using semantic-release? `ferrflow migrate` reads your existing config and generates the equivalent `ferrflow.json`:
+
+```bash
+ferrflow migrate                        # auto-detects .releaserc
+ferrflow migrate --from semantic-release
+```
+
+It maps `tagFormat`, `branches`, and the common plugins (`changelog`, `exec`, `github`/`gitlab`) to their FerrFlow equivalents, and prints a summary of what mapped, what was ignored, and what needs manual review — anything without a FerrFlow equivalent is surfaced, never guessed. JSON `.releaserc` is supported today; YAML `.releaserc` and JS `release.config.js` are reported as unsupported rather than mis-parsed.
+
 ### JSON Schema
 
 Add `$schema` to get autocompletion and validation in VS Code, WebStorm, and any JSON-aware editor:
