@@ -4,6 +4,17 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.34.0] - 2026-07-17
+
+### Features
+
+- feat(monorepo): linked and fixed package version groups (#724)
+
+### Bug Fixes
+
+- perf(monorepo): skip per-package tag scan when versioning strategy is set (#723)
+- fix(cli): exchange the bot token before spawning threads (#722)
+
 ## [5.33.3] - 2026-07-17
 
 ### Bug Fixes
