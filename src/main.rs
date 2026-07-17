@@ -7,6 +7,7 @@ mod config;
 mod conventional_commits;
 mod diff;
 mod error_code;
+mod error_report;
 mod forge;
 mod formats;
 mod git;
@@ -65,21 +66,8 @@ fn main() {
 
         telemetry::flush();
 
-        if let Some(code) = code {
-            let msgs: Vec<String> = err
-                .chain()
-                .filter(|c| c.downcast_ref::<error_code::ErrorCode>().is_none())
-                .map(|c| c.to_string())
-                .collect();
-
-            tracing::error!("error[{}]: {}", code, msgs[0]);
-            for msg in &msgs[1..] {
-                tracing::error!("  {msg}");
-            }
-            tracing::error!("");
-            tracing::error!("  For help: {}", code.doc_url());
-        } else {
-            tracing::error!("Error: {err:?}");
+        for line in error_report::error_report_lines(&err) {
+            tracing::error!("{line}");
         }
 
         std::process::exit(1);
