@@ -53,7 +53,7 @@ pub struct Checkpoint {
     /// in-progress release was operating on. Used to detect "HEAD
     /// moved" on resume.
     pub head_sha: String,
-    /// Unix-epoch seconds, for telemetry / debug. Not used by the
+    /// Unix-epoch seconds, for debugging. Not used by the
     /// resume policy itself.
     pub started_at: u64,
     /// Highest phase that finished without erroring.

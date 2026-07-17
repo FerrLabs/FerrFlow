@@ -99,8 +99,6 @@ jobs:
               sleep 15
             done
           fi
-        env:
-          FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
       - name: Build (Linux)
         if: matrix.os == 'ubuntu-latest' && matrix.target != 'x86_64-unknown-linux-musl'
         shell: bash
@@ -112,8 +110,6 @@ jobs:
             echo "build attempt $n failed (likely a transient crate download); retrying in 15s..." >&2
             sleep 15
           done
-        env:
-          FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
       - name: Build (macOS / Windows)
         if: matrix.os != 'ubuntu-latest'
         shell: bash
@@ -125,8 +121,6 @@ jobs:
             echo "build attempt $n failed (likely a transient crate download); retrying in 15s..." >&2
             sleep 15
           done
-        env:
-          FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
       - name: Package (Unix)
         if: matrix.os != 'windows-latest'
         run: |
@@ -160,8 +154,6 @@ jobs:
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
       - name: Build ferrflow
         run: cargo build --release
-        env:
-          FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           path: artifacts/

@@ -33,12 +33,8 @@ jobs:
         run: cargo fmt --check
       - name: Clippy
         run: cargo clippy -- -D warnings
-        env:
-          FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
       - name: Tests (nextest)
         run: cargo nextest run --no-fail-fast
-        env:
-          FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
 
   security:
     name: Cargo Security
@@ -71,8 +67,6 @@ jobs:
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
       - name: Build ferrflow
         run: cargo build --release
-        env:
-          FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
       - name: Upload binary
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
@@ -93,8 +87,6 @@ jobs:
           tool: cargo-tarpaulin
       - name: Generate coverage
         run: cargo tarpaulin --out xml --skip-clean
-        env:
-          FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
       - uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7
         with:
           files: cobertura.xml
@@ -554,8 +546,6 @@ jobs:
           # has always claimed, and the extra pass is cheap now that each shard
           # only carries one fixture.
           warmup: 3
-        env:
-          FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
       - name: Upload shard results
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
@@ -582,8 +572,6 @@ jobs:
           definitions: benchmarks/fixtures/definitions
           ferrflow-token: ${{ secrets.GITHUB_TOKEN }}
           merge-partials: partials
-        env:
-          FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
 
   release:
     name: Release
@@ -622,7 +610,6 @@ jobs:
       - name: Build ferrflow
         run: cargo build --release
         env:
-          FERRFLOW_HMAC_SECRET: ${{ secrets.FERRFLOW_HMAC_SECRET }}
       # Git identity is configured by the binary itself (see
       # ensure_bot_token in src/bot_token.rs) when FERRFLOW_BOT=true.
       - name: Run ferrflow release

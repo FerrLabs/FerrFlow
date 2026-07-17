@@ -186,6 +186,7 @@ pub enum CacheCommand {
 }
 
 impl Commands {
+    #[cfg(test)]
     pub fn name(&self) -> &'static str {
         match self {
             Commands::Check { .. } => "check",
