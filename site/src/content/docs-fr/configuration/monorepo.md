@@ -208,6 +208,25 @@ cycle detected: api → web → api
 
 La vérification s'exécute avant toute écriture de version : une configuration cyclique ne produit jamais de release partielle. Cassez la boucle en supprimant l'une des arêtes `dependsOn`. Sinon, le graphe est publié dépendances d'abord : un package est toujours publié après les packages dont il dépend.
 
+## Groupes de versions liées et fixes
+
+Parfois, plusieurs packages doivent partager le même numéro de version, pas seulement propager un bump. `linked` et `fixed` listent des groupes de packages qui évoluent ensemble :
+
+```toml
+[workspace]
+linked = [["react", "react-dom"]]
+fixed  = [["@scope/a", "@scope/b", "@scope/c"]]
+```
+
+Dès qu'**un** membre d'un groupe a un commit publiable, tous les membres sont bumpés à la même version — la plus haute que le groupe atteindrait. Un `feat` sur un membre et un `fix` sur un autre publient tout le groupe sur le minor. Les noms de packages restent distincts ; seule la version est partagée, et les membres sans commit propre sont intégrés à la release à la version partagée.
+
+- **`linked`** — les packages partagent une ligne de version lorsqu'ils sont publiés ensemble (par exemple `react` et `react-dom` passent tous deux de `1.2.3` à `1.2.4`).
+- **`fixed`** — les packages sont verrouillés sur une version identique en permanence. Le comportement est celui de `linked`, et `ferrflow validate` avertit en plus lorsque les versions d'un groupe `fixed` ont déjà divergé, pour repérer une édition manuelle avant que la prochaine release ne les réaligne.
+
+Chaque groupe doit lister au moins deux packages, et un package ne peut appartenir qu'à un seul groupe `linked` ou `fixed`. Nommer un package absent de `package[]`, ou en lister un dans deux groupes, arrête la release avec une erreur claire avant toute écriture — la même garantie amont que les [cycles de dépendances](#cycles-de-dépendances).
+
+`linked`/`fixed` et `dependsOn` se combinent : un package qui dépend d'un package groupé reçoit toujours son bump en cascade après l'alignement du groupe.
+
 ## Format des tags git
 
 Par défaut, les tags en monorepo utilisent le format `{name}@v{version}` :
@@ -327,9 +346,10 @@ package:
   path: packages/api
   versioning: calver
 - name: site
-path: packages/site
-tagTemplate: &quot;site-v{version}&quot;
-</code></pre>
+  path: packages/site
+  tagTemplate: &quot;site-v{version}&quot;
+  </code></pre>
+
 </div></div>
 </div>
 

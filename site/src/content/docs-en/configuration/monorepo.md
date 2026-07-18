@@ -208,6 +208,25 @@ cycle detected: api → web → api
 
 The check runs before any version is written, so a cyclic configuration never produces a partial release. Break the loop by removing one of the `dependsOn` edges. Otherwise the graph is released dependencies-first: a package is always released after the packages it depends on.
 
+## Linked and fixed version groups
+
+Sometimes packages must share a version number, not just cascade a bump. `linked` and `fixed` list groups of packages that move in lockstep:
+
+```toml
+[workspace]
+linked = [["react", "react-dom"]]
+fixed  = [["@scope/a", "@scope/b", "@scope/c"]]
+```
+
+When **any** member of a group has a releasable commit, every member is bumped to the same version — the highest version the group would reach. A `feat` on one member and a `fix` on another release the whole group on the minor. Package names stay distinct; only the version is shared, and members with no commits of their own are pulled into the release at the shared version.
+
+- **`linked`** — packages share a version line when they are released together (e.g. `react` and `react-dom` both go `1.2.3 → 1.2.4`).
+- **`fixed`** — packages are locked to an identical version forever. It behaves like `linked`, and `ferrflow validate` additionally warns when a fixed group's versions have already drifted apart, so you catch a manual edit before the next release realigns them.
+
+Each group must list at least two packages, and a package may appear in only one `linked` or `fixed` group. Naming a package that isn't defined in `package[]`, or listing one in two groups, stops the release with a clear error before anything is written — the same pre-flight guarantee as [dependency cycles](#dependency-cycles).
+
+`linked`/`fixed` and `dependsOn` compose: a package that depends on a grouped package still receives its cascade bump after the group is aligned.
+
 ## Git tag format
 
 By default, monorepo tags use the `{name}@v{version}` format:
@@ -327,9 +346,10 @@ package:
   path: packages/api
   versioning: calver
 - name: site
-path: packages/site
-tagTemplate: &quot;site-v{version}&quot;
-</code></pre>
+  path: packages/site
+  tagTemplate: &quot;site-v{version}&quot;
+  </code></pre>
+
 </div></div>
 </div>
 
