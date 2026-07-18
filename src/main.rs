@@ -6,6 +6,7 @@ mod concurrency;
 mod config;
 mod conventional_commits;
 mod diff;
+mod doctor;
 mod error_code;
 mod error_report;
 mod forge;

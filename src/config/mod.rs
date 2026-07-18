@@ -246,6 +246,10 @@ impl Config {
         self.packages.len() > 1
     }
 
+    pub fn discovered_config_paths(repo_root: &Path) -> Vec<PathBuf> {
+        Self::discover(repo_root)
+    }
+
     pub fn has_release_side_effects(&self) -> bool {
         self.workspace.hooks.is_some()
             || self

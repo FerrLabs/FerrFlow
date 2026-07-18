@@ -76,24 +76,39 @@ pub fn run(
         }
     };
 
-    let mut entries = Vec::new();
-    entries.extend(check_duplicate_names(&config));
-    entries.extend(check_duplicate_paths(&config));
-    entries.extend(check_tag_templates(&config));
-    entries.extend(check_package_paths(&config, source.as_ref()));
-    entries.extend(check_versioned_files_exist(&config, source.as_ref()));
-    let (file_entries, versions) = check_versioned_files(&config, source.as_ref());
-    entries.extend(file_entries);
-    entries.extend(check_version_consistency(&versions));
-    entries.extend(check_changelog_paths(&config, source.as_ref()));
-    entries.extend(check_shared_paths(&config, source.as_ref()));
-    entries.extend(check_groups(&config, &versions));
-    entries.extend(check_suggestions(&config));
+    let entries = collect_entries(&config, source.as_ref());
 
     let mut result = ValidationResult::from_entries(entries);
     result.config_file = Some(config_filename);
     result.package_count = config.packages.len();
     output_result(&result, json)
+}
+
+fn collect_entries(
+    config: &crate::config::Config,
+    source: &dyn FileSource,
+) -> Vec<ValidationEntry> {
+    let mut entries = Vec::new();
+    entries.extend(check_duplicate_names(config));
+    entries.extend(check_duplicate_paths(config));
+    entries.extend(check_tag_templates(config));
+    entries.extend(check_package_paths(config, source));
+    entries.extend(check_versioned_files_exist(config, source));
+    let (file_entries, versions) = check_versioned_files(config, source);
+    entries.extend(file_entries);
+    entries.extend(check_version_consistency(&versions));
+    entries.extend(check_changelog_paths(config, source));
+    entries.extend(check_shared_paths(config, source));
+    entries.extend(check_groups(config, &versions));
+    entries.extend(check_suggestions(config));
+    entries
+}
+
+pub fn local_entries(config: &crate::config::Config, root: &Path) -> Vec<ValidationEntry> {
+    let source = LocalSource {
+        root: root.to_path_buf(),
+    };
+    collect_entries(config, &source)
 }
 
 #[cfg(test)]
