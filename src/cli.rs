@@ -5,6 +5,7 @@ use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::Shell;
 
 use crate::config::ConfigFileFormat;
+use crate::doctor::DoctorFormat;
 use crate::logging::LogFormat;
 use crate::status::OutputFormat;
 use crate::timing::Timing;
@@ -164,6 +165,15 @@ pub enum Commands {
         #[arg(long, value_enum)]
         from: Option<MigrateSourceArg>,
     },
+    /// Run read-only diagnostics on the repo, config, and forge setup
+    Doctor {
+        /// Output format
+        #[arg(long, value_enum, default_value = "human")]
+        format: DoctorFormat,
+        /// Also probe the forge API (rate limit / auth). Requires a token.
+        #[arg(long)]
+        online: bool,
+    },
 }
 
 #[derive(Clone, Copy, clap::ValueEnum)]
@@ -207,6 +217,7 @@ impl Commands {
             Commands::Cache { .. } => "cache",
             Commands::SyncManifest => "sync-manifest",
             Commands::Migrate { .. } => "migrate",
+            Commands::Doctor { .. } => "doctor",
         }
     }
 }
@@ -296,6 +307,9 @@ impl Cli {
             },
             Commands::SyncManifest => crate::manifest::sync_cwd(self.config.as_deref()),
             Commands::Migrate { from } => crate::config::migrate(from.map(Into::into)),
+            Commands::Doctor { format, online } => {
+                crate::doctor::run(self.config.as_deref(), format, online)
+            }
         }
     }
 }
