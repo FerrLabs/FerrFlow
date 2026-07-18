@@ -22,6 +22,7 @@ export const DOCS_NAV: readonly DocSection[] = [
     items: [
       { label: 'Pipeline Triggers', slug: 'ci/pipeline-triggers' },
       { label: 'GitHub Actions', slug: 'ci/github-actions' },
+      { label: 'Hosted bot (ferrflow[bot])', slug: 'ci/hosted-bot' },
       { label: 'GitLab CI', slug: 'ci/gitlab-ci' },
     ],
   },

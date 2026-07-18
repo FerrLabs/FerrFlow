@@ -3,7 +3,6 @@ title: GitHub Actions
 description: Lancer les releases FerrFlow automatiquement avec GitHub Actions.
 ---
 
-
 ## Utiliser l'action officielle
 
 La manière la plus simple d'utiliser FerrFlow dans GitHub Actions est l'action `FerrLabs/ferrflow@v5`. Elle installe le binaire et exécute `ferrflow release` automatiquement.
@@ -19,11 +18,11 @@ jobs:
   release:
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # requis pour pousser les tags et créer les releases
+      contents: write # requis pour pousser les tags et créer les releases
     steps:
       - uses: actions/checkout@v6
         with:
-          fetch-depth: 0          # historique complet nécessaire pour le scan des commits
+          fetch-depth: 0 # historique complet nécessaire pour le scan des commits
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: FerrLabs/ferrflow@v5
@@ -37,11 +36,15 @@ jobs:
 ## Permissions
 
 FerrFlow a besoin de `contents: write` pour :
+
 - Pousser les commits de bump de version
 - Créer et pousser les tags git
 - Créer les GitHub Releases
 
 Si votre repository a des règles de protection de branche, créez un token dédié avec les permissions nécessaires et passez-le via `FERRFLOW_TOKEN` ou configurez l'input `token` de l'action.
+
+<aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>Vous préférez ne pas gérer de token ? Mettez <code>bot: true</code> pour attribuer les releases à <code>ferrflow[bot]</code> sans aucun secret — voir le guide <a href="/fr/docs/ci/hosted-bot">Bot hébergé</a>.</p>
+</div></aside>
 
 ## Accéder à la sortie de la release
 
