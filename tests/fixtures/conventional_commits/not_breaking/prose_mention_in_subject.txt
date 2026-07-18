@@ -1,0 +1,1 @@
+docs: note that BREAKING CHANGES are coming in v2

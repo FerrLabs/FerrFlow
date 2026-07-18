@@ -1,0 +1,7 @@
+feat: rework the config schema
+
+First paragraph of context.
+
+Second paragraph with detail.
+
+BREAKING CHANGE: the old .ferrflow keys are gone

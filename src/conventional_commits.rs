@@ -35,8 +35,25 @@ fn feat_header_re() -> &'static Regex {
 
 static BREAKING_FOOTER_RE: OnceLock<Regex> = OnceLock::new();
 
+// Case-insensitive so `breaking-change:` / `Breaking Change:` are caught
+// alongside the spec's uppercase form, but the structural rules stay
+// strict: the token must be at a line start, use a single space or hyphen,
+// and be followed by a colon-space. Prose mentions ("a breaking change in
+// the API") and the plural ("BREAKING CHANGES:") therefore never match.
 fn breaking_footer_re() -> &'static Regex {
-    BREAKING_FOOTER_RE.get_or_init(|| Regex::new(r"(?m)^BREAKING[ -]CHANGE: ").unwrap())
+    BREAKING_FOOTER_RE.get_or_init(|| Regex::new(r"(?mi)^BREAKING[ -]CHANGE: ").unwrap())
+}
+
+static BREAKING_SCOPE_BANG_RE: OnceLock<Regex> = OnceLock::new();
+
+// A `!` placed inside the scope (`feat(api!):`) instead of after it
+// (`feat(api)!:`) is a common typo; treat it as breaking too. The bang
+// must sit immediately before the closing paren, so `feat(a!b):` is not
+// a breaking marker.
+fn breaking_scope_bang_re() -> &'static Regex {
+    BREAKING_SCOPE_BANG_RE.get_or_init(|| {
+        Regex::new(r"^(feat|fix|refactor|perf|build|chore|docs|style|test|ci)\([^()]*!\):").unwrap()
+    })
 }
 
 pub fn determine_bump(message: &str) -> BumpType {
@@ -73,7 +90,10 @@ pub enum CommitCategory {
 pub fn classify_commit(message: &str) -> CommitCategory {
     let header = parse_subject(message);
 
-    if breaking_header_re().is_match(header) || breaking_footer_re().is_match(message) {
+    if breaking_header_re().is_match(header)
+        || breaking_scope_bang_re().is_match(header)
+        || breaking_footer_re().is_match(message)
+    {
         return CommitCategory::Breaking;
     }
     if feat_header_re().is_match(header) {
@@ -123,10 +143,18 @@ pub struct ParsedHeader<'a> {
 pub fn parse_header(message: &str) -> Option<ParsedHeader<'_>> {
     let subject = parse_subject(message);
     let caps = header_re().captures(subject)?;
+    // A `!` at the end of the scope (`feat(api!):`) is a breaking marker,
+    // not part of the scope name — surface it as `breaking_bang` and hand
+    // callers the clean scope so the changelog groups under `api`, not `api!`.
+    let raw_scope = caps.name("scope").map(|m| m.as_str());
+    let scope_bang = raw_scope.is_some_and(|s| s.ends_with('!'));
+    let scope = raw_scope
+        .map(|s| s.strip_suffix('!').unwrap_or(s))
+        .filter(|s| !s.is_empty());
     Some(ParsedHeader {
         commit_type: caps.name("type")?.as_str(),
-        scope: caps.name("scope").map(|m| m.as_str()),
-        breaking_bang: caps.name("bang").is_some(),
+        scope,
+        breaking_bang: caps.name("bang").is_some() || scope_bang,
         description: caps.name("desc").map(|m| m.as_str()).unwrap_or(""),
     })
 }
@@ -446,5 +474,94 @@ mod tests {
         assert!(is_breaking("feat: x\n\nBREAKING CHANGE: y"));
         assert!(!is_breaking("feat: x"));
         assert!(!is_breaking("fix: y"));
+    }
+
+    #[test]
+    fn breaking_footer_case_and_hyphen_variants() {
+        for footer in [
+            "BREAKING CHANGE: gone",
+            "BREAKING-CHANGE: gone",
+            "breaking-change: gone",
+            "breaking change: gone",
+            "Breaking Change: gone",
+        ] {
+            let msg = format!("feat: x\n\n{footer}");
+            assert_eq!(determine_bump(&msg), BumpType::Major, "footer: {footer:?}");
+        }
+    }
+
+    #[test]
+    fn breaking_footer_stays_strict_on_malformed_shapes() {
+        // Missing the colon-space, plural, prose, and mid-line placement must
+        // not trip the detector — we accept case variants, not any shape.
+        assert_eq!(
+            determine_bump("feat: x\n\nBreaking change:nospace"),
+            BumpType::Minor
+        );
+        assert_eq!(
+            determine_bump("chore: x\n\nbreaking changes: none"),
+            BumpType::None
+        );
+        assert_eq!(
+            determine_bump("feat: x\n\nthis is a breaking change: really"),
+            BumpType::Minor
+        );
+    }
+
+    #[test]
+    fn bang_inside_scope_is_breaking() {
+        assert_eq!(
+            determine_bump("feat(api!): remove endpoint"),
+            BumpType::Major
+        );
+        assert_eq!(determine_bump("fix(db!): drop table"), BumpType::Major);
+        // Bang not immediately before the closing paren is not a marker.
+        assert_eq!(determine_bump("feat(a!b): middle"), BumpType::Minor);
+    }
+
+    #[test]
+    fn parse_header_normalizes_scope_internal_bang() {
+        let h = parse_header("feat(api!): remove endpoint").unwrap();
+        assert_eq!(h.commit_type, "feat");
+        assert_eq!(
+            h.scope,
+            Some("api"),
+            "the trailing ! is stripped from scope"
+        );
+        assert!(h.breaking_bang);
+        let empty = parse_header("feat(!): drop flag").unwrap();
+        assert_eq!(empty.scope, None);
+        assert!(empty.breaking_bang);
+    }
+
+    #[test]
+    fn fixtures_classify_by_directory() {
+        use std::path::Path;
+        let root =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/conventional_commits");
+        let mut checked = 0;
+        for (dir, expect_breaking) in [("breaking", true), ("not_breaking", false)] {
+            let subdir = root.join(dir);
+            let entries =
+                std::fs::read_dir(&subdir).unwrap_or_else(|e| panic!("read {subdir:?}: {e}"));
+            for entry in entries {
+                let path = entry.unwrap().path();
+                if path.extension().and_then(|e| e.to_str()) != Some("txt") {
+                    continue;
+                }
+                let message = std::fs::read_to_string(&path).unwrap();
+                assert_eq!(
+                    is_breaking(&message),
+                    expect_breaking,
+                    "fixture {:?} should classify breaking={expect_breaking}",
+                    path.file_name().unwrap()
+                );
+                checked += 1;
+            }
+        }
+        assert!(
+            checked >= 14,
+            "fixture corpus looks unloaded — only {checked} messages checked"
+        );
     }
 }

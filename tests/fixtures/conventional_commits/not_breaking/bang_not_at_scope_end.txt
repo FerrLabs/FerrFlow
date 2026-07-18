@@ -1,0 +1,1 @@
+feat(a!b): the bang is in the middle of the scope
