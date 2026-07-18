@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.30.0] - 2026-07-18
+
+### Features
+
+- feat(site): document the ferrflow schema subcommand (#701)
+
 ## [6.29.1] - 2026-07-18
 
 ### Bug Fixes
