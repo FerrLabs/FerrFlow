@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.31.0] - 2026-07-18
+
+### Features
+
+- feat(site): document forge = bitbucket in the config reference (#709)
+
 ## [6.30.1] - 2026-07-18
 
 ### Bug Fixes
