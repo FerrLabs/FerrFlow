@@ -261,6 +261,29 @@ ferrflow completions <SHELL>
 
 ---
 
+## `ferrflow schema`
+
+Print the JSON schema for the ferrflow config file. The schema is bundled into the binary, so this works offline — no network call to `ferrflow.com/schema/ferrflow.json`.
+
+```bash
+ferrflow schema [OPTIONS]
+```
+
+| Flag              | Description                                           |
+| ----------------- | ----------------------------------------------------- |
+| `--pretty`        | Format the output instead of compact single-line JSON |
+| `--output <FILE>` | Write to a file instead of stdout                     |
+
+Use it to point an editor at a local copy, or to validate `.ferrflow.json` in a pre-commit hook with no internet access:
+
+```bash
+ferrflow schema --pretty --output ferrflow.schema.json
+```
+
+Then set `"$schema": "./ferrflow.schema.json"` in your config. The command parses the bundled schema before printing, so it exits non-zero if the build artefact is somehow corrupt.
+
+---
+
 ## Global flags
 
 These flags work with all commands:

@@ -230,6 +230,29 @@ ferrflow completions <SHELL>
 
 ---
 
+## `ferrflow schema`
+
+Afficher le schéma JSON du fichier de configuration ferrflow. Le schéma est embarqué dans le binaire : la commande fonctionne donc hors ligne, sans appel réseau à `ferrflow.com/schema/ferrflow.json`.
+
+```bash
+ferrflow schema [OPTIONS]
+```
+
+| Option            | Description                                                      |
+| ----------------- | ---------------------------------------------------------------- |
+| `--pretty`        | Formater la sortie au lieu d'un JSON compact sur une seule ligne |
+| `--output <FILE>` | Écrire dans un fichier plutôt que sur la sortie standard         |
+
+Utilisez-la pour pointer un éditeur vers une copie locale, ou pour valider `.ferrflow.json` dans un hook pre-commit sans accès internet :
+
+```bash
+ferrflow schema --pretty --output ferrflow.schema.json
+```
+
+Puis renseignez `"$schema": "./ferrflow.schema.json"` dans votre configuration. La commande parse le schéma embarqué avant de l'afficher : elle sort donc avec un code non nul si l'artefact de build est corrompu.
+
+---
+
 ## Options globales
 
 Ces options fonctionnent avec toutes les commandes :
