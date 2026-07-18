@@ -1,5 +1,16 @@
 # Changelog
 
+## [6.29.0] - 2026-07-18
+
+### Features
+
+- feat(site): document linked/fixed package version groups (#697)
+- feat(site): document the telemetry removal (#694)
+
+### Bug Fixes
+
+- fix(site): refresh FerrFlow v5.33.3 release data
+
 ## [6.28.0] - 2026-07-17
 
 ### Features
