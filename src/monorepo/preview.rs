@@ -15,7 +15,7 @@ pub(super) fn build_forge_instance(
     let host = forge::extract_host(&remote_url)?;
 
     let kind = match config.workspace.forge {
-        ForgeKind::Auto => forge::detect_forge_from_url(&remote_url)?,
+        ForgeKind::Auto => forge::detect_forge_with_probe(&remote_url)?,
         explicit => explicit,
     };
 
