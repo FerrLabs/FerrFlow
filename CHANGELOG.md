@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.36.1] - 2026-07-18
+
+### Bug Fixes
+
+- perf(git): write a commit-graph on cold runs of large repos (#728)
+
 ## [5.36.0] - 2026-07-18
 
 ### Features
