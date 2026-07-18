@@ -4,6 +4,14 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.36.0] - 2026-07-18
+
+### Features
+
+- feat(commit): detect mixed-case, hyphen, and scope-internal BREAKING CHANGE variants (#727)
+- feat(cli): add schema subcommand to print the bundled JSON schema (#726)
+- feat(cli): add doctor diagnostic subcommand (#725)
+
 ## [5.35.0] - 2026-07-18
 
 ### Features
