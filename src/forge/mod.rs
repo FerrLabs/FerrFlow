@@ -1,3 +1,4 @@
+pub mod bitbucket;
 pub mod gitea;
 pub mod github;
 pub mod gitlab;
@@ -68,6 +69,8 @@ pub fn detect_forge_from_url(url: &str) -> Option<ForgeKind> {
         Some(ForgeKind::Gitlab)
     } else if url.contains("codeberg.org") || url.contains("gitea.io") {
         Some(ForgeKind::Gitea)
+    } else if url.contains("bitbucket.org") {
+        Some(ForgeKind::Bitbucket)
     } else {
         None
     }
@@ -143,7 +146,7 @@ pub fn web_base_url(remote_url: &str) -> Option<String> {
     let host = extract_host(remote_url)?;
     let slug = extract_repo_slug(remote_url)?;
     match kind {
-        ForgeKind::Github | ForgeKind::Gitlab | ForgeKind::Gitea => {
+        ForgeKind::Github | ForgeKind::Gitlab | ForgeKind::Gitea | ForgeKind::Bitbucket => {
             Some(format!("https://{host}/{slug}"))
         }
         ForgeKind::Auto => None,
@@ -167,6 +170,9 @@ pub fn resolve_token(kind: ForgeKind) -> Option<String> {
                     .ok()
                     .filter(|t| !t.is_empty())
             }),
+        ForgeKind::Bitbucket => std::env::var("BITBUCKET_TOKEN")
+            .ok()
+            .filter(|t| !t.is_empty()),
         ForgeKind::Auto => None,
     }
 }
@@ -208,6 +214,25 @@ pub fn build_forge(kind: ForgeKind, token: String, slug: String, host: String) -
                 token,
                 slug,
                 api_base,
+                agent,
+            })
+        }
+        ForgeKind::Bitbucket => {
+            // Cloud speaks REST 2.0 under api.bitbucket.org; Server / Data
+            // Center uses a different base (`/rest/api/1.0`) and is out of
+            // scope for now (#656) — build it so the tag still lands, but
+            // only Cloud gets a forge-side release URL.
+            let is_cloud = host == "bitbucket.org";
+            let api_base = if is_cloud {
+                "https://api.bitbucket.org/2.0".to_string()
+            } else {
+                format!("https://{host}/rest/api/1.0")
+            };
+            Box::new(bitbucket::BitbucketForge {
+                token,
+                slug,
+                api_base,
+                is_cloud,
                 agent,
             })
         }
@@ -285,9 +310,39 @@ mod tests {
     #[test]
     fn detect_unknown_host() {
         assert_eq!(
-            detect_forge_from_url("https://bitbucket.org/owner/repo.git"),
+            detect_forge_from_url("https://git.example.com/owner/repo.git"),
             None
         );
+    }
+
+    #[test]
+    fn detect_bitbucket_cloud() {
+        assert_eq!(
+            detect_forge_from_url("https://bitbucket.org/workspace/repo.git"),
+            Some(ForgeKind::Bitbucket)
+        );
+        assert_eq!(
+            detect_forge_from_url("git@bitbucket.org:workspace/repo.git"),
+            Some(ForgeKind::Bitbucket)
+        );
+        assert_eq!(
+            web_base_url("https://bitbucket.org/workspace/repo.git").as_deref(),
+            Some("https://bitbucket.org/workspace/repo")
+        );
+    }
+
+    #[test]
+    fn resolve_token_bitbucket_from_bitbucket_token() {
+        let _lock = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        unsafe {
+            std::env::remove_var("FERRFLOW_TOKEN");
+            std::env::set_var("BITBUCKET_TOKEN", "bb-tok");
+        }
+        let result = resolve_token(ForgeKind::Bitbucket);
+        unsafe {
+            std::env::remove_var("BITBUCKET_TOKEN");
+        }
+        assert_eq!(result, Some("bb-tok".to_string()));
     }
 
     #[test]

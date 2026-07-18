@@ -153,6 +153,9 @@ pub const GITEA_LIST_RELEASES: ErrorCode = ErrorCode(3202);
 pub const GITEA_PUBLISH_RELEASE: ErrorCode = ErrorCode(3203);
 
 #[allow(dead_code)]
+pub const BITBUCKET_CREATE_RELEASE: ErrorCode = ErrorCode(3301);
+
+#[allow(dead_code)]
 pub const TOML_READ: ErrorCode = ErrorCode(4101);
 #[allow(dead_code)]
 pub const TOML_PARSE: ErrorCode = ErrorCode(4102);
