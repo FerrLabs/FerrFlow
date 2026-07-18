@@ -1,0 +1,1 @@
+fix(api)!: remove the deprecated v1 endpoint
