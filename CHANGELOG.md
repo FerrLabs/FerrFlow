@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.35.0] - 2026-07-18
+
+### Features
+
+- feat(cli): add doctor diagnostic subcommand (#725)
+
 ## [5.34.0] - 2026-07-17
 
 ### Features
