@@ -112,13 +112,13 @@ pub(super) fn config_section(
                 .map(|p| filename(p))
                 .collect::<Vec<_>>()
                 .join(", ");
-            let winner = filename(&discovered[0]);
-            checks.push(Check::warn(
+            checks.push(Check::error(
                 "config file",
                 Some(format!(
-                    "multiple found ({list}); '{winner}' takes precedence"
+                    "multiple config files found ({list}) — ambiguous; pass --config to choose one"
                 )),
             ));
+            return Section::new("Config", checks);
         }
     }
 

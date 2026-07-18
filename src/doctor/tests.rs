@@ -115,6 +115,24 @@ mod end_to_end {
     }
 
     #[test]
+    fn multiple_config_files_are_flagged_as_ambiguous() {
+        let (dir, _repo) = init_repo();
+        let root = dir.path();
+        write(root, "ferrflow.json", r#"{"package":[]}"#);
+        write(root, "ferrflow.toml", "");
+
+        let discovered = Config::discovered_config_paths(root);
+        // Config::load errors on ambiguity, so doctor sees no parsed config.
+        let section = checks::config_section(None, None, &discovered, root);
+
+        let config_file = find(&section, "config file");
+        assert_eq!(config_file.status, Status::Error);
+        assert!(config_file.detail.as_deref().unwrap().contains("ambiguous"));
+        // No second, duplicate "config parses" error.
+        assert_eq!(section.checks.len(), 1);
+    }
+
+    #[test]
     fn ci_section_reports_the_pinned_ferrflow_action() {
         let (dir, _repo) = init_repo();
         let root = dir.path();
