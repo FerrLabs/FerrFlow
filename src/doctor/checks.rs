@@ -243,7 +243,9 @@ pub(super) fn forge_section(
     } else {
         checks.push(Check::warn(
             "auth token",
-            Some("no token in env (FERRFLOW_TOKEN / GITHUB_TOKEN / GITLAB_TOKEN) — API pushes and releases will fail".into()),
+            Some(format!(
+                "no token in env ({var} or FERRFLOW_TOKEN) — API pushes and releases will fail"
+            )),
         ));
     }
 
@@ -363,6 +365,8 @@ fn token_env(forge: Option<ForgeKind>) -> (&'static str, bool) {
     }
     match forge {
         Some(ForgeKind::Gitlab) => ("GITLAB_TOKEN", is_set("GITLAB_TOKEN")),
+        Some(ForgeKind::Gitea) => ("GITEA_TOKEN", is_set("GITEA_TOKEN")),
+        Some(ForgeKind::Bitbucket) => ("BITBUCKET_TOKEN", is_set("BITBUCKET_TOKEN")),
         _ => ("GITHUB_TOKEN", is_set("GITHUB_TOKEN")),
     }
 }
@@ -372,6 +376,7 @@ fn forge_label(kind: ForgeKind) -> &'static str {
         ForgeKind::Github => "GitHub",
         ForgeKind::Gitlab => "GitLab",
         ForgeKind::Gitea => "Gitea/Forgejo",
+        ForgeKind::Bitbucket => "Bitbucket",
         ForgeKind::Auto => "auto",
     }
 }

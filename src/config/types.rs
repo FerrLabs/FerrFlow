@@ -11,6 +11,8 @@ pub enum ForgeKind {
     Gitlab,
     #[serde(alias = "Gitea", alias = "forgejo", alias = "Forgejo")]
     Gitea,
+    #[serde(alias = "Bitbucket")]
+    Bitbucket,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]

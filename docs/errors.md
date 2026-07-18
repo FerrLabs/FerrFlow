@@ -257,6 +257,16 @@ The Gitea API returned an error while listing releases to find a draft.
 
 Could not clear the draft flag on a Gitea release via the API.
 
+## Bitbucket API Errors (E3300--E3399)
+
+Covers Bitbucket Cloud. Bitbucket has no "release" object, so a release maps to the annotated tag FerrFlow already pushed; these errors only concern the optional forge-side lookup, never the tag itself.
+
+### E3301: Failed to resolve Bitbucket tag
+
+FerrFlow looked the release tag up via the Bitbucket Cloud API (`GET /2.0/repositories/{workspace}/{repo}/refs/tags/{tag}`) to return its web URL, and the request failed. The tag was still pushed, so this is reported as a warning, not a release failure.
+
+**Fix**: Check that `BITBUCKET_TOKEN` (or `FERRFLOW_TOKEN`) is set with repository read access. Bitbucket Server / Data Center is not yet supported and skips this lookup entirely.
+
 ## Version File Errors (E4000--E4799)
 
 ### TOML (E4101--E4105)
