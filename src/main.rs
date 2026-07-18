@@ -20,6 +20,7 @@ mod prerelease;
 mod publish;
 mod publishers;
 mod query;
+mod schema;
 mod status;
 mod timing;
 mod validate;
