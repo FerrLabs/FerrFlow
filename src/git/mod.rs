@@ -1,4 +1,5 @@
 mod auth;
+mod commit_graph;
 mod commit_walk;
 mod commits;
 mod diff;
@@ -13,6 +14,7 @@ mod validate;
 pub use validate::ensure_safe_refname_fragment;
 
 pub use auth::get_remote_url;
+pub use commit_graph::write_commit_graph_if_absent;
 pub use commit_walk::CommitWalkCache;
 #[allow(unused_imports)]
 pub use commits::{

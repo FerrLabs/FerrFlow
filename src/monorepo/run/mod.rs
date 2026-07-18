@@ -122,6 +122,10 @@ pub(super) fn run_release_logic(
         {
             tracing::warn!("Warning: could not fetch remote tags: {e}");
         }
+        // A real release walks tags + commits repeatedly; on a fresh clone
+        // with no commit-graph, write one so those walks use it (#690).
+        // Guarded by `!dry_run` so dry-run stays read-only.
+        crate::git::write_commit_graph_if_absent(&repo);
     }
 
     let current_branch = crate::git::resolve_current_branch(&repo, &config.workspace.branch);
