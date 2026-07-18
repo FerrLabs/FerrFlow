@@ -3,6 +3,10 @@ pub mod gitea;
 pub mod github;
 pub mod gitlab;
 
+use std::collections::HashMap;
+use std::sync::{Mutex, OnceLock};
+use std::time::Duration;
+
 use anyhow::Result;
 
 pub use crate::config::ForgeKind;
@@ -74,6 +78,78 @@ pub fn detect_forge_from_url(url: &str) -> Option<ForgeKind> {
     } else {
         None
     }
+}
+
+const PROBE_TIMEOUT: Duration = Duration::from_secs(2);
+
+static PROBE_CACHE: OnceLock<Mutex<HashMap<String, Option<ForgeKind>>>> = OnceLock::new();
+
+/// Like [`detect_forge_from_url`], but when the hostname isn't a known SaaS
+/// host it probes the host's API to recognise a self-hosted GitLab, GitHub
+/// Enterprise, or Gitea/Forgejo instance (#332). The probe is unauthenticated,
+/// short (2s), best-effort, and cached per host for the process lifetime, so a
+/// run probes a given self-hosted host at most once and never touches the
+/// network for a hostname FerrFlow already recognises.
+pub fn detect_forge_with_probe(url: &str) -> Option<ForgeKind> {
+    if let Some(kind) = detect_forge_from_url(url) {
+        return Some(kind);
+    }
+    let host = extract_host(url)?;
+
+    let cache = PROBE_CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+    if let Some(cached) = cache.lock().unwrap_or_else(|e| e.into_inner()).get(&host) {
+        return *cached;
+    }
+
+    let detected = probe_host(&host);
+    cache
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .insert(host, detected);
+    detected
+}
+
+fn probe_host(host: &str) -> Option<ForgeKind> {
+    let agent: ureq::Agent = ureq::Agent::config_builder()
+        .timeout_global(Some(PROBE_TIMEOUT))
+        .build()
+        .into();
+    let status = |path: &str| probe_status(&agent, &format!("https://{host}{path}"));
+    kind_from_probe_statuses(
+        status("/api/v4/version"),
+        status("/api/v1/version"),
+        status("/api/v3"),
+    )
+}
+
+fn probe_status(agent: &ureq::Agent, url: &str) -> Option<u16> {
+    match agent.get(url).header("User-Agent", "ferrflow").call() {
+        Ok(response) => Some(response.status().as_u16()),
+        Err(ureq::Error::StatusCode(code)) => Some(code),
+        // DNS failure, connection refused, TLS error, timeout: no answer.
+        Err(_) => None,
+    }
+}
+
+fn kind_from_probe_statuses(
+    gitlab: Option<u16>,
+    gitea: Option<u16>,
+    github: Option<u16>,
+) -> Option<ForgeKind> {
+    // GitLab's version endpoint requires auth, so a 401 confirms the API is
+    // there just as well as a 200; a 404 means it isn't GitLab.
+    if matches!(gitlab, Some(200) | Some(401)) {
+        return Some(ForgeKind::Gitlab);
+    }
+    // Gitea / Forgejo serve /api/v1/version publicly.
+    if gitea == Some(200) {
+        return Some(ForgeKind::Gitea);
+    }
+    // GitHub Enterprise's REST root is public.
+    if github == Some(200) {
+        return Some(ForgeKind::Github);
+    }
+    None
 }
 
 pub fn extract_host(url: &str) -> Option<String> {
@@ -328,6 +404,57 @@ mod tests {
         assert_eq!(
             web_base_url("https://bitbucket.org/workspace/repo.git").as_deref(),
             Some("https://bitbucket.org/workspace/repo")
+        );
+    }
+
+    #[test]
+    fn probe_classifier_maps_statuses_to_kinds() {
+        // GitLab: 200 or 401 on /api/v4/version (the endpoint needs auth).
+        assert_eq!(
+            kind_from_probe_statuses(Some(200), None, None),
+            Some(ForgeKind::Gitlab)
+        );
+        assert_eq!(
+            kind_from_probe_statuses(Some(401), None, None),
+            Some(ForgeKind::Gitlab)
+        );
+        // GitLab is checked first and wins if several endpoints answer.
+        assert_eq!(
+            kind_from_probe_statuses(Some(401), Some(200), Some(200)),
+            Some(ForgeKind::Gitlab)
+        );
+        // Gitea / Forgejo: public /api/v1/version, and not GitLab.
+        assert_eq!(
+            kind_from_probe_statuses(Some(404), Some(200), None),
+            Some(ForgeKind::Gitea)
+        );
+        // GitHub Enterprise: public /api/v3 root, others absent.
+        assert_eq!(
+            kind_from_probe_statuses(Some(404), Some(404), Some(200)),
+            Some(ForgeKind::Github)
+        );
+        // Nothing recognisable → no forge.
+        assert_eq!(
+            kind_from_probe_statuses(Some(404), Some(404), Some(404)),
+            None
+        );
+        assert_eq!(kind_from_probe_statuses(None, None, None), None);
+    }
+
+    #[test]
+    fn probe_short_circuits_known_saas_hosts_without_network() {
+        // Known hosts resolve via detect_forge_from_url, so these never probe.
+        assert_eq!(
+            detect_forge_with_probe("https://github.com/o/r.git"),
+            Some(ForgeKind::Github)
+        );
+        assert_eq!(
+            detect_forge_with_probe("git@gitlab.com:o/r.git"),
+            Some(ForgeKind::Gitlab)
+        );
+        assert_eq!(
+            detect_forge_with_probe("https://bitbucket.org/o/r.git"),
+            Some(ForgeKind::Bitbucket)
         );
     }
 
