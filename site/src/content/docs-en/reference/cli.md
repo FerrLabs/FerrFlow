@@ -249,6 +249,31 @@ ferrflow validate [OPTIONS]
 
 ---
 
+## `ferrflow doctor`
+
+Run read-only diagnostics on the repo, config, and forge setup and print a categorised report — the "is my setup sane?" command. Use it on a fresh checkout to see what's missing before the first release, or when a run behaves unexpectedly and you'd otherwise be staring at `--verbose` logs.
+
+```bash
+ferrflow doctor [OPTIONS]
+```
+
+| Flag             | Description                                                           |
+| ---------------- | --------------------------------------------------------------------- |
+| `--format <FMT>` | `human` (default) or `json`                                           |
+| `--online`       | Also probe the forge API (GitHub rate limit / auth); requires a token |
+
+The report groups checks into five sections — **Repo** (git repository, commit history, clean working tree, remote, tags), **Config** (which config file wins, whether it parses, plus the full `ferrflow validate` check suite), **Versioning** (strategy and each package's on-disk version), **Forge** (detected forge and whether an auth token is present in the environment), and **CI** (workflow files, and whether a workflow pins the `FerrLabs/FerrFlow` action). Every check reports green, a warning, or an error.
+
+The exit code is scriptable: `0` when everything is green, `1` if there are only warnings, `2` if any check errors. `--format json` has a stable shape — `{ status, exit_code, sections: [{ title, checks: [{ name, status, detail }] }] }` — so CI can assert on it.
+
+```bash
+ferrflow doctor                 # human report
+ferrflow doctor --format json   # machine-readable, stable for CI
+ferrflow doctor --online        # also check the GitHub API rate limit
+```
+
+---
+
 ## `ferrflow completions`
 
 Generate a shell completion script and print it to stdout.

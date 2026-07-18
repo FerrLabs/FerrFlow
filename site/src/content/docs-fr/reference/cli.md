@@ -218,6 +218,31 @@ ferrflow validate [OPTIONS]
 
 ---
 
+## `ferrflow doctor`
+
+Lancer un diagnostic en lecture seule sur le dépôt, la configuration et la forge, puis afficher un rapport par catégories — la commande « est-ce que ma config est saine ? ». Utilisez-la sur un checkout tout neuf pour voir ce qui manque avant la première release, ou quand une exécution se comporte mal et que vous devriez sinon scruter les logs `--verbose`.
+
+```bash
+ferrflow doctor [OPTIONS]
+```
+
+| Option           | Description                                                                    |
+| ---------------- | ------------------------------------------------------------------------------ |
+| `--format <FMT>` | `human` (défaut) ou `json`                                                     |
+| `--online`       | Sonder aussi l'API de la forge (rate limit / auth GitHub) ; nécessite un token |
+
+Le rapport groupe les vérifications en cinq sections — **Repo** (dépôt git, historique de commits, arbre de travail propre, remote, tags), **Config** (quel fichier de config l'emporte, s'il parse, plus toute la suite de vérifications de `ferrflow validate`), **Versioning** (stratégie et version sur disque de chaque package), **Forge** (forge détectée et présence d'un token d'auth dans l'environnement) et **CI** (fichiers de workflow, et si un workflow épingle l'action `FerrLabs/FerrFlow`). Chaque vérification est verte, un avertissement, ou une erreur.
+
+Le code de sortie est scriptable : `0` quand tout est vert, `1` s'il n'y a que des avertissements, `2` si une vérification est en erreur. La sortie `--format json` a une forme stable — `{ status, exit_code, sections: [{ title, checks: [{ name, status, detail }] }] }` — pour que la CI puisse s'appuyer dessus.
+
+```bash
+ferrflow doctor                 # rapport lisible
+ferrflow doctor --format json   # lisible par machine, stable pour la CI
+ferrflow doctor --online        # vérifie aussi le rate limit de l'API GitHub
+```
+
+---
+
 ## `ferrflow completions`
 
 Générer un script de complétion shell et l'afficher sur la sortie standard.
