@@ -174,6 +174,15 @@ pub enum Commands {
         #[arg(long)]
         online: bool,
     },
+    /// Print the bundled JSON schema for the ferrflow config file
+    Schema {
+        /// Pretty-print the schema instead of compact single-line JSON
+        #[arg(long)]
+        pretty: bool,
+        /// Write to a file instead of stdout
+        #[arg(long, value_name = "FILE")]
+        output: Option<PathBuf>,
+    },
 }
 
 #[derive(Clone, Copy, clap::ValueEnum)]
@@ -218,6 +227,7 @@ impl Commands {
             Commands::SyncManifest => "sync-manifest",
             Commands::Migrate { .. } => "migrate",
             Commands::Doctor { .. } => "doctor",
+            Commands::Schema { .. } => "schema",
         }
     }
 }
@@ -310,6 +320,7 @@ impl Cli {
             Commands::Doctor { format, online } => {
                 crate::doctor::run(self.config.as_deref(), format, online)
             }
+            Commands::Schema { pretty, output } => crate::schema::run(pretty, output.as_deref()),
         }
     }
 }
@@ -334,6 +345,26 @@ mod tests {
 
     fn parse(args: &[&str]) -> Cli {
         Cli::try_parse_from(args).unwrap()
+    }
+
+    #[test]
+    fn parse_schema() {
+        let cli = parse(&["ferrflow", "schema"]);
+        assert!(matches!(
+            cli.command,
+            Commands::Schema {
+                pretty: false,
+                output: None
+            }
+        ));
+        let cli = parse(&["ferrflow", "schema", "--pretty", "--output", "s.json"]);
+        assert!(matches!(
+            cli.command,
+            Commands::Schema {
+                pretty: true,
+                output: Some(_)
+            }
+        ));
     }
 
     #[test]
