@@ -34,7 +34,7 @@ version = "1.3.2"
 criteria = "safe-to-deploy"
 
 [[exemptions.bitflags]]
-version = "2.13.0"
+version = "2.13.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.block-buffer]]
@@ -62,7 +62,7 @@ version = "0.3.0"
 criteria = "safe-to-run"
 
 [[exemptions.cc]]
-version = "1.2.67"
+version = "1.3.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.cfg-if]]
@@ -87,10 +87,6 @@ criteria = "safe-to-run"
 
 [[exemptions.clru]]
 version = "0.6.3"
-criteria = "safe-to-deploy"
-
-[[exemptions.cmov]]
-version = "0.5.4"
 criteria = "safe-to-deploy"
 
 [[exemptions.colored]]
@@ -161,10 +157,6 @@ criteria = "safe-to-deploy"
 version = "0.2.2"
 criteria = "safe-to-deploy"
 
-[[exemptions.ctutils]]
-version = "0.4.2"
-criteria = "safe-to-deploy"
-
 [[exemptions.defmt]]
 version = "1.1.1"
 criteria = "safe-to-deploy"
@@ -210,7 +202,7 @@ version = "0.10.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.fastrand]]
-version = "2.4.1"
+version = "2.5.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.filetime]]
@@ -230,15 +222,15 @@ version = "0.2.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.futures-core]]
-version = "0.3.32"
+version = "0.3.33"
 criteria = "safe-to-deploy"
 
 [[exemptions.futures-task]]
-version = "0.3.32"
+version = "0.3.33"
 criteria = "safe-to-deploy"
 
 [[exemptions.futures-util]]
-version = "0.3.32"
+version = "0.3.33"
 criteria = "safe-to-deploy"
 
 [[exemptions.generic-array]]
@@ -271,10 +263,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.heapless]]
 version = "0.8.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.hmac]]
-version = "0.13.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.http]]
@@ -336,6 +324,10 @@ criteria = "safe-to-deploy"
 [[exemptions.itertools]]
 version = "0.13.0"
 criteria = "safe-to-run"
+
+[[exemptions.jiff-core]]
+version = "0.1.0"
+criteria = "safe-to-deploy"
 
 [[exemptions.js-sys]]
 version = "0.3.103"
@@ -430,7 +422,7 @@ version = "0.3.7"
 criteria = "safe-to-run"
 
 [[exemptions.portable-atomic]]
-version = "1.13.1"
+version = "1.14.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.portable-atomic-util]]
@@ -458,7 +450,7 @@ version = "1.1.4"
 criteria = "safe-to-deploy"
 
 [[exemptions.rustls]]
-version = "0.23.41"
+version = "0.23.42"
 criteria = "safe-to-deploy"
 
 [[exemptions.rustls-pki-types]]
@@ -494,7 +486,7 @@ version = "2.0.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.simd-adler32]]
-version = "0.3.9"
+version = "0.3.10"
 criteria = "safe-to-deploy"
 
 [[exemptions.slab]]
@@ -526,7 +518,7 @@ version = "1.1.10"
 criteria = "safe-to-deploy"
 
 [[exemptions.time]]
-version = "0.3.53"
+version = "0.3.54"
 criteria = "safe-to-deploy"
 
 [[exemptions.time-core]]
@@ -534,7 +526,7 @@ version = "0.1.9"
 criteria = "safe-to-deploy"
 
 [[exemptions.time-macros]]
-version = "0.2.31"
+version = "0.2.32"
 criteria = "safe-to-deploy"
 
 [[exemptions.tinystr]]
@@ -646,7 +638,7 @@ version = "0.3.103"
 criteria = "safe-to-run"
 
 [[exemptions.webpki-roots]]
-version = "1.0.8"
+version = "1.0.9"
 criteria = "safe-to-deploy"
 
 [[exemptions.winapi]]
