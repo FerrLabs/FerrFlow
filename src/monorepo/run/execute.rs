@@ -403,8 +403,11 @@ fn run_release_summary_hook(plan: &ReleasePlan<'_>, point: HookPoint) -> Result<
             .iter()
             .map(|(t, _, _, _, _, _, _)| t.clone())
             .collect();
-        let ctx =
+        let mut ctx =
             HookContext::release_summary(plan.root, &tags, plan.dry_run, plan.config.is_monorepo());
+        if let Some((first, _)) = plan.hook_contexts.first() {
+            ctx.all_packages = first.all_packages.clone();
+        }
         run_hook(
             point,
             &cmd,

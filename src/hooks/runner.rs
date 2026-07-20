@@ -64,6 +64,10 @@ pub fn run_hook(
             serde_json::to_string(&ctx.bumped_files).unwrap_or_else(|_| "[]".to_string()),
         )
         .env(
+            "FERRFLOW_ALL_PACKAGES_JSON",
+            serde_json::to_string(&ctx.all_packages).unwrap_or_else(|_| "[]".to_string()),
+        )
+        .env(
             "FERRFLOW_ERROR_CODE",
             ctx.error_code.as_deref().unwrap_or(""),
         );

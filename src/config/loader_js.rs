@@ -37,7 +37,7 @@ pub(crate) fn path_to_file_url(path: &Path) -> Result<String> {
 const LOADER_SCRIPT: &str = r#"
 function reifyHooks(hooks, fileUrl, runtime, hookPath) {
   if (!hooks || typeof hooks !== 'object') return hooks;
-  const ctx = `{ package: process.env.FERRFLOW_PACKAGE, oldVersion: process.env.FERRFLOW_OLD_VERSION, newVersion: process.env.FERRFLOW_NEW_VERSION, bumpType: process.env.FERRFLOW_BUMP_TYPE, tag: process.env.FERRFLOW_TAG, dryRun: process.env.FERRFLOW_DRY_RUN === 'true', packagePath: process.env.FERRFLOW_PACKAGE_PATH, channel: process.env.FERRFLOW_CHANNEL || null, isPrerelease: process.env.FERRFLOW_IS_PRERELEASE === 'true', monorepo: process.env.FERRFLOW_MONOREPO === 'true', changelog: process.env.FERRFLOW_CHANGELOG || '', commits: JSON.parse(process.env.FERRFLOW_COMMITS_JSON || '[]'), bumpedFiles: JSON.parse(process.env.FERRFLOW_BUMPED_FILES_JSON || '[]') }`;
+  const ctx = `{ package: process.env.FERRFLOW_PACKAGE, oldVersion: process.env.FERRFLOW_OLD_VERSION, newVersion: process.env.FERRFLOW_NEW_VERSION, bumpType: process.env.FERRFLOW_BUMP_TYPE, tag: process.env.FERRFLOW_TAG, dryRun: process.env.FERRFLOW_DRY_RUN === 'true', packagePath: process.env.FERRFLOW_PACKAGE_PATH, channel: process.env.FERRFLOW_CHANNEL || null, isPrerelease: process.env.FERRFLOW_IS_PRERELEASE === 'true', monorepo: process.env.FERRFLOW_MONOREPO === 'true', changelog: process.env.FERRFLOW_CHANGELOG || '', commits: JSON.parse(process.env.FERRFLOW_COMMITS_JSON || '[]'), bumpedFiles: JSON.parse(process.env.FERRFLOW_BUMPED_FILES_JSON || '[]'), allPackages: JSON.parse(process.env.FERRFLOW_ALL_PACKAGES_JSON || '[]') }`;
   const result = {};
   for (const [key, value] of Object.entries(hooks)) {
     if (typeof value === 'function') {
