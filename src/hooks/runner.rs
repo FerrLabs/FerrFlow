@@ -52,7 +52,17 @@ pub fn run_hook(
         .env("FERRFLOW_DRY_RUN", ctx.dry_run.to_string())
         .env("FERRFLOW_PACKAGE_PATH", &ctx.package_path)
         .env("FERRFLOW_CHANNEL", ctx.channel.as_deref().unwrap_or(""))
-        .env("FERRFLOW_IS_PRERELEASE", ctx.channel.is_some().to_string())
+        .env("FERRFLOW_IS_PRERELEASE", ctx.is_prerelease.to_string())
+        .env("FERRFLOW_MONOREPO", ctx.monorepo.to_string())
+        .env("FERRFLOW_CHANGELOG", &ctx.changelog)
+        .env(
+            "FERRFLOW_COMMITS_JSON",
+            serde_json::to_string(&ctx.commits).unwrap_or_else(|_| "[]".to_string()),
+        )
+        .env(
+            "FERRFLOW_BUMPED_FILES_JSON",
+            serde_json::to_string(&ctx.bumped_files).unwrap_or_else(|_| "[]".to_string()),
+        )
         .env(
             "FERRFLOW_ERROR_CODE",
             ctx.error_code.as_deref().unwrap_or(""),

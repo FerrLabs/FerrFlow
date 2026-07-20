@@ -403,7 +403,8 @@ fn run_release_summary_hook(plan: &ReleasePlan<'_>, point: HookPoint) -> Result<
             .iter()
             .map(|(t, _, _, _, _, _, _)| t.clone())
             .collect();
-        let ctx = HookContext::release_summary(plan.root, &tags, plan.dry_run);
+        let ctx =
+            HookContext::release_summary(plan.root, &tags, plan.dry_run, plan.config.is_monorepo());
         run_hook(
             point,
             &cmd,

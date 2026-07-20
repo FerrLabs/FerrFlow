@@ -11,7 +11,9 @@ use crate::conventional_commits::BumpType;
 use crate::diff::unified_diff;
 use crate::formats::{get_handler, render_new_version, write_version};
 use crate::git::{collect_all_tags, fetch_tags, get_changed_files, open_repo, tag_exists};
-use crate::hooks::{HookContext, HookPoint, resolve_hook, resolve_on_failure, run_hook};
+use crate::hooks::{
+    HookCommit, HookContext, HookFile, HookPoint, resolve_hook, resolve_on_failure, run_hook,
+};
 use crate::prerelease::PrereleaseContext;
 use crate::timing::Timing;
 use crate::versioning::truncate_version;
@@ -401,7 +403,24 @@ pub(super) fn run_release_logic(
             pkg_outputs.push((pkg.name.clone(), lines));
         }
 
-        let hook_ctx = HookContext {
+        let hook_commits: Vec<HookCommit> = commits
+            .iter()
+            .map(|c| HookCommit::from_commit(&c.hash, &c.message))
+            .collect();
+        let hook_bumped_files: Vec<HookFile> = pkg
+            .versioned_files
+            .iter()
+            .filter(|vf| get_handler(&vf.format).modifies_file())
+            .map(|vf| HookFile {
+                path: vf.path.clone(),
+                format: serde_json::to_value(&vf.format)
+                    .ok()
+                    .and_then(|v| v.as_str().map(str::to_string))
+                    .unwrap_or_default(),
+            })
+            .collect();
+
+        let mut hook_ctx = HookContext {
             package: pkg.name.clone(),
             old_version: current_version.clone(),
             new_version: new_version.clone(),
@@ -414,6 +433,11 @@ pub(super) fn run_release_logic(
                 .into_owned(),
             channel: prerelease_ctx.channel.clone(),
             error_code: None,
+            monorepo: config.is_monorepo(),
+            is_prerelease,
+            changelog: String::new(),
+            commits: hook_commits,
+            bumped_files: hook_bumped_files,
         };
 
         let ws_hooks = config.workspace.hooks.as_ref();
@@ -486,6 +510,12 @@ pub(super) fn run_release_logic(
                 new_tag: Some(tag.clone()),
             };
 
+            // Build the release's changelog section once and hand it to the
+            // hooks (post-bump onward see it via `ctx.changelog` /
+            // FERRFLOW_CHANGELOG); it's reused for the tag body below.
+            let body = build_section_with(&new_version, &commits, &changelog_render);
+            hook_ctx.changelog = body.clone();
+
             if let Some(changelog_rel) = &pkg.changelog {
                 let changelog_path = root.join(changelog_rel);
                 update_changelog_with(
@@ -523,7 +553,6 @@ pub(super) fn run_release_logic(
                 }
             }
 
-            let body = build_section_with(&new_version, &commits, &changelog_render);
             tags_to_create.push((
                 tag.clone(),
                 format!("Release {tag}"),
@@ -679,7 +708,12 @@ pub(super) fn run_release_logic(
                     Checkpoint::delete(root)?;
                 }
                 if let Some(cmd) = resolve_hook(None, ws_hooks, HookPoint::OnSuccess) {
-                    let ctx = HookContext::release_summary(root, &released_tags, dry_run);
+                    let ctx = HookContext::release_summary(
+                        root,
+                        &released_tags,
+                        dry_run,
+                        config.is_monorepo(),
+                    );
                     let on_failure = resolve_on_failure(None, ws_hooks);
                     run_hook(
                         HookPoint::OnSuccess,
@@ -694,7 +728,12 @@ pub(super) fn run_release_logic(
             }
             Err(err) => {
                 if let Some(cmd) = resolve_hook(None, ws_hooks, HookPoint::OnError) {
-                    let mut ctx = HookContext::release_summary(root, &released_tags, dry_run);
+                    let mut ctx = HookContext::release_summary(
+                        root,
+                        &released_tags,
+                        dry_run,
+                        config.is_monorepo(),
+                    );
                     ctx.error_code = crate::error_code::code_from_error(&err);
                     let _ = run_hook(
                         HookPoint::OnError,
