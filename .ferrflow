@@ -24,7 +24,8 @@
         { "path": "npm/platforms/darwin-arm64/package.json", "format": "json" },
         { "path": "npm/platforms/win32-x64/package.json", "format": "json" },
         { "path": "npm/platforms/win32-arm64/package.json", "format": "json" },
-        { "path": "npm/platforms/linux-arm/package.json", "format": "json" }
+        { "path": "npm/platforms/linux-arm/package.json", "format": "json" },
+        { "path": "ferrflow-wasm/Cargo.toml", "format": "toml" }
       ]
     }
   ]

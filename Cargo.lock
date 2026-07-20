@@ -657,7 +657,7 @@ dependencies = [
 
 [[package]]
 name = "ferrflow-wasm"
-version = "0.1.0"
+version = "5.39.0"
 dependencies = [
  "ferrflow",
  "serde",
