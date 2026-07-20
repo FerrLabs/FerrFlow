@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.39.0] - 2026-07-20
+
+### Features
+
+- feat(hooks): pass rich release context (changelog, commits, bumped files, monorepo) to hooks (#736)
+
 ## [5.38.0] - 2026-07-19
 
 ### Features
