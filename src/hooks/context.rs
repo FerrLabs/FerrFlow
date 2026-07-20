@@ -32,6 +32,13 @@ pub struct HookFile {
     pub format: String,
 }
 
+#[derive(Clone, Serialize)]
+pub struct HookPackage {
+    pub name: String,
+    pub version: String,
+    pub bump: String,
+}
+
 #[derive(Clone)]
 pub struct HookContext {
     pub package: String,
@@ -48,6 +55,7 @@ pub struct HookContext {
     pub changelog: String,
     pub commits: Vec<HookCommit>,
     pub bumped_files: Vec<HookFile>,
+    pub all_packages: Vec<HookPackage>,
 }
 
 #[cfg(test)]
@@ -105,6 +113,7 @@ impl HookContext {
             changelog: String::new(),
             commits: Vec::new(),
             bumped_files: Vec::new(),
+            all_packages: Vec::new(),
         }
     }
 }

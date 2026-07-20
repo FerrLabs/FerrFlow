@@ -12,7 +12,8 @@ use crate::diff::unified_diff;
 use crate::formats::{get_handler, render_new_version, write_version};
 use crate::git::{collect_all_tags, fetch_tags, get_changed_files, open_repo, tag_exists};
 use crate::hooks::{
-    HookCommit, HookContext, HookFile, HookPoint, resolve_hook, resolve_on_failure, run_hook,
+    HookCommit, HookContext, HookFile, HookPackage, HookPoint, resolve_hook, resolve_on_failure,
+    run_hook,
 };
 use crate::prerelease::PrereleaseContext;
 use crate::timing::Timing;
@@ -232,6 +233,12 @@ pub(super) fn run_release_logic(
 
     let mut plans: Vec<Option<PackagePlan>> = plans.into_iter().map(Some).collect();
     groups::apply_groups(config, root, &mut plans);
+
+    // Snapshot of every package the batch will bump, computed once (after group
+    // resolution settled the final versions) so it can be shared unchanged by
+    // every package's hooks — including the first one to run.
+    let all_packages = batch_package_snapshot(&release_order, &plans, &config.packages);
+
     for &pkg_idx in &release_order {
         let pkg = &config.packages[pkg_idx];
         let plan = plans[pkg_idx]
@@ -438,6 +445,7 @@ pub(super) fn run_release_logic(
             changelog: String::new(),
             commits: hook_commits,
             bumped_files: hook_bumped_files,
+            all_packages: all_packages.clone(),
         };
 
         let ws_hooks = config.workspace.hooks.as_ref();
@@ -708,12 +716,13 @@ pub(super) fn run_release_logic(
                     Checkpoint::delete(root)?;
                 }
                 if let Some(cmd) = resolve_hook(None, ws_hooks, HookPoint::OnSuccess) {
-                    let ctx = HookContext::release_summary(
+                    let mut ctx = HookContext::release_summary(
                         root,
                         &released_tags,
                         dry_run,
                         config.is_monorepo(),
                     );
+                    ctx.all_packages = all_packages.clone();
                     let on_failure = resolve_on_failure(None, ws_hooks);
                     run_hook(
                         HookPoint::OnSuccess,
@@ -734,6 +743,7 @@ pub(super) fn run_release_logic(
                         dry_run,
                         config.is_monorepo(),
                     );
+                    ctx.all_packages = all_packages.clone();
                     ctx.error_code = crate::error_code::code_from_error(&err);
                     let _ = run_hook(
                         HookPoint::OnError,
@@ -826,6 +836,24 @@ pub(super) fn run_release_logic(
             text_lines,
         },
     )
+}
+
+fn batch_package_snapshot(
+    release_order: &[usize],
+    plans: &[Option<PackagePlan>],
+    packages: &[PackageConfig],
+) -> Vec<HookPackage> {
+    release_order
+        .iter()
+        .filter_map(|&idx| match plans[idx].as_ref() {
+            Some(PackagePlan::Bump(bump)) => Some(HookPackage {
+                name: packages[idx].name.clone(),
+                version: bump.new_version.clone(),
+                bump: bump.bump.to_string(),
+            }),
+            _ => None,
+        })
+        .collect()
 }
 
 fn emit_dry_run_diffs(
@@ -931,5 +959,56 @@ pub(super) fn refresh_lockfiles(
             }
             UpdateOutcome::NoLockfile | UpdateOutcome::UnsupportedManifest => {}
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::conventional_commits::BumpType;
+    use plan::PackageBump;
+
+    fn pkg(name: &str) -> PackageConfig {
+        serde_json::from_str(&format!(r#"{{"name":"{name}","path":"{name}"}}"#)).unwrap()
+    }
+
+    fn bump_plan(new_version: &str, bump: BumpType) -> PackagePlan {
+        PackagePlan::Bump(Box::new(PackageBump {
+            recovered: false,
+            current_version: "1.0.0".to_string(),
+            new_version: new_version.to_string(),
+            is_prerelease: false,
+            last_tag: None,
+            commits: Vec::new(),
+            bump,
+            strategy_label: bump.to_string(),
+            tag: format!("v{new_version}"),
+        }))
+    }
+
+    #[test]
+    fn batch_snapshot_lists_only_bumped_packages_in_release_order() {
+        let packages = vec![pkg("api"), pkg("web"), pkg("cli")];
+        let plans = vec![
+            Some(bump_plan("2.0.0", BumpType::Major)),
+            Some(PackagePlan::Skipped {
+                reason: SkipReason::NotTouched,
+                recovered: false,
+            }),
+            Some(bump_plan("1.4.0", BumpType::Minor)),
+        ];
+
+        // release_order visits cli (2) before api (0) and includes the skipped
+        // web (1) — proving the snapshot follows release order and drops skips.
+        let snapshot = batch_package_snapshot(&[2, 0, 1], &plans, &packages);
+
+        assert_eq!(snapshot.len(), 2);
+        assert_eq!(snapshot[0].name, "cli");
+        assert_eq!(snapshot[0].version, "1.4.0");
+        assert_eq!(snapshot[0].bump, "minor");
+        assert_eq!(snapshot[1].name, "api");
+        assert_eq!(snapshot[1].version, "2.0.0");
+        assert_eq!(snapshot[1].bump, "major");
+        assert!(!snapshot.iter().any(|p| p.name == "web"));
     }
 }
