@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.43.0] - 2026-07-21
+
+### Features
+
+- feat(cli): migrate from changesets, release-please, and standard-version (#745)
+
 ## [5.42.0] - 2026-07-21
 
 ### Features
