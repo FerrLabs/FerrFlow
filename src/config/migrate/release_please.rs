@@ -39,6 +39,8 @@ struct ReleasePleaseConfig {
     tag_separator: Option<String>,
     #[serde(default, rename = "separate-pull-requests")]
     separate_pull_requests: Option<bool>,
+    #[serde(default)]
+    plugins: Vec<Plugin>,
 }
 
 #[derive(Debug, Deserialize, Default)]
@@ -51,6 +53,23 @@ struct PackageEntry {
     component: Option<String>,
     #[serde(default, rename = "changelog-path")]
     changelog_path: Option<String>,
+    // release-please's explicit version file (ruby, simple, …). When present it
+    // wins over the release-type default.
+    #[serde(default, rename = "version-file")]
+    version_file: Option<String>,
+}
+
+/// A release-please plugin: a bare `"name"` or `{ "type": ..., ... }`.
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum Plugin {
+    Name(String),
+    Config {
+        #[serde(rename = "type")]
+        kind: String,
+        #[serde(default)]
+        components: Vec<String>,
+    },
 }
 
 pub(super) fn build(raw: &str) -> Result<(Config, MigrationReport)> {
@@ -84,6 +103,10 @@ pub(super) fn build(raw: &str) -> Result<(Config, MigrationReport)> {
              release PR. The per-package split isn't reproduced."
                 .to_string(),
         );
+    }
+
+    for plugin in &rp.plugins {
+        apply_plugin(plugin, &mut workspace, &mut report);
     }
 
     let default_type = rp.release_type.as_deref();
@@ -130,22 +153,46 @@ fn build_package(
         .unwrap_or_else(|| name_from_path(path));
 
     let rt = entry.release_type.as_deref().or(default_type);
-    let versioned_files = match rt.and_then(|t| versioned_file_for(t, path)) {
-        Some(vf) => {
-            report.mapped.push(format!(
-                "package {path} ({}) → {}",
-                rt.unwrap_or("?"),
-                vf.path
-            ));
-            vec![vf]
+    let versioned_files = if let Some(vf_path) = &entry.version_file {
+        // release-please's explicit `version-file` wins over the type default.
+        let joined = join_path(path, vf_path);
+        match format_from_ext(&joined) {
+            Some(format) => {
+                report
+                    .mapped
+                    .push(format!("package {path}: version-file → {joined}"));
+                vec![VersionedFile {
+                    path: joined,
+                    format,
+                    selector: None,
+                }]
+            }
+            None => {
+                report.warnings.push(format!(
+                    "package {path}: version-file {vf_path} has an unrecognised extension — set \
+                     its format in `versionedFiles` by hand."
+                ));
+                Vec::new()
+            }
         }
-        None => {
-            report.warnings.push(format!(
-                "package {path}: release-type {} has no direct ferrflow file mapping — set \
-                 `versionedFiles` by hand.",
-                rt.unwrap_or("(none)")
-            ));
-            Vec::new()
+    } else {
+        match rt.and_then(|t| versioned_file_for(t, path)) {
+            Some(vf) => {
+                report.mapped.push(format!(
+                    "package {path} ({}) → {}",
+                    rt.unwrap_or("?"),
+                    vf.path
+                ));
+                vec![vf]
+            }
+            None => {
+                report.warnings.push(format!(
+                    "package {path}: release-type {} has no direct ferrflow file mapping — set \
+                     `versionedFiles` by hand.",
+                    rt.unwrap_or("(none)")
+                ));
+                Vec::new()
+            }
         }
     };
 
@@ -179,16 +226,9 @@ fn name_from_path(path: &str) -> String {
 }
 
 /// Map a release-please `release-type` to the version file ferrflow bumps for
-/// it. Returns None for types that carry no in-repo version file (e.g. `go`,
-/// which release-please versions from tags alone).
+/// it. Returns None for types that carry no single in-repo version file (e.g.
+/// `go`, which release-please versions from tags alone) — the caller warns.
 fn versioned_file_for(release_type: &str, pkg_path: &str) -> Option<VersionedFile> {
-    let join = |file: &str| -> String {
-        if pkg_path == "." || pkg_path.is_empty() {
-            file.to_string()
-        } else {
-            format!("{}/{file}", pkg_path.trim_end_matches('/'))
-        }
-    };
     let (file, format) = match release_type {
         "node" => ("package.json", FileFormat::Json),
         "rust" => ("Cargo.toml", FileFormat::Toml),
@@ -196,14 +236,81 @@ fn versioned_file_for(release_type: &str, pkg_path: &str) -> Option<VersionedFil
         "helm" => ("Chart.yaml", FileFormat::ChartYaml),
         "dart" => ("pubspec.yaml", FileFormat::PubspecYaml),
         "elixir" => ("mix.exs", FileFormat::MixExs),
+        "expo" => ("app.json", FileFormat::Json),
+        // pom.xml: the xml handler's default selector targets the first
+        // <version> child of the root, sidestepping the <parent><version> pit.
+        "maven" => ("pom.xml", FileFormat::Xml),
         "simple" => ("version.txt", FileFormat::Txt),
         _ => return None,
     };
     Some(VersionedFile {
-        path: join(file),
+        path: join_path(pkg_path, file),
         format,
         selector: None,
     })
+}
+
+fn join_path(pkg_path: &str, file: &str) -> String {
+    if pkg_path == "." || pkg_path.is_empty() {
+        file.to_string()
+    } else {
+        format!("{}/{file}", pkg_path.trim_end_matches('/'))
+    }
+}
+
+fn format_from_ext(path: &str) -> Option<FileFormat> {
+    let lower = path.to_ascii_lowercase();
+    let basename = lower.rsplit('/').next().unwrap_or(&lower);
+    if lower.ends_with(".json") {
+        Some(FileFormat::Json)
+    } else if lower.ends_with(".toml") {
+        Some(FileFormat::Toml)
+    } else if lower.ends_with(".gemspec") {
+        Some(FileFormat::Gemspec)
+    } else if lower.ends_with(".xml") {
+        Some(FileFormat::Xml)
+    } else if lower.ends_with(".txt") || basename == "version" {
+        Some(FileFormat::Txt)
+    } else {
+        None
+    }
+}
+
+/// Translate a release-please plugin. Only `linked-versions` has a direct
+/// ferrflow equivalent (→ a `linked` version group); the rest are reported.
+fn apply_plugin(plugin: &Plugin, workspace: &mut WorkspaceConfig, report: &mut MigrationReport) {
+    if let Plugin::Config { kind, components } = plugin
+        && kind == "linked-versions"
+        && components.len() >= 2
+    {
+        workspace.linked.push(components.clone());
+        report.mapped.push(format!(
+            "linked-versions plugin → linked group ({} packages)",
+            components.len()
+        ));
+        return;
+    }
+    let kind = match plugin {
+        Plugin::Name(n) => n.as_str(),
+        Plugin::Config { kind, .. } => kind.as_str(),
+    };
+    match kind {
+        "linked-versions" => report.warnings.push(
+            "linked-versions plugin lists no `components` — add the linked group to `linked` by \
+             hand."
+                .to_string(),
+        ),
+        "node-workspace" | "cargo-workspace" | "maven-workspace" => report.ignored.push(format!(
+            "{kind} plugin — ferrflow bumps internal dependents via `dependsOn` cascades; wire \
+             those up per package."
+        )),
+        "sentence-case" => report.ignored.push(
+            "sentence-case plugin — changelog casing only, not a ferrflow concern.".to_string(),
+        ),
+        other => report.warnings.push(format!(
+            "plugin {other} has no ferrflow equivalent — review manually."
+        )),
+    }
 }
 
 #[cfg(test)]
@@ -324,5 +431,75 @@ mod tests {
     #[test]
     fn malformed_json_is_an_error() {
         assert!(build("{ not json").is_err());
+    }
+
+    #[test]
+    fn maven_and_expo_release_types_map() {
+        let (cfg, _) = build_ok(
+            r#"{"packages": {"svc": {"release-type": "maven"}, "app": {"release-type": "expo"}}}"#,
+        );
+        let svc = cfg.packages.iter().find(|p| p.path == "svc").unwrap();
+        assert_eq!(svc.versioned_files[0].path, "svc/pom.xml");
+        assert!(matches!(svc.versioned_files[0].format, FileFormat::Xml));
+        let app = cfg.packages.iter().find(|p| p.path == "app").unwrap();
+        assert_eq!(app.versioned_files[0].path, "app/app.json");
+        assert!(matches!(app.versioned_files[0].format, FileFormat::Json));
+    }
+
+    #[test]
+    fn version_file_overrides_the_type_default() {
+        let (cfg, _) = build_ok(
+            r#"{"packages": {"gems/foo": {"release-type": "ruby", "version-file": "lib/foo.gemspec"}}}"#,
+        );
+        assert_eq!(
+            cfg.packages[0].versioned_files[0].path,
+            "gems/foo/lib/foo.gemspec"
+        );
+        assert!(matches!(
+            cfg.packages[0].versioned_files[0].format,
+            FileFormat::Gemspec
+        ));
+    }
+
+    #[test]
+    fn version_file_with_unknown_extension_warns() {
+        // A Ruby version.rb needs a Txt regex selector, which we can't infer.
+        let (cfg, report) = build_ok(
+            r#"{"packages": {".": {"release-type": "ruby", "version-file": "lib/foo/version.rb"}}}"#,
+        );
+        assert!(cfg.packages[0].versioned_files.is_empty());
+        assert!(report.warnings.iter().any(|w| w.contains("version.rb")));
+    }
+
+    #[test]
+    fn linked_versions_plugin_becomes_a_linked_group() {
+        let (cfg, report) = build_ok(
+            r#"{"packages": {".": {"release-type": "node"}},
+                "plugins": [{"type": "linked-versions", "groupName": "main", "components": ["@acme/a", "@acme/b"]}]}"#,
+        );
+        assert_eq!(cfg.workspace.linked, vec![vec!["@acme/a", "@acme/b"]]);
+        assert!(report.mapped.iter().any(|m| m.contains("linked-versions")));
+    }
+
+    #[test]
+    fn linked_versions_without_components_warns() {
+        let (cfg, report) = build_ok(
+            r#"{"packages": {".": {"release-type": "node"}}, "plugins": ["linked-versions"]}"#,
+        );
+        assert!(cfg.workspace.linked.is_empty());
+        assert!(
+            report
+                .warnings
+                .iter()
+                .any(|w| w.contains("linked-versions"))
+        );
+    }
+
+    #[test]
+    fn node_workspace_plugin_is_reported_as_ignored() {
+        let (_, report) = build_ok(
+            r#"{"packages": {".": {"release-type": "node"}}, "plugins": ["node-workspace"]}"#,
+        );
+        assert!(report.ignored.iter().any(|i| i.contains("node-workspace")));
     }
 }
