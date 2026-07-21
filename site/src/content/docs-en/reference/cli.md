@@ -151,17 +151,26 @@ ferrflow init [OPTIONS]
 
 ## `ferrflow migrate`
 
-Generate a FerrFlow config from an existing release tool's configuration. Migrating from semantic-release? Point this at your repo and it writes the equivalent `ferrflow.json`.
+Generate a FerrFlow config from an existing release tool's configuration. Point it at your repo and it writes the equivalent `ferrflow.json`.
 
 ```bash
 ferrflow migrate [OPTIONS]
 ```
 
-| Flag            | Description                                                           |
-| --------------- | --------------------------------------------------------------------- |
-| `--from <TOOL>` | Source tool. Currently: `semantic-release`. Auto-detected if omitted. |
+| Flag            | Description                                                                                               |
+| --------------- | --------------------------------------------------------------------------------------------------------- |
+| `--from <TOOL>` | Source: `semantic-release`, `changesets`, `release-please`, `standard-version`. Auto-detected if omitted. |
 
-It reads your `.releaserc` (or `.releaserc.json`) and maps what has a FerrFlow equivalent:
+### Sources
+
+| Tool               | Reads                           | Highlights of what maps                                                                                                                                                            |
+| ------------------ | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `semantic-release` | `.releaserc`, `.releaserc.json` | `tagFormat` → `tagTemplate`; `branches` → channels; `@semantic-release/exec` → `hooks`; `changelog` / `github` / `gitlab` plugins (see the plugin table below)                     |
+| `release-please`   | `release-please-config.json`    | the `packages` map → FerrFlow packages (per-package `release-type` → the right version file/format); `include-component-in-tag` → `tagTemplate`; PR flow → `releaseCommitMode: pr` |
+| `standard-version` | `.versionrc`, `.versionrc.json` | `tagPrefix` → `tagTemplate`; `bumpFiles` / `packageFiles` → `versionedFiles`                                                                                                       |
+| `changesets`       | `.changeset/config.json`        | `baseBranch` → `branch`; `linked` / `fixed` → version groups (see note)                                                                                                            |
+
+semantic-release plugin mapping:
 
 | semantic-release                      | FerrFlow                                                                                                                                                  |
 | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -171,14 +180,17 @@ It reads your `.releaserc` (or `.releaserc.json`) and maps what has a FerrFlow e
 | `@semantic-release/exec`              | `hooks` (`prepareCmd` → `preBump`, `publishCmd` → `postPublish`, `successCmd` → `onSuccess`, `failCmd` → `onError`, `verifyConditionsCmd` → `preRelease`) |
 | `@semantic-release/github` / `gitlab` | `forge`                                                                                                                                                   |
 
-Anything without a FerrFlow equivalent is **surfaced, never guessed**. The command prints a summary of what it mapped, what it ignored, and what needs manual review — for example `@semantic-release/npm` (configure `publishers` by hand), custom `commit-analyzer` release rules (FerrFlow's bump rules are fixed), and `repositoryUrl` (FerrFlow derives the remote from git). It won't overwrite an existing FerrFlow config.
+Anything without a FerrFlow equivalent is **surfaced, never guessed**. Each run prints what it mapped, what it ignored, and what needs manual review — for example `@semantic-release/npm` (configure `publishers` by hand), custom `commit-analyzer` release rules (FerrFlow's bump rules are fixed), and `repositoryUrl` (FerrFlow derives the remote from git). It won't overwrite an existing FerrFlow config.
+
+<aside class="ferr-aside ferr-aside--note"><div class="ferr-aside__body"><p><strong>changesets.</strong> changesets versions from hand-written <code>.changeset/*.md</code> files, while FerrFlow versions from conventional commits — after migrating you adopt Conventional Commits, and your existing changeset files aren't read. Because FerrFlow can't see your JS workspace, it scaffolds a single package; expand <code>package</code> into your real monorepo layout (and your <code>linked</code>/<code>fixed</code> groups will reference those packages).</p>
+</div></aside>
 
 ```bash
-ferrflow migrate                        # auto-detects .releaserc
-ferrflow migrate --from semantic-release
+ferrflow migrate                        # auto-detect
+ferrflow migrate --from release-please
 ```
 
-JSON `.releaserc` is supported today. A YAML `.releaserc` or a JavaScript `release.config.js` is reported as unsupported rather than mis-read — convert it to JSON and rerun. After migrating, review the generated config, then run `ferrflow validate` and `ferrflow check`.
+JSON, YAML, and JavaScript source configs all work — a JavaScript config (`.releaserc.js`, `release.config.js`, `.versionrc.js`) is evaluated with `node` (so it needs Node.js on PATH), and a YAML config (`.releaserc.yaml`, `.versionrc.yaml`) is parsed directly. After migrating, review the generated config, then run `ferrflow validate` and `ferrflow check`.
 
 ---
 

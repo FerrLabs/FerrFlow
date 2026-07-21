@@ -120,17 +120,26 @@ ferrflow init [OPTIONS]
 
 ## `ferrflow migrate`
 
-Générer une configuration FerrFlow à partir de celle d'un autre outil de release. Vous migrez depuis semantic-release ? Lancez cette commande dans votre repo et elle écrit le `ferrflow.json` équivalent.
+Générer une configuration FerrFlow à partir de celle d'un autre outil de release. Lancez cette commande dans votre repo et elle écrit le `ferrflow.json` équivalent.
 
 ```bash
 ferrflow migrate [OPTIONS]
 ```
 
-| Option           | Description                                                            |
-| ---------------- | ---------------------------------------------------------------------- |
-| `--from <OUTIL>` | Outil source. Actuellement : `semantic-release`. Auto-détecté si omis. |
+| Option           | Description                                                                                            |
+| ---------------- | ------------------------------------------------------------------------------------------------------ |
+| `--from <OUTIL>` | Source : `semantic-release`, `changesets`, `release-please`, `standard-version`. Auto-détecté si omis. |
 
-Elle lit votre `.releaserc` (ou `.releaserc.json`) et convertit ce qui a un équivalent FerrFlow :
+### Sources
+
+| Outil              | Lit                             | Ce qui est converti (extraits)                                                                                                                                                           |
+| ------------------ | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `semantic-release` | `.releaserc`, `.releaserc.json` | `tagFormat` → `tagTemplate` ; `branches` → canaux ; `@semantic-release/exec` → `hooks` ; plugins `changelog` / `github` / `gitlab` (voir la table ci-dessous)                            |
+| `release-please`   | `release-please-config.json`    | la map `packages` → packages FerrFlow (le `release-type` de chaque package → le bon fichier de version) ; `include-component-in-tag` → `tagTemplate` ; flux PR → `releaseCommitMode: pr` |
+| `standard-version` | `.versionrc`, `.versionrc.json` | `tagPrefix` → `tagTemplate` ; `bumpFiles` / `packageFiles` → `versionedFiles`                                                                                                            |
+| `changesets`       | `.changeset/config.json`        | `baseBranch` → `branch` ; `linked` / `fixed` → groupes de versions (voir la note)                                                                                                        |
+
+Mapping des plugins semantic-release :
 
 | semantic-release                      | FerrFlow                                                                                                                                                  |
 | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -140,14 +149,17 @@ Elle lit votre `.releaserc` (ou `.releaserc.json`) et convertit ce qui a un équ
 | `@semantic-release/exec`              | `hooks` (`prepareCmd` → `preBump`, `publishCmd` → `postPublish`, `successCmd` → `onSuccess`, `failCmd` → `onError`, `verifyConditionsCmd` → `preRelease`) |
 | `@semantic-release/github` / `gitlab` | `forge`                                                                                                                                                   |
 
-Tout ce qui n'a pas d'équivalent FerrFlow est **signalé, jamais deviné**. La commande affiche un récapitulatif de ce qui a été converti, ignoré, et de ce qui demande une revue manuelle — par exemple `@semantic-release/npm` (configurez `publishers` à la main), des règles de release `commit-analyzer` personnalisées (les règles de bump de FerrFlow sont fixes), et `repositoryUrl` (FerrFlow déduit le remote depuis git). Elle n'écrase pas une configuration FerrFlow existante.
+Tout ce qui n'a pas d'équivalent FerrFlow est **signalé, jamais deviné**. Chaque exécution affiche ce qui a été converti, ignoré, et ce qui demande une revue manuelle — par exemple `@semantic-release/npm` (configurez `publishers` à la main), des règles `commit-analyzer` personnalisées (les règles de bump de FerrFlow sont fixes), et `repositoryUrl` (FerrFlow déduit le remote depuis git). Elle n'écrase pas une configuration FerrFlow existante.
+
+<aside class="ferr-aside ferr-aside--note"><div class="ferr-aside__body"><p><strong>changesets.</strong> changesets versionne à partir de fichiers <code>.changeset/*.md</code> écrits à la main, alors que FerrFlow versionne depuis les commits conventionnels — après migration, adoptez les Conventional Commits, vos fichiers changeset existants ne sont pas lus. Comme FerrFlow ne voit pas votre workspace JS, il génère un seul package ; étendez <code>package</code> à la structure réelle de votre monorepo (vos groupes <code>linked</code>/<code>fixed</code> référenceront alors ces packages).</p>
+</div></aside>
 
 ```bash
-ferrflow migrate                        # auto-détecte .releaserc
-ferrflow migrate --from semantic-release
+ferrflow migrate                        # auto-détection
+ferrflow migrate --from release-please
 ```
 
-Le `.releaserc` au format JSON est supporté aujourd'hui. Un `.releaserc` YAML ou un `release.config.js` JavaScript est signalé comme non supporté plutôt que mal interprété — convertissez-le en JSON et relancez. Après migration, relisez la configuration générée, puis lancez `ferrflow validate` et `ferrflow check`.
+Les configurations source JSON, YAML et JavaScript fonctionnent toutes — une configuration JavaScript (`.releaserc.js`, `release.config.js`, `.versionrc.js`) est évaluée avec `node` (Node.js doit donc être dans le PATH), et une configuration YAML (`.releaserc.yaml`, `.versionrc.yaml`) est parsée directement. Après migration, relisez la configuration générée, puis lancez `ferrflow validate` et `ferrflow check`.
 
 ---
 
