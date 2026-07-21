@@ -155,10 +155,128 @@ fn resolve_push_source(repo: &Repository, branch: &str) -> String {
     }
 }
 
-pub fn push_branch(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
+// Overwrite the remote branch with the local one. Used by the persistent
+// release PR (#703): each run rebuilds the same release branch from the
+// fresh release commit and force-pushes it, so the open PR updates in place
+// instead of a new branch/PR being opened per version.
+pub fn force_push_branch(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
     super::validate::ensure_safe_refname_fragment(remote_name, "remote name")?;
     super::validate::ensure_safe_refname_fragment(branch, "branch name")?;
-    try_push_branch(repo, remote_name, branch)
+    retry_transient(&format!("force-push branch '{branch}'"), || {
+        try_force_push_branch_once(repo, remote_name, branch)
+    })
+}
+
+fn try_force_push_branch_once(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
+    let workdir = repo
+        .workdir()
+        .ok_or_else(|| anyhow!("bare repos are not supported"))?;
+    let push_url = get_remote_url(repo, remote_name)
+        .ok_or_else(|| anyhow!("Remote '{remote_name}' has no URL"))?;
+    let source = resolve_push_source(repo, branch);
+    // A leading '+' on the refspec forces the update.
+    let refspec = format!("+{source}:refs/heads/{branch}");
+
+    let mut cmd = std::process::Command::new("git");
+    cmd.current_dir(workdir);
+    configure_git_command(&mut cmd, &push_url);
+    cmd.arg("push").arg(&push_url).arg(&refspec);
+
+    let output = cmd
+        .output()
+        .with_context(|| format!("spawn `git push --force` for branch '{branch}' failed"))?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let detail = format!("{stdout}{stderr}").trim().to_string();
+        return Err(anyhow!("Failed to force-push branch '{branch}': {detail}"))
+            .error_code(error_code::GIT_FORCE_PUSH_BRANCH);
+    }
+    Ok(())
+}
+
+// SAFETY GUARD for the persistent release PR: before force-pushing the
+// release branch we make sure we won't clobber work a human pushed onto it.
+// Returns the subject of the first commit on the remote release branch (not
+// on `base`) that FerrFlow didn't author (i.e. isn't a `chore(release):`
+// commit), or None when the branch is absent or holds only release commits.
+pub fn release_branch_foreign_commit(
+    repo: &Repository,
+    remote_name: &str,
+    branch: &str,
+    base: &str,
+) -> Result<Option<String>> {
+    super::validate::ensure_safe_refname_fragment(remote_name, "remote name")?;
+    super::validate::ensure_safe_refname_fragment(branch, "branch name")?;
+    super::validate::ensure_safe_refname_fragment(base, "target branch")?;
+    let workdir = repo
+        .workdir()
+        .ok_or_else(|| anyhow!("bare repos are not supported"))?;
+    let url = get_remote_url(repo, remote_name)
+        .ok_or_else(|| anyhow!("Remote '{remote_name}' has no URL"))?;
+
+    let mut ls = std::process::Command::new("git");
+    ls.current_dir(workdir);
+    configure_git_command(&mut ls, &url);
+    ls.args([
+        "ls-remote",
+        "--heads",
+        &url,
+        &format!("refs/heads/{branch}"),
+    ]);
+    let ls_out = ls
+        .output()
+        .with_context(|| "spawn `git ls-remote` failed")
+        .error_code(error_code::GIT_INSPECT_RELEASE_BRANCH)?;
+    if !ls_out.status.success() {
+        return Err(anyhow!(
+            "git ls-remote failed: {}",
+            String::from_utf8_lossy(&ls_out.stderr).trim()
+        ))
+        .error_code(error_code::GIT_INSPECT_RELEASE_BRANCH);
+    }
+    // Branch not on the remote yet — nothing to clobber.
+    if String::from_utf8_lossy(&ls_out.stdout).trim().is_empty() {
+        return Ok(None);
+    }
+
+    let mut fetch = std::process::Command::new("git");
+    fetch.current_dir(workdir);
+    configure_git_command(&mut fetch, &url);
+    fetch.args(["fetch", "--quiet", &url, &format!("refs/heads/{branch}")]);
+    let fetch_out = fetch
+        .output()
+        .with_context(|| "spawn `git fetch` for release branch failed")
+        .error_code(error_code::GIT_INSPECT_RELEASE_BRANCH)?;
+    if !fetch_out.status.success() {
+        return Err(anyhow!(
+            "git fetch of release branch failed: {}",
+            String::from_utf8_lossy(&fetch_out.stderr).trim()
+        ))
+        .error_code(error_code::GIT_INSPECT_RELEASE_BRANCH);
+    }
+
+    let mut log = std::process::Command::new("git");
+    log.current_dir(workdir);
+    log.args(["log", "--format=%s", &format!("{base}..FETCH_HEAD")]);
+    let log_out = log
+        .output()
+        .with_context(|| "spawn `git log` for release branch failed")
+        .error_code(error_code::GIT_INSPECT_RELEASE_BRANCH)?;
+    if !log_out.status.success() {
+        return Err(anyhow!(
+            "git log of release branch failed: {}",
+            String::from_utf8_lossy(&log_out.stderr).trim()
+        ))
+        .error_code(error_code::GIT_INSPECT_RELEASE_BRANCH);
+    }
+    for subject in String::from_utf8_lossy(&log_out.stdout).lines() {
+        let subject = subject.trim();
+        if !subject.is_empty() && !subject.starts_with("chore(release):") {
+            return Ok(Some(subject.to_string()));
+        }
+    }
+    Ok(None)
 }
 
 pub fn push_tags(repo: &Repository, remote_name: &str, tags: &[&str]) -> Result<()> {

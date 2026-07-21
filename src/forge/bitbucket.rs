@@ -96,6 +96,19 @@ impl Forge for BitbucketForge {
     fn update_comment(&self, _pr_id: u64, _comment_id: u64, _body: &str) -> Result<()> {
         bail!("{PR_UNSUPPORTED}")
     }
+
+    fn find_open_pr(&self, _head: &str, _base: &str) -> Result<Option<u64>> {
+        Ok(None)
+    }
+
+    fn update_merge_request(
+        &self,
+        _id: u64,
+        _title: &str,
+        _body: &str,
+    ) -> Result<MergeRequestResult> {
+        bail!("{PR_UNSUPPORTED}")
+    }
 }
 
 fn tag_html_url(response: &serde_json::Value) -> Option<String> {

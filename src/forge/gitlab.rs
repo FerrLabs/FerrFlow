@@ -250,6 +250,48 @@ impl Forge for GitLabForge {
             .with_context(|| "Failed to update MR note")?;
         Ok(())
     }
+
+    fn find_open_pr(&self, head: &str, base: &str) -> Result<Option<u64>> {
+        let project = self.encoded_project_id();
+        let url = format!(
+            "{}/projects/{project}/merge_requests?state=opened&source_branch={head}&target_branch={base}",
+            self.api_base
+        );
+        let response: serde_json::Value = self
+            .agent
+            .get(&url)
+            .header("PRIVATE-TOKEN", &self.token)
+            .header("User-Agent", "ferrflow")
+            .call()
+            .with_context(|| format!("Failed to list open MRs for {head}"))
+            .error_code(error_code::GITLAB_FIND_MR)?
+            .body_mut()
+            .read_json()
+            .with_context(|| "Failed to parse MR list response")
+            .error_code(error_code::GITLAB_PARSE_MR)?;
+
+        Ok(response
+            .as_array()
+            .and_then(|mrs| mrs.first())
+            .and_then(|mr| mr["iid"].as_u64()))
+    }
+
+    fn update_merge_request(&self, id: u64, title: &str, body: &str) -> Result<MergeRequestResult> {
+        let project = self.encoded_project_id();
+        let url = format!("{}/projects/{project}/merge_requests/{id}", self.api_base);
+        self.agent
+            .put(&url)
+            .header("PRIVATE-TOKEN", &self.token)
+            .header("User-Agent", "ferrflow")
+            .send_json(serde_json::json!({ "title": title, "description": body }))
+            .with_context(|| format!("Failed to update MR !{id}"))
+            .error_code(error_code::GITLAB_UPDATE_MR)?;
+
+        Ok(MergeRequestResult {
+            id,
+            auto_merge_key: id.to_string(),
+        })
+    }
 }
 
 #[cfg(test)]

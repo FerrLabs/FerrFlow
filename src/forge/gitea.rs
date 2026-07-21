@@ -187,6 +187,22 @@ impl Forge for GiteaForge {
             .with_context(|| "Failed to update issue comment")?;
         Ok(())
     }
+
+    fn find_open_pr(&self, _head: &str, _base: &str) -> Result<Option<u64>> {
+        Ok(None)
+    }
+
+    fn update_merge_request(
+        &self,
+        _id: u64,
+        _title: &str,
+        _body: &str,
+    ) -> Result<MergeRequestResult> {
+        anyhow::bail!(
+            "Pull-request mode is not yet supported on Gitea/Forgejo. \
+             FerrFlow can create releases; PR-based release flow is tracked in FerrLabs/FerrFlow#499."
+        )
+    }
 }
 
 #[cfg(test)]

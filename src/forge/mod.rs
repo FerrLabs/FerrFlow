@@ -49,6 +49,10 @@ pub trait Forge: Send + Sync {
     fn create_comment(&self, pr_id: u64, body: &str) -> Result<()>;
 
     fn update_comment(&self, pr_id: u64, comment_id: u64, body: &str) -> Result<()>;
+
+    fn find_open_pr(&self, head: &str, base: &str) -> Result<Option<u64>>;
+
+    fn update_merge_request(&self, id: u64, title: &str, body: &str) -> Result<MergeRequestResult>;
 }
 
 pub fn detect_pr_number() -> Option<u64> {

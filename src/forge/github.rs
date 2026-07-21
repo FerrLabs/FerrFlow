@@ -279,6 +279,62 @@ impl Forge for GitHubForge {
             .with_context(|| "Failed to update PR comment")?;
         Ok(())
     }
+
+    fn find_open_pr(&self, head: &str, base: &str) -> Result<Option<u64>> {
+        let owner = self.slug.split('/').next().unwrap_or_default();
+        let url = format!(
+            "{}/repos/{}/pulls?state=open&head={}:{}&base={}",
+            self.api_base, self.slug, owner, head, base
+        );
+        let response: serde_json::Value = self
+            .agent
+            .get(&url)
+            .header("Authorization", &format!("Bearer {}", self.token))
+            .header("Accept", "application/vnd.github+json")
+            .header("X-GitHub-Api-Version", "2022-11-28")
+            .header("User-Agent", "ferrflow")
+            .call()
+            .with_context(|| format!("Failed to list open PRs for {head}"))
+            .error_code(error_code::GITHUB_FIND_PR)?
+            .body_mut()
+            .read_json()
+            .with_context(|| "Failed to parse PR list response")
+            .error_code(error_code::GITHUB_PARSE_PR)?;
+
+        Ok(response
+            .as_array()
+            .and_then(|prs| prs.first())
+            .and_then(|pr| pr["number"].as_u64()))
+    }
+
+    fn update_merge_request(&self, id: u64, title: &str, body: &str) -> Result<MergeRequestResult> {
+        let url = format!("{}/repos/{}/pulls/{}", self.api_base, self.slug, id);
+        let response: serde_json::Value = self
+            .agent
+            .patch(&url)
+            .header("Authorization", &format!("Bearer {}", self.token))
+            .header("Accept", "application/vnd.github+json")
+            .header("X-GitHub-Api-Version", "2022-11-28")
+            .header("User-Agent", "ferrflow")
+            .send_json(serde_json::json!({ "title": title, "body": body }))
+            .with_context(|| format!("Failed to update PR #{id}"))
+            .error_code(error_code::GITHUB_UPDATE_PR)?
+            .body_mut()
+            .read_json()
+            .with_context(|| "Failed to parse PR update response")
+            .error_code(error_code::GITHUB_PARSE_PR)?;
+
+        let node_id = response["node_id"]
+            .as_str()
+            .ok_or_else(|| anyhow::anyhow!("PR response missing node_id field"))
+            .error_code(error_code::GITHUB_PR_MISSING_FIELD)?
+            .to_string();
+
+        Ok(MergeRequestResult {
+            id,
+            auto_merge_key: node_id,
+        })
+    }
 }
 
 #[cfg(test)]

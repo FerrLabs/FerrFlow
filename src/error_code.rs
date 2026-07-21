@@ -112,6 +112,10 @@ pub const GIT_PUSH_VERIFY_FAILED: ErrorCode = ErrorCode(2009);
 pub const GIT_REMOTE_BRANCH_NOT_FOUND: ErrorCode = ErrorCode(2010);
 #[allow(dead_code)]
 pub const GIT_LOCKED: ErrorCode = ErrorCode(2011);
+#[allow(dead_code)]
+pub const GIT_FORCE_PUSH_BRANCH: ErrorCode = ErrorCode(2012);
+#[allow(dead_code)]
+pub const GIT_INSPECT_RELEASE_BRANCH: ErrorCode = ErrorCode(2013);
 
 #[allow(dead_code)]
 pub const GITHUB_CREATE_RELEASE: ErrorCode = ErrorCode(3001);
@@ -133,6 +137,10 @@ pub const GITHUB_AUTO_MERGE: ErrorCode = ErrorCode(3008);
 pub const GITHUB_GRAPHQL_PARSE: ErrorCode = ErrorCode(3009);
 #[allow(dead_code)]
 pub const GITHUB_AUTO_MERGE_FAILED: ErrorCode = ErrorCode(3010);
+#[allow(dead_code)]
+pub const GITHUB_FIND_PR: ErrorCode = ErrorCode(3011);
+#[allow(dead_code)]
+pub const GITHUB_UPDATE_PR: ErrorCode = ErrorCode(3012);
 
 #[allow(dead_code)]
 pub const GITLAB_CREATE_RELEASE: ErrorCode = ErrorCode(3101);
@@ -144,6 +152,10 @@ pub const GITLAB_PARSE_MR: ErrorCode = ErrorCode(3103);
 pub const GITLAB_MR_MISSING_FIELD: ErrorCode = ErrorCode(3104);
 #[allow(dead_code)]
 pub const GITLAB_MERGE_MR: ErrorCode = ErrorCode(3105);
+#[allow(dead_code)]
+pub const GITLAB_FIND_MR: ErrorCode = ErrorCode(3106);
+#[allow(dead_code)]
+pub const GITLAB_UPDATE_MR: ErrorCode = ErrorCode(3107);
 
 #[allow(dead_code)]
 pub const GITEA_CREATE_RELEASE: ErrorCode = ErrorCode(3201);

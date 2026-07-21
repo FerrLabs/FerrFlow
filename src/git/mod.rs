@@ -26,7 +26,8 @@ pub use diff::{get_changed_files, get_changed_files_since_oid, get_changed_files
 pub use fetch::fetch_tags;
 #[allow(unused_imports)]
 pub use push::{
-    force_push_tags, push, push_branch, push_tags, reset_branch_to_remote, verify_remote_branch,
+    force_push_branch, force_push_tags, push, push_tags, release_branch_foreign_commit,
+    reset_branch_to_remote, verify_remote_branch,
 };
 pub use repo::{Repository, get_repo_root, open_repo, resolve_current_branch};
 pub use retry::is_push_rejected_error;
