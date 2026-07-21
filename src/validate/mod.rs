@@ -1,28 +1,36 @@
-use anyhow::Result;
+use std::collections::BTreeMap;
 use std::path::Path;
 
+use crate::config::Config;
+
+#[cfg(feature = "cli")]
 use crate::error_code::{self, ErrorCodeExt};
+#[cfg(feature = "cli")]
 use crate::git::{get_repo_root, open_repo};
+#[cfg(feature = "cli")]
+use anyhow::Result;
 
 mod checks;
+#[cfg(feature = "cli")]
 mod output;
 mod result;
 mod source;
 
 #[allow(unused_imports)]
 pub use result::{EntryOutput, ValidationEntry, ValidationLevel, ValidationResult};
-pub use source::{
-    FileSource, GitHubSource, GitLabSource, LocalSource, RemoteProvider, load_config_from_source,
-    parse_repo_spec,
-};
+pub use source::{FileSource, LocalSource, MemorySource, load_config_from_source};
+#[cfg(feature = "cli")]
+pub use source::{GitHubSource, GitLabSource, RemoteProvider, parse_repo_spec};
 
 use checks::{
     check_changelog_paths, check_duplicate_names, check_duplicate_paths, check_groups,
     check_package_paths, check_shared_paths, check_suggestions, check_tag_templates,
     check_version_consistency, check_versioned_files, check_versioned_files_exist,
 };
+#[cfg(feature = "cli")]
 use output::output_result;
 
+#[cfg(feature = "cli")]
 pub fn run(
     config_path: Option<&Path>,
     json: bool,
@@ -104,7 +112,15 @@ fn collect_entries(
     entries
 }
 
-pub fn local_entries(config: &crate::config::Config, root: &Path) -> Vec<ValidationEntry> {
+#[cfg_attr(feature = "cli", allow(dead_code))]
+pub fn validate_files(config: &Config, files: BTreeMap<String, Vec<u8>>) -> ValidationResult {
+    let source = MemorySource::new(files);
+    let mut result = ValidationResult::from_entries(collect_entries(config, &source));
+    result.package_count = config.packages.len();
+    result
+}
+
+pub fn local_entries(config: &Config, root: &Path) -> Vec<ValidationEntry> {
     let source = LocalSource {
         root: root.to_path_buf(),
     };

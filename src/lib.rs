@@ -4,6 +4,7 @@ pub mod conventional_commits;
 pub mod error_code;
 pub mod formats;
 pub mod prerelease;
+pub mod validate;
 pub mod versioning;
 
 #[cfg(feature = "cli")]
@@ -18,8 +19,6 @@ pub mod git;
 pub mod manifest;
 #[cfg(feature = "cli")]
 pub mod publishers;
-#[cfg(feature = "cli")]
-pub mod validate;
 #[cfg(feature = "cli")]
 pub mod version_diff;
 
