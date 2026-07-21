@@ -8,8 +8,8 @@ use crate::config::{Config, ReleaseCommitMode, ReleaseCommitScope};
 use crate::error_code::{self, ErrorCodeExt};
 use crate::git::{
     Repository, create_branch_and_commit, create_branch_and_commits, create_commit,
-    create_or_move_tag, create_tag, force_push_tags, get_tag_message, push, push_branch, push_tags,
-    tag_exists,
+    create_or_move_tag, create_tag, force_push_branch, force_push_tags, get_tag_message, push,
+    push_tags, release_branch_foreign_commit, tag_exists,
 };
 use crate::hooks::{HookContext, HookPoint, resolve_hook, resolve_on_failure, run_hook};
 use crate::versioning::truncate_version;
@@ -180,6 +180,13 @@ fn run_pre_commit_hooks(plan: &mut ReleasePlan<'_>) -> Result<()> {
     Ok(())
 }
 
+fn release_branch_name(target_branch: &str) -> String {
+    // Namespaced under `ferrflow/` and scoped per target so there's exactly one
+    // long-lived release branch per target. Slashes in the target are flattened
+    // to keep it a single ref level (avoids git dir/file ref conflicts).
+    format!("ferrflow/release-{}", target_branch.replace('/', "-"))
+}
+
 fn run_commit_or_pr(
     plan: &mut ReleasePlan<'_>,
     mode: ReleaseCommitMode,
@@ -208,13 +215,33 @@ fn run_commit_or_pr(
             }
         }
         ReleaseCommitMode::Pr => {
-            let branch_name = format!(
-                "release/{}",
-                release_parts
-                    .first()
-                    .map(|s| s.replace(' ', "-"))
-                    .unwrap_or_else(|| "bump".to_string())
-            );
+            // One stable branch per target so the same PR is reused across
+            // commits instead of a new one opening per version (#703).
+            let branch_name = release_branch_name(plan.target_branch);
+            let remote = &plan.config.workspace.remote;
+
+            // Don't clobber commits a human pushed onto the release branch.
+            match release_branch_foreign_commit(plan.repo, remote, &branch_name, plan.target_branch)
+            {
+                Ok(Some(subject)) => {
+                    tracing::warn!(
+                        "{}",
+                        format!(
+                            "  Warning: release branch {branch_name} has a commit FerrFlow didn't \
+                             author (\"{subject}\"); leaving it and the existing release PR untouched."
+                        )
+                        .yellow()
+                    );
+                    return Ok(());
+                }
+                Ok(None) => {}
+                Err(err) => tracing::warn!(
+                    "{}",
+                    format!("  Warning: could not inspect release branch {branch_name}: {err}")
+                        .yellow()
+                ),
+            }
+
             if scope == ReleaseCommitScope::PerPackage && plan.tags_to_create.len() > 1 {
                 let commit_list: Vec<(Vec<&str>, String)> = plan
                     .tags_to_create
@@ -235,7 +262,9 @@ fn run_commit_or_pr(
             } else {
                 create_branch_and_commit(plan.repo, &branch_name, file_refs, commit_msg)?;
             }
-            push_branch(plan.repo, &plan.config.workspace.remote, &branch_name)?;
+            // Force-push: the branch is rebuilt from the fresh release commit
+            // every run, so the open PR updates in place.
+            force_push_branch(plan.repo, remote, &branch_name)?;
             plan.shared_outputs
                 .push(format!("✓ Pushed branch {}", branch_name.cyan()));
 
@@ -249,15 +278,42 @@ fn run_commit_or_pr(
                         .collect::<Vec<_>>()
                         .join("\n")
                 );
-                match forge_instance.create_merge_request(
-                    &branch_name,
-                    plan.target_branch,
-                    &pr_title,
-                    &pr_body,
-                ) {
+
+                let existing = match forge_instance.find_open_pr(&branch_name, plan.target_branch) {
+                    Ok(found) => found,
+                    Err(err) => {
+                        tracing::warn!(
+                            "{}",
+                            format!(
+                                "  Warning: could not look up existing {}: {err}",
+                                forge_instance.mr_noun()
+                            )
+                            .yellow()
+                        );
+                        None
+                    }
+                };
+
+                let (result, verb) = match existing {
+                    Some(id) => (
+                        forge_instance.update_merge_request(id, &pr_title, &pr_body),
+                        "Updated",
+                    ),
+                    None => (
+                        forge_instance.create_merge_request(
+                            &branch_name,
+                            plan.target_branch,
+                            &pr_title,
+                            &pr_body,
+                        ),
+                        "Created",
+                    ),
+                };
+
+                match result {
                     Ok(mr) => {
                         plan.shared_outputs.push(format!(
-                            "✓ Created {} #{}",
+                            "✓ {verb} {} #{}",
                             forge_instance.mr_noun(),
                             mr.id.to_string().cyan()
                         ));
@@ -278,7 +334,8 @@ fn run_commit_or_pr(
                     Err(err) => tracing::warn!(
                         "{}",
                         format!(
-                            "  Warning: failed to create {}: {err}",
+                            "  Warning: failed to {} {}: {err}",
+                            verb.to_lowercase(),
                             forge_instance.mr_noun()
                         )
                         .yellow()
@@ -768,6 +825,32 @@ mod tag_release_tests {
         fn update_comment(&self, _pr_id: u64, _comment_id: u64, _body: &str) -> Result<()> {
             unreachable!("not exercised by release-tag tests")
         }
+
+        fn find_open_pr(&self, _head: &str, _base: &str) -> Result<Option<u64>> {
+            unreachable!("not exercised by release-tag tests")
+        }
+
+        fn update_merge_request(
+            &self,
+            _id: u64,
+            _title: &str,
+            _body: &str,
+        ) -> Result<MergeRequestResult> {
+            unreachable!("not exercised by release-tag tests")
+        }
+    }
+
+    #[test]
+    fn release_branch_name_is_stable_and_target_scoped() {
+        assert_eq!(release_branch_name("main"), "ferrflow/release-main");
+        // The name must not depend on the version — that's what keeps one
+        // long-lived PR per target instead of a new one per release (#703).
+        assert_eq!(release_branch_name("main"), release_branch_name("main"));
+        // Slashes in the target are flattened to one ref level.
+        assert_eq!(
+            release_branch_name("release/beta"),
+            "ferrflow/release-release-beta"
+        );
     }
 
     #[test]
