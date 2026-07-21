@@ -132,23 +132,25 @@ export default {
 
 Function hooks receive a context object with these fields:
 
-| Field          | Type           | Description                                                         |
-| -------------- | -------------- | ------------------------------------------------------------------- |
-| `package`      | string         | Package name                                                        |
-| `oldVersion`   | string         | Version before bump (empty on first release)                        |
-| `newVersion`   | string         | Version after bump                                                  |
-| `bumpType`     | string         | `major`, `minor`, `patch`, or `none`                                |
-| `tag`          | string         | Full git tag name                                                   |
-| `dryRun`       | boolean        | Whether `--dry-run` is set                                          |
-| `packagePath`  | string         | Absolute path to package root                                       |
-| `channel`      | string or null | Pre-release channel name                                            |
-| `isPrerelease` | boolean        | Whether this is a pre-release                                       |
-| `monorepo`     | boolean        | Whether this is a monorepo release                                  |
-| `changelog`    | string         | Rendered changelog section for this bump (markdown)                 |
-| `commits`      | array          | `{ hash, message, type?, scope?, breaking }` per commit in the bump |
-| `bumpedFiles`  | array          | `{ path, format }` for each file the release modified               |
+| Field          | Type           | Description                                                                   |
+| -------------- | -------------- | ----------------------------------------------------------------------------- |
+| `package`      | string         | Package name                                                                  |
+| `oldVersion`   | string         | Version before bump (empty on first release)                                  |
+| `newVersion`   | string         | Version after bump                                                            |
+| `bumpType`     | string         | `major`, `minor`, `patch`, or `none`                                          |
+| `tag`          | string         | Full git tag name                                                             |
+| `dryRun`       | boolean        | Whether `--dry-run` is set                                                    |
+| `packagePath`  | string         | Absolute path to package root                                                 |
+| `channel`      | string or null | Pre-release channel name                                                      |
+| `isPrerelease` | boolean        | Whether this is a pre-release                                                 |
+| `monorepo`     | boolean        | Whether this is a monorepo release                                            |
+| `changelog`    | string         | Rendered changelog section for this bump (markdown)                           |
+| `commits`      | array          | `{ hash, message, type?, scope?, breaking }` per commit in the bump           |
+| `bumpedFiles`  | array          | `{ path, format }` for each file the release modified                         |
+| `allPackages`  | array          | `{ name, version, bump }` for every package released in this batch            |
+| `releaseUrl`   | string or null | URL of the created forge release — `postPublish` hooks only, `null` otherwise |
 
-`commits` and `bumpedFiles` arrive as real arrays (parsed from JSON), so you can iterate them directly:
+`commits`, `bumpedFiles` and `allPackages` arrive as real arrays (parsed from JSON), so you can iterate them directly:
 
 ```js
 export default {
@@ -640,23 +642,25 @@ on_failure   = &quot;abort&quot;
 
 Every hook receives these variables:
 
-| Variable                     | Description                                                | Example                                                                |
-| ---------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `FERRFLOW_PACKAGE`           | Package name                                               | `api`                                                                  |
-| `FERRFLOW_OLD_VERSION`       | Version before bump (empty on first release)               | `1.2.3`                                                                |
-| `FERRFLOW_NEW_VERSION`       | Version after bump                                         | `1.3.0`                                                                |
-| `FERRFLOW_BUMP_TYPE`         | `major`, `minor`, `patch`, or `none`                       | `minor`                                                                |
-| `FERRFLOW_TAG`               | Full git tag name                                          | `api@v1.3.0`                                                           |
-| `FERRFLOW_DRY_RUN`           | `true` if `--dry-run` is set                               | `false`                                                                |
-| `FERRFLOW_PACKAGE_PATH`      | Absolute path to package root                              | `/home/user/repo/packages/api`                                         |
-| `FERRFLOW_IS_PRERELEASE`     | `true` on a pre-release channel                            | `false`                                                                |
-| `FERRFLOW_MONOREPO`          | `true` on a monorepo release                               | `false`                                                                |
-| `FERRFLOW_CHANGELOG`         | Rendered changelog section for this bump                   | `### Features\n- ...`                                                  |
-| `FERRFLOW_COMMITS_JSON`      | JSON array of `{ hash, message, type?, scope?, breaking }` | `[{"hash":"a1b2","message":"feat: x","type":"feat","breaking":false}]` |
-| `FERRFLOW_BUMPED_FILES_JSON` | JSON array of `{ path, format }` the release modified      | `[{"path":"package.json","format":"json"}]`                            |
-| `FERRFLOW_ERROR_CODE`        | Error code, set only for `onError`                         | `E2005`                                                                |
+| Variable                     | Description                                                 | Example                                                                |
+| ---------------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `FERRFLOW_PACKAGE`           | Package name                                                | `api`                                                                  |
+| `FERRFLOW_OLD_VERSION`       | Version before bump (empty on first release)                | `1.2.3`                                                                |
+| `FERRFLOW_NEW_VERSION`       | Version after bump                                          | `1.3.0`                                                                |
+| `FERRFLOW_BUMP_TYPE`         | `major`, `minor`, `patch`, or `none`                        | `minor`                                                                |
+| `FERRFLOW_TAG`               | Full git tag name                                           | `api@v1.3.0`                                                           |
+| `FERRFLOW_DRY_RUN`           | `true` if `--dry-run` is set                                | `false`                                                                |
+| `FERRFLOW_PACKAGE_PATH`      | Absolute path to package root                               | `/home/user/repo/packages/api`                                         |
+| `FERRFLOW_IS_PRERELEASE`     | `true` on a pre-release channel                             | `false`                                                                |
+| `FERRFLOW_MONOREPO`          | `true` on a monorepo release                                | `false`                                                                |
+| `FERRFLOW_CHANGELOG`         | Rendered changelog section for this bump                    | `### Features\n- ...`                                                  |
+| `FERRFLOW_COMMITS_JSON`      | JSON array of `{ hash, message, type?, scope?, breaking }`  | `[{"hash":"a1b2","message":"feat: x","type":"feat","breaking":false}]` |
+| `FERRFLOW_BUMPED_FILES_JSON` | JSON array of `{ path, format }` the release modified       | `[{"path":"package.json","format":"json"}]`                            |
+| `FERRFLOW_ALL_PACKAGES_JSON` | JSON array of `{ name, version, bump }` released this batch | `[{"name":"api","version":"1.3.0","bump":"minor"}]`                    |
+| `FERRFLOW_RELEASE_URL`       | URL of the created forge release (`postPublish` only)       | `https://github.com/acme/api/releases/tag/v1.3.0`                      |
+| `FERRFLOW_ERROR_CODE`        | Error code, set only for `onError`                          | `E2005`                                                                |
 
-`FERRFLOW_COMMITS_JSON` and `FERRFLOW_BUMPED_FILES_JSON` are JSON strings — pipe them through `jq` from shell hooks.
+`FERRFLOW_COMMITS_JSON`, `FERRFLOW_BUMPED_FILES_JSON` and `FERRFLOW_ALL_PACKAGES_JSON` are JSON strings — pipe them through `jq` from shell hooks.
 
 For the once-per-run hooks (`preRelease`, `onSuccess`, `onError`) the per-package variables are empty and `FERRFLOW_TAG` holds every released tag joined by commas.
 
