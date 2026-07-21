@@ -72,6 +72,43 @@ pub fn get_commits_since_oid(
     Ok(commits)
 }
 
+/// Commits reachable from `to` but not `from` — the range `from..to`, newest
+/// first. Powers `ferrflow diff`, which enumerates what went into a version
+/// range.
+pub fn get_commits_between(
+    repo: &Repository,
+    from: ObjectId,
+    to: ObjectId,
+    skip_markers: &[String],
+) -> Result<Vec<GitLog>> {
+    let walk = repo
+        .rev_walk([to])
+        .use_commit_graph(true)
+        .sorting(Sorting::BreadthFirst)
+        .with_hidden([from])
+        .all()?;
+
+    let mut commits = Vec::new();
+    for info in walk {
+        let info = info?;
+        let Ok(commit) = repo.find_commit(info.id) else {
+            continue;
+        };
+        let Ok(raw) = commit.message_raw() else {
+            continue;
+        };
+        let message = String::from_utf8_lossy(raw).into_owned();
+        if subject_has_skip_marker(&message, skip_markers) {
+            continue;
+        }
+        commits.push(GitLog {
+            hash: info.id.to_string()[..8].to_string(),
+            message,
+        });
+    }
+    Ok(commits)
+}
+
 /// Returns true if the commit subject (first line) contains any of the
 /// configured skip markers, matched case-insensitively.
 ///

@@ -182,6 +182,13 @@ fn resolve_tag_to_commit(repo: &Repository, oid: ObjectId) -> Option<ObjectId> {
     }
 }
 
+/// Resolve a tag name to the commit it points at, peeling annotated tags.
+/// Returns None when the tag doesn't exist or points at a non-commit.
+pub fn resolve_tag_name_to_commit(repo: &Repository, tag_name: &str) -> Option<ObjectId> {
+    let reference = repo.find_reference(&format!("refs/tags/{tag_name}")).ok()?;
+    resolve_tag_to_commit(repo, reference.id().detach())
+}
+
 fn is_reachable(
     repo: &Repository,
     head: ObjectId,

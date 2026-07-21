@@ -19,10 +19,13 @@ pub use commit_walk::CommitWalkCache;
 #[allow(unused_imports)]
 pub use commits::{
     GitLog, create_branch_and_commit, create_branch_and_commits, create_commit,
-    get_commits_since_last_stable_tag, get_commits_since_last_tag, get_commits_since_oid,
-    subject_has_skip_marker,
+    get_commits_between, get_commits_since_last_stable_tag, get_commits_since_last_tag,
+    get_commits_since_oid, subject_has_skip_marker,
 };
-pub use diff::{get_changed_files, get_changed_files_since_oid, get_changed_files_since_tag};
+pub use diff::{
+    get_changed_files, get_changed_files_between, get_changed_files_since_oid,
+    get_changed_files_since_tag,
+};
 pub use fetch::fetch_tags;
 #[allow(unused_imports)]
 pub use push::{
@@ -34,7 +37,7 @@ pub use retry::is_push_rejected_error;
 pub use tags::{
     TagIndex, build_head_ancestors, collect_all_tags, create_or_move_tag, create_tag,
     find_highest_semver_tag_with_cache, find_last_tag_name, find_last_tag_name_with_cache,
-    get_tag_message, tag_exists,
+    get_tag_message, resolve_tag_name_to_commit, tag_exists,
 };
 
 #[cfg(test)]

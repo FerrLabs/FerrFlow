@@ -20,6 +20,8 @@ pub mod manifest;
 pub mod publishers;
 #[cfg(feature = "cli")]
 pub mod validate;
+#[cfg(feature = "cli")]
+pub mod version_diff;
 
 #[cfg(all(test, feature = "cli"))]
 pub mod test_utils {

@@ -24,6 +24,7 @@ mod schema;
 mod status;
 mod timing;
 mod validate;
+mod version_diff;
 mod versioning;
 
 // Allocator swap for the CLI hot paths. The default system allocator
