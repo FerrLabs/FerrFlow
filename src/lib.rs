@@ -4,6 +4,7 @@ pub mod conventional_commits;
 pub mod error_code;
 pub mod formats;
 pub mod prerelease;
+pub mod schema;
 pub mod validate;
 pub mod versioning;
 
