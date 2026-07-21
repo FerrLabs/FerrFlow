@@ -13,15 +13,25 @@ use super::types::{
 };
 use super::workspace::WorkspaceConfig;
 
+mod changesets;
+mod release_please;
+mod standard_version;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Source {
     SemanticRelease,
+    Changesets,
+    ReleasePlease,
+    StandardVersion,
 }
 
 impl Source {
     fn label(self) -> &'static str {
         match self {
             Source::SemanticRelease => "semantic-release",
+            Source::Changesets => "changesets",
+            Source::ReleasePlease => "release-please",
+            Source::StandardVersion => "standard-version",
         }
     }
 }
@@ -49,6 +59,9 @@ pub fn migrate(from: Option<Source>) -> Result<()> {
 
     match source {
         Source::SemanticRelease => migrate_semantic_release(),
+        Source::Changesets => changesets::run(),
+        Source::ReleasePlease => release_please::run(),
+        Source::StandardVersion => standard_version::run(),
     }
 }
 
@@ -72,6 +85,15 @@ fn detect_source() -> Result<Source> {
     if find_semantic_release_json().is_some() {
         return Ok(Source::SemanticRelease);
     }
+    if changesets::detect().is_some() {
+        return Ok(Source::Changesets);
+    }
+    if release_please::detect().is_some() {
+        return Ok(Source::ReleasePlease);
+    }
+    if standard_version::detect().is_some() {
+        return Ok(Source::StandardVersion);
+    }
     if let Some(f) = SEMANTIC_RELEASE_UNSUPPORTED_FILES
         .iter()
         .find(|f| Path::new(f).exists())
@@ -83,9 +105,12 @@ fn detect_source() -> Result<Source> {
         .error_code(error_code::CONFIG_INVALID_JSON);
     }
     Err(anyhow::anyhow!(
-        "no supported release-tool config found. Looked for {}. \
+        "no supported release-tool config found. Looked for {}, {}, {}, {}. \
          Pass --from to force a source.",
-        SEMANTIC_RELEASE_JSON_FILES.join(", ")
+        SEMANTIC_RELEASE_JSON_FILES.join(", "),
+        changesets::CONFIG_FILE,
+        release_please::CONFIG_FILE,
+        standard_version::CONFIG_FILES.join(", "),
     ))
     .error_code(error_code::CONFIG_NOT_FOUND)
 }
@@ -251,7 +276,7 @@ pub fn build_config_from_releaserc(raw: &str) -> Result<(Config, MigrationReport
     ))
 }
 
-fn default_package_name() -> String {
+pub(super) fn default_package_name() -> String {
     std::fs::read_to_string("package.json")
         .ok()
         .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
@@ -436,13 +461,22 @@ fn migrate_semantic_release() -> Result<()> {
         .map_err(|e| anyhow::anyhow!("could not read {}: {e}", path.display()))?;
 
     let (config, report) = build_config_from_releaserc(&raw)?;
+    write_and_report(Source::SemanticRelease, &path, &config, &report)
+}
 
+/// Serialize the migrated config to `.ferrflow` (JSON) and print the report.
+/// Shared by every source converter.
+pub(super) fn write_and_report(
+    source: Source,
+    from: &Path,
+    config: &Config,
+    report: &MigrationReport,
+) -> Result<()> {
     let handler = format_handler(ConfigFileFormat::Json);
-    let content = handler.serialize(&config)?;
+    let content = handler.serialize(config)?;
     let filename = handler.filename();
     std::fs::write(filename, &content)?;
-
-    print_report(Source::SemanticRelease, &path, filename, &report);
+    print_report(source, from, filename, report);
     Ok(())
 }
 

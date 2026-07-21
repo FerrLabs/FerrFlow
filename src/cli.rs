@@ -189,12 +189,21 @@ pub enum Commands {
 pub enum MigrateSourceArg {
     #[value(name = "semantic-release")]
     SemanticRelease,
+    #[value(name = "changesets")]
+    Changesets,
+    #[value(name = "release-please")]
+    ReleasePlease,
+    #[value(name = "standard-version")]
+    StandardVersion,
 }
 
 impl From<MigrateSourceArg> for crate::config::MigrateSource {
     fn from(arg: MigrateSourceArg) -> Self {
         match arg {
             MigrateSourceArg::SemanticRelease => crate::config::MigrateSource::SemanticRelease,
+            MigrateSourceArg::Changesets => crate::config::MigrateSource::Changesets,
+            MigrateSourceArg::ReleasePlease => crate::config::MigrateSource::ReleasePlease,
+            MigrateSourceArg::StandardVersion => crate::config::MigrateSource::StandardVersion,
         }
     }
 }
