@@ -205,3 +205,44 @@ fn json5_features_are_tolerated() {
 fn source_label_is_stable() {
     assert_eq!(Source::SemanticRelease.label(), "semantic-release");
 }
+
+// A YAML `.releaserc` converts to JSON that the existing converter accepts.
+#[test]
+fn yaml_config_converts_then_migrates() {
+    let yaml = "\
+tagFormat: \"v${version}\"
+branches:
+  - main
+  - name: beta
+    prerelease: true
+plugins:
+  - \"@semantic-release/github\"
+";
+    let json = yaml_to_json(yaml).expect("yaml converts to json");
+    let (cfg, _) = build_config_from_releaserc(&json).expect("converted json is valid");
+    assert_eq!(cfg.workspace.tag_template.as_deref(), Some("v{{version}}"));
+    assert!(matches!(cfg.workspace.forge, ForgeKind::Github));
+    let beta = cfg
+        .workspace
+        .branches
+        .as_ref()
+        .unwrap()
+        .iter()
+        .find(|b| b.name == "beta")
+        .unwrap();
+    assert!(matches!(&beta.channel, ChannelValue::Named(c) if c == "beta"));
+}
+
+#[test]
+fn yaml_to_json_produces_parseable_json() {
+    let json = yaml_to_json("a: 1\nb: [x, y]\n").expect("valid yaml");
+    let value: serde_json::Value = serde_json::from_str(&json).expect("valid json out");
+    assert_eq!(value["a"], 1);
+    assert_eq!(value["b"][1], "y");
+}
+
+#[test]
+fn malformed_yaml_is_an_error() {
+    // An unclosed flow sequence is not valid YAML.
+    assert!(yaml_to_json("plugins: [unclosed").is_err());
+}

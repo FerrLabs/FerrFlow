@@ -461,8 +461,16 @@ criteria = "safe-to-deploy"
 version = "0.103.13"
 criteria = "safe-to-deploy"
 
+[[exemptions.ryu]]
+version = "1.0.23"
+criteria = "safe-to-deploy"
+
 [[exemptions.scopeguard]]
 version = "1.2.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.serde_norway]]
+version = "0.9.42"
 criteria = "safe-to-deploy"
 
 [[exemptions.sha1]]
@@ -575,6 +583,10 @@ criteria = "safe-to-deploy"
 
 [[exemptions.unicode-normalization]]
 version = "0.1.25"
+criteria = "safe-to-deploy"
+
+[[exemptions.unsafe-libyaml-norway]]
+version = "0.2.15"
 criteria = "safe-to-deploy"
 
 [[exemptions.untrusted]]
