@@ -4,6 +4,13 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.41.0] - 2026-07-21
+
+### Features
+
+- feat(hooks): expose releaseUrl to post-publish hooks (#743)
+- feat(hooks): expose allPackages batch snapshot to hooks (#741)
+
 ## [5.40.0] - 2026-07-20
 
 ### Features
