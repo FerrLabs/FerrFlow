@@ -595,6 +595,13 @@ fn process_release_tag(
     }
 }
 
+fn release_url_for_tag(forge_results: &[(String, ReleaseResult)], tag: &str) -> Option<String> {
+    forge_results
+        .iter()
+        .find(|(t, _)| t == tag)
+        .and_then(|(_, result)| result.url.clone())
+}
+
 fn run_post_publish_hooks(plan: &mut ReleasePlan<'_>) -> Result<()> {
     for (ctx, pkg_idx) in plan.hook_contexts {
         let pkg = &plan.config.packages[*pkg_idx];
@@ -602,10 +609,12 @@ fn run_post_publish_hooks(plan: &mut ReleasePlan<'_>) -> Result<()> {
         let pkg_hooks = pkg.hooks.as_ref();
         let on_failure = resolve_on_failure(pkg_hooks, ws_hooks);
         if let Some(cmd) = resolve_hook(pkg_hooks, ws_hooks, HookPoint::PostPublish) {
+            let mut ctx = ctx.clone();
+            ctx.release_url = release_url_for_tag(plan.forge_results, &ctx.tag);
             run_hook(
                 HookPoint::PostPublish,
                 &cmd,
-                ctx,
+                &ctx,
                 on_failure,
                 plan.dry_run,
                 plan.verbose,
@@ -897,5 +906,34 @@ mod tag_release_tests {
                 Some(format!("https://forge/{tag}").as_str())
             );
         }
+    }
+
+    #[test]
+    fn release_url_for_tag_matches_by_tag_only() {
+        let results = vec![
+            (
+                "api@v1.0.0".to_string(),
+                ReleaseResult {
+                    id: Some(1),
+                    url: Some("https://forge/api".to_string()),
+                },
+            ),
+            (
+                "web@v2.0.0".to_string(),
+                ReleaseResult {
+                    id: Some(2),
+                    url: None,
+                },
+            ),
+        ];
+
+        assert_eq!(
+            release_url_for_tag(&results, "api@v1.0.0").as_deref(),
+            Some("https://forge/api")
+        );
+        // Tag released but the forge returned no URL.
+        assert_eq!(release_url_for_tag(&results, "web@v2.0.0"), None);
+        // Tag not in this batch's forge results.
+        assert_eq!(release_url_for_tag(&results, "cli@v3.0.0"), None);
     }
 }

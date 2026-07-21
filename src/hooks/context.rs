@@ -56,6 +56,7 @@ pub struct HookContext {
     pub commits: Vec<HookCommit>,
     pub bumped_files: Vec<HookFile>,
     pub all_packages: Vec<HookPackage>,
+    pub release_url: Option<String>,
 }
 
 #[cfg(test)]
@@ -114,6 +115,7 @@ impl HookContext {
             commits: Vec::new(),
             bumped_files: Vec::new(),
             all_packages: Vec::new(),
+            release_url: None,
         }
     }
 }
