@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.32.0] - 2026-07-21
+
+### Features
+
+- feat(docs): document rich hook context fields (changelog, commits, bumpedFiles, monorepo) (#719)
+
 ## [6.31.2] - 2026-07-19
 
 ### Bug Fixes
