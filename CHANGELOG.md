@@ -4,6 +4,14 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.47.0] - 2026-07-21
+
+### Features
+
+- feat: expose the crate version as ferrflow::VERSION (#758)
+- feat(schema): expose the bundled JSON schema from the library (#756)
+- feat(validate): expose the validation core without the cli feature (#754)
+
 ## [5.46.0] - 2026-07-21
 
 ### Features
