@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use crate::config::Config;
@@ -8,6 +9,7 @@ use crate::error_code::{self, ErrorCodeExt};
 /// slashes so a multi-segment path (`src/lib/foo.rs`) keeps its
 /// structure. Used when interpolating user-supplied paths into URL
 /// path positions. See #553.
+#[cfg(feature = "cli")]
 fn encode_path(s: &str) -> String {
     encode_with_safe(s, |b| matches!(b, b'/'))
 }
@@ -16,10 +18,12 @@ fn encode_path(s: &str) -> String {
 /// the value lands in a single URL query parameter and must not
 /// smuggle further `?`, `&`, `=`, or `#` characters. Used for the git
 /// ref (`?ref=…`).
+#[cfg(feature = "cli")]
 fn encode_query_value(s: &str) -> String {
     encode_with_safe(s, |_| false)
 }
 
+#[cfg(feature = "cli")]
 fn encode_with_safe(s: &str, extra_safe: impl Fn(u8) -> bool) -> String {
     let mut out = String::with_capacity(s.len());
     for b in s.bytes() {
@@ -58,12 +62,40 @@ impl FileSource for LocalSource {
     }
 }
 
+#[cfg_attr(feature = "cli", allow(dead_code))]
+pub struct MemorySource {
+    files: BTreeMap<String, Vec<u8>>,
+}
+
+#[cfg_attr(feature = "cli", allow(dead_code))]
+impl MemorySource {
+    pub fn new(files: BTreeMap<String, Vec<u8>>) -> Self {
+        Self { files }
+    }
+}
+
+impl FileSource for MemorySource {
+    fn read_file(&self, path: &str) -> Result<Option<Vec<u8>>> {
+        Ok(self.files.get(path).cloned())
+    }
+
+    fn path_exists(&self, path: &str) -> Result<bool> {
+        if self.files.contains_key(path) {
+            return Ok(true);
+        }
+        let prefix = format!("{}/", path.trim_end_matches('/'));
+        Ok(self.files.keys().any(|key| key.starts_with(&prefix)))
+    }
+}
+
+#[cfg(feature = "cli")]
 #[derive(Debug, PartialEq)]
 pub enum RemoteProvider {
     GitHub,
     GitLab,
 }
 
+#[cfg(feature = "cli")]
 pub fn parse_repo_spec(spec: &str) -> Result<(RemoteProvider, String, String)> {
     let spec = spec
         .trim_start_matches("https://")
@@ -91,6 +123,7 @@ pub fn parse_repo_spec(spec: &str) -> Result<(RemoteProvider, String, String)> {
     }
 }
 
+#[cfg(feature = "cli")]
 pub struct GitHubSource {
     pub owner: String,
     pub repo: String,
@@ -98,6 +131,7 @@ pub struct GitHubSource {
     pub token: Option<String>,
 }
 
+#[cfg(feature = "cli")]
 impl FileSource for GitHubSource {
     fn read_file(&self, path: &str) -> Result<Option<Vec<u8>>> {
         let mut url = format!(
@@ -130,6 +164,7 @@ impl FileSource for GitHubSource {
     }
 }
 
+#[cfg(feature = "cli")]
 pub struct GitLabSource {
     pub owner: String,
     pub repo: String,
@@ -137,6 +172,7 @@ pub struct GitLabSource {
     pub token: Option<String>,
 }
 
+#[cfg(feature = "cli")]
 impl FileSource for GitLabSource {
     fn read_file(&self, path: &str) -> Result<Option<Vec<u8>>> {
         let project_id = format!("{}/{}", self.owner, self.repo);
@@ -222,7 +258,7 @@ pub fn load_config_from_source(
     .error_code(error_code::VALIDATE_NO_CONFIG)?
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "cli"))]
 mod tests {
     use super::*;
 

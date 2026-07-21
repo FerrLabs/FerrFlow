@@ -1,7 +1,7 @@
 use super::checks::*;
 use super::*;
 use crate::config::{Config, FileFormat, PackageConfig, VersionedFile, WorkspaceConfig};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use tempfile::TempDir;
 
@@ -313,4 +313,125 @@ fn run_ref_without_repo_errors() {
     let result = run(None, false, None, Some("main"));
     assert!(result.is_err());
     assert!(format!("{:?}", result.unwrap_err()).contains("--ref"));
+}
+
+fn app_with_two_versioned_files() -> Config {
+    let mut pkg = make_package("app", ".");
+    pkg.versioned_files = vec![
+        VersionedFile {
+            path: "package.json".to_string(),
+            format: FileFormat::Json,
+            selector: None,
+        },
+        VersionedFile {
+            path: "Cargo.toml".to_string(),
+            format: FileFormat::Toml,
+            selector: None,
+        },
+    ];
+    make_config(vec![pkg])
+}
+
+#[test]
+fn validate_files_flags_version_mismatch_across_provided_files() {
+    let config = app_with_two_versioned_files();
+    let mut files = BTreeMap::new();
+    files.insert(
+        "package.json".to_string(),
+        br#"{"name":"app","version":"1.0.0"}"#.to_vec(),
+    );
+    files.insert(
+        "Cargo.toml".to_string(),
+        b"[package]\nname = \"app\"\nversion = \"1.1.0\"\n".to_vec(),
+    );
+
+    let result = validate_files(&config, files);
+
+    assert!(!result.valid);
+    assert_eq!(result.package_count, 1);
+    assert!(
+        result
+            .errors
+            .iter()
+            .any(|e| e.message.contains("1.0.0") && e.message.contains("1.1.0")),
+        "expected a version-consistency error, got {:?}",
+        result.errors
+    );
+}
+
+#[test]
+fn validate_files_passes_when_provided_versions_agree() {
+    let config = app_with_two_versioned_files();
+    let mut files = BTreeMap::new();
+    files.insert(
+        "package.json".to_string(),
+        br#"{"name":"app","version":"2.3.4"}"#.to_vec(),
+    );
+    files.insert(
+        "Cargo.toml".to_string(),
+        b"[package]\nname = \"app\"\nversion = \"2.3.4\"\n".to_vec(),
+    );
+
+    let result = validate_files(&config, files);
+
+    assert!(
+        result.valid,
+        "expected valid, got errors: {:?}",
+        result.errors
+    );
+    assert_eq!(result.package_count, 1);
+}
+
+#[test]
+fn validate_files_treats_a_package_dir_as_present_when_files_live_under_it() {
+    let mut pkg = make_package("api", "packages/api");
+    pkg.versioned_files = vec![VersionedFile {
+        path: "packages/api/package.json".to_string(),
+        format: FileFormat::Json,
+        selector: None,
+    }];
+    let config = make_config(vec![pkg]);
+    let mut files = BTreeMap::new();
+    files.insert(
+        "packages/api/package.json".to_string(),
+        br#"{"name":"api","version":"1.0.0"}"#.to_vec(),
+    );
+
+    let result = validate_files(&config, files);
+
+    assert!(
+        result.valid,
+        "expected valid, got errors: {:?}",
+        result.errors
+    );
+    assert!(
+        !result
+            .errors
+            .iter()
+            .any(|e| e.message.contains("does not exist")),
+        "package dir should count as present via its files, got {:?}",
+        result.errors
+    );
+}
+
+#[test]
+fn validate_files_reports_missing_versioned_file() {
+    let config = app_with_two_versioned_files();
+    let mut files = BTreeMap::new();
+    files.insert(
+        "package.json".to_string(),
+        br#"{"name":"app","version":"1.0.0"}"#.to_vec(),
+    );
+
+    let result = validate_files(&config, files);
+
+    assert!(!result.valid);
+    assert!(
+        result
+            .errors
+            .iter()
+            .any(|e| e.message.contains("Cargo.toml") && e.message.contains("does not exist")),
+        "expected a missing-file error, got {:?}",
+        result.errors
+    );
 }
