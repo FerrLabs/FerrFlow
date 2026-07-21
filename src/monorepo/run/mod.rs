@@ -446,6 +446,7 @@ pub(super) fn run_release_logic(
             commits: hook_commits,
             bumped_files: hook_bumped_files,
             all_packages: all_packages.clone(),
+            release_url: None,
         };
 
         let ws_hooks = config.workspace.hooks.as_ref();
