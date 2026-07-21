@@ -234,10 +234,13 @@ interface SrTableRow {
             walks to compute a bump, not the repository's total history.
           </li>
           <li i18n="@@perf.method.commands">
-            <strong>All commands</strong> are no-op-ish dry runs: <code>ferrflow check</code>,
-            <code>semantic-release --dry-run --no-ci</code>, <code>changesets status</code>,
-            <code>standard-version --dry-run</code>, etc. So we're comparing the planning cost, not
-            the IO cost of actually mutating files.
+            <strong>All commands</strong> are dry-run release planning — every tool computes the
+            next version and release notes without writing anything:
+            <code>ferrflow release --dry-run</code>,
+            <code>semantic-release --dry-run --no-ci</code>,
+            <code>standard-version --dry-run</code>, <code>commit-and-tag-version --dry-run</code>,
+            etc. The same operation for every tool, so we're comparing the planning cost, not the IO
+            cost of actually mutating files.
           </li>
           <li i18n="@@perf.method.singleThread">
             <strong>Single-threaded comparison.</strong> FerrFlow runs with <code>--jobs 1</code> in
