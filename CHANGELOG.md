@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.42.0] - 2026-07-21
+
+### Features
+
+- feat(release): persistent release PR — update the open PR instead of opening a new one (#744)
+
 ## [5.41.0] - 2026-07-21
 
 ### Features
