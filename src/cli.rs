@@ -116,6 +116,15 @@ pub enum Commands {
         #[arg(long, value_enum, default_value = "text")]
         output: OutputFormat,
     },
+    /// Compare two versions of a package: commits, bumps, files, and changelog
+    Diff {
+        /// `[package] <from>..<to>` — the version range (contains `..`), optionally preceded by a package name
+        #[arg(value_name = "SPEC", required = true, num_args = 1..=2)]
+        spec: Vec<String>,
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
     /// Print the current version of a package
     Version {
         /// Package name (required in monorepos, optional in single repos)
@@ -228,6 +237,7 @@ impl Commands {
             Commands::Changelog => "changelog",
             Commands::Init { .. } => "init",
             Commands::Status { .. } => "status",
+            Commands::Diff { .. } => "diff",
             Commands::Version { .. } => "version",
             Commands::Tag { .. } => "tag",
             Commands::Validate { .. } => "validate",
@@ -295,6 +305,9 @@ impl Cli {
             Commands::Init { format, manifest } => crate::config::init(format, manifest),
             Commands::Status { output } => {
                 crate::status::run(self.config.as_deref(), &output, timing)
+            }
+            Commands::Diff { spec, json } => {
+                crate::version_diff::run(&spec, json, self.config.as_deref())
             }
             Commands::Version { package, json } => {
                 crate::query::version(self.config.as_deref(), package.as_deref(), json)

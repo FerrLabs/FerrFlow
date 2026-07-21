@@ -300,6 +300,12 @@ pub const HOOK_FAILED: ErrorCode = ErrorCode(6001);
 pub const QUERY_NO_PACKAGES: ErrorCode = ErrorCode(7001);
 #[allow(dead_code)]
 pub const QUERY_PACKAGE_NOT_FOUND: ErrorCode = ErrorCode(7002);
+#[allow(dead_code)]
+pub const DIFF_BAD_RANGE: ErrorCode = ErrorCode(7003);
+#[allow(dead_code)]
+pub const DIFF_PACKAGE_REQUIRED: ErrorCode = ErrorCode(7004);
+#[allow(dead_code)]
+pub const DIFF_ENDPOINT_UNRESOLVED: ErrorCode = ErrorCode(7005);
 
 #[allow(dead_code)]
 pub const MONOREPO_PACKAGE_NOT_FOUND: ErrorCode = ErrorCode(8001);

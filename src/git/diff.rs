@@ -54,6 +54,19 @@ pub fn get_changed_files_since_oid(
     changed_paths_between(repo, last_tag_oid, head)
 }
 
+/// Paths changed between two arbitrary commits (`from..to`). Used by
+/// `ferrflow diff`.
+pub fn get_changed_files_between(
+    repo: &Repository,
+    from: ObjectId,
+    to: ObjectId,
+) -> Result<Vec<String>> {
+    if repo.workdir().is_none() {
+        return Ok(vec![]);
+    }
+    changed_paths_between(repo, Some(from), to)
+}
+
 fn changed_paths_between(
     repo: &Repository,
     from: Option<ObjectId>,
