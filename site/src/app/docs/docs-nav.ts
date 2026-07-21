@@ -31,6 +31,7 @@ export const DOCS_NAV: readonly DocSection[] = [
     items: [
       { label: 'CLI commands', slug: 'reference/cli' },
       { label: 'Conventional Commits', slug: 'reference/conventional-commits' },
+      { label: 'FerrFlow API', slug: 'reference/api' },
       { label: 'Error codes', slug: 'reference/errors' },
     ],
   },
