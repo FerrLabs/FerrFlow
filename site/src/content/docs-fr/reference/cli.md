@@ -172,6 +172,31 @@ site   0.4.1   no release (only chore commits)
 
 ---
 
+## `ferrflow diff`
+
+Comparer deux versions d'un package : les commits qui y sont entrés, l'incrément de chaque commit, les fichiers modifiés, et le changelog que FerrFlow générerait pour l'intervalle. Pratique pour auditer une release, comprendre pourquoi une version a bumpé ainsi, ou rédiger des notes de release a posteriori pour un intervalle.
+
+```bash
+ferrflow diff [PACKAGE] <FROM>..<TO> [--json]
+```
+
+| Argument / option | Description                                                                                                  |
+| ----------------- | ------------------------------------------------------------------------------------------------------------ |
+| `<FROM>..<TO>`    | L'intervalle de versions. Chaque borne est un tag ou une version — `v1.4.0`, ou un tag complet `api@v1.6.0`. |
+| `[PACKAGE]`       | Nom du package — requis en monorepo, optionnel (et déduit) dans un repo mono-package.                        |
+| `--json`          | Émettre la comparaison en objet JSON structuré au lieu de la vue humaine.                                    |
+
+Chaque borne est résolue en essayant d'abord la chaîne comme tag (un vrai tag, ou `v1.4.0` en mono-package), puis comme le tag du package pour cette version (`api@v1.4.0`).
+
+```bash
+ferrflow diff v1.4.0..v1.6.0            # repo mono-package
+ferrflow diff api v1.4.0..v1.6.0        # monorepo — nommez le package
+```
+
+La sortie liste chaque commit de l'intervalle avec son incrément (`major` / `minor` / `patch` / `none`), met en évidence les breaking changes, résume les fichiers modifiés, et rend la section de changelog pour l'intervalle. En monorepo, l'intervalle couvre pour l'instant tous les commits entre les deux tags (pas encore restreint aux chemins du package nommé).
+
+---
+
 ## `ferrflow version`
 
 Afficher la version actuelle d'un ou de tous les packages. Utile dans les scripts CI.

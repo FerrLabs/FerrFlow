@@ -203,6 +203,31 @@ site   0.4.1   no release (only chore commits)
 
 ---
 
+## `ferrflow diff`
+
+Compare two versions of a package: the commits that went in, each commit's bump, the files changed, and the changelog FerrFlow would generate for the range. Handy for auditing a release, checking why a version bumped the way it did, or writing release notes for a range after the fact.
+
+```bash
+ferrflow diff [PACKAGE] <FROM>..<TO> [--json]
+```
+
+| Argument / flag | Description                                                                                   |
+| --------------- | --------------------------------------------------------------------------------------------- |
+| `<FROM>..<TO>`  | The version range. Each side is a tag or version — `v1.4.0`, or a full tag like `api@v1.6.0`. |
+| `[PACKAGE]`     | Package name — required in a monorepo, optional (and inferred) in a single-package repo.      |
+| `--json`        | Emit the comparison as a structured JSON object instead of the human view.                    |
+
+Each endpoint resolves by trying the string as a tag first (a real tag, or `v1.4.0` in a single-package repo), then as the package's tag for that version (`api@v1.4.0`).
+
+```bash
+ferrflow diff v1.4.0..v1.6.0            # single-package repo
+ferrflow diff api v1.4.0..v1.6.0        # monorepo — name the package
+```
+
+The output lists every commit in the range with its individual bump (`major` / `minor` / `patch` / `none`), highlights breaking changes, summarises the changed files, and renders the changelog section for the range. In a monorepo the range currently spans all commits between the two tags (not yet scoped to the named package's paths).
+
+---
+
 ## `ferrflow version`
 
 Print the current version of one or all packages. Useful in CI scripts.
