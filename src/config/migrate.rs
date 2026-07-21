@@ -36,17 +36,20 @@ impl Source {
     }
 }
 
-/// A `.releaserc` shape we can parse: JSON (or JSON5) content, whatever the
-/// filename. YAML `.releaserc` and JS `release.config.js` are surfaced as
-/// unsupported rather than mis-parsed.
-const SEMANTIC_RELEASE_JSON_FILES: &[&str] = &[".releaserc", ".releaserc.json"];
-const SEMANTIC_RELEASE_UNSUPPORTED_FILES: &[&str] = &[
+/// semantic-release config filenames (cosmiconfig for the `release` key), in
+/// preference order. JSON/JSON5 is read directly; `.js/.cjs/.mjs` is evaluated
+/// with node; `.yaml/.yml` is parsed as YAML — see [`read_source_as_json`].
+const SEMANTIC_RELEASE_FILES: &[&str] = &[
+    ".releaserc",
+    ".releaserc.json",
     ".releaserc.yaml",
     ".releaserc.yml",
     ".releaserc.js",
-    "release.config.js",
-    "release.config.mjs",
     ".releaserc.cjs",
+    ".releaserc.mjs",
+    "release.config.js",
+    "release.config.cjs",
+    "release.config.mjs",
 ];
 
 pub fn migrate(from: Option<Source>) -> Result<()> {
@@ -82,7 +85,7 @@ fn ensure_no_existing_config() -> Result<()> {
 }
 
 fn detect_source() -> Result<Source> {
-    if find_semantic_release_json().is_some() {
+    if find_semantic_release_config().is_some() {
         return Ok(Source::SemanticRelease);
     }
     if changesets::detect().is_some() {
@@ -94,20 +97,10 @@ fn detect_source() -> Result<Source> {
     if standard_version::detect().is_some() {
         return Ok(Source::StandardVersion);
     }
-    if let Some(f) = SEMANTIC_RELEASE_UNSUPPORTED_FILES
-        .iter()
-        .find(|f| Path::new(f).exists())
-    {
-        return Err(anyhow::anyhow!(
-            "found {f}, but ferrflow can only migrate JSON `.releaserc` for now. \
-             Convert it to `.releaserc.json` (or inline the config as JSON) and rerun."
-        ))
-        .error_code(error_code::CONFIG_INVALID_JSON);
-    }
     Err(anyhow::anyhow!(
         "no supported release-tool config found. Looked for {}, {}, {}, {}. \
          Pass --from to force a source.",
-        SEMANTIC_RELEASE_JSON_FILES.join(", "),
+        SEMANTIC_RELEASE_FILES.join(", "),
         changesets::CONFIG_FILE,
         release_please::CONFIG_FILE,
         standard_version::CONFIG_FILES.join(", "),
@@ -115,11 +108,87 @@ fn detect_source() -> Result<Source> {
     .error_code(error_code::CONFIG_NOT_FOUND)
 }
 
-fn find_semantic_release_json() -> Option<PathBuf> {
-    SEMANTIC_RELEASE_JSON_FILES
+fn find_semantic_release_config() -> Option<PathBuf> {
+    SEMANTIC_RELEASE_FILES
         .iter()
         .map(PathBuf::from)
         .find(|p| p.exists())
+}
+
+/// Read a release-tool config file and return a JSON string the JSON
+/// converters can parse. `.js/.cjs/.mjs` is evaluated with node, `.yaml/.yml`
+/// is parsed as YAML, and everything else (`.json`, `.json5`, extensionless)
+/// is handed straight to the json5-tolerant parsers.
+pub(super) fn read_source_as_json(path: &Path) -> Result<String> {
+    let ext = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    match ext.as_str() {
+        "js" | "cjs" | "mjs" => eval_js_to_json(path),
+        "yaml" | "yml" => yaml_to_json(&read_file(path)?),
+        _ => read_file(path),
+    }
+}
+
+fn read_file(path: &Path) -> Result<String> {
+    std::fs::read_to_string(path)
+        .map_err(|e| anyhow::anyhow!("could not read {}: {e}", path.display()))
+        .error_code(error_code::CONFIG_NOT_FOUND)
+}
+
+/// Evaluate a JS/TS release config to JSON by importing it with node and
+/// printing its resolved default export. Same trust model as evaluating a
+/// `ferrflow.js` config — it's the user's own repo, run locally.
+fn eval_js_to_json(path: &Path) -> Result<String> {
+    let file_url = super::loader_js::path_to_file_url(path)?;
+    let script = format!(
+        "const m = await import('{file_url}'); \
+         const cfg = m.default ?? m; \
+         const resolved = typeof cfg === 'function' ? await cfg() : cfg; \
+         process.stdout.write(JSON.stringify(resolved));"
+    );
+    let mut cmd = std::process::Command::new("node");
+    cmd.args(["--input-type=module", "-e", &script]);
+    if let Some(dir) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
+        cmd.current_dir(dir);
+    }
+    let output = cmd
+        .output()
+        .map_err(|e| {
+            if e.kind() == std::io::ErrorKind::NotFound {
+                anyhow::anyhow!(
+                    "migrating a JavaScript config requires Node.js, but 'node' was not found in \
+                     PATH. Install Node.js from https://nodejs.org/, or convert the config to JSON."
+                )
+            } else {
+                anyhow::anyhow!("failed to execute node: {e}")
+            }
+        })
+        .error_code(error_code::CONFIG_EVAL_NODE)?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(anyhow::anyhow!(
+            "could not evaluate {}:\n{}",
+            path.display(),
+            stderr.trim()
+        ))
+        .error_code(error_code::CONFIG_EVAL_FAILED);
+    }
+    String::from_utf8(output.stdout)
+        .map_err(|_| anyhow::anyhow!("{} produced invalid UTF-8", path.display()))
+        .error_code(error_code::CONFIG_INVALID_OUTPUT)
+}
+
+/// Convert a YAML config to a JSON string so the JSON converters can consume it.
+pub(super) fn yaml_to_json(raw: &str) -> Result<String> {
+    let value: serde_json::Value = serde_norway::from_str(raw)
+        .map_err(|e| anyhow::anyhow!("could not parse YAML config: {e}"))
+        .error_code(error_code::CONFIG_INVALID_JSON)?;
+    serde_json::to_string(&value)
+        .map_err(|e| anyhow::anyhow!("could not re-serialize YAML to JSON: {e}"))
+        .error_code(error_code::CONFIG_INVALID_JSON)
 }
 
 #[derive(Debug, Deserialize, Default)]
@@ -451,14 +520,13 @@ fn apply_exec_plugin(
 }
 
 fn migrate_semantic_release() -> Result<()> {
-    let path = find_semantic_release_json().ok_or_else(|| {
+    let path = find_semantic_release_config().ok_or_else(|| {
         anyhow::anyhow!(
-            "no JSON .releaserc found ({})",
-            SEMANTIC_RELEASE_JSON_FILES.join(", ")
+            "no semantic-release config found ({})",
+            SEMANTIC_RELEASE_FILES.join(", ")
         )
     })?;
-    let raw = std::fs::read_to_string(&path)
-        .map_err(|e| anyhow::anyhow!("could not read {}: {e}", path.display()))?;
+    let raw = read_source_as_json(&path)?;
 
     let (config, report) = build_config_from_releaserc(&raw)?;
     write_and_report(Source::SemanticRelease, &path, &config, &report)

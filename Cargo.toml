@@ -34,7 +34,7 @@ workspace = true
 
 [features]
 default = ["cli"]
-cli = ["dep:gix", "dep:gix-traverse", "dep:gix-diff", "dep:ureq", "dep:clap", "dep:clap_complete", "dep:colored", "dep:mimalloc", "dep:rayon", "dep:tracing-subscriber"]
+cli = ["dep:gix", "dep:gix-traverse", "dep:gix-diff", "dep:ureq", "dep:clap", "dep:clap_complete", "dep:colored", "dep:mimalloc", "dep:rayon", "dep:tracing-subscriber", "dep:serde_norway"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
@@ -55,6 +55,8 @@ gix = { version = "0.85", default-features = false, features = ["sha1", "max-per
 gix-traverse = { version = "0.59", optional = true }
 gix-diff = { version = "0.65", default-features = false, optional = true }
 ureq = { version = "3", features = ["json"], optional = true }
+# YAML source configs for `ferrflow migrate` (cli-only). Maintained serde_yaml fork.
+serde_norway = { version = "0.9", optional = true }
 sha2 = "0.11.0"
 hex = "0.4.3"
 # mimalloc: faster allocator for the CLI hot paths (TagIndex::build,

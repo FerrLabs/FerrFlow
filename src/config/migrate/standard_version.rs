@@ -1,32 +1,30 @@
 use anyhow::Result;
 use serde::Deserialize;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use crate::config::Config;
 use crate::config::package::{FileFormat, PackageConfig, VersionedFile};
 use crate::config::workspace::WorkspaceConfig;
 use crate::error_code::{self, ErrorCodeExt};
 
-use super::{MigrationReport, Source, write_and_report};
+use super::{MigrationReport, Source, read_source_as_json, write_and_report};
 
-pub(super) const CONFIG_FILES: &[&str] = &[".versionrc", ".versionrc.json"];
-const UNSUPPORTED_FILES: &[&str] = &[".versionrc.js", ".versionrc.cjs"];
+pub(super) const CONFIG_FILES: &[&str] = &[
+    ".versionrc",
+    ".versionrc.json",
+    ".versionrc.yaml",
+    ".versionrc.yml",
+    ".versionrc.js",
+    ".versionrc.cjs",
+];
 
 pub(super) fn detect() -> Option<PathBuf> {
     CONFIG_FILES.iter().map(PathBuf::from).find(|p| p.exists())
 }
 
 pub(super) fn run() -> Result<()> {
-    if let Some(js) = UNSUPPORTED_FILES.iter().find(|f| Path::new(f).exists()) {
-        return Err(anyhow::anyhow!(
-            "found {js}, but ferrflow can only migrate JSON `.versionrc`. Inline the config as \
-             JSON in `.versionrc.json` and rerun."
-        ))
-        .error_code(error_code::CONFIG_INVALID_JSON);
-    }
     let path = detect().ok_or_else(|| anyhow::anyhow!("no .versionrc found"))?;
-    let raw = std::fs::read_to_string(&path)
-        .map_err(|e| anyhow::anyhow!("could not read {}: {e}", path.display()))?;
+    let raw = read_source_as_json(&path)?;
     let (config, report) = build(&raw)?;
     write_and_report(Source::StandardVersion, &path, &config, &report)
 }
