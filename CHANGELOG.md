@@ -4,6 +4,14 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.45.0] - 2026-07-21
+
+### Features
+
+- feat(cli): add diff command to compare two versions (#751)
+- feat(migrate): broaden release-please release-type and plugin coverage (#749)
+- feat(migrate): read JS and YAML source configs (#750)
+
 ## [5.44.0] - 2026-07-21
 
 ### Features
