@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.46.0] - 2026-07-21
+
+### Features
+
+- feat(validate): expose the validation core without the cli feature (#754)
+
 ## [5.45.0] - 2026-07-21
 
 ### Features
