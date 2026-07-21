@@ -318,11 +318,11 @@ git tag -f api@v1.2.0 <correct-commit>
 
 Controls how FerrFlow handles the commit that updates version files and changelogs.
 
-| Mode       | Behavior                                                     |
-| ---------- | ------------------------------------------------------------ |
-| `"commit"` | Commits directly to the current branch and pushes (default)  |
-| `"pr"`     | Creates a `release/` branch and opens a pull request         |
-| `"none"`   | Only creates tags and releases, does not commit file changes |
+| Mode       | Behavior                                                                  |
+| ---------- | ------------------------------------------------------------------------- |
+| `"commit"` | Commits directly to the current branch and pushes (default)               |
+| `"pr"`     | Opens a persistent release pull request and updates it on each new commit |
+| `"none"`   | Only creates tags and releases, does not commit file changes              |
 
 <div class="ferr-tabs">
   <div class="ferr-tab" data-label="JSON"><p class="ferr-tab__label">JSON</p><div class="ferr-tab__body"><pre><code class="language-json">{
@@ -347,6 +347,12 @@ auto_merge_releases = true
 </code></pre>
 </div></div>
 </div>
+
+In `"pr"` mode FerrFlow keeps **one long-lived release PR per target branch**. It maintains a single release branch — `ferrflow/release-<target-branch>` — and on every new commit it recomputes the version and changelog and force-pushes that same branch, so the open PR updates in place instead of a new PR opening per version.
+
+`autoMergeReleases` (default `true`) enables auto-merge on that PR; it re-applies on each update and is a no-op when disabled (the PR just waits for a human). PR mode is supported on GitHub and GitLab.
+
+FerrFlow won't clobber work you push onto the release branch: if the branch carries a commit it didn't author — anything that isn't a `chore(release):` commit, such as a review fix you pushed — it warns and leaves the branch and PR untouched for that run.
 
 ### Versioning strategies
 

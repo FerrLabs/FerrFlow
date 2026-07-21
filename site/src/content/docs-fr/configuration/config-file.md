@@ -246,11 +246,11 @@ tag_template = &quot;{name}@v{version}&quot;
 
 Contrôle la façon dont FerrFlow gère le commit qui met à jour les fichiers de version et les changelogs.
 
-| Mode       | Comportement                                                                        |
-| ---------- | ----------------------------------------------------------------------------------- |
-| `"commit"` | Commit directement sur la branche courante et pousse (par défaut)                   |
-| `"pr"`     | Crée une branche `release/` et ouvre une pull request                               |
-| `"none"`   | Crée uniquement les tags et les releases, ne commit pas les changements de fichiers |
+| Mode       | Comportement                                                                           |
+| ---------- | -------------------------------------------------------------------------------------- |
+| `"commit"` | Commit directement sur la branche courante et pousse (par défaut)                      |
+| `"pr"`     | Ouvre une pull request de release persistante et la met à jour à chaque nouveau commit |
+| `"none"`   | Crée uniquement les tags et les releases, ne commit pas les changements de fichiers    |
 
 <div class="ferr-tabs">
   <div class="ferr-tab" data-label="JSON"><p class="ferr-tab__label">JSON</p><div class="ferr-tab__body"><pre><code class="language-json">{
@@ -275,6 +275,12 @@ auto_merge_releases = true
 </code></pre>
 </div></div>
 </div>
+
+En mode `"pr"`, FerrFlow maintient **une seule PR de release au long cours par branche cible**. Il conserve une branche de release unique — `ferrflow/release-<branche-cible>` — et à chaque nouveau commit il recalcule la version et le changelog puis force-push cette même branche : la PR ouverte est mise à jour sur place au lieu d'en ouvrir une nouvelle par version.
+
+`autoMergeReleases` (par défaut `true`) active l'auto-merge sur cette PR ; il est réappliqué à chaque mise à jour et sans effet quand il est désactivé (la PR attend simplement un humain). Le mode PR est supporté sur GitHub et GitLab.
+
+FerrFlow n'écrase pas le travail que vous poussez sur la branche de release : si la branche porte un commit qu'il n'a pas créé — tout ce qui n'est pas un commit `chore(release):`, comme un correctif de revue que vous avez poussé — il avertit et laisse la branche et la PR intactes pour ce run.
 
 ### Stratégies de versionnage
 
