@@ -1,6 +1,6 @@
 [package]
 name = "ferrflow-wasm"
-version = "5.47.0"
+version = "5.47.1"
 edition = "2024"
 description = "FerrFlow core functions compiled to WebAssembly"
 license = "MPL-2.0"

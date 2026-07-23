@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.47.1] - 2026-07-23
+
+### Bug Fixes
+
+- fix(ci): repair renovate-rebase.yml truncated by the pin sweep (#761)
+
 ## [5.47.0] - 2026-07-21
 
 ### Features
