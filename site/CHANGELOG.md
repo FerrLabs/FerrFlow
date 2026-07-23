@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.32.3] - 2026-07-23
+
+### Bug Fixes
+
+- fix(ci): repair renovate-rebase.yml truncated by the pin sweep (#736)
+
 ## [6.32.2] - 2026-07-23
 
 ### Bug Fixes
