@@ -1,6 +1,6 @@
 {
-  "timestamp": "2026-07-21T15:15:16Z",
-  "ferrflow_version": "ferrflow 5.46.0",
+  "timestamp": "2026-07-23T03:48:21Z",
+  "ferrflow_version": "ferrflow 5.47.0",
   "ferrflow_binary_size_mb": "8.0",
   "ferrflow_npm_size_mb": "8.0",
   "runner_cores": 4,
@@ -8,1036 +8,1036 @@
   "runs": 30,
   "benchmarks": {
     "complex-changesets-npm-release-dry-run": {
-      "median_ms": 862.2,
-      "stddev_ms": 20.9,
-      "memory_mb": "113.3",
-      "startup_ms": 784.4,
-      "work_ms": 77.80000000000007
+      "median_ms": 768.5,
+      "stddev_ms": 18.0,
+      "memory_mb": "110.8",
+      "startup_ms": 707.6,
+      "work_ms": 60.89999999999998
     },
     "complex-commit-and-tag-version-npm-release-dry-run": {
-      "median_ms": 525.5,
-      "stddev_ms": 8.8,
-      "memory_mb": "92.2",
-      "startup_ms": 481.6,
-      "work_ms": 43.89999999999998
+      "median_ms": 486.6,
+      "stddev_ms": 6.4,
+      "memory_mb": "90.1",
+      "startup_ms": 446.1,
+      "work_ms": 40.5
     },
     "complex-ferrflow-binary-check": {
-      "median_ms": 17.8,
-      "stddev_ms": 1.9,
+      "median_ms": 17.7,
+      "stddev_ms": 1.1,
       "memory_mb": "15.5",
-      "startup_ms": 6.9,
-      "work_ms": 10.9
+      "startup_ms": 6.2,
+      "work_ms": 11.5
     },
     "complex-ferrflow-binary-release-dry-run": {
-      "median_ms": 20.3,
-      "stddev_ms": 1.7,
-      "memory_mb": "29.5",
-      "startup_ms": 6.5,
-      "work_ms": 13.8
+      "median_ms": 20.1,
+      "stddev_ms": 1.6,
+      "memory_mb": "29.6",
+      "startup_ms": 6.0,
+      "work_ms": 14.100000000000001
     },
     "complex-ferrflow-binary-tag": {
-      "median_ms": 4.7,
-      "stddev_ms": 0.5,
-      "memory_mb": "15.4",
-      "startup_ms": 3.2,
-      "work_ms": 1.5
-    },
-    "complex-ferrflow-binary-validate": {
-      "median_ms": 3.9,
-      "stddev_ms": 0.2,
-      "memory_mb": "15.1",
-      "startup_ms": 2.9,
-      "work_ms": 1
-    },
-    "complex-ferrflow-binary-version": {
-      "median_ms": 3.8,
-      "stddev_ms": 0.4,
-      "memory_mb": "15.0",
-      "startup_ms": 3.2,
-      "work_ms": 0.5999999999999996
-    },
-    "complex-ferrflow-docker-check": {
-      "median_ms": 219.4,
-      "stddev_ms": 5.1,
-      "memory_mb": "44.4",
-      "startup_ms": 201.8,
-      "work_ms": 17.599999999999994
-    },
-    "complex-ferrflow-docker-release-dry-run": {
-      "median_ms": 215.6,
-      "stddev_ms": 6.4,
-      "memory_mb": "45.1",
-      "startup_ms": 204.3,
-      "work_ms": 11.299999999999983
-    },
-    "complex-ferrflow-docker-tag": {
-      "median_ms": 204.8,
-      "stddev_ms": 8.3,
-      "memory_mb": "43.8",
-      "startup_ms": 198.3,
-      "work_ms": 6.5
-    },
-    "complex-ferrflow-docker-validate": {
-      "median_ms": 208.9,
-      "stddev_ms": 6.8,
-      "memory_mb": "45.2",
-      "startup_ms": 200.4,
-      "work_ms": 8.5
-    },
-    "complex-ferrflow-docker-version": {
-      "median_ms": 202.4,
-      "stddev_ms": 7.4,
-      "memory_mb": "45.6",
-      "startup_ms": 199.7,
-      "work_ms": 2.700000000000017
-    },
-    "complex-ferrflow-npm-check": {
-      "median_ms": 309.6,
-      "stddev_ms": 4.1,
-      "memory_mb": "93.0",
-      "startup_ms": 303.7,
-      "work_ms": 5.900000000000034
-    },
-    "complex-ferrflow-npm-release-dry-run": {
-      "median_ms": 313.0,
-      "stddev_ms": 3.9,
-      "memory_mb": "93.6",
-      "startup_ms": 304.6,
-      "work_ms": 8.399999999999977
-    },
-    "complex-ferrflow-npm-tag": {
-      "median_ms": 301.6,
-      "stddev_ms": 4.5,
-      "memory_mb": "93.2",
-      "startup_ms": 302.5,
-      "work_ms": 0
-    },
-    "complex-ferrflow-npm-validate": {
-      "median_ms": 298.1,
-      "stddev_ms": 4.3,
-      "memory_mb": "92.4",
-      "startup_ms": 304.0,
-      "work_ms": 0
-    },
-    "complex-ferrflow-npm-version": {
-      "median_ms": 299.9,
-      "stddev_ms": 8.0,
-      "memory_mb": "92.3",
-      "startup_ms": 301.2,
-      "work_ms": 0
-    },
-    "complex-semantic-release-npm-release-dry-run": {
-      "median_ms": 1645.6,
-      "stddev_ms": 18.1,
-      "memory_mb": "140.7",
-      "startup_ms": 1384.8,
-      "work_ms": 260.79999999999995
-    },
-    "complex-standard-version-npm-release-dry-run": {
-      "median_ms": 607.6,
-      "stddev_ms": 8.4,
-      "memory_mb": "94.3",
-      "startup_ms": 534.9,
-      "work_ms": 72.70000000000005
-    },
-    "mono-100-1k-changesets-npm-release-dry-run": {
-      "median_ms": 902.7,
-      "stddev_ms": 58.5,
-      "memory_mb": "111.3",
-      "startup_ms": 776.8,
-      "work_ms": 125.90000000000009
-    },
-    "mono-100-1k-commit-and-tag-version-npm-release-dry-run": {
-      "median_ms": 584.2,
-      "stddev_ms": 4.4,
-      "memory_mb": "91.3",
-      "startup_ms": 460.9,
-      "work_ms": 123.30000000000007
-    },
-    "mono-100-1k-ferrflow-binary-check": {
-      "median_ms": 18.2,
-      "stddev_ms": 1.7,
-      "memory_mb": "15.6",
-      "startup_ms": 6.5,
-      "work_ms": 11.7
-    },
-    "mono-100-1k-ferrflow-binary-release-dry-run": {
-      "median_ms": 15.3,
-      "stddev_ms": 0.8,
-      "memory_mb": "31.8",
-      "startup_ms": 6.1,
-      "work_ms": 9.200000000000001
-    },
-    "mono-100-1k-ferrflow-binary-tag": {
-      "median_ms": 5.1,
-      "stddev_ms": 0.5,
-      "memory_mb": "15.4",
-      "startup_ms": 2.9,
-      "work_ms": 2.1999999999999997
-    },
-    "mono-100-1k-ferrflow-binary-validate": {
       "median_ms": 4.2,
-      "stddev_ms": 0.6,
-      "memory_mb": "14.9",
+      "stddev_ms": 0.3,
+      "memory_mb": "15.5",
       "startup_ms": 2.9,
       "work_ms": 1.3000000000000003
     },
-    "mono-100-1k-ferrflow-binary-version": {
+    "complex-ferrflow-binary-validate": {
       "median_ms": 3.6,
-      "stddev_ms": 0.4,
+      "stddev_ms": 0.3,
       "memory_mb": "15.0",
       "startup_ms": 2.7,
       "work_ms": 0.8999999999999999
     },
+    "complex-ferrflow-binary-version": {
+      "median_ms": 3.5,
+      "stddev_ms": 0.5,
+      "memory_mb": "14.8",
+      "startup_ms": 2.7,
+      "work_ms": 0.7999999999999998
+    },
+    "complex-ferrflow-docker-check": {
+      "median_ms": 201.7,
+      "stddev_ms": 4.4,
+      "memory_mb": "43.0",
+      "startup_ms": 188.0,
+      "work_ms": 13.699999999999989
+    },
+    "complex-ferrflow-docker-release-dry-run": {
+      "median_ms": 202.6,
+      "stddev_ms": 6.2,
+      "memory_mb": "43.1",
+      "startup_ms": 186.8,
+      "work_ms": 15.799999999999983
+    },
+    "complex-ferrflow-docker-tag": {
+      "median_ms": 186.5,
+      "stddev_ms": 3.8,
+      "memory_mb": "43.7",
+      "startup_ms": 183.4,
+      "work_ms": 3.0999999999999943
+    },
+    "complex-ferrflow-docker-validate": {
+      "median_ms": 184.0,
+      "stddev_ms": 4.2,
+      "memory_mb": "43.4",
+      "startup_ms": 182.7,
+      "work_ms": 1.3000000000000114
+    },
+    "complex-ferrflow-docker-version": {
+      "median_ms": 186.6,
+      "stddev_ms": 5.4,
+      "memory_mb": "42.9",
+      "startup_ms": 184.0,
+      "work_ms": 2.5999999999999943
+    },
+    "complex-ferrflow-npm-check": {
+      "median_ms": 294.9,
+      "stddev_ms": 3.4,
+      "memory_mb": "91.1",
+      "startup_ms": 284.3,
+      "work_ms": 10.599999999999966
+    },
+    "complex-ferrflow-npm-release-dry-run": {
+      "median_ms": 294.4,
+      "stddev_ms": 2.7,
+      "memory_mb": "90.4",
+      "startup_ms": 284.2,
+      "work_ms": 10.199999999999989
+    },
+    "complex-ferrflow-npm-tag": {
+      "median_ms": 280.8,
+      "stddev_ms": 4.9,
+      "memory_mb": "90.3",
+      "startup_ms": 283.0,
+      "work_ms": 0
+    },
+    "complex-ferrflow-npm-validate": {
+      "median_ms": 280.7,
+      "stddev_ms": 2.3,
+      "memory_mb": "90.6",
+      "startup_ms": 281.4,
+      "work_ms": 0
+    },
+    "complex-ferrflow-npm-version": {
+      "median_ms": 280.2,
+      "stddev_ms": 2.7,
+      "memory_mb": "90.1",
+      "startup_ms": 283.5,
+      "work_ms": 0
+    },
+    "complex-semantic-release-npm-release-dry-run": {
+      "median_ms": 1454.6,
+      "stddev_ms": 12.3,
+      "memory_mb": "140.2",
+      "startup_ms": 1230.4,
+      "work_ms": 224.19999999999982
+    },
+    "complex-standard-version-npm-release-dry-run": {
+      "median_ms": 560.8,
+      "stddev_ms": 3.9,
+      "memory_mb": "93.9",
+      "startup_ms": 493.9,
+      "work_ms": 66.89999999999998
+    },
+    "mono-100-1k-changesets-npm-release-dry-run": {
+      "median_ms": 879.9,
+      "stddev_ms": 9.4,
+      "memory_mb": "112.1",
+      "startup_ms": 753.9,
+      "work_ms": 126
+    },
+    "mono-100-1k-commit-and-tag-version-npm-release-dry-run": {
+      "median_ms": 589.0,
+      "stddev_ms": 5.7,
+      "memory_mb": "92.7",
+      "startup_ms": 461.4,
+      "work_ms": 127.60000000000002
+    },
+    "mono-100-1k-ferrflow-binary-check": {
+      "median_ms": 18.1,
+      "stddev_ms": 1.6,
+      "memory_mb": "15.5",
+      "startup_ms": 6.5,
+      "work_ms": 11.600000000000001
+    },
+    "mono-100-1k-ferrflow-binary-release-dry-run": {
+      "median_ms": 16.1,
+      "stddev_ms": 2.0,
+      "memory_mb": "31.7",
+      "startup_ms": 6.2,
+      "work_ms": 9.900000000000002
+    },
+    "mono-100-1k-ferrflow-binary-tag": {
+      "median_ms": 5.2,
+      "stddev_ms": 0.7,
+      "memory_mb": "15.2",
+      "startup_ms": 2.9,
+      "work_ms": 2.3000000000000003
+    },
+    "mono-100-1k-ferrflow-binary-validate": {
+      "median_ms": 4.2,
+      "stddev_ms": 0.4,
+      "memory_mb": "14.9",
+      "startup_ms": 2.7,
+      "work_ms": 1.5
+    },
+    "mono-100-1k-ferrflow-binary-version": {
+      "median_ms": 3.6,
+      "stddev_ms": 0.2,
+      "memory_mb": "14.6",
+      "startup_ms": 2.7,
+      "work_ms": 0.8999999999999999
+    },
     "mono-100-1k-ferrflow-docker-check": {
-      "median_ms": 205.0,
-      "stddev_ms": 5.9,
-      "memory_mb": "43.3",
-      "startup_ms": 196.1,
-      "work_ms": 8.900000000000006
+      "median_ms": 208.0,
+      "stddev_ms": 5.2,
+      "memory_mb": "44.1",
+      "startup_ms": 199.0,
+      "work_ms": 9
     },
     "mono-100-1k-ferrflow-docker-release-dry-run": {
-      "median_ms": 203.4,
-      "stddev_ms": 6.5,
-      "memory_mb": "43.2",
-      "startup_ms": 195.3,
-      "work_ms": 8.099999999999994
+      "median_ms": 205.1,
+      "stddev_ms": 3.9,
+      "memory_mb": "44.0",
+      "startup_ms": 197.6,
+      "work_ms": 7.5
     },
     "mono-100-1k-ferrflow-docker-tag": {
-      "median_ms": 192.2,
-      "stddev_ms": 3.4,
-      "memory_mb": "45.5",
-      "startup_ms": 191.4,
-      "work_ms": 0.799999999999983
+      "median_ms": 192.4,
+      "stddev_ms": 4.7,
+      "memory_mb": "43.2",
+      "startup_ms": 190.1,
+      "work_ms": 2.3000000000000114
     },
     "mono-100-1k-ferrflow-docker-validate": {
-      "median_ms": 192.2,
-      "stddev_ms": 5.8,
-      "memory_mb": "45.1",
-      "startup_ms": 190.2,
-      "work_ms": 2
+      "median_ms": 192.0,
+      "stddev_ms": 5.1,
+      "memory_mb": "44.6",
+      "startup_ms": 191.5,
+      "work_ms": 0.5
     },
     "mono-100-1k-ferrflow-docker-version": {
-      "median_ms": 190.3,
+      "median_ms": 192.0,
       "stddev_ms": 4.1,
-      "memory_mb": "45.2",
-      "startup_ms": 191.8,
+      "memory_mb": "45.4",
+      "startup_ms": 193.8,
       "work_ms": 0
     },
     "mono-100-1k-ferrflow-npm-check": {
-      "median_ms": 300.5,
-      "stddev_ms": 5.0,
-      "memory_mb": "90.4",
-      "startup_ms": 294.9,
-      "work_ms": 5.600000000000023
+      "median_ms": 309.2,
+      "stddev_ms": 4.6,
+      "memory_mb": "92.5",
+      "startup_ms": 298.4,
+      "work_ms": 10.800000000000011
     },
     "mono-100-1k-ferrflow-npm-release-dry-run": {
-      "median_ms": 300.2,
-      "stddev_ms": 5.2,
-      "memory_mb": "90.6",
-      "startup_ms": 292.8,
-      "work_ms": 7.399999999999977
+      "median_ms": 307.1,
+      "stddev_ms": 6.4,
+      "memory_mb": "92.4",
+      "startup_ms": 296.5,
+      "work_ms": 10.600000000000023
     },
     "mono-100-1k-ferrflow-npm-tag": {
-      "median_ms": 290.3,
+      "median_ms": 295.3,
       "stddev_ms": 3.5,
-      "memory_mb": "90.9",
-      "startup_ms": 294.5,
+      "memory_mb": "92.4",
+      "startup_ms": 296.7,
       "work_ms": 0
     },
     "mono-100-1k-ferrflow-npm-validate": {
-      "median_ms": 288.2,
-      "stddev_ms": 2.7,
-      "memory_mb": "90.9",
-      "startup_ms": 291.9,
+      "median_ms": 293.9,
+      "stddev_ms": 3.8,
+      "memory_mb": "92.3",
+      "startup_ms": 294.6,
       "work_ms": 0
     },
     "mono-100-1k-ferrflow-npm-version": {
-      "median_ms": 289.2,
-      "stddev_ms": 3.0,
-      "memory_mb": "91.0",
-      "startup_ms": 289.5,
+      "median_ms": 292.6,
+      "stddev_ms": 2.9,
+      "memory_mb": "92.4",
+      "startup_ms": 295.7,
       "work_ms": 0
     },
     "mono-100-1k-semantic-release-npm-release-dry-run": {
-      "median_ms": 1776.6,
-      "stddev_ms": 21.7,
-      "memory_mb": "158.5",
-      "startup_ms": 1358.2,
-      "work_ms": 418.39999999999986
+      "median_ms": 1794.0,
+      "stddev_ms": 14.1,
+      "memory_mb": "158.7",
+      "startup_ms": 1358.9,
+      "work_ms": 435.0999999999999
     },
     "mono-100-1k-standard-version-npm-release-dry-run": {
-      "median_ms": 699.0,
-      "stddev_ms": 6.2,
-      "memory_mb": "95.6",
-      "startup_ms": 512.9,
-      "work_ms": 186.10000000000002
+      "median_ms": 713.2,
+      "stddev_ms": 7.7,
+      "memory_mb": "95.8",
+      "startup_ms": 517.7,
+      "work_ms": 195.5
     },
     "mono-50-5k-changesets-npm-release-dry-run": {
-      "median_ms": 876.9,
-      "stddev_ms": 1035.5,
-      "memory_mb": "111.5",
-      "startup_ms": 797.9,
-      "work_ms": 79
+      "median_ms": 684.0,
+      "stddev_ms": 32.3,
+      "memory_mb": "114.1",
+      "startup_ms": 636.9,
+      "work_ms": 47.10000000000002
     },
     "mono-50-5k-commit-and-tag-version-npm-release-dry-run": {
-      "median_ms": 1012.6,
-      "stddev_ms": 8.6,
-      "memory_mb": "104.8",
-      "startup_ms": 493.7,
-      "work_ms": 518.9000000000001
+      "median_ms": 715.5,
+      "stddev_ms": 43.7,
+      "memory_mb": "107.1",
+      "startup_ms": 354.1,
+      "work_ms": 361.4
     },
     "mono-50-5k-ferrflow-binary-check": {
-      "median_ms": 41.2,
-      "stddev_ms": 2.9,
-      "memory_mb": "15.7",
-      "startup_ms": 7.0,
-      "work_ms": 34.2
+      "median_ms": 35.8,
+      "stddev_ms": 2.5,
+      "memory_mb": "15.6",
+      "startup_ms": 5.4,
+      "work_ms": 30.4
     },
     "mono-50-5k-ferrflow-binary-release-dry-run": {
-      "median_ms": 39.6,
-      "stddev_ms": 2.2,
+      "median_ms": 30.8,
+      "stddev_ms": 0.3,
       "memory_mb": "41.3",
-      "startup_ms": 6.7,
-      "work_ms": 32.9
+      "startup_ms": 5.3,
+      "work_ms": 25.5
     },
     "mono-50-5k-ferrflow-binary-tag": {
-      "median_ms": 6.1,
-      "stddev_ms": 0.5,
-      "memory_mb": "17.7",
-      "startup_ms": 3.5,
+      "median_ms": 5.1,
+      "stddev_ms": 0.3,
+      "memory_mb": "17.6",
+      "startup_ms": 2.5,
       "work_ms": 2.5999999999999996
     },
     "mono-50-5k-ferrflow-binary-validate": {
-      "median_ms": 3.8,
-      "stddev_ms": 0.7,
-      "memory_mb": "13.0",
-      "startup_ms": 3.2,
-      "work_ms": 0.5999999999999996
+      "median_ms": 2.9,
+      "stddev_ms": 0.3,
+      "memory_mb": "12.9",
+      "startup_ms": 2.2,
+      "work_ms": 0.6999999999999997
     },
     "mono-50-5k-ferrflow-binary-version": {
-      "median_ms": 3.5,
-      "stddev_ms": 0.3,
-      "memory_mb": "14.8",
-      "startup_ms": 3.2,
-      "work_ms": 0.2999999999999998
+      "median_ms": 2.7,
+      "stddev_ms": 0.4,
+      "memory_mb": "14.9",
+      "startup_ms": 2.2,
+      "work_ms": 0.5
     },
     "mono-50-5k-ferrflow-docker-check": {
-      "median_ms": 236.5,
-      "stddev_ms": 9.3,
-      "memory_mb": "45.0",
-      "startup_ms": 201.9,
-      "work_ms": 34.599999999999994
+      "median_ms": 297.1,
+      "stddev_ms": 145.7,
+      "memory_mb": "45.7",
+      "startup_ms": 346.8,
+      "work_ms": 0
     },
     "mono-50-5k-ferrflow-docker-release-dry-run": {
-      "median_ms": 239.1,
-      "stddev_ms": 9.6,
-      "memory_mb": "43.2",
-      "startup_ms": 203.0,
-      "work_ms": 36.099999999999994
+      "median_ms": 344.9,
+      "stddev_ms": 294.4,
+      "memory_mb": "47.4",
+      "startup_ms": 370.8,
+      "work_ms": 0
     },
     "mono-50-5k-ferrflow-docker-tag": {
-      "median_ms": 203.6,
-      "stddev_ms": 6.1,
-      "memory_mb": "45.1",
-      "startup_ms": 200.2,
-      "work_ms": 3.4000000000000057
+      "median_ms": 441.8,
+      "stddev_ms": 383.7,
+      "memory_mb": "46.7",
+      "startup_ms": 357.7,
+      "work_ms": 84.10000000000002
     },
     "mono-50-5k-ferrflow-docker-validate": {
-      "median_ms": 195.8,
-      "stddev_ms": 4.5,
-      "memory_mb": "45.6",
-      "startup_ms": 198.1,
-      "work_ms": 0
+      "median_ms": 341.6,
+      "stddev_ms": 275.9,
+      "memory_mb": "48.5",
+      "startup_ms": 250.3,
+      "work_ms": 91.30000000000001
     },
     "mono-50-5k-ferrflow-docker-version": {
-      "median_ms": 197.9,
-      "stddev_ms": 8.2,
-      "memory_mb": "45.0",
-      "startup_ms": 199.7,
-      "work_ms": 0
+      "median_ms": 464.4,
+      "stddev_ms": 221.9,
+      "memory_mb": "45.7",
+      "startup_ms": 179.7,
+      "work_ms": 284.7
     },
     "mono-50-5k-ferrflow-npm-check": {
-      "median_ms": 335.6,
-      "stddev_ms": 4.7,
-      "memory_mb": "90.9",
-      "startup_ms": 300.4,
-      "work_ms": 35.200000000000045
+      "median_ms": 257.6,
+      "stddev_ms": 7.1,
+      "memory_mb": "92.7",
+      "startup_ms": 237.3,
+      "work_ms": 20.30000000000001
     },
     "mono-50-5k-ferrflow-npm-release-dry-run": {
-      "median_ms": 331.5,
-      "stddev_ms": 4.0,
-      "memory_mb": "90.4",
-      "startup_ms": 301.8,
-      "work_ms": 29.69999999999999
+      "median_ms": 256.9,
+      "stddev_ms": 6.2,
+      "memory_mb": "92.8",
+      "startup_ms": 232.4,
+      "work_ms": 24.49999999999997
     },
     "mono-50-5k-ferrflow-npm-tag": {
-      "median_ms": 300.3,
-      "stddev_ms": 4.8,
-      "memory_mb": "90.8",
-      "startup_ms": 303.3,
+      "median_ms": 229.1,
+      "stddev_ms": 2.8,
+      "memory_mb": "92.1",
+      "startup_ms": 230.3,
       "work_ms": 0
     },
     "mono-50-5k-ferrflow-npm-validate": {
-      "median_ms": 297.8,
-      "stddev_ms": 5.2,
-      "memory_mb": "90.2",
-      "startup_ms": 303.4,
+      "median_ms": 226.8,
+      "stddev_ms": 2.5,
+      "memory_mb": "92.5",
+      "startup_ms": 230.1,
       "work_ms": 0
     },
     "mono-50-5k-ferrflow-npm-version": {
-      "median_ms": 300.7,
-      "stddev_ms": 4.3,
-      "memory_mb": "90.8",
-      "startup_ms": 304.1,
+      "median_ms": 228.2,
+      "stddev_ms": 4.4,
+      "memory_mb": "93.0",
+      "startup_ms": 232.1,
       "work_ms": 0
     },
     "mono-50-5k-semantic-release-npm-release-dry-run": {
-      "median_ms": 2586.8,
-      "stddev_ms": 26.0,
-      "memory_mb": "275.0",
-      "startup_ms": 1387.1,
-      "work_ms": 1199.7000000000003
+      "median_ms": 1908.4,
+      "stddev_ms": 23.7,
+      "memory_mb": "316.1",
+      "startup_ms": 1031.0,
+      "work_ms": 877.4000000000001
     },
     "mono-50-5k-standard-version-npm-release-dry-run": {
-      "median_ms": 1211.4,
-      "stddev_ms": 18.4,
-      "memory_mb": "124.8",
-      "startup_ms": 506.2,
-      "work_ms": 705.2
+      "median_ms": 880.5,
+      "stddev_ms": 7.8,
+      "memory_mb": "125.2",
+      "startup_ms": 395.1,
+      "work_ms": 485.4
     },
     "mono-large-changesets-npm-release-dry-run": {
-      "median_ms": 944.1,
-      "stddev_ms": 73.5,
-      "memory_mb": "117.7",
-      "startup_ms": 730.1,
-      "work_ms": 214
+      "median_ms": 770.2,
+      "stddev_ms": 16.6,
+      "memory_mb": "118.9",
+      "startup_ms": 603.3,
+      "work_ms": 166.9000000000001
     },
     "mono-large-commit-and-tag-version-npm-release-dry-run": {
-      "median_ms": 1344.8,
-      "stddev_ms": 66.5,
-      "memory_mb": "127.4",
-      "startup_ms": 453.1,
-      "work_ms": 891.6999999999999
+      "median_ms": 1082.5,
+      "stddev_ms": 10.2,
+      "memory_mb": "129.9",
+      "startup_ms": 341.6,
+      "work_ms": 740.9
     },
     "mono-large-ferrflow-binary-check": {
-      "median_ms": 76.4,
-      "stddev_ms": 1.7,
-      "memory_mb": "15.8",
-      "startup_ms": 6.5,
-      "work_ms": 69.9
+      "median_ms": 64.6,
+      "stddev_ms": 2.3,
+      "memory_mb": "15.6",
+      "startup_ms": 5.3,
+      "work_ms": 59.3
     },
     "mono-large-ferrflow-binary-release-dry-run": {
-      "median_ms": 74.0,
-      "stddev_ms": 2.2,
+      "median_ms": 64.2,
+      "stddev_ms": 2.3,
       "memory_mb": "47.1",
-      "startup_ms": 6.1,
-      "work_ms": 67.9
+      "startup_ms": 5.2,
+      "work_ms": 59
     },
     "mono-large-ferrflow-binary-tag": {
-      "median_ms": 10.4,
-      "stddev_ms": 1.1,
-      "memory_mb": "24.2",
-      "startup_ms": 3.2,
-      "work_ms": 7.2
+      "median_ms": 8.0,
+      "stddev_ms": 0.9,
+      "memory_mb": "24.1",
+      "startup_ms": 2.6,
+      "work_ms": 5.4
     },
     "mono-large-ferrflow-binary-validate": {
-      "median_ms": 5.9,
-      "stddev_ms": 0.4,
-      "memory_mb": "14.9",
-      "startup_ms": 3.0,
-      "work_ms": 2.9000000000000004
-    },
-    "mono-large-ferrflow-binary-version": {
-      "median_ms": 5.0,
-      "stddev_ms": 0.4,
-      "memory_mb": "14.8",
-      "startup_ms": 2.8,
-      "work_ms": 2.2
-    },
-    "mono-large-ferrflow-docker-check": {
-      "median_ms": 262.1,
-      "stddev_ms": 5.6,
-      "memory_mb": "42.6",
-      "startup_ms": 190.6,
-      "work_ms": 71.50000000000003
-    },
-    "mono-large-ferrflow-docker-release-dry-run": {
-      "median_ms": 260.3,
-      "stddev_ms": 5.3,
-      "memory_mb": "46.3",
-      "startup_ms": 188.1,
-      "work_ms": 72.20000000000002
-    },
-    "mono-large-ferrflow-docker-tag": {
-      "median_ms": 194.0,
-      "stddev_ms": 4.4,
-      "memory_mb": "45.1",
-      "startup_ms": 185.1,
-      "work_ms": 8.900000000000006
-    },
-    "mono-large-ferrflow-docker-validate": {
-      "median_ms": 193.8,
-      "stddev_ms": 10.2,
-      "memory_mb": "43.0",
-      "startup_ms": 187.0,
-      "work_ms": 6.800000000000011
-    },
-    "mono-large-ferrflow-docker-version": {
-      "median_ms": 187.8,
-      "stddev_ms": 5.0,
-      "memory_mb": "43.3",
-      "startup_ms": 185.9,
-      "work_ms": 1.9000000000000057
-    },
-    "mono-large-ferrflow-npm-check": {
-      "median_ms": 356.9,
-      "stddev_ms": 3.9,
-      "memory_mb": "93.0",
-      "startup_ms": 289.4,
-      "work_ms": 67.5
-    },
-    "mono-large-ferrflow-npm-release-dry-run": {
-      "median_ms": 358.5,
-      "stddev_ms": 5.1,
-      "memory_mb": "92.7",
-      "startup_ms": 288.1,
-      "work_ms": 70.39999999999998
-    },
-    "mono-large-ferrflow-npm-tag": {
-      "median_ms": 295.5,
-      "stddev_ms": 6.4,
-      "memory_mb": "92.0",
-      "startup_ms": 287.1,
-      "work_ms": 8.399999999999977
-    },
-    "mono-large-ferrflow-npm-validate": {
-      "median_ms": 288.2,
-      "stddev_ms": 3.0,
-      "memory_mb": "93.8",
-      "startup_ms": 288.1,
-      "work_ms": 0.0999999999999659
-    },
-    "mono-large-ferrflow-npm-version": {
-      "median_ms": 290.1,
-      "stddev_ms": 4.2,
-      "memory_mb": "92.8",
-      "startup_ms": 289.4,
-      "work_ms": 0.7000000000000455
-    },
-    "mono-large-semantic-release-npm-release-dry-run": {
-      "median_ms": 3123.0,
-      "stddev_ms": 34.1,
-      "memory_mb": "398.6",
-      "startup_ms": 1276.9,
-      "work_ms": 1846.1
-    },
-    "mono-large-standard-version-npm-release-dry-run": {
-      "median_ms": 1662.9,
-      "stddev_ms": 11.5,
-      "memory_mb": "163.6",
-      "startup_ms": 498.1,
-      "work_ms": 1164.8000000000002
-    },
-    "mono-medium-changesets-npm-release-dry-run": {
-      "median_ms": 850.8,
-      "stddev_ms": 31.5,
-      "memory_mb": "113.0",
-      "startup_ms": 780.6,
-      "work_ms": 70.19999999999993
-    },
-    "mono-medium-commit-and-tag-version-npm-release-dry-run": {
-      "median_ms": 537.3,
-      "stddev_ms": 10.9,
-      "memory_mb": "92.2",
-      "startup_ms": 468.8,
-      "work_ms": 68.49999999999994
-    },
-    "mono-medium-ferrflow-binary-check": {
-      "median_ms": 11.9,
-      "stddev_ms": 0.8,
-      "memory_mb": "15.4",
-      "startup_ms": 6.8,
-      "work_ms": 5.1000000000000005
-    },
-    "mono-medium-ferrflow-binary-release-dry-run": {
-      "median_ms": 11.6,
-      "stddev_ms": 1.0,
-      "memory_mb": "28.5",
-      "startup_ms": 6.4,
-      "work_ms": 5.199999999999999
-    },
-    "mono-medium-ferrflow-binary-tag": {
-      "median_ms": 4.2,
-      "stddev_ms": 0.4,
-      "memory_mb": "15.3",
-      "startup_ms": 3.1,
+      "median_ms": 3.5,
+      "stddev_ms": 0.6,
+      "memory_mb": "15.0",
+      "startup_ms": 2.4,
       "work_ms": 1.1
     },
-    "mono-medium-ferrflow-binary-validate": {
-      "median_ms": 3.7,
+    "mono-large-ferrflow-binary-version": {
+      "median_ms": 3.5,
       "stddev_ms": 0.5,
+      "memory_mb": "14.9",
+      "startup_ms": 2.6,
+      "work_ms": 0.8999999999999999
+    },
+    "mono-large-ferrflow-docker-check": {
+      "median_ms": 248.2,
+      "stddev_ms": 115.0,
+      "memory_mb": "46.2",
+      "startup_ms": 418.7,
+      "work_ms": 0
+    },
+    "mono-large-ferrflow-docker-release-dry-run": {
+      "median_ms": 364.6,
+      "stddev_ms": 171.7,
+      "memory_mb": "45.2",
+      "startup_ms": 173.1,
+      "work_ms": 191.50000000000003
+    },
+    "mono-large-ferrflow-docker-tag": {
+      "median_ms": 361.4,
+      "stddev_ms": 225.6,
+      "memory_mb": "46.0",
+      "startup_ms": 219.9,
+      "work_ms": 141.49999999999997
+    },
+    "mono-large-ferrflow-docker-validate": {
+      "median_ms": 151.6,
+      "stddev_ms": 106.2,
+      "memory_mb": "45.6",
+      "startup_ms": 266.6,
+      "work_ms": 0
+    },
+    "mono-large-ferrflow-docker-version": {
+      "median_ms": 208.3,
+      "stddev_ms": 162.6,
+      "memory_mb": "46.3",
+      "startup_ms": 165.3,
+      "work_ms": 43
+    },
+    "mono-large-ferrflow-npm-check": {
+      "median_ms": 273.9,
+      "stddev_ms": 7.6,
+      "memory_mb": "92.8",
+      "startup_ms": 214.4,
+      "work_ms": 59.49999999999997
+    },
+    "mono-large-ferrflow-npm-release-dry-run": {
+      "median_ms": 272.1,
+      "stddev_ms": 7.5,
+      "memory_mb": "92.3",
+      "startup_ms": 213.4,
+      "work_ms": 58.70000000000002
+    },
+    "mono-large-ferrflow-npm-tag": {
+      "median_ms": 213.0,
+      "stddev_ms": 3.9,
+      "memory_mb": "92.6",
+      "startup_ms": 214.4,
+      "work_ms": 0
+    },
+    "mono-large-ferrflow-npm-validate": {
+      "median_ms": 209.0,
+      "stddev_ms": 4.0,
+      "memory_mb": "92.5",
+      "startup_ms": 210.7,
+      "work_ms": 0
+    },
+    "mono-large-ferrflow-npm-version": {
+      "median_ms": 208.9,
+      "stddev_ms": 3.6,
+      "memory_mb": "92.5",
+      "startup_ms": 210.5,
+      "work_ms": 0
+    },
+    "mono-large-semantic-release-npm-release-dry-run": {
+      "median_ms": 2476.8,
+      "stddev_ms": 24.5,
+      "memory_mb": "400.7",
+      "startup_ms": 977.0,
+      "work_ms": 1499.8000000000002
+    },
+    "mono-large-standard-version-npm-release-dry-run": {
+      "median_ms": 1320.9,
+      "stddev_ms": 16.4,
+      "memory_mb": "168.3",
+      "startup_ms": 370.5,
+      "work_ms": 950.4000000000001
+    },
+    "mono-medium-changesets-npm-release-dry-run": {
+      "median_ms": 690.8,
+      "stddev_ms": 17.6,
+      "memory_mb": "113.6",
+      "startup_ms": 637.9,
+      "work_ms": 52.89999999999998
+    },
+    "mono-medium-commit-and-tag-version-npm-release-dry-run": {
+      "median_ms": 405.2,
+      "stddev_ms": 3.3,
+      "memory_mb": "93.6",
+      "startup_ms": 355.6,
+      "work_ms": 49.599999999999966
+    },
+    "mono-medium-ferrflow-binary-check": {
+      "median_ms": 10.7,
+      "stddev_ms": 0.7,
+      "memory_mb": "15.4",
+      "startup_ms": 5.2,
+      "work_ms": 5.499999999999999
+    },
+    "mono-medium-ferrflow-binary-release-dry-run": {
+      "median_ms": 9.8,
+      "stddev_ms": 0.8,
+      "memory_mb": "28.4",
+      "startup_ms": 4.9,
+      "work_ms": 4.9
+    },
+    "mono-medium-ferrflow-binary-tag": {
+      "median_ms": 3.3,
+      "stddev_ms": 0.3,
+      "memory_mb": "15.4",
+      "startup_ms": 2.4,
+      "work_ms": 0.8999999999999999
+    },
+    "mono-medium-ferrflow-binary-validate": {
+      "median_ms": 2.7,
+      "stddev_ms": 0.2,
       "memory_mb": "13.0",
-      "startup_ms": 2.9,
-      "work_ms": 0.8000000000000003
+      "startup_ms": 2.1,
+      "work_ms": 0.6000000000000001
     },
     "mono-medium-ferrflow-binary-version": {
-      "median_ms": 3.4,
+      "median_ms": 2.7,
       "stddev_ms": 0.3,
-      "memory_mb": "14.9",
-      "startup_ms": 2.9,
+      "memory_mb": "15.0",
+      "startup_ms": 2.2,
       "work_ms": 0.5
     },
     "mono-medium-ferrflow-docker-check": {
-      "median_ms": 206.3,
-      "stddev_ms": 4.7,
-      "memory_mb": "43.2",
-      "startup_ms": 199.9,
-      "work_ms": 6.400000000000006
-    },
-    "mono-medium-ferrflow-docker-release-dry-run": {
-      "median_ms": 204.5,
-      "stddev_ms": 4.8,
-      "memory_mb": "45.5",
-      "startup_ms": 198.9,
+      "median_ms": 172.6,
+      "stddev_ms": 25.0,
+      "memory_mb": "45.3",
+      "startup_ms": 167.0,
       "work_ms": 5.599999999999994
     },
+    "mono-medium-ferrflow-docker-release-dry-run": {
+      "median_ms": 167.6,
+      "stddev_ms": 28.1,
+      "memory_mb": "47.7",
+      "startup_ms": 167.9,
+      "work_ms": 0
+    },
     "mono-medium-ferrflow-docker-tag": {
-      "median_ms": 201.9,
-      "stddev_ms": 7.7,
-      "memory_mb": "43.1",
-      "startup_ms": 195.4,
-      "work_ms": 6.5
+      "median_ms": 162.0,
+      "stddev_ms": 21.6,
+      "memory_mb": "46.3",
+      "startup_ms": 163.4,
+      "work_ms": 0
     },
     "mono-medium-ferrflow-docker-validate": {
-      "median_ms": 199.9,
-      "stddev_ms": 4.8,
-      "memory_mb": "45.4",
-      "startup_ms": 197.4,
-      "work_ms": 2.5
+      "median_ms": 165.0,
+      "stddev_ms": 6.3,
+      "memory_mb": "46.1",
+      "startup_ms": 160.6,
+      "work_ms": 4.400000000000006
     },
     "mono-medium-ferrflow-docker-version": {
-      "median_ms": 198.2,
-      "stddev_ms": 5.5,
-      "memory_mb": "42.6",
-      "startup_ms": 194.8,
-      "work_ms": 3.3999999999999773
+      "median_ms": 161.8,
+      "stddev_ms": 25.7,
+      "memory_mb": "48.1",
+      "startup_ms": 161.9,
+      "work_ms": 0
     },
     "mono-medium-ferrflow-npm-check": {
-      "median_ms": 315.6,
-      "stddev_ms": 5.3,
-      "memory_mb": "92.5",
-      "startup_ms": 311.6,
-      "work_ms": 4
+      "median_ms": 230.6,
+      "stddev_ms": 2.6,
+      "memory_mb": "92.8",
+      "startup_ms": 231.1,
+      "work_ms": 0
     },
     "mono-medium-ferrflow-npm-release-dry-run": {
-      "median_ms": 312.4,
-      "stddev_ms": 4.2,
-      "memory_mb": "92.6",
-      "startup_ms": 305.2,
-      "work_ms": 7.199999999999989
+      "median_ms": 228.5,
+      "stddev_ms": 2.8,
+      "memory_mb": "92.5",
+      "startup_ms": 230.0,
+      "work_ms": 0
     },
     "mono-medium-ferrflow-npm-tag": {
-      "median_ms": 297.5,
-      "stddev_ms": 5.7,
-      "memory_mb": "92.5",
-      "startup_ms": 305.9,
+      "median_ms": 224.6,
+      "stddev_ms": 2.2,
+      "memory_mb": "92.4",
+      "startup_ms": 228.6,
       "work_ms": 0
     },
     "mono-medium-ferrflow-npm-validate": {
-      "median_ms": 294.5,
-      "stddev_ms": 5.0,
-      "memory_mb": "93.0",
-      "startup_ms": 300.8,
+      "median_ms": 222.7,
+      "stddev_ms": 2.9,
+      "memory_mb": "92.4",
+      "startup_ms": 231.3,
       "work_ms": 0
     },
     "mono-medium-ferrflow-npm-version": {
-      "median_ms": 300.0,
-      "stddev_ms": 4.2,
-      "memory_mb": "92.8",
-      "startup_ms": 301.1,
+      "median_ms": 224.3,
+      "stddev_ms": 3.7,
+      "memory_mb": "92.4",
+      "startup_ms": 228.0,
       "work_ms": 0
     },
     "mono-medium-semantic-release-npm-release-dry-run": {
-      "median_ms": 1676.3,
-      "stddev_ms": 17.6,
-      "memory_mb": "140.8",
-      "startup_ms": 1368.4,
-      "work_ms": 307.89999999999986
+      "median_ms": 1271.9,
+      "stddev_ms": 12.5,
+      "memory_mb": "141.3",
+      "startup_ms": 1055.5,
+      "work_ms": 216.4000000000001
     },
     "mono-medium-standard-version-npm-release-dry-run": {
-      "median_ms": 632.5,
-      "stddev_ms": 6.2,
-      "memory_mb": "94.2",
-      "startup_ms": 520.7,
-      "work_ms": 111.79999999999995
+      "median_ms": 468.3,
+      "stddev_ms": 4.1,
+      "memory_mb": "93.8",
+      "startup_ms": 391.4,
+      "work_ms": 76.90000000000003
     },
     "mono-small-changesets-npm-release-dry-run": {
-      "median_ms": 821.2,
-      "stddev_ms": 35.8,
-      "memory_mb": "111.3",
-      "startup_ms": 789.5,
-      "work_ms": 31.700000000000045
+      "median_ms": 841.8,
+      "stddev_ms": 25.8,
+      "memory_mb": "106.4",
+      "startup_ms": 796.1,
+      "work_ms": 45.69999999999993
     },
     "mono-small-commit-and-tag-version-npm-release-dry-run": {
-      "median_ms": 517.3,
-      "stddev_ms": 7.1,
-      "memory_mb": "89.8",
-      "startup_ms": 491.0,
-      "work_ms": 26.299999999999955
+      "median_ms": 500.3,
+      "stddev_ms": 5.1,
+      "memory_mb": "90.3",
+      "startup_ms": 479.8,
+      "work_ms": 20.5
     },
     "mono-small-ferrflow-binary-check": {
-      "median_ms": 9.6,
-      "stddev_ms": 0.8,
-      "memory_mb": "13.3",
-      "startup_ms": 6.9,
-      "work_ms": 2.6999999999999993
+      "median_ms": 9.1,
+      "stddev_ms": 1.1,
+      "memory_mb": "13.1",
+      "startup_ms": 7.1,
+      "work_ms": 2
     },
     "mono-small-ferrflow-binary-release-dry-run": {
-      "median_ms": 8.5,
-      "stddev_ms": 0.7,
-      "memory_mb": "30.1",
-      "startup_ms": 6.7,
-      "work_ms": 1.7999999999999998
+      "median_ms": 8.6,
+      "stddev_ms": 0.6,
+      "memory_mb": "30.2",
+      "startup_ms": 6.4,
+      "work_ms": 2.1999999999999993
     },
     "mono-small-ferrflow-binary-tag": {
-      "median_ms": 3.5,
-      "stddev_ms": 0.3,
-      "memory_mb": "13.2",
-      "startup_ms": 3.5,
-      "work_ms": 0
-    },
-    "mono-small-ferrflow-binary-validate": {
       "median_ms": 3.2,
       "stddev_ms": 0.3,
-      "memory_mb": "12.9",
-      "startup_ms": 3.3,
-      "work_ms": 0
-    },
-    "mono-small-ferrflow-binary-version": {
-      "median_ms": 3.1,
-      "stddev_ms": 0.3,
-      "memory_mb": "12.8",
+      "memory_mb": "13.0",
       "startup_ms": 3.2,
       "work_ms": 0
     },
+    "mono-small-ferrflow-binary-validate": {
+      "median_ms": 3.0,
+      "stddev_ms": 0.5,
+      "memory_mb": "12.9",
+      "startup_ms": 2.8,
+      "work_ms": 0.20000000000000018
+    },
+    "mono-small-ferrflow-binary-version": {
+      "median_ms": 3.0,
+      "stddev_ms": 0.4,
+      "memory_mb": "12.8",
+      "startup_ms": 2.9,
+      "work_ms": 0.10000000000000009
+    },
     "mono-small-ferrflow-docker-check": {
-      "median_ms": 206.2,
-      "stddev_ms": 6.8,
-      "memory_mb": "43.2",
-      "startup_ms": 207.9,
+      "median_ms": 202.1,
+      "stddev_ms": 6.6,
+      "memory_mb": "43.4",
+      "startup_ms": 202.6,
       "work_ms": 0
     },
     "mono-small-ferrflow-docker-release-dry-run": {
-      "median_ms": 206.6,
-      "stddev_ms": 4.6,
-      "memory_mb": "44.1",
-      "startup_ms": 205.5,
-      "work_ms": 1.0999999999999943
+      "median_ms": 202.1,
+      "stddev_ms": 8.3,
+      "memory_mb": "45.5",
+      "startup_ms": 199.6,
+      "work_ms": 2.5
     },
     "mono-small-ferrflow-docker-tag": {
-      "median_ms": 201.2,
-      "stddev_ms": 5.1,
-      "memory_mb": "44.5",
-      "startup_ms": 206.4,
-      "work_ms": 0
+      "median_ms": 197.8,
+      "stddev_ms": 7.0,
+      "memory_mb": "45.6",
+      "startup_ms": 194.3,
+      "work_ms": 3.5
     },
     "mono-small-ferrflow-docker-validate": {
-      "median_ms": 201.8,
-      "stddev_ms": 5.7,
-      "memory_mb": "42.4",
-      "startup_ms": 204.0,
+      "median_ms": 194.7,
+      "stddev_ms": 6.2,
+      "memory_mb": "44.6",
+      "startup_ms": 195.2,
       "work_ms": 0
     },
     "mono-small-ferrflow-docker-version": {
-      "median_ms": 199.4,
-      "stddev_ms": 6.3,
-      "memory_mb": "43.2",
-      "startup_ms": 206.1,
-      "work_ms": 0
+      "median_ms": 198.8,
+      "stddev_ms": 5.5,
+      "memory_mb": "43.3",
+      "startup_ms": 197.8,
+      "work_ms": 1
     },
     "mono-small-ferrflow-npm-check": {
-      "median_ms": 306.6,
-      "stddev_ms": 4.9,
-      "memory_mb": "90.6",
-      "startup_ms": 308.8,
+      "median_ms": 302.6,
+      "stddev_ms": 3.9,
+      "memory_mb": "90.2",
+      "startup_ms": 304.4,
       "work_ms": 0
     },
     "mono-small-ferrflow-npm-release-dry-run": {
-      "median_ms": 305.5,
-      "stddev_ms": 5.2,
-      "memory_mb": "91.0",
-      "startup_ms": 306.1,
+      "median_ms": 300.4,
+      "stddev_ms": 6.6,
+      "memory_mb": "91.2",
+      "startup_ms": 304.0,
       "work_ms": 0
     },
     "mono-small-ferrflow-npm-tag": {
-      "median_ms": 306.3,
-      "stddev_ms": 7.3,
-      "memory_mb": "90.5",
-      "startup_ms": 299.4,
-      "work_ms": 6.900000000000034
+      "median_ms": 292.7,
+      "stddev_ms": 4.9,
+      "memory_mb": "91.5",
+      "startup_ms": 303.2,
+      "work_ms": 0
     },
     "mono-small-ferrflow-npm-validate": {
-      "median_ms": 302.2,
-      "stddev_ms": 5.8,
-      "memory_mb": "90.2",
-      "startup_ms": 308.0,
+      "median_ms": 293.9,
+      "stddev_ms": 7.1,
+      "memory_mb": "90.0",
+      "startup_ms": 303.7,
       "work_ms": 0
     },
     "mono-small-ferrflow-npm-version": {
-      "median_ms": 297.7,
-      "stddev_ms": 4.5,
-      "memory_mb": "90.6",
-      "startup_ms": 305.6,
+      "median_ms": 293.0,
+      "stddev_ms": 6.7,
+      "memory_mb": "90.5",
+      "startup_ms": 302.3,
       "work_ms": 0
     },
     "mono-small-semantic-release-npm-release-dry-run": {
-      "median_ms": 1585.4,
-      "stddev_ms": 22.3,
-      "memory_mb": "134.7",
-      "startup_ms": 1380.7,
-      "work_ms": 204.70000000000005
+      "median_ms": 1606.1,
+      "stddev_ms": 15.8,
+      "memory_mb": "132.9",
+      "startup_ms": 1399.4,
+      "work_ms": 206.69999999999982
     },
     "mono-small-standard-version-npm-release-dry-run": {
-      "median_ms": 560.0,
-      "stddev_ms": 7.3,
-      "memory_mb": "93.4",
-      "startup_ms": 521.7,
-      "work_ms": 38.299999999999955
+      "median_ms": 566.5,
+      "stddev_ms": 6.9,
+      "memory_mb": "93.7",
+      "startup_ms": 529.8,
+      "work_ms": 36.700000000000045
     },
     "single-changesets-npm-release-dry-run": {
-      "median_ms": 724.1,
-      "stddev_ms": 21.2,
-      "memory_mb": "107.6",
-      "startup_ms": 726.9,
+      "median_ms": 762.4,
+      "stddev_ms": 31.9,
+      "memory_mb": "103.6",
+      "startup_ms": 765.6,
       "work_ms": 0
     },
     "single-commit-and-tag-version-npm-release-dry-run": {
-      "median_ms": 472.6,
-      "stddev_ms": 5.1,
-      "memory_mb": "90.5",
-      "startup_ms": 454.7,
-      "work_ms": 17.900000000000034
+      "median_ms": 489.8,
+      "stddev_ms": 5.4,
+      "memory_mb": "89.7",
+      "startup_ms": 468.0,
+      "work_ms": 21.80000000000001
     },
     "single-ferrflow-binary-check": {
-      "median_ms": 7.8,
-      "stddev_ms": 0.8,
-      "memory_mb": "13.3",
+      "median_ms": 7.4,
+      "stddev_ms": 0.7,
+      "memory_mb": "13.2",
       "startup_ms": 6.5,
-      "work_ms": 1.2999999999999998
+      "work_ms": 0.9000000000000004
     },
     "single-ferrflow-binary-release-dry-run": {
-      "median_ms": 7.2,
-      "stddev_ms": 0.9,
-      "memory_mb": "22.0",
-      "startup_ms": 6.2,
-      "work_ms": 1
+      "median_ms": 6.9,
+      "stddev_ms": 0.6,
+      "memory_mb": "22.1",
+      "startup_ms": 6.4,
+      "work_ms": 0.5
     },
     "single-ferrflow-binary-tag": {
-      "median_ms": 3.1,
-      "stddev_ms": 0.3,
-      "memory_mb": "13.2",
-      "startup_ms": 3.0,
+      "median_ms": 3.0,
+      "stddev_ms": 0.2,
+      "memory_mb": "13.1",
+      "startup_ms": 2.9,
       "work_ms": 0.10000000000000009
     },
     "single-ferrflow-binary-validate": {
       "median_ms": 2.8,
       "stddev_ms": 0.3,
       "memory_mb": "12.9",
+      "startup_ms": 2.7,
+      "work_ms": 0.09999999999999964
+    },
+    "single-ferrflow-binary-version": {
+      "median_ms": 2.7,
+      "stddev_ms": 0.4,
+      "memory_mb": "12.8",
       "startup_ms": 2.8,
       "work_ms": 0
     },
-    "single-ferrflow-binary-version": {
-      "median_ms": 2.8,
-      "stddev_ms": 0.3,
-      "memory_mb": "12.9",
-      "startup_ms": 2.9,
-      "work_ms": 0
-    },
     "single-ferrflow-docker-check": {
-      "median_ms": 192.7,
-      "stddev_ms": 4.3,
-      "memory_mb": "45.1",
-      "startup_ms": 192.9,
+      "median_ms": 194.3,
+      "stddev_ms": 4.4,
+      "memory_mb": "43.7",
+      "startup_ms": 197.5,
       "work_ms": 0
     },
     "single-ferrflow-docker-release-dry-run": {
-      "median_ms": 190.6,
-      "stddev_ms": 4.5,
-      "memory_mb": "45.6",
-      "startup_ms": 190.7,
-      "work_ms": 0
+      "median_ms": 196.3,
+      "stddev_ms": 5.2,
+      "memory_mb": "46.4",
+      "startup_ms": 196.1,
+      "work_ms": 0.20000000000001705
     },
     "single-ferrflow-docker-tag": {
-      "median_ms": 187.7,
-      "stddev_ms": 5.3,
-      "memory_mb": "43.2",
-      "startup_ms": 188.8,
-      "work_ms": 0
+      "median_ms": 191.3,
+      "stddev_ms": 4.9,
+      "memory_mb": "45.3",
+      "startup_ms": 190.2,
+      "work_ms": 1.1000000000000227
     },
     "single-ferrflow-docker-validate": {
-      "median_ms": 186.8,
-      "stddev_ms": 5.1,
-      "memory_mb": "43.0",
-      "startup_ms": 187.7,
+      "median_ms": 190.8,
+      "stddev_ms": 5.4,
+      "memory_mb": "43.7",
+      "startup_ms": 192.3,
       "work_ms": 0
     },
     "single-ferrflow-docker-version": {
-      "median_ms": 186.1,
-      "stddev_ms": 11.0,
-      "memory_mb": "43.5",
-      "startup_ms": 187.0,
-      "work_ms": 0
+      "median_ms": 194.3,
+      "stddev_ms": 4.7,
+      "memory_mb": "45.3",
+      "startup_ms": 193.5,
+      "work_ms": 0.8000000000000114
     },
     "single-ferrflow-npm-check": {
-      "median_ms": 292.4,
-      "stddev_ms": 4.4,
-      "memory_mb": "90.1",
-      "startup_ms": 290.2,
-      "work_ms": 2.1999999999999886
+      "median_ms": 297.9,
+      "stddev_ms": 3.6,
+      "memory_mb": "90.4",
+      "startup_ms": 299.6,
+      "work_ms": 0
     },
     "single-ferrflow-npm-release-dry-run": {
-      "median_ms": 297.8,
-      "stddev_ms": 7.1,
-      "memory_mb": "89.9",
-      "startup_ms": 292.4,
-      "work_ms": 5.400000000000034
+      "median_ms": 299.9,
+      "stddev_ms": 4.4,
+      "memory_mb": "90.7",
+      "startup_ms": 298.3,
+      "work_ms": 1.599999999999966
     },
     "single-ferrflow-npm-tag": {
-      "median_ms": 300.1,
-      "stddev_ms": 4.4,
-      "memory_mb": "90.1",
-      "startup_ms": 288.3,
-      "work_ms": 11.800000000000011
+      "median_ms": 295.9,
+      "stddev_ms": 3.8,
+      "memory_mb": "90.4",
+      "startup_ms": 298.7,
+      "work_ms": 0
     },
     "single-ferrflow-npm-validate": {
-      "median_ms": 290.2,
-      "stddev_ms": 4.0,
-      "memory_mb": "90.1",
-      "startup_ms": 288.1,
-      "work_ms": 2.099999999999966
+      "median_ms": 298.5,
+      "stddev_ms": 5.4,
+      "memory_mb": "90.3",
+      "startup_ms": 295.3,
+      "work_ms": 3.1999999999999886
     },
     "single-ferrflow-npm-version": {
-      "median_ms": 295.9,
-      "stddev_ms": 4.8,
+      "median_ms": 300.1,
+      "stddev_ms": 5.6,
       "memory_mb": "89.9",
-      "startup_ms": 290.0,
-      "work_ms": 5.899999999999977
+      "startup_ms": 295.2,
+      "work_ms": 4.900000000000034
     },
     "single-semantic-release-npm-release-dry-run": {
-      "median_ms": 1465.2,
-      "stddev_ms": 18.1,
-      "memory_mb": "133.7",
-      "startup_ms": 1268.3,
-      "work_ms": 196.9000000000001
+      "median_ms": 1576.4,
+      "stddev_ms": 17.3,
+      "memory_mb": "134.0",
+      "startup_ms": 1369.7,
+      "work_ms": 206.70000000000005
     },
     "single-standard-version-npm-release-dry-run": {
-      "median_ms": 542.3,
-      "stddev_ms": 4.9,
-      "memory_mb": "90.4",
-      "startup_ms": 504.8,
-      "work_ms": 37.49999999999994
+      "median_ms": 560.3,
+      "stddev_ms": 7.4,
+      "memory_mb": "93.5",
+      "startup_ms": 518.1,
+      "work_ms": 42.19999999999993
     }
   },
   "ferrflow_parallel": {
     "complex-check": {
-      "median_ms": 17.1,
-      "stddev_ms": 1.5
+      "median_ms": 17.3,
+      "stddev_ms": 1.3
     },
     "complex-release-dry-run": {
-      "median_ms": 16.8,
+      "median_ms": 16.3,
       "stddev_ms": 1.3
     },
     "complex-tag": {
-      "median_ms": 4.3,
-      "stddev_ms": 0.5
+      "median_ms": 4.0,
+      "stddev_ms": 0.3
     },
     "complex-validate": {
-      "median_ms": 3.6,
-      "stddev_ms": 0.3
+      "median_ms": 3.4,
+      "stddev_ms": 0.2
     },
     "complex-version": {
-      "median_ms": 3.4,
-      "stddev_ms": 0.3
+      "median_ms": 3.3,
+      "stddev_ms": 0.2
     },
     "mono-100-1k-check": {
-      "median_ms": 20.6,
-      "stddev_ms": 2.4
+      "median_ms": 20.3,
+      "stddev_ms": 1.9
     },
     "mono-100-1k-release-dry-run": {
-      "median_ms": 19.7,
-      "stddev_ms": 1.6
+      "median_ms": 19.1,
+      "stddev_ms": 1.4
     },
     "mono-100-1k-tag": {
-      "median_ms": 4.8,
-      "stddev_ms": 0.5
+      "median_ms": 5.3,
+      "stddev_ms": 0.7
     },
     "mono-100-1k-validate": {
       "median_ms": 3.8,
-      "stddev_ms": 0.2
-    },
-    "mono-100-1k-version": {
-      "median_ms": 3.4,
-      "stddev_ms": 0.2
-    },
-    "mono-50-5k-check": {
-      "median_ms": 42.0,
-      "stddev_ms": 3.4
-    },
-    "mono-50-5k-release-dry-run": {
-      "median_ms": 41.7,
-      "stddev_ms": 3.5
-    },
-    "mono-50-5k-tag": {
-      "median_ms": 6.1,
       "stddev_ms": 0.4
     },
-    "mono-50-5k-validate": {
+    "mono-100-1k-version": {
       "median_ms": 3.5,
-      "stddev_ms": 0.2
+      "stddev_ms": 0.3
+    },
+    "mono-50-5k-check": {
+      "median_ms": 35.0,
+      "stddev_ms": 3.1
+    },
+    "mono-50-5k-release-dry-run": {
+      "median_ms": 34.5,
+      "stddev_ms": 2.8
+    },
+    "mono-50-5k-tag": {
+      "median_ms": 4.8,
+      "stddev_ms": 0.3
+    },
+    "mono-50-5k-validate": {
+      "median_ms": 2.7,
+      "stddev_ms": 0.3
     },
     "mono-50-5k-version": {
-      "median_ms": 3.0,
+      "median_ms": 2.4,
       "stddev_ms": 0.3
     },
     "mono-large-check": {
-      "median_ms": 77.5,
-      "stddev_ms": 1.8
+      "median_ms": 64.4,
+      "stddev_ms": 2.7
     },
     "mono-large-release-dry-run": {
-      "median_ms": 74.6,
-      "stddev_ms": 2.6
+      "median_ms": 65.2,
+      "stddev_ms": 2.9
     },
     "mono-large-tag": {
-      "median_ms": 10.1,
-      "stddev_ms": 1.0
+      "median_ms": 6.9,
+      "stddev_ms": 1.4
     },
     "mono-large-validate": {
-      "median_ms": 5.4,
-      "stddev_ms": 0.3
-    },
-    "mono-large-version": {
-      "median_ms": 4.6,
+      "median_ms": 3.1,
       "stddev_ms": 0.4
     },
-    "mono-medium-check": {
-      "median_ms": 14.6,
-      "stddev_ms": 1.3
-    },
-    "mono-medium-release-dry-run": {
-      "median_ms": 12.2,
-      "stddev_ms": 0.9
-    },
-    "mono-medium-tag": {
-      "median_ms": 4.1,
+    "mono-large-version": {
+      "median_ms": 3.1,
       "stddev_ms": 0.5
     },
-    "mono-medium-validate": {
-      "median_ms": 3.4,
+    "mono-medium-check": {
+      "median_ms": 11.6,
+      "stddev_ms": 0.9
+    },
+    "mono-medium-release-dry-run": {
+      "median_ms": 10.5,
+      "stddev_ms": 0.6
+    },
+    "mono-medium-tag": {
+      "median_ms": 3.1,
       "stddev_ms": 0.2
     },
+    "mono-medium-validate": {
+      "median_ms": 2.5,
+      "stddev_ms": 0.1
+    },
     "mono-medium-version": {
-      "median_ms": 3.2,
+      "median_ms": 2.4,
       "stddev_ms": 0.2
     },
     "mono-small-check": {
@@ -1045,70 +1045,70 @@
       "stddev_ms": 0.7
     },
     "mono-small-release-dry-run": {
-      "median_ms": 9.0,
-      "stddev_ms": 0.6
+      "median_ms": 8.8,
+      "stddev_ms": 0.5
     },
     "mono-small-tag": {
-      "median_ms": 3.3,
-      "stddev_ms": 0.4
+      "median_ms": 3.2,
+      "stddev_ms": 0.3
     },
     "mono-small-validate": {
       "median_ms": 2.9,
-      "stddev_ms": 0.3
+      "stddev_ms": 0.4
     },
     "mono-small-version": {
-      "median_ms": 2.9,
-      "stddev_ms": 0.3
+      "median_ms": 3.0,
+      "stddev_ms": 0.2
     },
     "single-check": {
-      "median_ms": 7.8,
-      "stddev_ms": 0.5
+      "median_ms": 7.7,
+      "stddev_ms": 0.6
     },
     "single-release-dry-run": {
-      "median_ms": 7.4,
-      "stddev_ms": 0.5
+      "median_ms": 7.3,
+      "stddev_ms": 0.6
     },
     "single-tag": {
-      "median_ms": 2.9,
+      "median_ms": 2.8,
       "stddev_ms": 0.3
     },
     "single-validate": {
-      "median_ms": 2.7,
-      "stddev_ms": 0.3
+      "median_ms": 2.6,
+      "stddev_ms": 0.6
     },
     "single-version": {
-      "median_ms": 2.7,
-      "stddev_ms": 0.4
+      "median_ms": 2.6,
+      "stddev_ms": 0.3
     }
   },
   "ferrflow_cached": {
     "complex-check": {
-      "median_ms": 4.3,
-      "stddev_ms": 0.2
+      "median_ms": 3.9,
+      "stddev_ms": 0.3
     },
     "mono-100-1k-check": {
       "median_ms": 4.0,
       "stddev_ms": 0.3
     },
     "mono-50-5k-check": {
-      "median_ms": 4.1,
-      "stddev_ms": 0.3
+      "median_ms": 2.9,
+      "stddev_ms": 0.2
     },
     "mono-large-check": {
-      "median_ms": 5.3,
-      "stddev_ms": 0.4
+      "median_ms": 3.4,
+      "stddev_ms": 0.6
     },
     "mono-medium-check": {
-      "median_ms": 4.2,
-      "stddev_ms": 0.4
+      "median_ms": 2.9,
+      "stddev_ms": 0.3
     },
     "mono-small-check": {
-      "median_ms": 3.4,
-      "stddev_ms": 0.4
+      "median_ms": 3.2,
+      "stddev_ms": 0.3
     },
     "single-check": {
-      "median_ms": 3.1,
-      "stddev_ms": 0.4
+      "median_ms": 2.9,
+      "stddev_ms": 0.7
     }
   },
   "install_sizes": {
