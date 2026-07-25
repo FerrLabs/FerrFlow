@@ -34,7 +34,7 @@ workspace = true
 
 [features]
 default = ["cli"]
-cli = ["dep:gix", "dep:gix-traverse", "dep:gix-diff", "dep:ureq", "dep:clap", "dep:clap_complete", "dep:colored", "dep:mimalloc", "dep:rayon", "dep:tracing-subscriber", "dep:serde_norway"]
+cli = ["dep:gix", "dep:gix-hash", "dep:gix-traverse", "dep:gix-diff", "dep:ureq", "dep:clap", "dep:clap_complete", "dep:colored", "dep:mimalloc", "dep:rayon", "dep:tracing-subscriber", "dep:serde_norway"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
@@ -52,8 +52,9 @@ clap = { version = "4", features = ["derive", "env"], optional = true }
 clap_complete = { version = "4", optional = true }
 colored = { version = "3", optional = true }
 gix = { version = "0.86", default-features = false, features = ["sha1", "max-performance-safe", "revision"], optional = true }
-gix-traverse = { version = "0.59", optional = true }
-gix-diff = { version = "0.65", default-features = false, optional = true }
+gix-hash = { version = "0.25", default-features = false, features = ["sha1"], optional = true }
+gix-traverse = { version = "0.60", optional = true }
+gix-diff = { version = "0.66", default-features = false, optional = true }
 ureq = { version = "3", features = ["json"], optional = true }
 # YAML source configs for `ferrflow migrate` (cli-only). Maintained serde_yaml fork.
 serde_norway = { version = "0.9", optional = true }
