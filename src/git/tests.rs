@@ -1,5 +1,5 @@
 use super::auth::{configure_git_command, extract_url_password, server_config_url, token_for_url};
-use super::push::{fetch_and_rebase, local_tag_target_sha, parse_ls_remote_tags};
+use super::push::{local_tag_target_sha, parse_ls_remote_tags};
 use super::repo::Repository;
 use super::retry::{is_transient_git_error, retry_transient};
 use super::tags::{find_highest_semver_tag, find_last_tag, is_floating_tag, is_prerelease_tag};
@@ -1482,7 +1482,7 @@ fn resolve_branch_detached_returns_non_empty() {
 }
 
 // -----------------------------------------------------------------------
-// fetch_and_rebase — regression test for #367
+// push — concurrent-release rejection (#765, supersedes the #367 rebase)
 // -----------------------------------------------------------------------
 
 /// Simulates what the release bot does when a concurrent push advances
@@ -1493,12 +1493,14 @@ fn resolve_branch_detached_returns_non_empty() {
 ///   │       analog of a feature PR merging just before we push)
 ///   └── X   (our local release commit, parent = A)
 ///
-/// After fetch_and_rebase, the replayed X' must contain BOTH B's changes
-/// and X's changes. Issue #367: the previous merge_trees arg order quietly
-/// reverted B so the rebased commit ended up as "A + X — B" — losing
-/// every file B had touched.
+/// `push` must REJECT here rather than rebase X onto B. Release tags are
+/// created before the push, so rebasing would rewrite HEAD and strand them
+/// on the orphaned X — and the tag names themselves are stale once a
+/// concurrent run has published that version (#765). The rejection is what
+/// drives `monorepo::release`'s regenerate loop, which resets to the remote
+/// tip and recomputes the plan against B.
 #[test]
-fn fetch_and_rebase_preserves_concurrent_remote_changes() {
+fn push_rejects_when_remote_advanced_instead_of_rebasing() {
     let base_dir = tempfile::tempdir().unwrap();
 
     let remote_path = base_dir.path().join("remote.git");
@@ -1541,16 +1543,29 @@ fn fetch_and_rebase_preserves_concurrent_remote_changes() {
 
     create_commit_in_repo(&repo, &local_path, "release_commit.txt", "commit X");
 
+    let local_head_before = git(&local_path, &["rev-parse", "HEAD"]);
+
     let repo = open_repo(&local_path).unwrap();
-    fetch_and_rebase(&repo, "origin", "main").expect("rebase should succeed");
+    let err = super::push::push(&repo, "origin", "main")
+        .expect_err("push onto an advanced remote must be rejected, not rebased");
+
+    assert!(
+        is_push_rejected_error(&err),
+        "the rejection must be classified as retryable so the release regenerate \
+         loop replans against the new base; got: {err:#}"
+    );
+
+    let local_head_after = git(&local_path, &["rev-parse", "HEAD"]);
+    assert_eq!(
+        local_head_before, local_head_after,
+        "push must not rewrite HEAD: release tags already point at it"
+    );
 
     let head_tree = git(&local_path, &["ls-tree", "-r", "--name-only", "HEAD"]);
-    assert!(head_tree.contains("base.txt"));
-    assert!(head_tree.contains("from_concurrent_pr.txt"));
-    assert!(head_tree.contains("release_commit.txt"));
-
-    let parent_tree = git(&local_path, &["ls-tree", "-r", "--name-only", "HEAD^"]);
-    assert!(parent_tree.contains("from_concurrent_pr.txt"));
+    assert!(
+        !head_tree.contains("from_concurrent_pr.txt"),
+        "no rebase should have happened"
+    );
 }
 
 // ── reset_branch_to_remote — used by the release retry path ─────────
@@ -1648,6 +1663,17 @@ fn is_push_rejected_error_recognises_known_signatures() {
     let e = anyhow::anyhow!(
         "Updates were rejected because the tip of your current branch is non-fast-forward"
     );
+    assert!(is_push_rejected_error(&e));
+
+    // A concurrent run published the version this plan plotted, so the tag
+    // exists on the remote at a different commit (#765). Regenerating replans
+    // on top of the winner; without this the run hard-failed with E2006 and
+    // silently dropped every other package it was about to release.
+    let e = anyhow::anyhow!(
+        "Tag(s) already exist on remote pointing to a different commit: \
+         api@v3.13.3 (local 1e3ed96 != remote c3ae651)."
+    )
+    .context(error_code::GIT_PUSH_TAGS);
     assert!(is_push_rejected_error(&e));
 
     // Unrelated error must not match.

@@ -99,9 +99,16 @@ pub(super) fn is_transient_git_error(err: &anyhow::Error) -> bool {
 }
 
 pub fn is_push_rejected_error(err: &anyhow::Error) -> bool {
+    // GIT_PUSH_TAGS covers the concurrent-release case: another run published
+    // the version this plan plotted, so the tag exists on the remote at a
+    // different commit. Regenerating recomputes the plan against the winner's
+    // history and picks the next version on top of it, which is the only safe
+    // resolution — deleting or force-pushing the tag would destroy a published
+    // release.
     let push_codes: &[String] = &[
         error_code::GIT_PUSH_REJECTED.to_string(),
         error_code::GIT_PUSH_BRANCH.to_string(),
+        error_code::GIT_PUSH_TAGS.to_string(),
     ];
     err.chain().any(|cause| {
         let raw = cause.to_string();

@@ -410,98 +410,6 @@ fn try_push_branch_once(repo: &Repository, remote_name: &str, branch: &str) -> R
     Ok(())
 }
 
-pub(super) fn fetch_and_rebase(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
-    let workdir = repo
-        .workdir()
-        .ok_or_else(|| anyhow!("bare repos are not supported"))?;
-    let push_url = get_remote_url(repo, remote_name)
-        .ok_or_else(|| anyhow!("Remote '{remote_name}' has no URL"))?;
-
-    let mut fetch_cmd = std::process::Command::new("git");
-    fetch_cmd.current_dir(workdir);
-    configure_git_command(&mut fetch_cmd, &push_url);
-    fetch_cmd.arg("fetch").arg(remote_name).arg(format!(
-        "+refs/heads/{branch}:refs/remotes/{remote_name}/{branch}"
-    ));
-    let fetch_out = fetch_cmd
-        .output()
-        .with_context(|| "spawn `git fetch` failed")?;
-    if !fetch_out.status.success() {
-        let stderr = String::from_utf8_lossy(&fetch_out.stderr);
-        return Err(anyhow!("git fetch failed: {}", stderr.trim()));
-    }
-
-    let remote_oid_str = run_git(
-        workdir,
-        &["rev-parse", &format!("refs/remotes/{remote_name}/{branch}")],
-    )
-    .with_context(|| format!("could not resolve refs/remotes/{remote_name}/{branch}"))?
-    .trim()
-    .to_string();
-    let local_oid_str = run_git(workdir, &["rev-parse", "HEAD"])
-        .with_context(|| "could not resolve HEAD")?
-        .trim()
-        .to_string();
-
-    if remote_oid_str == local_oid_str {
-        return Ok(());
-    }
-
-    if run_git(
-        workdir,
-        &[
-            "merge-base",
-            "--is-ancestor",
-            &remote_oid_str,
-            &local_oid_str,
-        ],
-    )
-    .is_ok()
-    {
-        return Ok(());
-    }
-
-    let local_ref = format!("refs/heads/{branch}");
-    // Distinguish "detached HEAD" (legit state — bail with a clear error
-    // instead of silently rewriting a branch we may not even be tracking)
-    // from "on a different branch" (still a hard error: we shouldn't try
-    // to fast-forward a branch the user isn't on). The previous code
-    // collapsed both into a destructive `update-ref` + `checkout -f`.
-    let current_head = run_git(workdir, &["symbolic-ref", "-q", "HEAD"])
-        .ok()
-        .map(|s| s.trim().to_string());
-    match current_head.as_deref() {
-        Some(r) if r == local_ref => {
-            let rebase_result = run_git(
-                workdir,
-                &["rebase", &format!("refs/remotes/{remote_name}/{branch}")],
-            );
-            if let Err(err) = rebase_result {
-                let _ = run_git(workdir, &["rebase", "--abort"]);
-                return Err(anyhow!(
-                    "Rebase conflict: cannot rebase release commits on top of remote '{branch}'. \
-                     Run manually or use releaseCommitMode = \"pr\".\n{err}"
-                ));
-            }
-        }
-        Some(other) => {
-            return Err(anyhow!(
-                "Refusing to rebase: HEAD is on '{other}', not '{local_ref}'. \
-                 Check out '{branch}' before retrying."
-            ));
-        }
-        None => {
-            return Err(anyhow!(
-                "Refusing to rebase: HEAD is detached. Check out '{branch}' before retrying. \
-                 (If a previous release left a stale lock, clear it with `ferrflow release \
-                 --force-unlock`, or reset the branch manually.)"
-            ));
-        }
-    }
-
-    Ok(())
-}
-
 pub fn reset_branch_to_remote(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
     super::validate::ensure_safe_refname_fragment(remote_name, "remote name")?;
     super::validate::ensure_safe_refname_fragment(branch, "branch name")?;
@@ -550,37 +458,16 @@ pub fn reset_branch_to_remote(repo: &Repository, remote_name: &str, branch: &str
     Ok(())
 }
 
-const MAX_PUSH_RETRIES: usize = 3;
-
-pub fn push(repo: &Repository, remote_name: &str, branch: &str, tags: &[&str]) -> Result<()> {
-    for attempt in 1..=MAX_PUSH_RETRIES {
-        match try_push_branch(repo, remote_name, branch) {
-            Ok(()) => break,
-            Err(e) => {
-                let is_non_ff = e.chain().any(|cause| {
-                    let msg = cause.to_string().to_lowercase();
-                    msg.contains("non-fastforward")
-                        || msg.contains("not fast forward")
-                        || msg.contains("non-fast-forward")
-                        || msg.contains("push rejected")
-                        || msg.contains("rejected")
-                });
-
-                if !is_non_ff || attempt == MAX_PUSH_RETRIES {
-                    return Err(e)
-                        .with_context(|| {
-                            format!("Failed to push branch '{branch}' after {attempt} attempt(s)")
-                        })
-                        .error_code(error_code::GIT_PUSH_BRANCH);
-                }
-
-                tracing::warn!(
-                    "Push rejected (non-fast-forward), rebasing on remote and retrying ({attempt}/{MAX_PUSH_RETRIES})..."
-                );
-                fetch_and_rebase(repo, remote_name, branch)?;
-            }
-        }
-    }
+// Rebasing here would rewrite HEAD while the release tags created in an
+// earlier phase stay pinned to the pre-rebase commit, so the run would push
+// orphaned tags — or collide with a version a concurrent run just published
+// (E2006). A rejected push is surfaced instead, letting the regenerate loop in
+// `monorepo::release` reset to the remote tip and recompute the whole plan
+// against the new base.
+pub fn push(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
+    try_push_branch(repo, remote_name, branch)
+        .with_context(|| format!("Failed to push branch '{branch}'"))
+        .error_code(error_code::GIT_PUSH_BRANCH)?;
 
     let workdir = repo
         .workdir()
@@ -591,8 +478,6 @@ pub fn push(repo: &Repository, remote_name: &str, branch: &str, tags: &[&str]) -
     verify_remote_branch(repo, remote_name, branch, head_oid)
         .with_context(|| "Post-push verification failed: release commit not on remote branch")
         .error_code(error_code::GIT_PUSH_VERIFY_FAILED)?;
-
-    push_tags(repo, remote_name, tags)?;
 
     Ok(())
 }
