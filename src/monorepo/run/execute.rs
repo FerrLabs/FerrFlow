@@ -490,12 +490,7 @@ fn push_and_publish(
         .collect();
 
     if let ReleaseCommitMode::Commit = mode {
-        push(
-            plan.repo,
-            &plan.config.workspace.remote,
-            plan.target_branch,
-            &[],
-        )?;
+        push(plan.repo, &plan.config.workspace.remote, plan.target_branch)?;
         plan.shared_outputs.push(format!(
             "✓ Pushed and verified on {}/{}",
             plan.config.workspace.remote, plan.target_branch
