@@ -50,6 +50,12 @@ pub(super) struct ReleasePlan<'a> {
     /// anything in that mode) and on resumed runs that already finished
     /// every phase. See #549.
     pub checkpoint: Option<&'a mut Checkpoint>,
+    /// Pre-resolved forge. `None` — the production path — resolves one from
+    /// config at publish time, which keeps the forge auto-detection probe off
+    /// dry-runs and off releases that never reach the publish phase. Tests
+    /// inject a double to observe what the publish step does (or, for the
+    /// ordering guarantee, that it never ran).
+    pub forge: Option<&'a dyn Forge>,
 }
 
 /// Run the commit / branch+PR / tag / floating-tag / forge-release /
@@ -524,8 +530,13 @@ fn push_refs(
 }
 
 fn publish_releases(plan: &mut ReleasePlan<'_>) -> Result<()> {
-    if let Some(forge_instance) = build_forge_instance(plan.repo, plan.config) {
-        publish_releases_with(plan, forge_instance.as_ref())?;
+    match plan.forge {
+        Some(forge) => publish_releases_with(plan, forge)?,
+        None => {
+            if let Some(forge_instance) = build_forge_instance(plan.repo, plan.config) {
+                publish_releases_with(plan, forge_instance.as_ref())?;
+            }
+        }
     }
 
     write_github_step_summary(plan.tags_to_create);
