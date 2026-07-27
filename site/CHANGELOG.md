@@ -1,5 +1,15 @@
 # Changelog
 
+## [6.33.0] - 2026-07-27
+
+### Features
+
+- feat(docs): document cabal and cmake version file formats (#746)
+
+### Bug Fixes
+
+- fix(site): refresh FerrFlow v5.47.3 release data
+
 ## [6.32.4] - 2026-07-25
 
 ### Bug Fixes
