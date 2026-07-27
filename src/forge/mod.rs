@@ -29,7 +29,6 @@ pub trait Forge: Send + Sync {
         body: &str,
         prerelease: bool,
         draft: bool,
-        target_commitish: Option<&str>,
     ) -> Result<ReleaseResult>;
     fn find_draft_release(&self, tag: &str) -> Result<Option<u64>>;
     fn publish_release(&self, release_id: u64) -> Result<()>;

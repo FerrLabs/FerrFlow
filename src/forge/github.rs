@@ -68,21 +68,16 @@ impl Forge for GitHubForge {
         body: &str,
         prerelease: bool,
         draft: bool,
-        target_commitish: Option<&str>,
     ) -> Result<ReleaseResult> {
         let url = format!("{}/repos/{}/releases", self.api_base, self.slug);
 
-        let mut payload = serde_json::json!({
+        let payload = serde_json::json!({
             "tag_name": tag,
             "name": tag,
             "body": body,
             "draft": draft,
             "prerelease": prerelease,
         });
-        if let Some(sha) = target_commitish.filter(|s| !s.is_empty()) {
-            payload["target_commitish"] = serde_json::Value::String(sha.to_string());
-        }
-
         let response: serde_json::Value = self
             .agent
             .post(&url)

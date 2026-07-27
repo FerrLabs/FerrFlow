@@ -117,11 +117,17 @@ pub(super) fn execute_release(plan: &mut ReleasePlan<'_>) -> Result<()> {
     run_package_hooks(plan, HookPoint::PrePublish)?;
 
     if !plan.dry_run {
+        if !checkpoint_is_done(plan, Phase::Pushed) {
+            push_refs(plan, mode, &floating_tag_names)?;
+            checkpoint_advance(plan, Phase::Pushed)?;
+        } else if plan.verbose {
+            tracing::info!("  ↻ Resumed: skipping push (already done)");
+        }
         if !checkpoint_is_done(plan, Phase::ReleasesCreated) {
-            push_and_publish(plan, mode, &floating_tag_names)?;
+            publish_releases(plan)?;
             checkpoint_advance(plan, Phase::ReleasesCreated)?;
         } else if plan.verbose {
-            tracing::info!("  ↻ Resumed: skipping push + publish (already done)");
+            tracing::info!("  ↻ Resumed: skipping publish (already done)");
         }
     }
 
@@ -478,7 +484,12 @@ fn run_release_summary_hook(plan: &ReleasePlan<'_>, point: HookPoint) -> Result<
     Ok(())
 }
 
-fn push_and_publish(
+// Git lands first, the forge second (#770). Publishing a release that
+// references a tag the remote doesn't have yet means every failure in between
+// leaves the forge ahead of git: releases published against a missing ref, and
+// on GitHub/Gitea a lightweight tag auto-created from `target_commitish` that
+// shadows the annotated tag carrying the changelog body.
+fn push_refs(
     plan: &mut ReleasePlan<'_>,
     mode: ReleaseCommitMode,
     floating_tag_names: &[String],
@@ -497,58 +508,6 @@ fn push_and_publish(
         ));
     }
 
-    let target_sha = plan.repo.head_id().ok().map(|id| id.to_string());
-
-    if let Some(forge_instance) = build_forge_instance(plan.repo, plan.config) {
-        let forge_ref: &dyn Forge = forge_instance.as_ref();
-        let draft = plan.draft;
-        let target_sha_ref = target_sha.as_deref();
-
-        let threads = forge_pool_threads(plan.tags_to_create.len(), crate::concurrency::max_jobs());
-        let pool = rayon::ThreadPoolBuilder::new()
-            .num_threads(threads)
-            .build()
-            .map_err(|e| anyhow::anyhow!("failed to build release thread pool: {e}"))
-            .error_code(error_code::MONOREPO_PUSH_FAILED)?;
-
-        let outcomes: Vec<(String, String, TagReleaseOutcome)> = pool.install(|| {
-            plan.tags_to_create
-                .par_iter()
-                .map(|(tag_name, _, body, pkg_name, _, _, is_pre)| {
-                    let outcome = process_release_tag(
-                        forge_ref,
-                        tag_name,
-                        body,
-                        *is_pre,
-                        draft,
-                        target_sha_ref,
-                    );
-                    (tag_name.clone(), pkg_name.clone(), outcome)
-                })
-                .collect()
-        });
-
-        for (tag_name, pkg_name, outcome) in outcomes {
-            for warning in outcome.warnings {
-                if !warning.verbose_only || plan.verbose {
-                    tracing::warn!("{}", warning.message.yellow());
-                }
-            }
-            if let Some(result) = outcome.result {
-                plan.forge_results.push((tag_name, result));
-            }
-            if let Some(line) = outcome.success_line
-                && let Some((_, lines)) = plan
-                    .pkg_outputs
-                    .iter_mut()
-                    .rev()
-                    .find(|(n, _)| *n == pkg_name)
-            {
-                lines.push(line);
-            }
-        }
-    }
-
     if !tag_refs.is_empty() {
         push_tags(plan.repo, &plan.config.workspace.remote, &tag_refs)?;
         plan.shared_outputs.push("✓ Pushed tags".to_string());
@@ -561,7 +520,58 @@ fn push_and_publish(
             .push("✓ Pushed floating tags".to_string());
     }
 
+    Ok(())
+}
+
+fn publish_releases(plan: &mut ReleasePlan<'_>) -> Result<()> {
+    if let Some(forge_instance) = build_forge_instance(plan.repo, plan.config) {
+        publish_releases_with(plan, forge_instance.as_ref())?;
+    }
+
     write_github_step_summary(plan.tags_to_create);
+    Ok(())
+}
+
+fn publish_releases_with(plan: &mut ReleasePlan<'_>, forge: &dyn Forge) -> Result<()> {
+    let draft = plan.draft;
+
+    let threads = forge_pool_threads(plan.tags_to_create.len(), crate::concurrency::max_jobs());
+    let pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(threads)
+        .build()
+        .map_err(|e| anyhow::anyhow!("failed to build release thread pool: {e}"))
+        .error_code(error_code::MONOREPO_PUSH_FAILED)?;
+
+    let outcomes: Vec<(String, String, TagReleaseOutcome)> = pool.install(|| {
+        plan.tags_to_create
+            .par_iter()
+            .map(|(tag_name, _, body, pkg_name, _, _, is_pre)| {
+                let outcome = process_release_tag(forge, tag_name, body, *is_pre, draft);
+                (tag_name.clone(), pkg_name.clone(), outcome)
+            })
+            .collect()
+    });
+
+    for (tag_name, pkg_name, outcome) in outcomes {
+        for warning in outcome.warnings {
+            if !warning.verbose_only || plan.verbose {
+                tracing::warn!("{}", warning.message.yellow());
+            }
+        }
+        if let Some(result) = outcome.result {
+            plan.forge_results.push((tag_name, result));
+        }
+        if let Some(line) = outcome.success_line
+            && let Some((_, lines)) = plan
+                .pkg_outputs
+                .iter_mut()
+                .rev()
+                .find(|(n, _)| *n == pkg_name)
+        {
+            lines.push(line);
+        }
+    }
+
     Ok(())
 }
 
@@ -588,7 +598,6 @@ fn process_release_tag(
     body: &str,
     is_pre: bool,
     draft: bool,
-    target_sha: Option<&str>,
 ) -> TagReleaseOutcome {
     let noun = forge.release_noun();
     let mut warnings = Vec::new();
@@ -620,7 +629,7 @@ fn process_release_tag(
         }
     }
 
-    match forge.create_release(tag_name, body, is_pre, draft, target_sha) {
+    match forge.create_release(tag_name, body, is_pre, draft) {
         Ok(result) => {
             let success_line = if draft {
                 format!("  ✓ Draft {} {}", noun, tag_name.cyan())
@@ -761,7 +770,6 @@ mod tag_release_tests {
             _body: &str,
             _prerelease: bool,
             _draft: bool,
-            _target_commitish: Option<&str>,
         ) -> Result<ReleaseResult> {
             self.create_calls.lock().unwrap().push(tag.to_string());
             if self.create_fails_for.iter().any(|t| t == tag) {
@@ -854,7 +862,7 @@ mod tag_release_tests {
             drafts: HashMap::from([("v1".to_string(), 42)]),
             ..Default::default()
         };
-        let outcome = process_release_tag(&forge, "v1", "body", false, false, None);
+        let outcome = process_release_tag(&forge, "v1", "body", false, false);
 
         assert!(outcome.warnings.is_empty());
         assert!(outcome.result.is_none());
@@ -874,7 +882,7 @@ mod tag_release_tests {
             publish_fails: true,
             ..Default::default()
         };
-        let outcome = process_release_tag(&forge, "v1", "body", false, false, None);
+        let outcome = process_release_tag(&forge, "v1", "body", false, false);
 
         assert_eq!(outcome.warnings.len(), 1);
         assert!(!outcome.warnings[0].verbose_only);
@@ -890,7 +898,7 @@ mod tag_release_tests {
     #[test]
     fn creates_release_when_no_draft() {
         let forge = MockForge::default();
-        let outcome = process_release_tag(&forge, "v1", "body", false, false, None);
+        let outcome = process_release_tag(&forge, "v1", "body", false, false);
 
         assert!(outcome.warnings.is_empty());
         assert_eq!(
@@ -906,7 +914,7 @@ mod tag_release_tests {
             create_fails_for: vec!["v1".to_string()],
             ..Default::default()
         };
-        let outcome = process_release_tag(&forge, "v1", "body", false, false, None);
+        let outcome = process_release_tag(&forge, "v1", "body", false, false);
 
         assert_eq!(outcome.warnings.len(), 1);
         assert!(!outcome.warnings[0].verbose_only);
@@ -925,7 +933,7 @@ mod tag_release_tests {
             find_draft_errors_for: vec!["v1".to_string()],
             ..Default::default()
         };
-        let outcome = process_release_tag(&forge, "v1", "body", false, false, None);
+        let outcome = process_release_tag(&forge, "v1", "body", false, false);
 
         assert_eq!(outcome.warnings.len(), 1);
         assert!(outcome.warnings[0].verbose_only);
@@ -938,7 +946,7 @@ mod tag_release_tests {
             drafts: HashMap::from([("v1".to_string(), 42)]),
             ..Default::default()
         };
-        let outcome = process_release_tag(&forge, "v1", "body", false, true, None);
+        let outcome = process_release_tag(&forge, "v1", "body", false, true);
 
         assert!(outcome.warnings.is_empty());
         assert!(outcome.result.is_some());
@@ -970,7 +978,7 @@ mod tag_release_tests {
         let collected: Vec<(String, Option<String>)> = pool.install(|| {
             tags.par_iter()
                 .map(|t| {
-                    let outcome = process_release_tag(&forge, t, "body", false, false, None);
+                    let outcome = process_release_tag(&forge, t, "body", false, false);
                     (t.to_string(), outcome.result.and_then(|r| r.url))
                 })
                 .collect()

@@ -21,7 +21,6 @@ impl Forge for BitbucketForge {
         _body: &str,
         _prerelease: bool,
         _draft: bool,
-        _target_commitish: Option<&str>,
     ) -> Result<ReleaseResult> {
         // Bitbucket has no "release" object — the annotated tag FerrFlow
         // already pushed *is* the release. On Cloud we look the tag up to
@@ -162,7 +161,7 @@ mod tests {
         // is_cloud == false short-circuits before any HTTP, so this must not
         // hang or panic and must report no forge URL.
         let result = make_forge(false)
-            .create_release("v1.0.0", "notes", false, false, None)
+            .create_release("v1.0.0", "notes", false, false)
             .unwrap();
         assert_eq!(result.id, None);
         assert_eq!(result.url, None);
