@@ -59,7 +59,6 @@ impl Forge for GitLabForge {
         body: &str,
         prerelease: bool,
         draft: bool,
-        _target_commitish: Option<&str>,
     ) -> Result<ReleaseResult> {
         if draft {
             tracing::warn!(

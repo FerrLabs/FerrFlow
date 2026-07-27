@@ -251,6 +251,39 @@ mod tests {
         assert!(Phase::ReleasesCreated < Phase::PostPublishDone);
     }
 
+    // `Pushed` is written to disk for the first time as of #770 — before that
+    // it was declared but never advanced. A wrong serde rename would surface
+    // as a resume that silently re-pushes tags it already pushed.
+    #[test]
+    fn pushed_phase_round_trips_through_disk() {
+        let dir = init_test_repo();
+        let mut cp = Checkpoint::new("a".into(), vec![]);
+        cp.advance(Phase::Pushed);
+        cp.save(dir.path()).unwrap();
+
+        let loaded = Checkpoint::load(dir.path())
+            .unwrap()
+            .expect("checkpoint should load back");
+        assert_eq!(loaded.phase, Phase::Pushed);
+    }
+
+    // #770 slotted `Pushed` between `TagsCreated` and `ReleasesCreated`.
+    // Checkpoints written by earlier versions record one of the surrounding
+    // phases and must keep their meaning: a run that got as far as creating
+    // releases still skips both steps, one that only tagged still does both.
+    #[test]
+    fn checkpoints_predating_the_push_phase_keep_their_meaning() {
+        let mut tagged = Checkpoint::new("a".into(), vec![]);
+        tagged.advance(Phase::TagsCreated);
+        assert!(!tagged.is_done(Phase::Pushed));
+        assert!(!tagged.is_done(Phase::ReleasesCreated));
+
+        let mut released = Checkpoint::new("a".into(), vec![]);
+        released.advance(Phase::ReleasesCreated);
+        assert!(released.is_done(Phase::Pushed));
+        assert!(released.is_done(Phase::ReleasesCreated));
+    }
+
     #[test]
     fn is_done_threshold_check() {
         let mut cp = Checkpoint::new("a".into(), vec![]);
