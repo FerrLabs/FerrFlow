@@ -441,6 +441,8 @@
                     "mixexs",
                     "gemspec",
                     "packageswift",
+                    "cabal",
+                    "cmake",
                     "txt"
                   ]
                 },

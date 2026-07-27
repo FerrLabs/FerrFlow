@@ -3,7 +3,6 @@ title: Supported formats
 description: Version file formats that FerrFlow can read and update.
 ---
 
-
 <div class="ferr-tabs">
   <div class="ferr-tab" data-label="JSON"><p class="ferr-tab__label">JSON</p><div class="ferr-tab__body"><p>Used by Node.js (<code>package.json</code>).</p>
 <p>FerrFlow updates the top-level <code>version</code> field.</p>
@@ -100,13 +99,13 @@ format = &quot;gemspec&quot;
 <p>Swift PM derives a package&#39;s version from git tags, so there&#39;s no canonical location inside <code>Package.swift</code> — FerrFlow updates the first <code>let &lt;name&gt;Version = &quot;…&quot;</code> declaration. Constant names must end with <code>Version</code> (e.g. <code>packageVersion</code>, <code>AppVersion</code>) or be literally <code>version</code>. Dependency <code>.package(url:..., from: &quot;…&quot;)</code> arguments are <strong>not</strong> touched.</p>
 <pre><code class="language-swift">import PackageDescription
 
-let packageVersion = &quot;1.2.3&quot;   // ← updated
+let packageVersion = &quot;1.2.3&quot; // ← updated
 
 let package = Package(
-  name: &quot;MyPackage&quot;,
-  dependencies: [
-    .package(url: &quot;…&quot;, from: &quot;1.5.0&quot;),   // untouched
-  ]
+name: &quot;MyPackage&quot;,
+dependencies: [
+.package(url: &quot;…&quot;, from: &quot;1.5.0&quot;), // untouched
+]
 )
 </code></pre>
 <p>Config snippet:</p>
@@ -115,26 +114,54 @@ path   = &quot;Package.swift&quot;
 format = &quot;packageswift&quot;
 </code></pre>
 </div></div>
+  <div class="ferr-tab" data-label="Haskell"><p class="ferr-tab__label">Haskell</p><div class="ferr-tab__body"><p>Used by Haskell packages (<code>*.cabal</code>).</p>
+<p>FerrFlow updates the top-level <code>version:</code> field. Field names are case-insensitive and top-level fields sit at column 0, so <code>cabal-version:</code> — which declares the file format, not the package version — is <strong>never</strong> touched, and neither is an indented <code>version:</code> inside a stanza.</p>
+<pre><code class="language-cabal">cabal-version:      2.4     &lt;-- untouched
+name:               my-package
+version:            1.2.3   &lt;-- updated
+</code></pre>
+<p>Config snippet:</p>
+<pre><code class="language-toml">[[package.versioned_files]]
+path   = &quot;my-package.cabal&quot;
+format = &quot;cabal&quot;
+</code></pre>
+</div></div>
+  <div class="ferr-tab" data-label="CMake"><p class="ferr-tab__label">CMake</p><div class="ferr-tab__body"><p>Used by C / C++ projects (<code>CMakeLists.txt</code>).</p>
+<p>FerrFlow updates the <code>VERSION</code> argument of the <code>project()</code> call, including the multi-line form. <code>cmake_minimum_required(VERSION …)</code> — the CMake tool floor — and any <code>set(&lt;name&gt;_VERSION …)</code> variable are <strong>not</strong> touched.</p>
+<pre><code class="language-cmake">cmake_minimum_required(VERSION 3.20)   // untouched
+
+project(MyProject
+VERSION 1.2.3 // updated
+LANGUAGES CXX)
+</code></pre>
+<p>Config snippet:</p>
+<pre><code class="language-toml">[[package.versioned_files]]
+path   = &quot;CMakeLists.txt&quot;
+format = &quot;cmake&quot;
+</code></pre>
+</div></div>
 </div>
 
 ## File → format quick reference
 
-| File | `format` | Selector / behaviour |
-|---|---|---|
-| `Cargo.toml` | `toml` | `package.version` |
-| `pyproject.toml` | `toml` | `project.version` or `tool.poetry.version` |
-| `package.json` | `json` | `version` |
-| `composer.json` | `json` | `version` |
-| `pom.xml` | `xml` | first `<version>` tag |
-| `*.csproj` | `csproj` | `<Version>` in `<PropertyGroup>` |
-| `build.gradle`, `build.gradle.kts` | `gradle` | `version = "…"` |
-| `Chart.yaml` | `helm` or `chartyaml` | top-level `version:` |
-| `pubspec.yaml` | `pubspecyaml` | top-level `version:` |
-| `mix.exs` | `mixexs` | `version: "…"` in project keyword list |
-| `*.gemspec` | `gemspec` | `<ident>.version = "…"` |
-| `Package.swift` | `packageswift` | top-level `let <name>Version = "…"` |
-| `go.mod` | `gomod` | git tag only — no file write |
-| `VERSION`, `VERSION.txt` | `txt` | entire file content |
+| File                               | `format`              | Selector / behaviour                       |
+| ---------------------------------- | --------------------- | ------------------------------------------ |
+| `Cargo.toml`                       | `toml`                | `package.version`                          |
+| `pyproject.toml`                   | `toml`                | `project.version` or `tool.poetry.version` |
+| `package.json`                     | `json`                | `version`                                  |
+| `composer.json`                    | `json`                | `version`                                  |
+| `pom.xml`                          | `xml`                 | first `<version>` tag                      |
+| `*.csproj`                         | `csproj`              | `<Version>` in `<PropertyGroup>`           |
+| `build.gradle`, `build.gradle.kts` | `gradle`              | `version = "…"`                            |
+| `Chart.yaml`                       | `helm` or `chartyaml` | top-level `version:`                       |
+| `pubspec.yaml`                     | `pubspecyaml`         | top-level `version:`                       |
+| `mix.exs`                          | `mixexs`              | `version: "…"` in project keyword list     |
+| `*.gemspec`                        | `gemspec`             | `<ident>.version = "…"`                    |
+| `Package.swift`                    | `packageswift`        | top-level `let <name>Version = "…"`        |
+| `*.cabal`                          | `cabal`               | top-level `version:` field                 |
+| `CMakeLists.txt`                   | `cmake`               | `VERSION` argument of `project()`          |
+| `go.mod`                           | `gomod`               | git tag only — no file write               |
+| `VERSION`, `VERSION.txt`           | `txt`                 | entire file content                        |
 
 ## Multiple files per package
 
@@ -158,7 +185,7 @@ path   = &quot;Cargo.toml&quot;
 format = &quot;toml&quot;
 
 [[package.versioned_files]]
-path   = &quot;npm/package.json&quot;
+path = &quot;npm/package.json&quot;
 format = &quot;json&quot;
 </code></pre>
 </div></div>

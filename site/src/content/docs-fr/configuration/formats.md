@@ -3,7 +3,6 @@ title: Formats supportés
 description: Formats de fichiers de version que FerrFlow peut lire et mettre à jour.
 ---
 
-
 ## TOML
 
 Utilisé par Rust (`Cargo.toml`) et Python (`pyproject.toml`).
@@ -78,8 +77,34 @@ FerrFlow met à jour le champ `version` et, lorsqu'il est présent, maintient `a
 ```yaml
 apiVersion: v2
 name: my-app
-version: 1.2.3        # ← mis à jour
-appVersion: "1.2.3"   # ← mis à jour si présent
+version: 1.2.3 # ← mis à jour
+appVersion: '1.2.3' # ← mis à jour si présent
+```
+
+## Cabal
+
+Utilisé par les packages Haskell (`*.cabal`).
+
+FerrFlow met à jour le champ `version` de premier niveau. Le champ `cabal-version`, qui déclare le format du fichier et non la version du package, n'est jamais modifié — pas plus qu'un `version:` indenté à l'intérieur d'une stanza.
+
+```
+cabal-version:      2.4   # ← laissé tel quel
+name:               my-package
+version:            1.2.3 # ← mis à jour
+```
+
+## CMake
+
+Utilisé par les projets C / C++ (`CMakeLists.txt`).
+
+FerrFlow met à jour l'argument `VERSION` de l'appel `project()`, y compris lorsqu'il est réparti sur plusieurs lignes. `cmake_minimum_required(VERSION …)` — la version minimale de l'outil CMake — n'est pas touché.
+
+```cmake
+cmake_minimum_required(VERSION 3.20)   # ← laissé tel quel
+
+project(MyProject
+    VERSION 1.2.3                      # ← mis à jour
+    LANGUAGES CXX)
 ```
 
 ## Plusieurs fichiers par package
@@ -104,7 +129,7 @@ path   = &quot;Cargo.toml&quot;
 format = &quot;toml&quot;
 
 [[package.versioned_files]]
-path   = &quot;npm/package.json&quot;
+path = &quot;npm/package.json&quot;
 format = &quot;json&quot;
 </code></pre>
 </div></div>
