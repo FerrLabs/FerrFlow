@@ -26,6 +26,8 @@ mod cascade;
 pub(super) mod checkpoint;
 mod drafts;
 mod execute;
+#[cfg(test)]
+mod execute_tests;
 mod forced;
 mod graph;
 mod groups;
@@ -698,6 +700,7 @@ pub(super) fn run_release_logic(
             shared_outputs: &mut shared_outputs,
             forge_results: &mut forge_results,
             checkpoint: checkpoint.as_mut(),
+            forge: None,
         };
         let release_start = std::time::Instant::now();
         let release_result = execute_release(&mut plan);
@@ -777,6 +780,7 @@ pub(super) fn run_release_logic(
             shared_outputs: &mut shared_outputs,
             forge_results: &mut forge_results,
             checkpoint: None,
+            forge: None,
         };
         print_dry_run_hooks(&plan)?;
         timing.skip("release commit phase", "dry-run");
