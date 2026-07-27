@@ -286,6 +286,24 @@ pub const PACKAGE_SWIFT_WRITE: ErrorCode = ErrorCode(4843);
 pub const PACKAGE_SWIFT_INVALID_UTF8: ErrorCode = ErrorCode(4844);
 
 #[allow(dead_code)]
+pub const CABAL_READ: ErrorCode = ErrorCode(4851);
+#[allow(dead_code)]
+pub const CABAL_VERSION_NOT_FOUND: ErrorCode = ErrorCode(4852);
+#[allow(dead_code)]
+pub const CABAL_WRITE: ErrorCode = ErrorCode(4853);
+#[allow(dead_code)]
+pub const CABAL_INVALID_UTF8: ErrorCode = ErrorCode(4854);
+
+#[allow(dead_code)]
+pub const CMAKE_READ: ErrorCode = ErrorCode(4861);
+#[allow(dead_code)]
+pub const CMAKE_VERSION_NOT_FOUND: ErrorCode = ErrorCode(4862);
+#[allow(dead_code)]
+pub const CMAKE_WRITE: ErrorCode = ErrorCode(4863);
+#[allow(dead_code)]
+pub const CMAKE_INVALID_UTF8: ErrorCode = ErrorCode(4864);
+
+#[allow(dead_code)]
 pub const PRERELEASE_EMPTY_CHANNEL: ErrorCode = ErrorCode(5001);
 #[allow(dead_code)]
 pub const PRERELEASE_INVALID_CHANNEL: ErrorCode = ErrorCode(5002);

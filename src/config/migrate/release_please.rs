@@ -269,6 +269,10 @@ fn format_from_ext(path: &str) -> Option<FileFormat> {
         Some(FileFormat::Gemspec)
     } else if lower.ends_with(".xml") {
         Some(FileFormat::Xml)
+    } else if lower.ends_with(".cabal") {
+        Some(FileFormat::Cabal)
+    } else if basename == "cmakelists.txt" {
+        Some(FileFormat::Cmake)
     } else if lower.ends_with(".txt") || basename == "version" {
         Some(FileFormat::Txt)
     } else {
@@ -458,6 +462,31 @@ mod tests {
         assert!(matches!(
             cfg.packages[0].versioned_files[0].format,
             FileFormat::Gemspec
+        ));
+    }
+
+    // `CMakeLists.txt` ends in `.txt`, so the cmake branch has to be checked
+    // first or the file is inferred as a plain-text version file and the whole
+    // CMakeLists gets overwritten with a bare version string.
+    #[test]
+    fn cmakelists_is_inferred_as_cmake_not_txt() {
+        let (cfg, _) = build_ok(
+            r#"{"packages": {"native": {"release-type": "simple", "version-file": "CMakeLists.txt"}}}"#,
+        );
+        assert!(matches!(
+            cfg.packages[0].versioned_files[0].format,
+            FileFormat::Cmake
+        ));
+    }
+
+    #[test]
+    fn cabal_file_is_inferred_from_its_extension() {
+        let (cfg, _) = build_ok(
+            r#"{"packages": {"hs": {"release-type": "simple", "version-file": "my-package.cabal"}}}"#,
+        );
+        assert!(matches!(
+            cfg.packages[0].versioned_files[0].format,
+            FileFormat::Cabal
         ));
     }
 
