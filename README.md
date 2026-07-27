@@ -31,6 +31,8 @@ A single compiled binary with no runtime dependencies. Native monorepo support, 
 | `mixexs` | `mix.exs` | Elixir | `version: "…"` in `def project` |
 | `gemspec` | `*.gemspec` | Ruby | `s.version = "…"` |
 | `packageswift` | `Package.swift` | Swift | top-level `let <name>Version = "…"` |
+| `cabal` | `*.cabal` | Haskell | top-level `version:` field |
+| `cmake` | `CMakeLists.txt` | C / C++ | `VERSION` argument of `project()` |
 | `gomod` | `go.mod` | Go | git tag only — no file write |
 | `txt` | `VERSION`, `VERSION.txt` | Any | entire file content |
 

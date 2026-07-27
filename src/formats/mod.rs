@@ -1,4 +1,6 @@
+pub mod cabal;
 pub mod chart_yaml;
+pub mod cmake;
 pub mod csproj;
 pub mod gemspec;
 pub mod gomod;
@@ -102,6 +104,8 @@ pub fn get_handler(format: &FileFormat) -> Box<dyn VersionFile> {
         FileFormat::ChartYaml => Box::new(chart_yaml::ChartYamlVersionFile),
         FileFormat::Gemspec => Box::new(gemspec::GemspecVersionFile),
         FileFormat::PackageSwift => Box::new(package_swift::PackageSwiftVersionFile),
+        FileFormat::Cabal => Box::new(cabal::CabalVersionFile),
+        FileFormat::Cmake => Box::new(cmake::CmakeVersionFile),
     }
 }
 
@@ -157,6 +161,8 @@ mod tests {
             FileFormat::ChartYaml,
             FileFormat::Gemspec,
             FileFormat::PackageSwift,
+            FileFormat::Cabal,
+            FileFormat::Cmake,
         ] {
             let _ = get_handler(format);
         }
@@ -222,6 +228,8 @@ mod tests {
             FileFormat::ChartYaml,
             FileFormat::Gemspec,
             FileFormat::PackageSwift,
+            FileFormat::Cabal,
+            FileFormat::Cmake,
         ] {
             let handler = get_handler(format);
             assert!(

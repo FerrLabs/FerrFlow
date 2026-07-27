@@ -166,4 +166,9 @@ pub enum FileFormat {
     /// `Package.swift` for Swift packages.
     #[serde(rename = "packageswift")]
     PackageSwift,
+    /// `*.cabal` for Haskell packages.
+    Cabal,
+    /// `CMakeLists.txt` — the `VERSION` argument of the `project()` call.
+    #[serde(rename = "cmake")]
+    Cmake,
 }
