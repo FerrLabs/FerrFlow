@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.47.4] - 2026-07-27
+
+### Bug Fixes
+
+- fix(release): push tags before creating forge releases (#771)
+
 ## [5.47.3] - 2026-07-25
 
 ### Bug Fixes
