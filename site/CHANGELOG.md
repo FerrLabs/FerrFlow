@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.34.0] - 2026-07-28
+
+### Features
+
+- feat(docs): changesets migration now discovers workspace packages (#749)
+
 ## [6.33.2] - 2026-07-28
 
 ### Bug Fixes
