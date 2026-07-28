@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.48.1] - 2026-07-28
+
+### Bug Fixes
+
+- fix(ci): sign release artifacts with cosign bundles (#774)
+
 ## [5.48.0] - 2026-07-27
 
 ### Features
