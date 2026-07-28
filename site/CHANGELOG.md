@@ -1,5 +1,12 @@
 # Changelog
 
+## [6.33.1] - 2026-07-28
+
+### Bug Fixes
+
+- fix(docs): document cosign bundle verification for releases (#748)
+- fix(site): refresh FerrFlow v5.47.4 release data
+
 ## [6.33.0] - 2026-07-27
 
 ### Features
