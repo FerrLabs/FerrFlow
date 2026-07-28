@@ -8,19 +8,24 @@ log.
 
 ## What ships per release
 
-| Artifact | Sidecars |
+| Artifact | Sidecar |
 |---|---|
-| `ferrflow-linux-x64.tar.gz` | `.sig`, `.crt` |
-| `ferrflow-linux-arm64.tar.gz` | `.sig`, `.crt` |
-| `ferrflow-darwin-x64.tar.gz` | `.sig`, `.crt` |
-| `ferrflow-darwin-arm64.tar.gz` | `.sig`, `.crt` |
-| `ferrflow-windows-x64.zip` | `.sig`, `.crt` |
-| `sbom.cdx.json` | `.sig`, `.crt` |
+| `ferrflow-linux-x64.tar.gz` | `.bundle` |
+| `ferrflow-linux-arm64.tar.gz` | `.bundle` |
+| `ferrflow-darwin-x64.tar.gz` | `.bundle` |
+| `ferrflow-darwin-arm64.tar.gz` | `.bundle` |
+| `ferrflow-windows-x64.zip` | `.bundle` |
+| `sbom.cdx.json` | `.bundle` |
 | `ghcr.io/ferrlabs/ferrflow:vX.Y.Z` | Cosign signature recorded in
 GHCR + Rekor |
 
 All sidecars are downloadable from the GitHub Release page next to the
 binary.
+
+> **Releases up to v5.47.4** ship a `.sig` + `.crt` pair instead of a single
+> `.bundle`. Verify those with `--certificate <file>.crt --signature <file>.sig`
+> in place of `--bundle`. The switch came with cosign v3, which deprecated the
+> separate signature and certificate outputs in favour of one bundle.
 
 ## Verifying a tarball
 
@@ -30,14 +35,13 @@ curl -L https://github.com/sigstore/cosign/releases/latest/download/cosign-linux
   -o /usr/local/bin/cosign && chmod +x /usr/local/bin/cosign
 
 # download the artifact + sidecars from the release page
-TAG=v5.0.1
+TAG=v5.48.0
 gh release download "$TAG" --repo FerrLabs/FerrFlow \
   -p 'ferrflow-linux-x64.tar.gz*'
 
 # verify
 cosign verify-blob \
-  --certificate ferrflow-linux-x64.tar.gz.crt \
-  --signature   ferrflow-linux-x64.tar.gz.sig \
+  --bundle ferrflow-linux-x64.tar.gz.bundle \
   --certificate-identity-regexp "https://github.com/FerrLabs/FerrFlow/.*" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   ferrflow-linux-x64.tar.gz
@@ -51,7 +55,7 @@ A passing verification means:
 - The signing identity was a workflow running in `FerrLabs/FerrFlow`
   triggered by GitHub Actions' OIDC issuer.
 - The signature is recorded in the public Rekor log (
-  https://search.sigstore.dev/ — search for the `.sig` value).
+  https://search.sigstore.dev/ — search for the artifact's digest).
 
 ## Verifying the Docker image
 
