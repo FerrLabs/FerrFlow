@@ -24,6 +24,8 @@ Disponible depuis la v5.2.
 
 Tous les sidecars sont téléchargeables depuis la page GitHub Release à côté du binaire.
 
+> Les releases jusqu'à **v5.47.4** embarquent une paire `.sig` + `.crt` au lieu d'un unique `.bundle`. Vérifiez-les avec `--certificate <fichier>.crt --signature <fichier>.sig` à la place de `--bundle`. Le changement vient de cosign v3, qui a remplacé les sorties signature et certificat séparées par un bundle unique.
+
 ## Vérifier un tarball
 
 ```bash
@@ -38,8 +40,7 @@ gh release download "$TAG" --repo FerrLabs/FerrFlow \
 
 # vérifier
 cosign verify-blob \
-  --certificate ferrflow-linux-x64.tar.gz.crt \
-  --signature   ferrflow-linux-x64.tar.gz.sig \
+  --bundle ferrflow-linux-x64.tar.gz.bundle \
   --certificate-identity-regexp "https://github.com/FerrLabs/FerrFlow/.*" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   ferrflow-linux-x64.tar.gz
@@ -66,8 +67,7 @@ Le SBOM (`sbom.cdx.json`) est un document [CycloneDX](https://cyclonedx.org/) li
 
 ```bash
 cosign verify-blob \
-  --certificate sbom.cdx.json.crt \
-  --signature   sbom.cdx.json.sig \
+  --bundle sbom.cdx.json.bundle \
   --certificate-identity-regexp "https://github.com/FerrLabs/FerrFlow/.*" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   sbom.cdx.json
@@ -85,7 +85,7 @@ gh attestation verify ferrflow-linux-x64.tar.gz --repo FerrLabs/FerrFlow
 
 ## Ce qui n'est pas signé
 
-Les tarballs sources de `git archive` (les actifs « Source code (zip) » / « Source code (tar.gz) » générés automatiquement sur la page GitHub Release) viennent de GitHub, pas du workflow de release, et n'ont pas de sidecars `.sig`/`.crt`. Si vous avez besoin d'une attestation sur la source, utilisez plutôt `gh attestation verify` contre le bundle de provenance.
+Les tarballs sources de `git archive` (les actifs « Source code (zip) » / « Source code (tar.gz) » générés automatiquement sur la page GitHub Release) viennent de GitHub, pas du workflow de release, et n'ont pas de sidecar de signature. Si vous avez besoin d'une attestation sur la source, utilisez plutôt `gh attestation verify` contre le bundle de provenance.
 
 ## Pourquoi c'est important
 

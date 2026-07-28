@@ -898,8 +898,8 @@ Omit `registry` to publish to npmjs.org. `tag` defaults to `"latest"`. A scoped 
     { "kind": "github-release-asset", "path": "sbom.cdx.json" },
     {
       "kind": "github-release-asset",
-      "path": "ferrflow-linux-x64.tar.gz.sig",
-      "displayName": "linux-x64.sig"
+      "path": "ferrflow-linux-x64.tar.gz.bundle",
+      "displayName": "linux-x64.bundle"
     }
   ]
 }

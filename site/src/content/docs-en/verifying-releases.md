@@ -9,20 +9,22 @@ Available since v5.2.
 
 ## What ships per release
 
-| Artifact                           | Sidecars                         |
+| Artifact                           | Sidecar                          |
 | ---------------------------------- | -------------------------------- |
-| `ferrflow-linux-x64.tar.gz`        | `.sig`, `.crt`                   |
-| `ferrflow-linux-arm64.tar.gz`      | `.sig`, `.crt`                   |
-| `ferrflow-linux-armv7.tar.gz`      | `.sig`, `.crt`                   |
-| `ferrflow-darwin-x64.tar.gz`       | `.sig`, `.crt`                   |
-| `ferrflow-darwin-arm64.tar.gz`     | `.sig`, `.crt`                   |
-| `ferrflow-windows-x64.zip`         | `.sig`, `.crt`                   |
-| `ferrflow-windows-arm64.zip`       | `.sig`, `.crt`                   |
-| `ferrflow-completions.tar.gz`      | `.sig`, `.crt`                   |
-| `sbom.cdx.json`                    | `.sig`, `.crt`                   |
+| `ferrflow-linux-x64.tar.gz`        | `.bundle`                        |
+| `ferrflow-linux-arm64.tar.gz`      | `.bundle`                        |
+| `ferrflow-linux-armv7.tar.gz`      | `.bundle`                        |
+| `ferrflow-darwin-x64.tar.gz`       | `.bundle`                        |
+| `ferrflow-darwin-arm64.tar.gz`     | `.bundle`                        |
+| `ferrflow-windows-x64.zip`         | `.bundle`                        |
+| `ferrflow-windows-arm64.zip`       | `.bundle`                        |
+| `ferrflow-completions.tar.gz`      | `.bundle`                        |
+| `sbom.cdx.json`                    | `.bundle`                        |
 | `ghcr.io/ferrlabs/ferrflow:vX.Y.Z` | Cosign signature in GHCR + Rekor |
 
 All sidecars are downloadable from the GitHub Release page next to the binary.
+
+> Releases up to **v5.47.4** ship a `.sig` + `.crt` pair instead of a single `.bundle`. Verify those with `--certificate <file>.crt --signature <file>.sig` in place of `--bundle`. The switch came with cosign v3, which replaced the separate signature and certificate outputs with one bundle.
 
 ## Verifying a tarball
 
@@ -38,8 +40,7 @@ gh release download "$TAG" --repo FerrLabs/FerrFlow \
 
 # verify
 cosign verify-blob \
-  --certificate ferrflow-linux-x64.tar.gz.crt \
-  --signature   ferrflow-linux-x64.tar.gz.sig \
+  --bundle ferrflow-linux-x64.tar.gz.bundle \
   --certificate-identity-regexp "https://github.com/FerrLabs/FerrFlow/.*" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   ferrflow-linux-x64.tar.gz
@@ -66,8 +67,7 @@ The SBOM (`sbom.cdx.json`) is a [CycloneDX](https://cyclonedx.org/) document lis
 
 ```bash
 cosign verify-blob \
-  --certificate sbom.cdx.json.crt \
-  --signature   sbom.cdx.json.sig \
+  --bundle sbom.cdx.json.bundle \
   --certificate-identity-regexp "https://github.com/FerrLabs/FerrFlow/.*" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   sbom.cdx.json
@@ -85,7 +85,7 @@ gh attestation verify ferrflow-linux-x64.tar.gz --repo FerrLabs/FerrFlow
 
 ## What's not signed
 
-Source tarballs from `git archive` (the auto-generated "Source code (zip)" and "Source code (tar.gz)" assets on the GitHub Release page) come from GitHub, not from the release workflow, and have no `.sig`/`.crt` sidecars. If you need an attestation for source, use `gh attestation verify` against the build provenance bundle instead.
+Source tarballs from `git archive` (the auto-generated "Source code (zip)" and "Source code (tar.gz)" assets on the GitHub Release page) come from GitHub, not from the release workflow, and have no signature sidecar. If you need an attestation for source, use `gh attestation verify` against the build provenance bundle instead.
 
 ## Why this matters
 

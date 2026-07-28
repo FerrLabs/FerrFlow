@@ -23,7 +23,7 @@ export interface Benchmarks {
   readonly ferrflow_version: string;
   readonly ferrflow_binary_size_mb: string;
   readonly ferrflow_npm_size_mb: string;
-  readonly ferrflow_release_size_mb: string;
+  readonly ferrflow_release_size_mb?: string;
   readonly runner_cores?: number;
   readonly warmup?: number;
   readonly runs?: number;
