@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.49.0] - 2026-07-28
+
+### Features
+
+- feat(migrate): auto-discover workspace packages for changesets (#775)
+
 ## [5.48.1] - 2026-07-28
 
 ### Bug Fixes
