@@ -1,6 +1,6 @@
 use anyhow::Result;
 use serde::Deserialize;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::config::Config;
 use crate::config::package::{FileFormat, PackageConfig, VersionedFile};
@@ -20,7 +20,7 @@ pub(super) fn run() -> Result<()> {
     let path = detect().ok_or_else(|| anyhow::anyhow!("no {CONFIG_FILE} found"))?;
     let raw = std::fs::read_to_string(&path)
         .map_err(|e| anyhow::anyhow!("could not read {}: {e}", path.display()))?;
-    let (config, report) = build(&raw)?;
+    let (config, report) = build(&raw, Path::new("."))?;
     write_and_report(Source::Changesets, &path, &config, &report)
 }
 
@@ -40,7 +40,7 @@ struct ChangesetsConfig {
     ignore: Vec<String>,
 }
 
-pub(super) fn build(raw: &str) -> Result<(Config, MigrationReport)> {
+pub(super) fn build(raw: &str, root: &Path) -> Result<(Config, MigrationReport)> {
     let cs: ChangesetsConfig = serde_json::from_str(raw)
         .map_err(|e| anyhow::anyhow!("could not parse {CONFIG_FILE} as JSON: {e}"))
         .error_code(error_code::CONFIG_INVALID_JSON)?;
@@ -97,16 +97,61 @@ pub(super) fn build(raw: &str) -> Result<(Config, MigrationReport)> {
     }
 
     // changesets discovers packages from the JS workspace; ferrflow needs them
-    // listed explicitly. Scaffold a single root package and tell the user.
-    let package = PackageConfig {
-        name: crate::config::migrate::default_package_name(),
-        path: ".".to_string(),
+    // listed explicitly, so expand the same globs it uses (#747).
+    let discovered = super::workspace_packages::discover(root);
+    let packages = if discovered.is_empty() {
+        report.warnings.push(
+            "no JS workspace found (`workspaces` in package.json or pnpm-workspace.yaml), so a \
+             single root package was scaffolded. If this is a monorepo, list each publishable \
+             package under `package`."
+                .to_string(),
+        );
+        vec![scaffold_package(
+            crate::config::migrate::default_package_name(),
+            ".".to_string(),
+        )]
+    } else {
+        report.mapped.push(format!(
+            "workspace globs → {} package(s) discovered",
+            discovered.len()
+        ));
+        discovered
+            .into_iter()
+            .map(|p| scaffold_package(p.name, p.path))
+            .collect()
+    };
+
+    warn_about_unmatched_groups(&cs, &packages, &mut report);
+
+    Ok((
+        Config {
+            workspace,
+            packages,
+        },
+        report,
+    ))
+}
+
+fn scaffold_package(name: String, path: String) -> PackageConfig {
+    let manifest = if path == "." {
+        "package.json".to_string()
+    } else {
+        format!("{path}/package.json")
+    };
+    let changelog = if path == "." {
+        "CHANGELOG.md".to_string()
+    } else {
+        format!("{path}/CHANGELOG.md")
+    };
+    PackageConfig {
+        name,
+        path,
         versioned_files: vec![VersionedFile {
-            path: "package.json".to_string(),
+            path: manifest,
             format: FileFormat::Json,
             selector: None,
         }],
-        changelog: Some("CHANGELOG.md".to_string()),
+        changelog: Some(changelog),
         shared_paths: Vec::new(),
         depends_on: vec![],
         versioning: None,
@@ -115,29 +160,138 @@ pub(super) fn build(raw: &str) -> Result<(Config, MigrationReport)> {
         floating_tags: None,
         publishers: vec![],
         update_lockfiles: None,
-    };
-    report.warnings.push(
-        "changesets is a monorepo tool; ferrflow can't read your workspace globs, so it \
-         scaffolded a single root package. List each workspace package under `package` (one entry \
-         per publishable package)."
-            .to_string(),
-    );
+    }
+}
 
-    Ok((
-        Config {
-            workspace,
-            packages: vec![package],
-        },
-        report,
-    ))
+/// `linked` / `fixed` name packages by their npm name. A group entry that
+/// matches nothing we scaffolded would make the migrated config fail
+/// `ferrflow validate`, so say which ones up front.
+fn warn_about_unmatched_groups(
+    cs: &ChangesetsConfig,
+    packages: &[PackageConfig],
+    report: &mut MigrationReport,
+) {
+    let known: Vec<&str> = packages.iter().map(|p| p.name.as_str()).collect();
+    let mut unmatched: Vec<&str> = cs
+        .linked
+        .iter()
+        .chain(cs.fixed.iter())
+        .flatten()
+        .map(String::as_str)
+        .filter(|name| !known.contains(name))
+        .collect();
+    unmatched.sort_unstable();
+    unmatched.dedup();
+
+    if !unmatched.is_empty() {
+        report.warnings.push(format!(
+            "linked/fixed reference {} package(s) that were not discovered ({}). Add them under \
+             `package` or drop them from the group, otherwise `ferrflow validate` fails.",
+            unmatched.len(),
+            unmatched.join(", ")
+        ));
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    /// Builds against an empty directory, i.e. a repo that declares no JS
+    /// workspace — the single-root-package fallback.
     fn build_ok(raw: &str) -> (Config, MigrationReport) {
-        build(raw).expect("valid changesets config")
+        let dir = tempfile::tempdir().unwrap();
+        build(raw, dir.path()).expect("valid changesets config")
+    }
+
+    fn write(root: &std::path::Path, rel: &str, contents: &str) {
+        let path = root.join(rel);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, contents).unwrap();
+    }
+
+    /// A pnpm monorepo laid out the way changesets expects.
+    fn workspace_dir() -> tempfile::TempDir {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        write(root, "package.json", r#"{"name": "root", "private": true}"#);
+        write(root, "pnpm-workspace.yaml", "packages:\n  - 'packages/*'\n");
+        write(
+            root,
+            "packages/a/package.json",
+            r#"{"name": "@acme/a", "version": "1.0.0"}"#,
+        );
+        write(
+            root,
+            "packages/b/package.json",
+            r#"{"name": "@acme/b", "version": "2.0.0"}"#,
+        );
+        dir
+    }
+
+    #[test]
+    fn workspace_packages_are_scaffolded_one_entry_each() {
+        let dir = workspace_dir();
+        let (cfg, report) = build(r#"{}"#, dir.path()).unwrap();
+
+        let names: Vec<&str> = cfg.packages.iter().map(|p| p.name.as_str()).collect();
+        assert_eq!(names, vec!["@acme/a", "@acme/b"]);
+
+        let a = &cfg.packages[0];
+        assert_eq!(a.path, "packages/a");
+        assert_eq!(a.versioned_files[0].path, "packages/a/package.json");
+        assert_eq!(a.changelog.as_deref(), Some("packages/a/CHANGELOG.md"));
+
+        assert!(report.mapped.iter().any(|m| m.contains("2 package(s)")));
+        assert!(
+            !report.warnings.iter().any(|w| w.contains("single root")),
+            "the hand-list-your-packages warning is obsolete once discovery works"
+        );
+    }
+
+    // The whole point of #747: a discovered workspace makes the linked/fixed
+    // groups reference packages that actually exist in the emitted config.
+    #[test]
+    fn discovered_packages_satisfy_the_linked_groups() {
+        let dir = workspace_dir();
+        let (cfg, report) = build(r#"{"linked": [["@acme/a", "@acme/b"]]}"#, dir.path()).unwrap();
+
+        let names: Vec<&str> = cfg.packages.iter().map(|p| p.name.as_str()).collect();
+        for member in cfg.workspace.linked.iter().flatten() {
+            assert!(
+                names.contains(&member.as_str()),
+                "{member} is in a linked group but was not scaffolded"
+            );
+        }
+        assert!(!report.warnings.iter().any(|w| w.contains("not discovered")));
+    }
+
+    #[test]
+    fn a_group_member_outside_the_workspace_is_warned_about() {
+        let dir = workspace_dir();
+        let (_, report) = build(r#"{"fixed": [["@acme/a", "@acme/ghost"]]}"#, dir.path()).unwrap();
+        assert!(
+            report
+                .warnings
+                .iter()
+                .any(|w| w.contains("not discovered") && w.contains("@acme/ghost")),
+            "warnings were: {:?}",
+            report.warnings
+        );
+    }
+
+    #[test]
+    fn a_repo_without_a_workspace_still_gets_a_root_package() {
+        let (cfg, report) = build_ok("{}");
+        assert_eq!(cfg.packages.len(), 1);
+        assert_eq!(cfg.packages[0].path, ".");
+        assert_eq!(cfg.packages[0].versioned_files[0].path, "package.json");
+        assert!(
+            report
+                .warnings
+                .iter()
+                .any(|w| w.contains("no JS workspace"))
+        );
     }
 
     #[test]
@@ -168,13 +322,6 @@ mod tests {
     }
 
     #[test]
-    fn monorepo_scaffold_warning_is_present() {
-        let (cfg, report) = build_ok("{}");
-        assert_eq!(cfg.packages.len(), 1);
-        assert!(report.warnings.iter().any(|w| w.contains("monorepo tool")));
-    }
-
-    #[test]
     fn access_is_reported_as_ignored() {
         let (_, report) = build_ok(r#"{"access": "public"}"#);
         assert!(report.ignored.iter().any(|i| i.contains("access")));
@@ -188,6 +335,7 @@ mod tests {
 
     #[test]
     fn malformed_json_is_an_error() {
-        assert!(build("{ not json").is_err());
+        let dir = tempfile::tempdir().unwrap();
+        assert!(build("{ not json", dir.path()).is_err());
     }
 }
