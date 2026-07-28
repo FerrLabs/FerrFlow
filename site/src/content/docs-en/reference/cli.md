@@ -182,7 +182,7 @@ semantic-release plugin mapping:
 
 Anything without a FerrFlow equivalent is **surfaced, never guessed**. Each run prints what it mapped, what it ignored, and what needs manual review — for example `@semantic-release/npm` (configure `publishers` by hand), custom `commit-analyzer` release rules (FerrFlow's bump rules are fixed), and `repositoryUrl` (FerrFlow derives the remote from git). It won't overwrite an existing FerrFlow config.
 
-<aside class="ferr-aside ferr-aside--note"><div class="ferr-aside__body"><p><strong>changesets.</strong> changesets versions from hand-written <code>.changeset/*.md</code> files, while FerrFlow versions from conventional commits — after migrating you adopt Conventional Commits, and your existing changeset files aren't read. Because FerrFlow can't see your JS workspace, it scaffolds a single package; expand <code>package</code> into your real monorepo layout (and your <code>linked</code>/<code>fixed</code> groups will reference those packages).</p>
+<aside class="ferr-aside ferr-aside--note"><div class="ferr-aside__body"><p><strong>changesets.</strong> changesets versions from hand-written <code>.changeset/*.md</code> files, while FerrFlow versions from conventional commits — after migrating you adopt Conventional Commits, and your existing changeset files aren't read. FerrFlow reads your workspace declaration (<code>workspaces</code> in <code>package.json</code>, or <code>pnpm-workspace.yaml</code>) and scaffolds one <code>package</code> entry per discovered package, so <code>linked</code>/<code>fixed</code> groups already reference real packages and the migrated config validates as-is. A repo with no workspace declaration gets a single root package.</p>
 </div></aside>
 
 ```bash
