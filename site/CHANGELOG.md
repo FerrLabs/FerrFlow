@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.34.3] - 2026-08-01
+
+### Bug Fixes
+
+- fix(deps): declare tinyglobby for @analogjs/vite-plugin-nitro (#760)
+
 ## [6.34.2] - 2026-07-28
 
 ### Bug Fixes
