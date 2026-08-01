@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.34.4] - 2026-08-01
+
+### Bug Fixes
+
+- fix(site): hide docs nav entries that a version never shipped (#761)
+
 ## [6.34.3] - 2026-08-01
 
 ### Bug Fixes
