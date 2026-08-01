@@ -42,9 +42,28 @@ const DOC_DIRS: { dir: string; prefix: string }[] = [
 
 const docRoutes = DOC_DIRS.flatMap(({ dir, prefix }) => docSlugs(dir).map((s) => `${prefix}${s}/`));
 
+// Slugs present per content directory, injected as a build-time constant so
+// the docs nav can hide entries a frozen version never shipped. Derived from
+// the same walk that feeds the prerender routes, so the two cannot disagree.
+const ALL_DOC_DIRS = [
+  'docs-en',
+  'docs-fr',
+  'docs-fr-v4',
+  'docs-v4',
+  'docs-v3',
+  'docs-v2',
+  'docs-v1',
+  'docs-v0',
+];
+
+const docSlugsByDir = Object.fromEntries(ALL_DOC_DIRS.map((dir) => [dir, docSlugs(dir)]));
+
 const prerenderRoutes = ['/', '/404', '/performance/', ...LEGAL.map((p) => `/${p}/`), ...docRoutes];
 
 export default defineConfig({
+  define: {
+    __DOC_SLUGS_BY_DIR__: JSON.stringify(docSlugsByDir),
+  },
   build: {
     target: ['es2022'],
   },
