@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.34.5] - 2026-08-03
+
+### Bug Fixes
+
+- fix(site): serve the styled 404 for docs directories instead of a bare 403 (#766)
+
 ## [6.34.4] - 2026-08-01
 
 ### Bug Fixes
