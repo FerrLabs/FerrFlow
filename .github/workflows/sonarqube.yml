@@ -39,7 +39,7 @@ jobs:
 
   scan:
     needs: version
-    uses: FerrLabs/.github/.github/workflows/reusable-sonarqube-scan.yml@5d33e5b2108483ee8769a57b1105a612fd8a9e67 # main
+    uses: FerrLabs/.github/.github/workflows/reusable-sonarqube-scan.yml@d3ce80b43af8b567b503ab4c3ee44d6e33c246f5 # main
     with:
       runner: ubuntu-latest
       project-key: ferrflow
