@@ -1,5 +1,15 @@
 # Changelog
 
+## [6.35.0] - 2026-08-04
+
+### Features
+
+- feat(docs): document dependency propagation policies and updateDependents (#769)
+
+### Bug Fixes
+
+- fix(site): refresh FerrFlow v5.50.0 release data and JSON schema
+
 ## [6.34.5] - 2026-08-03
 
 ### Bug Fixes
