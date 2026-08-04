@@ -11,8 +11,8 @@ use crate::conventional_commits::{
 };
 use crate::error_code::{self, ErrorCodeExt};
 use crate::git::{
-    get_changed_files_between, get_commits_between, get_remote_url, get_repo_root, open_repo,
-    resolve_tag_name_to_commit,
+    get_changed_files_between, get_changed_files_for_commit, get_commits_between, get_remote_url,
+    get_repo_root, open_repo, resolve_tag_name_to_commit,
 };
 
 const MAX_FILES_SHOWN: usize = 40;
@@ -32,8 +32,14 @@ pub fn run(spec: &[String], json: bool, config_path: Option<&Path>) -> Result<()
     let (to_oid, to_tag) = resolve_endpoint(&repo, pkg, &config.workspace, is_monorepo, to_ref)?;
 
     let skip = config.workspace.effective_commit_skip_markers();
-    let commits = get_commits_between(&repo, from_oid, to_oid, &skip)?;
-    let files = get_changed_files_between(&repo, from_oid, to_oid).unwrap_or_default();
+    let commits = get_commits_between(&repo, from_oid, to_oid, &skip, |repo, oid| {
+        commit_touches_package(repo, pkg, is_monorepo, oid)
+    })?;
+    let files = scope_files_to_package(
+        pkg,
+        is_monorepo,
+        get_changed_files_between(&repo, from_oid, to_oid).unwrap_or_default(),
+    );
 
     let overall = commits
         .iter()
@@ -65,6 +71,42 @@ pub fn run(spec: &[String], json: bool, config_path: Option<&Path>) -> Result<()
         print_human(pkg, from_ref, to_ref, overall, &commits, &files, &changelog);
     }
     Ok(())
+}
+
+/// The raw range holds every commit between the two tags, including ones that
+/// only touched other packages. Keeping just the ones that touched this package
+/// makes the commit list, the breaking-change list and the rendered changelog
+/// match what `ferrflow release` would produce for it (#752).
+///
+/// A commit whose changed files can't be read is kept rather than dropped —
+/// over-reporting is recoverable, silently hiding a commit is not.
+fn commit_touches_package(
+    repo: &crate::git::Repository,
+    pkg: &PackageConfig,
+    is_monorepo: bool,
+    oid: ObjectId,
+) -> bool {
+    if !is_monorepo {
+        return true;
+    }
+    match get_changed_files_for_commit(repo, oid) {
+        Ok(files) => pkg.is_touched_by(&files, true),
+        Err(_) => true,
+    }
+}
+
+fn scope_files_to_package(
+    pkg: &PackageConfig,
+    is_monorepo: bool,
+    files: Vec<String>,
+) -> Vec<String> {
+    if !is_monorepo {
+        return files;
+    }
+    files
+        .into_iter()
+        .filter(|f| pkg.is_touched_by(std::slice::from_ref(f), true))
+        .collect()
 }
 
 fn parse_spec(spec: &[String]) -> Result<(Option<&str>, &str)> {
@@ -306,5 +348,35 @@ mod tests {
         assert!(split_range("..v2.0.0").is_err());
         assert!(split_range("v1.0.0..").is_err());
         assert!(split_range("v1.0.0").is_err());
+    }
+
+    fn scoped_pkg() -> PackageConfig {
+        serde_json::from_str(r#"{"name":"api","path":"packages/api","sharedPaths":["proto"]}"#)
+            .expect("valid package json")
+    }
+
+    #[test]
+    fn file_list_is_scoped_to_the_package_in_a_monorepo() {
+        let files = vec![
+            "packages/api/src/main.rs".to_string(),
+            "packages/web/app.ts".to_string(),
+            "proto/schema.proto".to_string(),
+        ];
+        let scoped = scope_files_to_package(&scoped_pkg(), true, files);
+        assert_eq!(
+            scoped,
+            vec![
+                "packages/api/src/main.rs".to_string(),
+                "proto/schema.proto".to_string()
+            ],
+            "the sibling package's file must be dropped, the shared path kept"
+        );
+    }
+
+    #[test]
+    fn file_list_is_untouched_in_a_single_package_repo() {
+        let files = vec!["anything/at/all.rs".to_string()];
+        let scoped = scope_files_to_package(&scoped_pkg(), false, files.clone());
+        assert_eq!(scoped, files);
     }
 }

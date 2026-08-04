@@ -75,11 +75,19 @@ pub fn get_commits_since_oid(
 /// Commits reachable from `to` but not `from` — the range `from..to`, newest
 /// first. Powers `ferrflow diff`, which enumerates what went into a version
 /// range.
+/// Commits in `from..to`, minus those whose subject carries a skip marker and
+/// those rejected by `keep`.
+///
+/// `keep` receives the **full** object id. That is why per-commit filtering
+/// belongs here rather than over the returned list: [`GitLog::hash`] is
+/// abbreviated for display and cannot be turned back into an id afterwards.
+/// Pass `|_, _| true` for the whole range.
 pub fn get_commits_between(
     repo: &Repository,
     from: ObjectId,
     to: ObjectId,
     skip_markers: &[String],
+    mut keep: impl FnMut(&Repository, ObjectId) -> bool,
 ) -> Result<Vec<GitLog>> {
     let walk = repo
         .rev_walk([to])
@@ -99,6 +107,9 @@ pub fn get_commits_between(
         };
         let message = String::from_utf8_lossy(raw).into_owned();
         if subject_has_skip_marker(&message, skip_markers) {
+            continue;
+        }
+        if !keep(repo, info.id) {
             continue;
         }
         commits.push(GitLog {

@@ -51,6 +51,34 @@ pub enum FloatingTagLevel {
 }
 
 impl PackageConfig {
+    /// Whether this package owns any of `changed_files` — its own `path`, or
+    /// one of its `shared_paths`.
+    ///
+    /// A single-package repo always owns everything, as does a package rooted
+    /// at the repo root, so both short-circuit to true.
+    pub fn is_touched_by(&self, changed_files: &[String], is_monorepo: bool) -> bool {
+        if !is_monorepo {
+            return true;
+        }
+
+        let pkg_path = self.path.trim_start_matches("./").trim_end_matches('/');
+        if pkg_path == "." || pkg_path.is_empty() {
+            return true;
+        }
+
+        let prefix = format!("{pkg_path}/");
+        if changed_files.iter().any(|f| f.starts_with(&prefix)) {
+            return true;
+        }
+
+        self.shared_paths.iter().any(|shared| {
+            let shared = shared.trim_end_matches('/');
+            changed_files
+                .iter()
+                .any(|f| f.starts_with(shared) || f == shared)
+        })
+    }
+
     /// Resolve the effective versioning strategy for this package. Priority:
     ///   1. package.versioning if explicitly set
     ///   2. workspace.versioning if explicitly set
@@ -171,4 +199,93 @@ pub enum FileFormat {
     /// `CMakeLists.txt` — the `VERSION` argument of the `project()` call.
     #[serde(rename = "cmake")]
     Cmake,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn pkg(path: &str, shared: &[&str]) -> PackageConfig {
+        PackageConfig {
+            name: "api".to_string(),
+            path: path.to_string(),
+            versioned_files: Vec::new(),
+            changelog: None,
+            shared_paths: shared.iter().map(|s| s.to_string()).collect(),
+            depends_on: Vec::new(),
+            versioning: None,
+            tag_template: None,
+            floating_tags: None,
+            hooks: None,
+            publishers: Vec::new(),
+            update_lockfiles: None,
+        }
+    }
+
+    fn files(list: &[&str]) -> Vec<String> {
+        list.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn matches_files_under_the_package_path() {
+        let p = pkg("packages/api", &[]);
+        assert!(p.is_touched_by(&files(&["packages/api/src/main.rs"]), true));
+    }
+
+    // The whole point of scoping: a sibling package's commit must not count.
+    #[test]
+    fn ignores_files_of_a_sibling_package() {
+        let p = pkg("packages/api", &[]);
+        assert!(!p.is_touched_by(&files(&["packages/web/src/app.ts"]), true));
+    }
+
+    // `packages/api-client` must not match the `packages/api` package just
+    // because the string starts the same way.
+    #[test]
+    fn a_sibling_with_a_shared_prefix_does_not_match() {
+        let p = pkg("packages/api", &[]);
+        assert!(!p.is_touched_by(&files(&["packages/api-client/index.ts"]), true));
+    }
+
+    #[test]
+    fn shared_paths_count_as_a_touch() {
+        let p = pkg("packages/api", &["proto"]);
+        assert!(p.is_touched_by(&files(&["proto/schema.proto"]), true));
+    }
+
+    #[test]
+    fn a_shared_path_file_itself_counts() {
+        let p = pkg("packages/api", &["Cargo.lock"]);
+        assert!(p.is_touched_by(&files(&["Cargo.lock"]), true));
+    }
+
+    // A single-package repo owns every commit, so scoping must never filter.
+    #[test]
+    fn a_single_package_repo_owns_everything() {
+        let p = pkg("packages/api", &[]);
+        assert!(p.is_touched_by(&files(&["anywhere/else.txt"]), false));
+    }
+
+    #[test]
+    fn a_root_package_owns_everything() {
+        for path in [".", "", "./"] {
+            let p = pkg(path, &[]);
+            assert!(
+                p.is_touched_by(&files(&["anywhere/else.txt"]), true),
+                "path {path:?} should own the whole tree"
+            );
+        }
+    }
+
+    #[test]
+    fn a_trailing_slash_on_the_package_path_is_tolerated() {
+        let p = pkg("packages/api/", &[]);
+        assert!(p.is_touched_by(&files(&["packages/api/src/main.rs"]), true));
+    }
+
+    #[test]
+    fn no_changed_files_is_not_a_touch() {
+        let p = pkg("packages/api", &[]);
+        assert!(!p.is_touched_by(&[], true));
+    }
 }

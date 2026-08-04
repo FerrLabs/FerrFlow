@@ -23,8 +23,8 @@ pub use commits::{
     get_commits_since_oid, subject_has_skip_marker,
 };
 pub use diff::{
-    get_changed_files, get_changed_files_between, get_changed_files_since_oid,
-    get_changed_files_since_tag,
+    get_changed_files, get_changed_files_between, get_changed_files_for_commit,
+    get_changed_files_since_oid, get_changed_files_since_tag,
 };
 pub use fetch::fetch_tags;
 #[allow(unused_imports)]
