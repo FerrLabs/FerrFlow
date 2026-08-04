@@ -5,6 +5,7 @@ use colored::Colorize;
 
 use crate::config::Config;
 use crate::conventional_commits::BumpType;
+use crate::formats::dependents::{supports_dependency_updates, update_dependency};
 use crate::formats::{get_handler, read_version, write_version};
 use crate::versioning::compute_next_version;
 
@@ -28,6 +29,9 @@ pub(super) struct CascadeSink<'a> {
     /// Name -> the bump each already-released package received this run. The
     /// cascade reads it to know what to propagate, and extends it as it goes.
     pub bumped: &'a mut HashMap<String, BumpType>,
+    /// Name -> the version each package landed on, consumed by the
+    /// dependent-manifest rewrite once every bump is known.
+    pub bumped_versions: &'a mut HashMap<String, String>,
 }
 
 /// Bump every package that depends (transitively) on a package
@@ -184,13 +188,61 @@ pub(super) fn run_dependency_cascade(
                 ),
                 body,
                 pkg.name.clone(),
-                new_version,
+                new_version.clone(),
                 0,
                 false,
             ));
             sink.bumped.insert(pkg.name.clone(), bump);
+            sink.bumped_versions.insert(pkg.name.clone(), new_version);
             *sink.any_bumped = true;
         }
     }
     Ok(())
+}
+
+/// Rewrites the constraints dependents declare for packages bumped this run.
+///
+/// Gated on `workspace.update_dependents` by the caller. Only manifests the
+/// rewriter understands are touched; anything else is silently left alone, so
+/// enabling this can never fail a release over a manifest shape we do not
+/// model.
+pub(super) fn update_dependent_manifests(
+    config: &Config,
+    root: &Path,
+    bumped_versions: &HashMap<String, String>,
+    files_to_commit: &mut Vec<String>,
+    files_per_package: &mut HashMap<String, Vec<String>>,
+) -> anyhow::Result<Vec<String>> {
+    let mut lines = Vec::new();
+
+    for pkg in &config.packages {
+        for dep in &pkg.depends_on {
+            let Some(new_version) = bumped_versions.get(dep.name()) else {
+                continue;
+            };
+            for vf in &pkg.versioned_files {
+                if !supports_dependency_updates(&vf.format) {
+                    continue;
+                }
+                if update_dependency(vf, root, dep.name(), new_version)? {
+                    lines.push(format!(
+                        "  {} {} → {} in {}",
+                        "↳".dimmed(),
+                        dep.name().cyan(),
+                        new_version.green(),
+                        vf.path.dimmed()
+                    ));
+                    if !files_to_commit.contains(&vf.path) {
+                        files_to_commit.push(vf.path.clone());
+                    }
+                    let owned = files_per_package.entry(pkg.name.clone()).or_default();
+                    if !owned.contains(&vf.path) {
+                        owned.push(vf.path.clone());
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(lines)
 }

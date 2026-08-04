@@ -81,6 +81,14 @@ pub struct WorkspaceConfig {
     /// `package.updateLockfiles = false` to opt a single package out.
     #[serde(default, alias = "updateLockfiles")]
     pub update_lockfiles: bool,
+    /// Rewrite the version constraint a dependent declares for a package
+    /// that was just bumped, so consumers stop pinning the old range.
+    /// Only `json` (package.json) and `toml` (Cargo.toml) manifests are
+    /// rewritten, and only plain operator + version constraints — a
+    /// `workspace:*`, `file:` or multi-part range is left for a human.
+    /// Default `false`: this writes into manifests, so it is opt-in.
+    #[serde(default, alias = "updateDependents")]
+    pub update_dependents: bool,
     /// Packages that share a version line when co-released. When any
     /// member of a group has a releasable commit, every member is bumped
     /// to the same version (the highest resulting version across the

@@ -198,6 +198,9 @@ pub(super) fn run_release_logic(
     // Name -> bump, so the dependency cascade can propagate the real bump
     // type instead of assuming a patch.
     let mut bumped: HashMap<String, BumpType> = HashMap::new();
+    // Name -> the version each package landed on, for rewriting the
+    // constraints its dependents declare.
+    let mut bumped_versions: HashMap<String, String> = HashMap::new();
 
     let mut pkg_outputs: Vec<(String, Vec<String>)> = Vec::new();
     let mut shared_outputs: Vec<String> = Vec::new();
@@ -579,6 +582,7 @@ pub(super) fn run_release_logic(
 
         hook_contexts.push((hook_ctx, pkg_idx));
         bumped.insert(pkg.name.clone(), bump);
+        bumped_versions.insert(pkg.name.clone(), new_version.clone());
         any_bumped = true;
     }
 
@@ -592,6 +596,7 @@ pub(super) fn run_release_logic(
             tags_to_create: &mut tags_to_create,
             pkg_outputs: &mut pkg_outputs,
             bumped: &mut bumped,
+            bumped_versions: &mut bumped_versions,
         };
         cascade::run_dependency_cascade(
             config,
@@ -603,6 +608,22 @@ pub(super) fn run_release_logic(
             dry_run,
             &mut sink,
         )?;
+    }
+
+    // Runs after the cascade so every package's final version is known — a
+    // dependent's constraint must land on the version its upstream actually
+    // ended up at, not an intermediate one.
+    if config.workspace.update_dependents && !dry_run {
+        let rewritten = cascade::update_dependent_manifests(
+            config,
+            root,
+            &bumped_versions,
+            &mut files_to_commit,
+            &mut files_per_package,
+        )?;
+        for line in rewritten {
+            shared_outputs.push(line);
+        }
     }
 
     timing.record("per-package compute", compute_start.elapsed());

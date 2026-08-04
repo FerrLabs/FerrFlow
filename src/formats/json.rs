@@ -75,6 +75,61 @@ fn find_top_level_string_value_span(content: &str, target_key: &str) -> Option<(
 
 /// Returns the byte index of the first non-whitespace byte at or after
 /// `start`, or `bytes.len()` if all remaining bytes are whitespace.
+/// Span of the string value at `section.key`, e.g. `dependencies.core`.
+///
+/// Same contract as [`find_top_level_string_value_span`] — the caller has
+/// already validated the JSON — but descends one level so a dependency
+/// constraint can be spliced without reformatting the file.
+pub(super) fn find_nested_string_value_span(
+    content: &str,
+    section: &str,
+    key: &str,
+) -> Option<(usize, usize)> {
+    let bytes = content.as_bytes();
+    let section_start = find_object_value_start(bytes, 0, section)?;
+    let (start, end) = find_object_value_start(bytes, section_start, key)
+        .and_then(|value_start| read_string(bytes, value_start).map(|(s, e, _)| (s, e)))?;
+    Some((start, end))
+}
+
+/// Offset of the value for `target_key` in the object beginning at `from`.
+fn find_object_value_start(bytes: &[u8], from: usize, target_key: &str) -> Option<usize> {
+    let n = bytes.len();
+    let mut i = skip_ws(bytes, from);
+    if i >= n || bytes[i] != b'{' {
+        return None;
+    }
+    i += 1;
+
+    loop {
+        i = skip_ws(bytes, i);
+        if i >= n || bytes[i] == b'}' {
+            return None;
+        }
+        if bytes[i] == b',' {
+            i += 1;
+            continue;
+        }
+        if bytes[i] != b'"' {
+            return None;
+        }
+        let (key_start, key_end, after_key) = read_string(bytes, i)?;
+        let key = std::str::from_utf8(&bytes[key_start..key_end]).ok()?;
+        i = skip_ws(bytes, after_key);
+        if i >= n || bytes[i] != b':' {
+            return None;
+        }
+        i = skip_ws(bytes, i + 1);
+        if i >= n {
+            return None;
+        }
+        if key == target_key {
+            return Some(i);
+        }
+        i = skip_value(bytes, i)?;
+    }
+}
+
 fn skip_ws(bytes: &[u8], mut i: usize) -> usize {
     while i < bytes.len() && bytes[i].is_ascii_whitespace() {
         i += 1;
