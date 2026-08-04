@@ -121,7 +121,7 @@ shared_paths = [&quot;packages/shared/&quot;]
 
 ## Package dependencies
 
-Use `dependsOn` to declare that a package depends on another. When a dependency is released, the dependent package automatically receives a patch bump — even if none of its own files changed. This cascades transitively: if `app` depends on `cli` and `cli` depends on `core`, bumping `core` bumps both `cli` and `app`.
+Use `dependsOn` to declare that a package depends on another. When a dependency is released, the dependent package is bumped too — even if none of its own files changed — with the same bump type by default. This cascades transitively: if `app` depends on `cli` and `cli` depends on `core`, bumping `core` bumps both `cli` and `app`.
 
 <div class="ferr-tabs">
   <div class="ferr-tab" data-label="JSON"><p class="ferr-tab__label">JSON</p><div class="ferr-tab__body"><pre><code class="language-json">{
@@ -194,6 +194,39 @@ depends_on = [&quot;cli&quot;]
 </code></pre>
 </div></div>
 </div>
+
+### Propagation policy
+
+Write an entry as an object to choose how the upstream bump translates:
+
+```json
+{
+  "name": "cli",
+  "path": "packages/cli",
+  "dependsOn": [{ "name": "core", "propagate": "patch" }]
+}
+```
+
+| Policy           | A major in the dependency becomes     | A minor becomes | A patch becomes |
+| ---------------- | ------------------------------------- | --------------- | --------------- |
+| `same` (default) | major                                 | minor           | patch           |
+| `major-on-major` | major                                 | patch           | patch           |
+| `patch`          | patch                                 | patch           | patch           |
+| `none`           | nothing — the dependent is not bumped | nothing         | nothing         |
+
+A bare string is shorthand for `same`, so `"dependsOn": ["core"]` and `{ "name": "core", "propagate": "same" }` are identical. When several dependencies move at once under different policies, the strongest resulting bump wins.
+
+### Updating dependents' manifests
+
+Set `workspace.updateDependents` to `true` to rewrite the version constraint each dependent declares for the bumped package, staged in the same release commit:
+
+```
+● core  1.0.0 → 1.1.0  (minor)
+● cli   2.3.0 → 2.4.0  (minor, dependency: core)
+  ↳ core → 1.1.0 in cli/package.json
+```
+
+`cli/package.json` goes from `"core": "^1.0.0"` to `"core": "^1.1.0"`. Only `json` and `toml` manifests are rewritten, and only plain operator + version constraints — the operator is preserved. A `workspace:*`, `file:`/`git:` spec, `1.x` or a multi-part range carries intent a version pin would destroy, so it is left for you to handle.
 
 <aside class="ferr-aside ferr-aside--note"><div class="ferr-aside__body"><p><code>dependsOn</code> differs from <code>sharedPaths</code>. Shared paths trigger a bump when files in the shared directory change. <code>dependsOn</code> triggers a bump when another <strong>package</strong> is released, regardless of which files changed.</p>
 </div></aside>
