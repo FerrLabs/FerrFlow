@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.50.0] - 2026-08-04
+
+### Features
+
+- feat(diff): scope the range to the named package in a monorepo (#781)
+
 ## [5.49.0] - 2026-07-28
 
 ### Features
