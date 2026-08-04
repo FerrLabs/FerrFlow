@@ -67,6 +67,23 @@ pub fn get_changed_files_between(
     changed_paths_between(repo, Some(from), to)
 }
 
+/// Paths a single commit changed, against its first parent. A root commit has
+/// no parent, so its whole tree counts as added. Merge commits are compared to
+/// the first parent only, which is what `git log --name-only` reports and what
+/// per-package scoping wants.
+pub fn get_changed_files_for_commit(repo: &Repository, commit: ObjectId) -> Result<Vec<String>> {
+    if repo.workdir().is_none() {
+        return Ok(vec![]);
+    }
+    let parent = repo
+        .find_commit(commit)
+        .with_context(|| format!("commit {commit} not found"))?
+        .parent_ids()
+        .next()
+        .map(|id| id.detach());
+    changed_paths_between(repo, parent, commit)
+}
+
 fn changed_paths_between(
     repo: &Repository,
     from: Option<ObjectId>,

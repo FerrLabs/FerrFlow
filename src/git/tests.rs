@@ -1680,3 +1680,51 @@ fn is_push_rejected_error_recognises_known_signatures() {
     let e = anyhow::anyhow!("hook failed: prettier exited with status 1");
     assert!(!is_push_rejected_error(&e));
 }
+
+// ── get_changed_files_for_commit — feeds per-package scoping in `diff` ──
+
+fn commit_file_at(dir: &Path, rel: &str, message: &str) -> String {
+    let path = dir.join(rel);
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    std::fs::write(&path, format!("content of {rel}")).unwrap();
+    git(dir, &["add", "--", rel]);
+    let ts = next_commit_ts();
+    let date = format!("{ts} +0000");
+    git_with_env(
+        dir,
+        &["commit", "-m", message],
+        &[("GIT_AUTHOR_DATE", &date), ("GIT_COMMITTER_DATE", &date)],
+    );
+    git(dir, &["rev-parse", "HEAD"]).trim().to_string()
+}
+
+fn oid(sha: &str) -> gix::ObjectId {
+    gix::ObjectId::from_hex(sha.as_bytes()).expect("valid sha")
+}
+
+/// A commit reports only what it changed, not the whole tree — otherwise every
+/// commit would look like it touched every package.
+#[test]
+fn changed_files_for_commit_lists_only_that_commit_s_paths() {
+    let (dir, _repo) = init_repo();
+    commit_file_at(dir.path(), "packages/api/main.rs", "feat: api");
+    let web = commit_file_at(dir.path(), "packages/web/app.ts", "feat: web");
+
+    let repo = open_repo(dir.path()).unwrap();
+    let files = get_changed_files_for_commit(&repo, oid(&web)).expect("diffs against the parent");
+
+    assert_eq!(files, vec!["packages/web/app.ts".to_string()]);
+}
+
+/// The first commit has no parent, so its whole tree counts as added rather
+/// than erroring out.
+#[test]
+fn changed_files_for_the_root_commit_is_its_whole_tree() {
+    let (dir, _repo) = init_repo();
+    let root = commit_file_at(dir.path(), "packages/api/main.rs", "feat: api");
+
+    let repo = open_repo(dir.path()).unwrap();
+    let files = get_changed_files_for_commit(&repo, oid(&root)).expect("root commit is diffable");
+
+    assert_eq!(files, vec!["packages/api/main.rs".to_string()]);
+}

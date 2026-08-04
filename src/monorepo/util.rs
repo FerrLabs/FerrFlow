@@ -79,30 +79,5 @@ pub(super) fn is_package_touched(
     changed_files: &[String],
     is_monorepo: bool,
 ) -> bool {
-    if !is_monorepo {
-        return true;
-    }
-
-    let pkg_path = pkg.path.trim_start_matches("./").trim_end_matches('/');
-
-    if pkg_path == "." || pkg_path.is_empty() {
-        return true;
-    }
-
-    let prefix = format!("{pkg_path}/");
-    if changed_files.iter().any(|f| f.starts_with(&prefix)) {
-        return true;
-    }
-
-    for shared in &pkg.shared_paths {
-        let shared = shared.trim_end_matches('/');
-        if changed_files
-            .iter()
-            .any(|f| f.starts_with(shared) || f == shared)
-        {
-            return true;
-        }
-    }
-
-    false
+    pkg.is_touched_by(changed_files, is_monorepo)
 }
