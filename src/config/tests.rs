@@ -1216,7 +1216,7 @@ fn depends_on_deserializes_from_json() {
     let json =
         r#"{"package":[{"name":"cli","path":"cli","dependsOn":["core"],"versionedFiles":[]}]}"#;
     let config: Config = serde_json::from_str(json).unwrap();
-    assert_eq!(config.packages[0].depends_on, vec!["core"]);
+    assert_eq!(config.packages[0].depends_on[0].name(), "core");
 }
 
 #[test]
@@ -1231,7 +1231,7 @@ fn depends_on_deserializes_snake_case() {
     let json =
         r#"{"package":[{"name":"cli","path":"cli","depends_on":["core"],"versionedFiles":[]}]}"#;
     let config: Config = serde_json::from_str(json).unwrap();
-    assert_eq!(config.packages[0].depends_on, vec!["core"]);
+    assert_eq!(config.packages[0].depends_on[0].name(), "core");
 }
 
 #[test]

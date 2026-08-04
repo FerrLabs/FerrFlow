@@ -195,7 +195,9 @@ pub(super) fn run_release_logic(
     let mut files_per_package: HashMap<String, Vec<String>> = HashMap::new();
     let mut tags_to_create: Vec<TagToCreate> = Vec::new();
     let mut hook_contexts: Vec<(HookContext, usize)> = Vec::new(); // (ctx, pkg_index)
-    let mut bumped_names: HashSet<String> = HashSet::new();
+    // Name -> bump, so the dependency cascade can propagate the real bump
+    // type instead of assuming a patch.
+    let mut bumped: HashMap<String, BumpType> = HashMap::new();
 
     let mut pkg_outputs: Vec<(String, Vec<String>)> = Vec::new();
     let mut shared_outputs: Vec<String> = Vec::new();
@@ -576,7 +578,7 @@ pub(super) fn run_release_logic(
         }
 
         hook_contexts.push((hook_ctx, pkg_idx));
-        bumped_names.insert(pkg.name.clone());
+        bumped.insert(pkg.name.clone(), bump);
         any_bumped = true;
     }
 
@@ -589,7 +591,7 @@ pub(super) fn run_release_logic(
             files_per_package: &mut files_per_package,
             tags_to_create: &mut tags_to_create,
             pkg_outputs: &mut pkg_outputs,
-            bumped_names: &mut bumped_names,
+            bumped: &mut bumped,
         };
         cascade::run_dependency_cascade(
             config,

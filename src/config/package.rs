@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::conventional_commits::BumpType;
+
 use super::types::{HooksConfig, PublisherConfig};
 use super::workspace::WorkspaceConfig;
 
@@ -13,7 +15,7 @@ pub struct PackageConfig {
     #[serde(default, alias = "sharedPaths")]
     pub shared_paths: Vec<String>,
     #[serde(default, alias = "dependsOn")]
-    pub depends_on: Vec<String>,
+    pub depends_on: Vec<Dependency>,
     pub versioning: Option<VersioningStrategy>,
     #[serde(alias = "tagTemplate")]
     pub tag_template: Option<String>,
@@ -29,6 +31,75 @@ pub struct PackageConfig {
     pub publishers: Vec<PublisherConfig>,
     #[serde(default, alias = "updateLockfiles")]
     pub update_lockfiles: Option<bool>,
+}
+
+/// An upstream package this one depends on.
+///
+/// Accepts both the plain name (`"core"`) and the detailed form
+/// (`{ name = "core", propagate = "major-on-major" }`); the plain form is
+/// equivalent to the detailed one with the default policy.
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[serde(untagged)]
+pub enum Dependency {
+    Name(String),
+    Detailed {
+        name: String,
+        #[serde(default)]
+        propagate: PropagatePolicy,
+    },
+}
+
+impl Dependency {
+    pub fn name(&self) -> &str {
+        match self {
+            Dependency::Name(name) => name,
+            Dependency::Detailed { name, .. } => name,
+        }
+    }
+
+    pub fn propagate(&self) -> PropagatePolicy {
+        match self {
+            Dependency::Name(_) => PropagatePolicy::default(),
+            Dependency::Detailed { propagate, .. } => *propagate,
+        }
+    }
+}
+
+/// How an upstream package's bump translates into its dependents' bump.
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Default)]
+#[serde(rename_all = "kebab-case")]
+pub enum PropagatePolicy {
+    /// The dependent gets the same bump the upstream got. A breaking upstream
+    /// makes the dependent breaking too, which is the honest signal: the
+    /// dependent now builds against a breaking API.
+    #[default]
+    Same,
+    /// A major upstream makes the dependent major; anything else is a patch.
+    MajorOnMajor,
+    /// Always a patch, whatever the upstream did. FerrFlow's behaviour before
+    /// propagation existed.
+    Patch,
+    /// The dependent is not bumped at all for this upstream.
+    None,
+}
+
+impl PropagatePolicy {
+    /// The bump a dependent receives when its upstream got `upstream`.
+    pub fn resolve(self, upstream: BumpType) -> BumpType {
+        match self {
+            PropagatePolicy::Same => upstream,
+            PropagatePolicy::MajorOnMajor => match upstream {
+                BumpType::Major => BumpType::Major,
+                BumpType::None => BumpType::None,
+                _ => BumpType::Patch,
+            },
+            PropagatePolicy::Patch => match upstream {
+                BumpType::None => BumpType::None,
+                _ => BumpType::Patch,
+            },
+            PropagatePolicy::None => BumpType::None,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Default)]
@@ -224,6 +295,79 @@ mod tests {
 
     fn files(list: &[&str]) -> Vec<String> {
         list.iter().map(|s| s.to_string()).collect()
+    }
+
+    fn dep(json: &str) -> Dependency {
+        serde_json::from_str(json).expect("valid dependency")
+    }
+
+    // The plain-string form predates policies and must keep working.
+    #[test]
+    fn a_plain_string_dependency_uses_the_default_policy() {
+        let d = dep(r#""core""#);
+        assert_eq!(d.name(), "core");
+        assert_eq!(d.propagate(), PropagatePolicy::Same);
+    }
+
+    #[test]
+    fn the_detailed_form_carries_its_policy() {
+        let d = dep(r#"{"name":"core","propagate":"major-on-major"}"#);
+        assert_eq!(d.name(), "core");
+        assert_eq!(d.propagate(), PropagatePolicy::MajorOnMajor);
+    }
+
+    #[test]
+    fn the_detailed_form_without_a_policy_defaults_like_the_string_form() {
+        assert_eq!(dep(r#"{"name":"core"}"#).propagate(), PropagatePolicy::Same);
+    }
+
+    // The bug this feature exists for: a breaking upstream used to hand its
+    // dependents a patch, so consumers upgraded straight into a breaking API.
+    #[test]
+    fn same_policy_forwards_the_upstream_bump_unchanged() {
+        for bump in [BumpType::Major, BumpType::Minor, BumpType::Patch] {
+            assert_eq!(PropagatePolicy::Same.resolve(bump), bump);
+        }
+    }
+
+    #[test]
+    fn major_on_major_downgrades_everything_below_major() {
+        assert_eq!(
+            PropagatePolicy::MajorOnMajor.resolve(BumpType::Major),
+            BumpType::Major
+        );
+        assert_eq!(
+            PropagatePolicy::MajorOnMajor.resolve(BumpType::Minor),
+            BumpType::Patch
+        );
+    }
+
+    #[test]
+    fn patch_policy_reproduces_the_old_behaviour() {
+        for bump in [BumpType::Major, BumpType::Minor, BumpType::Patch] {
+            assert_eq!(PropagatePolicy::Patch.resolve(bump), BumpType::Patch);
+        }
+    }
+
+    #[test]
+    fn none_policy_opts_out_of_the_cascade() {
+        assert_eq!(
+            PropagatePolicy::None.resolve(BumpType::Major),
+            BumpType::None
+        );
+    }
+
+    // An upstream that did not move must never manufacture a downstream bump.
+    #[test]
+    fn no_upstream_bump_never_produces_one_downstream() {
+        for p in [
+            PropagatePolicy::Same,
+            PropagatePolicy::MajorOnMajor,
+            PropagatePolicy::Patch,
+            PropagatePolicy::None,
+        ] {
+            assert_eq!(p.resolve(BumpType::None), BumpType::None, "policy {p:?}");
+        }
     }
 
     #[test]
