@@ -2,6 +2,8 @@ pub mod cabal;
 pub mod chart_yaml;
 pub mod cmake;
 pub mod csproj;
+#[cfg(feature = "cli")]
+pub mod dependents;
 pub mod gemspec;
 pub mod gomod;
 pub mod gradle;

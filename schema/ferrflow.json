@@ -147,6 +147,11 @@
             ".ferrflow.manifest.json"
           ]
         },
+        "updateDependents": {
+          "type": "boolean",
+          "description": "When true, after `ferrflow release` bumps a package, every dependent listed via `dependsOn` has its version constraint for that package rewritten to the new version in its own manifest, and the manifest is staged in the release commit. Only `json` (package.json) and `toml` (Cargo.toml) manifests are rewritten, and only plain operator + version constraints (`^1.2.3`, `~1.2.3`, `1.2.3`) — a `workspace:*`, `file:`/`git:` spec or a multi-part range is left untouched for a human to handle.",
+          "default": false
+        },
         "updateLockfiles": {
           "type": "boolean",
           "description": "When true, after `ferrflow release` bumps a manifest (Cargo.toml, package.json, pyproject.toml, Gemfile, mix.exs) it refreshes the sibling lockfile (Cargo.lock, package-lock.json / pnpm-lock.yaml / yarn.lock, poetry.lock / uv.lock, Gemfile.lock, mix.lock) with the package manager's offline / lockfile-only mode and stages it in the same release commit. A missing package manager or an unresolvable offline update is warned about, never fatal. Set per-package `updateLockfiles: false` to opt a single package out.",
@@ -356,6 +361,11 @@
         "defer_publish": {
           "type": "boolean",
           "description": "Snake_case form of `deferPublish` — both spellings are accepted. When true, `ferrflow release` does not run the configured publishers inline — it defers them to a separate `ferrflow publish` invocation (e.g. a CI job that carries the docker/helm/npm build toolchain the release job lacks). `ferrflow publish` always runs the publishers regardless of this flag.",
+          "default": false
+        },
+        "update_dependents": {
+          "type": "boolean",
+          "description": "Snake_case form of `updateDependents` — both spellings are accepted. When true, after `ferrflow release` bumps a package, every dependent listed via `dependsOn` has its version constraint for that package rewritten to the new version in its own manifest, and the manifest is staged in the release commit. Only `json` (package.json) and `toml` (Cargo.toml) manifests are rewritten, and only plain operator + version constraints (`^1.2.3`, `~1.2.3`, `1.2.3`) — a `workspace:*`, `file:`/`git:` spec or a multi-part range is left untouched for a human to handle.",
           "default": false
         },
         "update_lockfiles": {
