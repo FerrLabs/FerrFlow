@@ -613,11 +613,12 @@ pub(super) fn run_release_logic(
     // Runs after the cascade so every package's final version is known — a
     // dependent's constraint must land on the version its upstream actually
     // ended up at, not an intermediate one.
-    if config.workspace.update_dependents && !dry_run {
+    if config.workspace.update_dependents {
         let rewritten = cascade::update_dependent_manifests(
             config,
             root,
             &bumped_versions,
+            dry_run,
             &mut files_to_commit,
             &mut files_per_package,
         )?;
