@@ -1,7 +1,7 @@
 {
   "meta": {
     "name": "monorepo-deps-breaking-cascade",
-    "description": "Breaking change in dependency: dependent gets patch bump, not major"
+    "description": "Breaking change in a dependency cascades as a major bump by default"
   },
   "config": {
     "content": "{\n  \"package\": [\n    {\n      \"name\": \"core\",\n      \"path\": \"core\",\n      \"versioned_files\": [{\"path\": \"core/version.toml\", \"format\": \"toml\"}]\n    },\n    {\n      \"name\": \"cli\",\n      \"path\": \"cli\",\n      \"dependsOn\": [\"core\"],\n      \"versioned_files\": [{\"path\": \"cli/version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
@@ -14,7 +14,7 @@
     { "message": "feat!: breaking change in core API", "files": ["core/src/api.rs"] }
   ],
   "expect": {
-    "check_contains": ["core", "2.0.0", "cli", "1.0.1"],
+    "check_contains": ["core", "2.0.0", "cli", "(major, dependency: core)"],
     "check_not_contains": ["Nothing to release"]
   }
 }

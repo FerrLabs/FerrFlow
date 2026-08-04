@@ -31,7 +31,7 @@ pub(super) fn release_order(packages: &[PackageConfig]) -> Result<Vec<usize>, Cy
         .map(|pkg| {
             pkg.depends_on
                 .iter()
-                .filter_map(|dep| index_of.get(dep.as_str()).copied())
+                .filter_map(|dep| index_of.get(dep.name()).copied())
                 .collect()
         })
         .collect();
@@ -147,7 +147,10 @@ mod tests {
             versioned_files: vec![],
             changelog: None,
             shared_paths: vec![],
-            depends_on: deps.iter().map(|s| s.to_string()).collect(),
+            depends_on: deps
+                .iter()
+                .map(|s| crate::config::Dependency::Name(s.to_string()))
+                .collect(),
             update_lockfiles: None,
             versioning: None,
             tag_template: None,

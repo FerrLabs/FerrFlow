@@ -24,7 +24,11 @@ pub use groups::{GroupKind, PackageGroup};
 pub use init::init;
 #[cfg(feature = "cli")]
 pub use migrate::{Source as MigrateSource, migrate};
-pub use package::{FileFormat, FloatingTagLevel, PackageConfig, VersionedFile, VersioningStrategy};
+#[allow(unused_imports)]
+pub use package::{
+    Dependency, FileFormat, FloatingTagLevel, PackageConfig, PropagatePolicy, VersionedFile,
+    VersioningStrategy,
+};
 #[allow(unused_imports)]
 pub use types::{
     BranchChannelConfig, ChannelValue, DockerSign, ForgeKind, HooksConfig, OnFailure,

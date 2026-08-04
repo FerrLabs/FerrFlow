@@ -1,7 +1,7 @@
 {
   "meta": {
     "name": "monorepo-depends-on",
-    "description": "CLI depends on core; bumping core auto-bumps CLI"
+    "description": "CLI depends on core; bumping core auto-bumps CLI with the same bump type"
   },
   "config": {
     "content": "{\n  \"package\": [\n    {\n      \"name\": \"core\",\n      \"path\": \"core\",\n      \"versioned_files\": [{\"path\": \"core/version.toml\", \"format\": \"toml\"}]\n    },\n    {\n      \"name\": \"cli\",\n      \"path\": \"cli\",\n      \"dependsOn\": [\"core\"],\n      \"versioned_files\": [{\"path\": \"cli/version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
@@ -27,7 +27,7 @@
     }
   ],
   "expect": {
-    "check_contains": ["core", "1.1.0", "cli", "1.0.1", "dependency"],
+    "check_contains": ["core", "1.1.0", "cli", "(minor, dependency: core)"],
     "check_not_contains": ["Nothing to release"]
   }
 }

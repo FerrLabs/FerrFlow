@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::path::Path;
 
 use colored::Colorize;
@@ -25,11 +25,14 @@ pub(super) struct CascadeSink<'a> {
     pub files_per_package: &'a mut HashMap<String, Vec<String>>,
     pub tags_to_create: &'a mut Vec<TagToCreate>,
     pub pkg_outputs: &'a mut Vec<(String, Vec<String>)>,
-    pub bumped_names: &'a mut HashSet<String>,
+    /// Name -> the bump each already-released package received this run. The
+    /// cascade reads it to know what to propagate, and extends it as it goes.
+    pub bumped: &'a mut HashMap<String, BumpType>,
 }
 
-/// Patch-bump every package that depends (transitively) on a package
-/// already bumped this run. Iterates to a fixed point, capped at
+/// Bump every package that depends (transitively) on a package
+/// already bumped this run, propagating the upstream's bump through each
+/// dependency's `PropagatePolicy`. Iterates to a fixed point, capped at
 /// `packages.len()` rounds to break circular dependencies.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn run_dependency_cascade(
@@ -50,21 +53,29 @@ pub(super) fn run_dependency_cascade(
         }
         let mut new_bumps = Vec::new();
         for (pkg_idx, pkg) in config.packages.iter().enumerate() {
-            if sink.bumped_names.contains(&pkg.name) {
+            if sink.bumped.contains_key(&pkg.name) {
                 continue;
             }
-            if pkg
+            // Several dependencies may have moved at once under different
+            // policies; the strongest resulting bump wins, the same way a
+            // package's own commits resolve to their highest bump.
+            let bump = pkg
                 .depends_on
                 .iter()
-                .any(|dep| sink.bumped_names.contains(dep))
-            {
-                new_bumps.push(pkg_idx);
+                .filter_map(|dep| {
+                    let upstream = sink.bumped.get(dep.name())?;
+                    Some(dep.propagate().resolve(*upstream))
+                })
+                .max()
+                .unwrap_or(BumpType::None);
+            if bump != BumpType::None {
+                new_bumps.push((pkg_idx, bump));
             }
         }
         if new_bumps.is_empty() {
             break;
         }
-        for pkg_idx in new_bumps {
+        for (pkg_idx, bump) in new_bumps {
             let pkg = &config.packages[pkg_idx];
             let Some(vf) = pkg.versioned_files.first() else {
                 continue;
@@ -76,8 +87,7 @@ pub(super) fn run_dependency_cascade(
             let strategy = pkg.effective_versioning(&config.workspace, || {
                 tags_for_package(all_tags, &pkg_tag_prefix)
             });
-            let Ok(new_version) = compute_next_version(&current_version, BumpType::Patch, strategy)
-            else {
+            let Ok(new_version) = compute_next_version(&current_version, bump, strategy) else {
                 continue;
             };
             if current_version == new_version {
@@ -87,8 +97,8 @@ pub(super) fn run_dependency_cascade(
             let dep_trigger: Vec<&str> = pkg
                 .depends_on
                 .iter()
-                .filter(|d| sink.bumped_names.contains(*d))
-                .map(|s| s.as_str())
+                .map(|d| d.name())
+                .filter(|name| sink.bumped.contains_key(*name))
                 .collect();
 
             if release_json {
@@ -96,7 +106,7 @@ pub(super) fn run_dependency_cascade(
                     package: pkg.name.clone(),
                     previous_version: current_version.clone(),
                     new_version: new_version.clone(),
-                    bump_type: "patch".to_string(),
+                    bump_type: bump.to_string(),
                     tag: tag.clone(),
                     commit_count: 0,
                     prerelease: false,
@@ -110,7 +120,7 @@ pub(super) fn run_dependency_cascade(
                     name: pkg.name.clone(),
                     current_version: current_version.clone(),
                     next_version: new_version.clone(),
-                    bump_type: "patch".to_string(),
+                    bump_type: bump.to_string(),
                     tag: tag.clone(),
                     channel: channel.map(str::to_string),
                     prerelease: false,
@@ -123,7 +133,7 @@ pub(super) fn run_dependency_cascade(
                     pkg.name.bold(),
                     current_version.dimmed(),
                     new_version.green().bold(),
-                    "patch".cyan(),
+                    bump.to_string().cyan(),
                     dep_trigger.join(", ").cyan()
                 )];
                 if !dry_run {
@@ -145,7 +155,7 @@ pub(super) fn run_dependency_cascade(
                             &pkg.name,
                             &new_version,
                             &[],
-                            BumpType::Patch,
+                            bump,
                             false,
                         )?;
                         sink.files_to_commit.push(changelog_rel.clone());
@@ -178,7 +188,7 @@ pub(super) fn run_dependency_cascade(
                 0,
                 false,
             ));
-            sink.bumped_names.insert(pkg.name.clone());
+            sink.bumped.insert(pkg.name.clone(), bump);
             *sink.any_bumped = true;
         }
     }
