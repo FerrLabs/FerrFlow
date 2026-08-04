@@ -4,6 +4,13 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.51.0] - 2026-08-04
+
+### Features
+
+- feat(monorepo): rewrite dependent version constraints on release (#783)
+- feat(monorepo): propagate the upstream bump type through the dependency cascade (#782)
+
 ## [5.50.0] - 2026-08-04
 
 ### Features
