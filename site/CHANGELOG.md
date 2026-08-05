@@ -1,5 +1,15 @@
 # Changelog
 
+## [6.37.0] - 2026-08-05
+
+### Features
+
+- feat(docs): point the FerrFlow API docs at api.ferrflow.com (#772)
+
+### Bug Fixes
+
+- fix(site): refresh FerrFlow v5.51.0 release data
+
 ## [6.36.0] - 2026-08-05
 
 ### Features
