@@ -215,6 +215,50 @@ site   0.4.1   no release (only chore commits)
 
 ---
 
+## `ferrflow why`
+
+Explain the release decision for a single package: whether it counts as touched, which commits were classified and how, what its dependencies are doing, and the bump that falls out of all of it. This is the command to reach for when a package did not release and it is not obvious why.
+
+```bash
+ferrflow why [PACKAGE] [OPTIONS]
+```
+
+| Argument / flag       | Description                                                                              |
+| --------------------- | ---------------------------------------------------------------------------------------- |
+| `[PACKAGE]`           | Package name — required in a monorepo, optional (and inferred) in a single-package repo. |
+| `--channel <CHANNEL>` | Explain the decision for a prerelease channel (`beta`, `rc`, …) instead of a stable run. |
+| `--json`              | Emit the explanation as a structured JSON object instead of the human view.              |
+
+```
+Package: web
+  Path:          web
+  Strategy:      semver
+  Version:       1.0.0
+
+Last tag: web@v1.0.0 (7dcc20b, 3 days ago, reachable from HEAD)
+
+Touch check (changed files at HEAD):
+  ✗ core/src/api.rs                                no match
+→ not touched
+
+Dependencies:
+  core                     bumping (major)      propagate: patch → patch
+
+Decision: patch bump from the dependency cascade — 1.0.0 → 1.0.1, tag web@v1.0.1
+```
+
+The report reads top to bottom as the decision is made:
+
+- **Last tag** — the tag the range starts from, when it was cut, and whether its commit is still reachable from `HEAD`. A tag that is _not_ reachable (rebased away, force pushed) is why a package can look released and still replay its whole history.
+- **Touch check** — the file set that decided whether the package is in scope, with the `path` or `sharedPaths` prefix each file matched. The set is `HEAD`'s changed files, or everything since the last tag when [`recoverMissedReleases`](/docs/configuration/config-file/) pulled the package back in.
+- **Commits considered** — every commit back to the package's last tag with its individual bump. Bump classification is _not_ path-scoped, so a `feat!:` on a sibling package still counts here; this section is usually where an unexpected major comes from.
+- **Dependencies** — each `dependsOn` entry, whether that upstream is moving this run, its `propagate` policy, and what the policy resolves to.
+- **Decision** — the bump, the version range, the tag, and whether it came from the package's own commits or from the dependency cascade.
+
+The verdict comes from the same planning code `ferrflow release` runs, so `why` and the next release cannot disagree.
+
+---
+
 ## `ferrflow diff`
 
 Compare two versions of a package: the commits that went in, each commit's bump, the files changed, and the changelog FerrFlow would generate for the range. Handy for auditing a release, checking why a version bumped the way it did, or writing release notes for a range after the fact.
@@ -236,7 +280,7 @@ ferrflow diff v1.4.0..v1.6.0            # single-package repo
 ferrflow diff api v1.4.0..v1.6.0        # monorepo — name the package
 ```
 
-The output lists every commit in the range with its individual bump (`major` / `minor` / `patch` / `none`), highlights breaking changes, summarises the changed files, and renders the changelog section for the range. In a monorepo the range currently spans all commits between the two tags (not yet scoped to the named package's paths).
+The output lists every commit in the range with its individual bump (`major` / `minor` / `patch` / `none`), highlights breaking changes, summarises the changed files, and renders the changelog section for the range. In a monorepo the range is scoped to the named package: only commits touching its `path` or `sharedPaths` are considered.
 
 ---
 

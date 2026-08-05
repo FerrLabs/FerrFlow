@@ -51,6 +51,6 @@ In a monorepo, FerrFlow only releases packages that have changed, and understand
 ## Key features
 
 - **Pre/post-release hooks** — run scripts at every lifecycle stage (bump, commit, publish, failure)
-- **Query commands** — `ferrflow version`, `ferrflow tag`, and `ferrflow status` for CI scripting
+- **Query commands** — `ferrflow version`, `ferrflow tag`, and `ferrflow status` for CI scripting, plus `ferrflow why` to explain a package's release decision
 - **Any version file** — Cargo.toml, package.json, pom.xml, build.gradle, Chart.yaml, plain text, and more
 - **Browser support** — `@ferrflow/wasm` brings commit parsing, bump computation, and changelog generation to the browser
