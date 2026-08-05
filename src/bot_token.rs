@@ -1,6 +1,6 @@
 use anyhow::{Context, Result, bail};
 
-const DEFAULT_ENDPOINT: &str = "https://api.ferrlabs.com/api/v1/ferrflow/token";
+const DEFAULT_ENDPOINT: &str = "https://api.ferrflow.com/v1/ferrflow/token";
 const DEFAULT_AUDIENCE: &str = "ferrflow.ferrlabs.com";
 
 pub fn bot_mode_enabled() -> bool {
@@ -287,6 +287,10 @@ mod tests {
         });
     }
 
+    // Asserted against the literals, not the constants: the point is that these
+    // two values are a contract with the deployed service, not that the struct
+    // copies its own defaults. The audience in particular is what the server
+    // checks the OIDC token against, so a change here rejects every runner.
     #[test]
     fn defaults_use_hosted_endpoint_and_audience() {
         with_env(
@@ -296,8 +300,8 @@ mod tests {
             ],
             || {
                 let ex = BotTokenExchange::default();
-                assert_eq!(ex.endpoint, DEFAULT_ENDPOINT);
-                assert_eq!(ex.audience, DEFAULT_AUDIENCE);
+                assert_eq!(ex.endpoint, "https://api.ferrflow.com/v1/ferrflow/token");
+                assert_eq!(ex.audience, "ferrflow.ferrlabs.com");
             },
         );
     }
