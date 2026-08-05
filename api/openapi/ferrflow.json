@@ -1,0 +1,347 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "FerrFlow API",
+    "description": "Hosted FerrFlow endpoints under /v1/ferrflow/*: health, schema, latest-release resolution, and hosted config validation + bump preview backed by the FerrFlow CLI core.",
+    "version": "1.0.0",
+    "license": { "name": "Proprietary" }
+  },
+  "servers": [
+    { "url": "https://api.ferrflow.com", "description": "Production" },
+    {
+      "url": "https://api.ferrlabs.com",
+      "description": "Production (legacy alias, kept indefinitely)"
+    }
+  ],
+  "tags": [{ "name": "ferrflow" }],
+  "paths": {
+    "/v1/ferrflow/health": {
+      "get": {
+        "tags": ["ferrflow"],
+        "summary": "Liveness + version",
+        "description": "Unauthenticated status probe. Powers status.ferrlabs.com.",
+        "responses": {
+          "200": {
+            "description": "Service is up",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HealthResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ferrflow/schema": {
+      "get": {
+        "tags": ["ferrflow"],
+        "summary": "Current config JSON Schema",
+        "description": "Serves the JSON Schema bundled in the FerrFlow library (source of truth). Strong ETag + Cache-Control.",
+        "responses": {
+          "200": {
+            "description": "The JSON Schema",
+            "content": { "application/schema+json": { "schema": { "type": "object" } } }
+          }
+        }
+      }
+    },
+    "/v1/ferrflow/schema/{version}": {
+      "get": {
+        "tags": ["ferrflow"],
+        "summary": "Config JSON Schema for a CLI major",
+        "parameters": [
+          {
+            "name": "version",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Major version, e.g. `v5` or `5`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The JSON Schema for that major",
+            "content": { "application/schema+json": { "schema": { "type": "object" } } }
+          },
+          "404": {
+            "description": "No bundled schema for that major",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ferrflow/latest": {
+      "get": {
+        "tags": ["ferrflow"],
+        "summary": "Latest release + platform asset resolution",
+        "description": "Resolves the latest FerrFlow release from GitHub. Assets are sigstore-signed (`.sig` + `.crt`); there is no sha256 checksums file.",
+        "parameters": [
+          {
+            "name": "platform",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "linux-x64",
+                "linux-arm64",
+                "linux-arm",
+                "darwin-x64",
+                "darwin-arm64",
+                "win32-x64",
+                "win32-arm64"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Latest release",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/LatestResponse" } }
+            }
+          },
+          "400": {
+            "description": "Unknown platform",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "502": {
+            "description": "Upstream GitHub error",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ferrflow/validate": {
+      "post": {
+        "tags": ["ferrflow"],
+        "summary": "Hosted config validation",
+        "description": "Validates a FerrFlow config against provided file contents, byte-identical to `ferrflow validate --json`. An invalid config is a successful validation: 200 with `valid: false`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/ValidateRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Validation result",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ValidationResult" } }
+            }
+          },
+          "400": { "description": "Unparseable request body" }
+        }
+      }
+    },
+    "/v1/ferrflow/preview": {
+      "post": {
+        "tags": ["ferrflow"],
+        "summary": "Hosted bump computation",
+        "description": "Computes per-package version bumps + changelog from an explicit commit list, mirroring `ferrflow check`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/PreviewRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Preview result",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/PreviewResponse" } }
+            }
+          },
+          "400": {
+            "description": "Invalid config",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ferrflow/token": {
+      "post": {
+        "tags": ["ferrflow"],
+        "summary": "Hosted bot installation token",
+        "description": "Exchanges a GitHub Actions OIDC JWT for a short-lived, repo-scoped GitHub App installation token. The JWT in the body is the authentication.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["token"],
+                "properties": { "token": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Installation token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token": { "type": "string" },
+                    "expires_at": { "type": "string", "format": "date-time" },
+                    "repository": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "OIDC token rejected" },
+          "503": { "description": "Service not configured on this deploy" }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string" },
+          "code": { "type": "string" }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string" },
+          "service": { "type": "string" },
+          "version": { "type": "string" },
+          "time": { "type": "string", "format": "date-time" }
+        }
+      },
+      "LatestResponse": {
+        "type": "object",
+        "properties": {
+          "version": { "type": "string" },
+          "tag": { "type": "string" },
+          "published_at": { "type": "string", "format": "date-time" },
+          "platform": { "type": "string" },
+          "download_url": { "type": "string" },
+          "signature_url": { "type": "string" },
+          "cert_url": { "type": "string" },
+          "assets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "platform": { "type": "string" },
+                "download_url": { "type": "string" },
+                "signature_url": { "type": "string" },
+                "cert_url": { "type": "string" }
+              }
+            }
+          }
+        }
+      },
+      "ValidateRequest": {
+        "type": "object",
+        "required": ["config"],
+        "properties": {
+          "config": { "type": "string", "description": "Raw config text (json/json5/toml)." },
+          "format": { "type": "string", "enum": ["json", "json5", "toml"] },
+          "files": {
+            "type": "object",
+            "additionalProperties": { "type": "string" },
+            "description": "Versioned-file contents keyed by path."
+          }
+        }
+      },
+      "ValidationResult": {
+        "type": "object",
+        "properties": {
+          "valid": { "type": "boolean" },
+          "config_file": { "type": ["string", "null"] },
+          "package_count": { "type": "integer" },
+          "errors": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ValidationEntry" }
+          },
+          "warnings": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ValidationEntry" }
+          },
+          "suggestions": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ValidationEntry" }
+          }
+        }
+      },
+      "ValidationEntry": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      },
+      "PreviewRequest": {
+        "type": "object",
+        "required": ["config"],
+        "properties": {
+          "config": { "type": "string" },
+          "format": { "type": "string", "enum": ["json", "json5", "toml"] },
+          "commits": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["message"],
+              "properties": {
+                "message": { "type": "string" },
+                "hash": { "type": "string" },
+                "files": { "type": "array", "items": { "type": "string" } }
+              }
+            }
+          },
+          "current_versions": {
+            "type": "object",
+            "additionalProperties": { "type": "string" }
+          }
+        }
+      },
+      "PreviewResponse": {
+        "type": "object",
+        "properties": {
+          "packages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "current": { "type": "string" },
+                "next": { "type": "string" },
+                "bump": { "type": "string", "enum": ["major", "minor", "patch", "none"] },
+                "changelog": { "type": "string" },
+                "commits": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "hash": { "type": "string" },
+                      "type": { "type": "string" },
+                      "scope": { "type": "string" },
+                      "breaking": { "type": "boolean" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
