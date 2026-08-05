@@ -32,9 +32,9 @@ inputs:
     required: false
     default: 'false'
   bot_endpoint:
-    description: 'Override the hosted bot token endpoint. Defaults to https://api.ferrlabs.com/api/v1/ferrflow/token.'
+    description: 'Override the hosted bot token endpoint. Defaults to https://api.ferrflow.com/v1/ferrflow/token.'
     required: false
-    default: 'https://api.ferrlabs.com/api/v1/ferrflow/token'
+    default: 'https://api.ferrflow.com/v1/ferrflow/token'
   bot_audience:
     description: 'OIDC audience requested from the GitHub Actions runner. Must match the server-side expected audience.'
     required: false
