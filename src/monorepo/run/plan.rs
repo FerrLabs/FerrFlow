@@ -128,6 +128,102 @@ fn changed_files_since_oid_cached(
     Ok(files)
 }
 
+/// Which file set decided whether a package counts as touched, and what that
+/// decision was. `ferrflow why` reports it, so it lives here rather than being
+/// re-derived — a second implementation would eventually disagree with the one
+/// the release actually uses.
+pub(super) struct TouchOutcome {
+    pub touched: bool,
+    pub recovered: bool,
+    pub files: Arc<Vec<String>>,
+}
+
+pub(super) fn evaluate_touch(
+    repo: &Repository,
+    pkg: &PackageConfig,
+    inputs: &PlanInputs<'_>,
+) -> Result<TouchOutcome> {
+    let config = inputs.config;
+    let is_monorepo = config.is_monorepo();
+
+    if is_package_touched(pkg, inputs.changed_files, is_monorepo) {
+        return Ok(TouchOutcome {
+            touched: true,
+            recovered: false,
+            files: Arc::new(inputs.changed_files.to_vec()),
+        });
+    }
+
+    if !config.workspace.recover_missed_releases || !is_monorepo {
+        return Ok(TouchOutcome {
+            touched: false,
+            recovered: false,
+            files: Arc::new(inputs.changed_files.to_vec()),
+        });
+    }
+
+    let tag_search_prefix = pkg.tag_prefix(&config.workspace, is_monorepo);
+    let strategy = config.workspace.orphaned_tag_strategy;
+    let files_since_tag =
+        if let (Some(idx), OrphanedTagStrategy::Warn) = (inputs.tag_index, strategy) {
+            let last_oid = idx.find_last_tag_commit(&tag_search_prefix, strategy);
+            changed_files_since_oid_cached(repo, last_oid, inputs.changed_files_cache)?
+        } else {
+            Arc::new(get_changed_files_since_tag(
+                repo,
+                &tag_search_prefix,
+                strategy,
+                inputs.head_ancestors,
+            )?)
+        };
+
+    let touched = is_package_touched(pkg, &files_since_tag, true);
+    Ok(TouchOutcome {
+        touched,
+        recovered: touched,
+        files: files_since_tag,
+    })
+}
+
+/// The commits a release would classify for `pkg`: everything back to its last
+/// tag, or to its last *stable* tag when the run is not a prerelease.
+pub(super) fn commits_for_package(
+    repo: &Repository,
+    pkg: &PackageConfig,
+    inputs: &PlanInputs<'_>,
+) -> Result<Vec<GitLog>> {
+    let config = inputs.config;
+    let tag_search_prefix = pkg.tag_prefix(&config.workspace, config.is_monorepo());
+    let strategy = config.workspace.orphaned_tag_strategy;
+    let skip_markers = config.workspace.effective_commit_skip_markers();
+
+    if inputs.prerelease_ctx.is_prerelease() {
+        if let (Some(idx), OrphanedTagStrategy::Warn) = (inputs.tag_index, strategy) {
+            let stop = idx.find_last_tag_commit(&tag_search_prefix, strategy);
+            inputs.commit_walk.commits_since(repo, stop)
+        } else {
+            get_commits_since_last_tag(
+                repo,
+                &tag_search_prefix,
+                strategy,
+                &skip_markers,
+                inputs.head_ancestors,
+            )
+        }
+    } else if let (Some(idx), OrphanedTagStrategy::Warn) = (inputs.tag_index, strategy) {
+        let stop = idx.find_last_stable_tag_commit(&tag_search_prefix, strategy);
+        inputs.commit_walk.commits_since(repo, stop)
+    } else {
+        get_commits_since_last_stable_tag(
+            repo,
+            &tag_search_prefix,
+            strategy,
+            &skip_markers,
+            inputs.head_ancestors,
+        )
+    }
+}
+
 pub(super) fn compute_plan(
     repo: &Repository,
     pkg: &PackageConfig,
@@ -138,30 +234,10 @@ pub(super) fn compute_plan(
     let tag_search_prefix = pkg.tag_prefix(&config.workspace, is_monorepo);
     let forced_ver_for_pkg = forced_version_for(inputs.forced, &pkg.name);
 
-    let mut touched = is_package_touched(pkg, inputs.changed_files, is_monorepo);
-    let mut recovered = false;
+    let touch = evaluate_touch(repo, pkg, inputs)?;
+    let recovered = touch.recovered;
 
-    if !touched && config.workspace.recover_missed_releases && is_monorepo {
-        let strategy = config.workspace.orphaned_tag_strategy;
-        let files_since_tag =
-            if let (Some(idx), OrphanedTagStrategy::Warn) = (inputs.tag_index, strategy) {
-                let last_oid = idx.find_last_tag_commit(&tag_search_prefix, strategy);
-                changed_files_since_oid_cached(repo, last_oid, inputs.changed_files_cache)?
-            } else {
-                Arc::new(get_changed_files_since_tag(
-                    repo,
-                    &tag_search_prefix,
-                    strategy,
-                    inputs.head_ancestors,
-                )?)
-            };
-        if is_package_touched(pkg, &files_since_tag, true) {
-            touched = true;
-            recovered = true;
-        }
-    }
-
-    if !touched && forced_ver_for_pkg.is_none() {
+    if !touch.touched && forced_ver_for_pkg.is_none() {
         return Ok(PackagePlan::Skipped {
             reason: SkipReason::NotTouched,
             recovered,
@@ -196,52 +272,14 @@ pub(super) fn compute_plan(
         (None, None) => crate::versioning::bootstrap_version(pkg_strategy),
     };
 
-    let skip_markers = config.workspace.effective_commit_skip_markers();
-    let commits_since_stable = || -> Result<Vec<GitLog>> {
-        if let (Some(idx), OrphanedTagStrategy::Warn) = (inputs.tag_index, strategy) {
-            let stop = idx.find_last_stable_tag_commit(&tag_search_prefix, strategy);
-            inputs.commit_walk.commits_since(repo, stop)
-        } else {
-            get_commits_since_last_stable_tag(
-                repo,
-                &tag_search_prefix,
-                strategy,
-                &skip_markers,
-                inputs.head_ancestors,
-            )
-        }
-    };
-    let commits_since_any = || -> Result<Vec<GitLog>> {
-        if let (Some(idx), OrphanedTagStrategy::Warn) = (inputs.tag_index, strategy) {
-            let stop = idx.find_last_tag_commit(&tag_search_prefix, strategy);
-            inputs.commit_walk.commits_since(repo, stop)
-        } else {
-            get_commits_since_last_tag(
-                repo,
-                &tag_search_prefix,
-                strategy,
-                &skip_markers,
-                inputs.head_ancestors,
-            )
-        }
-    };
-
     let prerelease = inputs.prerelease_ctx.is_prerelease();
 
     let (new_version, is_prerelease, commits, bump) = if let Some(fv) = forced_ver_for_pkg {
         let clean = fv.strip_prefix('v').unwrap_or(fv);
-        let commits = if !prerelease {
-            commits_since_stable().unwrap_or_default()
-        } else {
-            commits_since_any().unwrap_or_default()
-        };
+        let commits = commits_for_package(repo, pkg, inputs).unwrap_or_default();
         (clean.to_string(), false, commits, BumpType::None)
     } else {
-        let commits = if !prerelease {
-            commits_since_stable()?
-        } else {
-            commits_since_any()?
-        };
+        let commits = commits_for_package(repo, pkg, inputs)?;
 
         if commits.is_empty() {
             return Ok(PackagePlan::Skipped {

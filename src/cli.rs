@@ -116,6 +116,17 @@ pub enum Commands {
         #[arg(long, value_enum, default_value = "text")]
         output: OutputFormat,
     },
+    /// Explain why a package would or would not be released
+    Why {
+        /// Package name (required in monorepos, optional in single repos)
+        package: Option<String>,
+        /// Pre-release channel override (e.g. beta, rc, dev)
+        #[arg(long)]
+        channel: Option<String>,
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
     /// Compare two versions of a package: commits, bumps, files, and changelog
     Diff {
         /// `[package] <from>..<to>` — the version range (contains `..`), optionally preceded by a package name
@@ -237,6 +248,7 @@ impl Commands {
             Commands::Changelog => "changelog",
             Commands::Init { .. } => "init",
             Commands::Status { .. } => "status",
+            Commands::Why { .. } => "why",
             Commands::Diff { .. } => "diff",
             Commands::Version { .. } => "version",
             Commands::Tag { .. } => "tag",
@@ -309,6 +321,16 @@ impl Cli {
             Commands::Diff { spec, json } => {
                 crate::version_diff::run(&spec, json, self.config.as_deref())
             }
+            Commands::Why {
+                package,
+                channel,
+                json,
+            } => crate::monorepo::why(
+                self.config.as_deref(),
+                package.as_deref(),
+                channel.as_deref(),
+                json,
+            ),
             Commands::Version { package, json } => {
                 crate::query::version(self.config.as_deref(), package.as_deref(), json)
             }
@@ -497,6 +519,36 @@ mod tests {
                 manifest: false
             }
         ));
+    }
+
+    #[test]
+    fn parse_why_with_package_and_flags() {
+        let cli = parse(&["ferrflow", "why", "api", "--channel", "beta", "--json"]);
+        match cli.command {
+            Commands::Why {
+                package,
+                channel,
+                json,
+            } => {
+                assert_eq!(package.as_deref(), Some("api"));
+                assert_eq!(channel.as_deref(), Some("beta"));
+                assert!(json);
+            }
+            _ => panic!("expected Why"),
+        }
+    }
+
+    // The package is optional so single-package repos need no argument.
+    #[test]
+    fn parse_why_without_a_package() {
+        let cli = parse(&["ferrflow", "why"]);
+        match cli.command {
+            Commands::Why { package, json, .. } => {
+                assert!(package.is_none());
+                assert!(!json);
+            }
+            _ => panic!("expected Why"),
+        }
     }
 
     #[test]
