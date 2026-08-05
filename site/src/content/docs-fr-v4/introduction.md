@@ -3,7 +3,6 @@ title: Introduction
 description: Ce qu'est FerrFlow et pourquoi il existe.
 ---
 
-
 FerrFlow est un binaire unique qui automatise le versionnage sémantique pour n'importe quel repository — monorepo ou classique, quel que soit le langage.
 
 Il analyse votre historique de commits, détermine le bon incrément de version, met à jour vos fichiers de version, rédige un changelog, crée un tag git et publie une release. Zéro dépendance runtime.
@@ -23,13 +22,13 @@ Il analyse votre historique de commits, détermine le bon incrément de version,
 
 La plupart des outils de versionnage sont liés à un écosystème spécifique ou nécessitent Node.js dans votre CI.
 
-| Outil | Monorepo | Multi-langage | Runtime |
-|---|---|---|---|
-| semantic-release | via plugins | JS/Node uniquement | Node.js |
-| changesets | bump manuel | JS uniquement | Node.js |
-| release-please | limité | partiel | Node.js |
-| cargo-release | non | Rust uniquement | Rust |
-| **FerrFlow** | **natif** | **tous** | **aucun** |
+| Outil            | Monorepo    | Multi-langage      | Runtime   |
+| ---------------- | ----------- | ------------------ | --------- |
+| semantic-release | via plugins | JS/Node uniquement | Node.js   |
+| changesets       | bump manuel | JS uniquement      | Node.js   |
+| release-please   | limité      | partiel            | Node.js   |
+| cargo-release    | non         | Rust uniquement    | Rust      |
+| **FerrFlow**     | **natif**   | **tous**           | **aucun** |
 
 FerrFlow est distribué sous forme de binaire compilé. Déposez-le dans n'importe quel environnement CI sans installer de runtime. Un build WASM (`@ferrflow/wasm`) est également disponible pour une utilisation côté navigateur. Pour la comparaison côte-à-côte (latence, RSS, taille) avec les outils de release JS, voir [Performance](/fr/performance) — chiffres rafraîchis à chaque release.
 

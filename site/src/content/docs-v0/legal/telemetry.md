@@ -3,18 +3,17 @@ title: Telemetry
 description: What FerrFlow collects, how data is anonymized, and how to opt out.
 ---
 
-
 FerrFlow collects anonymous usage telemetry to help improve the tool. This page explains exactly what is sent, how it is anonymized, and how to disable it.
 
 ## What is collected
 
 Each time you run a command, FerrFlow may send a single event containing:
 
-| Field | Description |
-|-------|-------------|
-| `event_type` | The action performed: `check`, `release`, `version_bump`, or `init` |
-| `commits_count` | Number of commits since the last release |
-| `repo_hash` | A SHA-256 hash of your git remote URL (see below) |
+| Field           | Description                                                         |
+| --------------- | ------------------------------------------------------------------- |
+| `event_type`    | The action performed: `check`, `release`, `version_bump`, or `init` |
+| `commits_count` | Number of commits since the last release                            |
+| `repo_hash`     | A SHA-256 hash of your git remote URL (see below)                   |
 
 Only fields relevant to the command are included. Empty fields are omitted.
 

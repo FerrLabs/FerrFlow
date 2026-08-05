@@ -12,9 +12,9 @@ Run the full release pipeline: bump versions, update changelogs, commit, tag, pu
 ferrflow release [OPTIONS]
 ```
 
-| Flag | Description |
-|---|---|
-| `--dry-run` | Preview all changes without writing, committing, or pushing |
+| Flag              | Description                                                 |
+| ----------------- | ----------------------------------------------------------- |
+| `--dry-run`       | Preview all changes without writing, committing, or pushing |
 | `--verbose`, `-v` | Show detailed output including commit hashes and file diffs |
 
 **What it does:**
@@ -27,7 +27,7 @@ ferrflow release [OPTIONS]
 6. Creates and pushes the git tag (`{name}@v{version}`)
 7. Creates a GitHub/GitLab release with the changelog as notes
 
-***
+---
 
 ## `ferrflow check`
 
@@ -37,7 +37,7 @@ Preview what `ferrflow release` would do without making any changes. Equivalent 
 ferrflow check
 ```
 
-***
+---
 
 ## `ferrflow changelog`
 
@@ -47,11 +47,11 @@ Generate or update `CHANGELOG.md` only, without bumping versions or creating tag
 ferrflow changelog [OPTIONS]
 ```
 
-| Flag | Description |
-|---|---|
+| Flag        | Description                                       |
+| ----------- | ------------------------------------------------- |
 | `--dry-run` | Print the changelog entry without writing to disk |
 
-***
+---
 
 ## `ferrflow init`
 
@@ -61,7 +61,7 @@ Scaffold a `ferrflow.toml` config file for the current repository. Detects exist
 ferrflow init
 ```
 
-***
+---
 
 ## `ferrflow status`
 
@@ -71,8 +71,8 @@ Show the current version of each package and whether a release would be triggere
 ferrflow status [OPTIONS]
 ```
 
-| Flag | Description |
-|---|---|
+| Flag     | Description                         |
+| -------- | ----------------------------------- |
 | `--json` | Output in JSON format for scripting |
 
 Example output:
@@ -82,14 +82,14 @@ api    1.2.3   minor bump pending (1 feat commit)
 site   0.4.1   no release (only chore commits)
 ```
 
-***
+---
 
 ## Global flags
 
 These flags work with all commands:
 
-| Flag | Description |
-|---|---|
+| Flag              | Description                                             |
+| ----------------- | ------------------------------------------------------- |
 | `--config <PATH>` | Path to a custom config file (default: `ferrflow.toml`) |
-| `--version` | Print the FerrFlow version and exit |
-| `--help`, `-h` | Print help |
+| `--version`       | Print the FerrFlow version and exit                     |
+| `--help`, `-h`    | Print help                                              |

@@ -3,7 +3,6 @@ title: Pipeline Triggers
 description: Choose the right CI trigger strategy for your FerrFlow releases.
 ---
 
-
 FerrFlow works with any CI trigger strategy. This page covers the most common patterns, when to use each one, and how they interact with `releaseCommitMode`.
 
 ## Push to main
@@ -51,8 +50,8 @@ name: Build & Publish
 on:
   push:
     tags:
-      - 'v*'          # single-repo: v1.2.0
-      - '*@v*'        # monorepo: api@v1.2.0, site@v0.5.1
+      - 'v*' # single-repo: v1.2.0
+      - '*@v*' # monorepo: api@v1.2.0, site@v0.5.1
 
 jobs:
   build:
@@ -179,11 +178,7 @@ jobs:
 Use `releaseCommitMode: pr` to have FerrFlow open a pull request with the version bump instead of committing directly. The release completes when the PR is merged.
 
 ```yaml title="ferrflow.json"
-{
-  "workspace": {
-    "releaseCommitMode": "pr"
-  }
-}
+{ 'workspace': { 'releaseCommitMode': 'pr' } }
 ```
 
 ```yaml title=".github/workflows/release.yml"
@@ -275,6 +270,7 @@ A release does several side-effecting steps in sequence: write versioned files �
 Since v5.3, FerrFlow writes a `.git/ferrflow.checkpoint.json` after each phase succeeds. The next `ferrflow release` invocation on the same commit resumes from the recorded phase and skips the work that already happened — useful at CI scale where transient failures are routine. The checkpoint is deleted automatically when a release finishes cleanly.
 
 Two safety rails:
+
 - HEAD-pinning: the checkpoint records the commit SHA the release was operating on. If you advance HEAD between runs, FerrFlow refuses to resume and tells you to either reset HEAD back to the recorded commit or delete the checkpoint manually. This avoids replaying old tags onto a different commit graph.
 - Idempotency: the underlying git and forge operations already no-op when their target exists (a tag that's already pushed is a no-op, a release that already exists is reused), so a mid-phase crash still recovers cleanly on the next run.
 
@@ -282,10 +278,10 @@ To start fresh after a crash you don't want to resume from, delete `.git/ferrflo
 
 ## Summary
 
-| Trigger | Automatic | Review gate | Best for |
-|---------|-----------|-------------|----------|
-| Push to main | Yes | No | Most projects |
-| Tag-triggered | Yes | No | Decoupled build/deploy |
-| Release-triggered | No | Yes | Draft → review → publish |
-| Manual | No | Yes | Controlled release cadence |
-| PR-based | Partial | Yes | Branch protection / review |
+| Trigger           | Automatic | Review gate | Best for                   |
+| ----------------- | --------- | ----------- | -------------------------- |
+| Push to main      | Yes       | No          | Most projects              |
+| Tag-triggered     | Yes       | No          | Decoupled build/deploy     |
+| Release-triggered | No        | Yes         | Draft → review → publish   |
+| Manual            | No        | Yes         | Controlled release cadence |
+| PR-based          | Partial   | Yes         | Branch protection / review |

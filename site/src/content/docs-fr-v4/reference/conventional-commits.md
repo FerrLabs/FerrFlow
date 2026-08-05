@@ -7,30 +7,32 @@ FerrFlow suit la spécification [Conventional Commits](https://www.conventionalc
 
 ## Règles d'incrément
 
-| Type de commit | Incrément de version | Exemple |
-|---|---|---|
-| `feat:` | **minor** | `feat: add wallet subscriptions` |
-| `fix:` | patch | `fix: correct pagination offset` |
-| `perf:` | patch | `perf: cache user queries` |
-| `refactor:` | patch | `refactor: extract auth middleware` |
-| `feat!:` ou `BREAKING CHANGE` | **major** | `feat!: remove deprecated endpoint` |
-| `chore:` | aucun | `chore: update dependencies` |
-| `docs:` | aucun | `docs: update README` |
-| `ci:` | aucun | `ci: add linting step` |
-| `style:` | aucun | `style: format code` |
-| `test:` | aucun | `test: add unit tests` |
+| Type de commit                | Incrément de version | Exemple                             |
+| ----------------------------- | -------------------- | ----------------------------------- |
+| `feat:`                       | **minor**            | `feat: add wallet subscriptions`    |
+| `fix:`                        | patch                | `fix: correct pagination offset`    |
+| `perf:`                       | patch                | `perf: cache user queries`          |
+| `refactor:`                   | patch                | `refactor: extract auth middleware` |
+| `feat!:` ou `BREAKING CHANGE` | **major**            | `feat!: remove deprecated endpoint` |
+| `chore:`                      | aucun                | `chore: update dependencies`        |
+| `docs:`                       | aucun                | `docs: update README`               |
+| `ci:`                         | aucun                | `ci: add linting step`              |
+| `style:`                      | aucun                | `style: format code`                |
+| `test:`                       | aucun                | `test: add unit tests`              |
 
 ## Breaking changes
 
 Un breaking change peut être indiqué de deux manières :
 
 **Suffixe point d'exclamation :**
+
 ```
 feat!: remove the /v1/users endpoint
 fix!: change authentication header format
 ```
 
 **Footer `BREAKING CHANGE` :**
+
 ```
 feat: redesign the API
 

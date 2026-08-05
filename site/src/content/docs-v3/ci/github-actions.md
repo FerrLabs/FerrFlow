@@ -3,7 +3,6 @@ title: GitHub Actions
 description: Run FerrFlow releases automatically in GitHub Actions.
 ---
 
-
 ## Using the official action
 
 The easiest way to use FerrFlow in GitHub Actions is the `FerrLabs/ferrflow@v3` action. It installs the binary and runs `ferrflow release` automatically.
@@ -19,11 +18,11 @@ jobs:
   release:
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # required to push tags and create releases
+      contents: write # required to push tags and create releases
     steps:
       - uses: actions/checkout@v6
         with:
-          fetch-depth: 0          # full history needed for commit scanning
+          fetch-depth: 0 # full history needed for commit scanning
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: FerrLabs/ferrflow@v3
@@ -37,6 +36,7 @@ jobs:
 ## Permissions
 
 FerrFlow needs `contents: write` to:
+
 - Push version bump commits
 - Create and push git tags
 - Create GitHub Releases
@@ -96,10 +96,10 @@ The comment looks like:
 
 > **FerrFlow Release Preview**
 >
-> | Package | Current | Next | Bump |
-> |---------|---------|------|------|
-> | api | `1.5.0` | `1.6.0` | minor |
-> | site | `1.8.0` | `1.8.1` | patch |
+> | Package | Current | Next    | Bump  |
+> | ------- | ------- | ------- | ----- |
+> | api     | `1.5.0` | `1.6.0` | minor |
+> | site    | `1.8.0` | `1.8.1` | patch |
 >
 > Based on 3 commit(s).
 

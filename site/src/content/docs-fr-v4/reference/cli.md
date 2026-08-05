@@ -11,14 +11,15 @@ Lance le pipeline complet de release : bump des versions, mise à jour des chang
 ferrflow release [OPTIONS]
 ```
 
-| Option | Description |
-|---|---|
-| `--dry-run` | Prévisualiser tous les changements sans écrire, committer ou pousser |
-| `--force` | Autoriser les floating tags à reculer vers une version inférieure |
+| Option                      | Description                                                                                                             |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `--dry-run`                 | Prévisualiser tous les changements sans écrire, committer ou pousser                                                    |
+| `--force`                   | Autoriser les floating tags à reculer vers une version inférieure                                                       |
 | `--force-version <VERSION>` | Forcer une version spécifique, sans analyser les commits. Format : `VERSION` (repo simple) ou `NAME@VERSION` (monorepo) |
-| `--verbose`, `-v` | Afficher la sortie détaillée incluant les hashes de commits et les diffs de fichiers |
+| `--verbose`, `-v`           | Afficher la sortie détaillée incluant les hashes de commits et les diffs de fichiers                                    |
 
 **Ce que ça fait :**
+
 1. Scanne les commits depuis le dernier tag pour chaque package
 2. Détermine l'incrément de version à partir des Conventional Commits
 3. Met à jour tous les `versionedFiles` avec la nouvelle version
@@ -47,8 +48,8 @@ Générer ou mettre à jour `CHANGELOG.md` uniquement, sans bumper les versions 
 ferrflow changelog [OPTIONS]
 ```
 
-| Option | Description |
-|---|---|
+| Option      | Description                                              |
+| ----------- | -------------------------------------------------------- |
 | `--dry-run` | Afficher l'entrée du changelog sans écrire sur le disque |
 
 ---
@@ -61,8 +62,8 @@ Générer un fichier de configuration pour le repository courant. Détecte les f
 ferrflow init [OPTIONS]
 ```
 
-| Option | Description |
-|---|---|
+| Option              | Description                                                    |
+| ------------------- | -------------------------------------------------------------- |
 | `--format <FORMAT>` | Format du fichier de configuration : `json`, `json5` ou `toml` |
 
 ---
@@ -75,8 +76,8 @@ Afficher la version actuelle de chaque package et si une release serait déclenc
 ferrflow status [OPTIONS]
 ```
 
-| Option | Description |
-|---|---|
+| Option              | Description                                  |
+| ------------------- | -------------------------------------------- |
 | `--output <FORMAT>` | Format de sortie : `text` (défaut) ou `json` |
 
 Exemple de sortie :
@@ -96,8 +97,8 @@ Afficher la version actuelle d'un ou de tous les packages. Utile dans les script
 ferrflow version [PACKAGE] [OPTIONS]
 ```
 
-| Option | Description |
-|---|---|
+| Option   | Description           |
+| -------- | --------------------- |
 | `--json` | Sortie au format JSON |
 
 Retourne la version depuis le dernier tag git correspondant au modèle de tag du package.
@@ -112,8 +113,8 @@ Afficher le dernier tag pour un ou tous les packages.
 ferrflow tag [PACKAGE] [OPTIONS]
 ```
 
-| Option | Description |
-|---|---|
+| Option   | Description           |
+| -------- | --------------------- |
 | `--json` | Sortie au format JSON |
 
 ---
@@ -122,8 +123,8 @@ ferrflow tag [PACKAGE] [OPTIONS]
 
 Ces options fonctionnent avec toutes les commandes :
 
-| Option | Description |
-|---|---|
+| Option            | Description                                                                                                                                |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `--config <PATH>` | Chemin vers un fichier de configuration personnalisé (défaut : auto-détecté). Accepte aussi la variable d'environnement `FERRFLOW_CONFIG`. |
-| `--version` | Afficher la version de FerrFlow et quitter |
-| `--help`, `-h` | Afficher l'aide |
+| `--version`       | Afficher la version de FerrFlow et quitter                                                                                                 |
+| `--help`, `-h`    | Afficher l'aide                                                                                                                            |

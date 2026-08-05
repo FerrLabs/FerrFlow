@@ -3,7 +3,6 @@ title: Supported formats
 description: Version file formats that FerrFlow can read and update.
 ---
 
-
 <div class="ferr-tabs">
   <div class="ferr-tab" data-label="JSON"><p class="ferr-tab__label">JSON</p><div class="ferr-tab__body"><p>Used by Node.js (<code>package.json</code>).</p>
 <p>FerrFlow updates the top-level <code>version</code> field.</p>
@@ -72,7 +71,7 @@ path   = &quot;Cargo.toml&quot;
 format = &quot;toml&quot;
 
 [[package.versioned_files]]
-path   = &quot;npm/package.json&quot;
+path = &quot;npm/package.json&quot;
 format = &quot;json&quot;
 </code></pre>
 </div></div>

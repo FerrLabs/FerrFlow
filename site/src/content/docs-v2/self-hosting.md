@@ -3,7 +3,6 @@ title: Self-hosting
 description: Run FerrFlow on your own infrastructure with a single Docker image.
 ---
 
-
 The self-host bundle is a single Docker image that contains the API and the
 dashboard. The API serves the dashboard assets on the same origin, so there is
 only one container to run and no CORS configuration to manage.
@@ -49,17 +48,17 @@ The dashboard is now available on `http://localhost:3000`.
 
 ## Environment variables
 
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `DATABASE_URL` | yes | Postgres connection string |
-| `JWT_SECRET` | yes | Signing key for session JWTs |
-| `ENCRYPTION_KEY` | yes | 32-byte base64 key for the secrets at-rest encryption |
-| `FERRFLOW_HMAC_SECRET` | yes | HMAC key for CLI telemetry ingestion |
-| `SERVER_HOST` | no (default `0.0.0.0`) | Bind address |
-| `SERVER_PORT` | no (default `3000`) | Bind port |
-| `DATABASE_MAX_CONNECTIONS` | no (default `10`) | Postgres pool size |
-| `RATE_LIMIT_REQUESTS` | no (default `60`) | Requests per minute before rate-limiting |
-| `RUST_LOG` | no (default `info`) | Log level |
+| Variable                   | Required               | Purpose                                               |
+| -------------------------- | ---------------------- | ----------------------------------------------------- |
+| `DATABASE_URL`             | yes                    | Postgres connection string                            |
+| `JWT_SECRET`               | yes                    | Signing key for session JWTs                          |
+| `ENCRYPTION_KEY`           | yes                    | 32-byte base64 key for the secrets at-rest encryption |
+| `FERRFLOW_HMAC_SECRET`     | yes                    | HMAC key for CLI telemetry ingestion                  |
+| `SERVER_HOST`              | no (default `0.0.0.0`) | Bind address                                          |
+| `SERVER_PORT`              | no (default `3000`)    | Bind port                                             |
+| `DATABASE_MAX_CONNECTIONS` | no (default `10`)      | Postgres pool size                                    |
+| `RATE_LIMIT_REQUESTS`      | no (default `60`)      | Requests per minute before rate-limiting              |
+| `RUST_LOG`                 | no (default `info`)    | Log level                                             |
 
 ## Using an external Postgres
 

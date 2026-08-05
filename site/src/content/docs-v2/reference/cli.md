@@ -11,14 +11,15 @@ Run the full release pipeline: bump versions, update changelogs, commit, tag, pu
 ferrflow release [OPTIONS]
 ```
 
-| Flag | Description |
-|---|---|
-| `--dry-run` | Preview all changes without writing, committing, or pushing |
-| `--force` | Allow floating tags to move backward to a lower version |
+| Flag                        | Description                                                                                                      |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `--dry-run`                 | Preview all changes without writing, committing, or pushing                                                      |
+| `--force`                   | Allow floating tags to move backward to a lower version                                                          |
 | `--force-version <VERSION>` | Force a specific version, skipping commit analysis. Format: `VERSION` (single repo) or `NAME@VERSION` (monorepo) |
-| `--verbose`, `-v` | Show detailed output including commit hashes and file diffs |
+| `--verbose`, `-v`           | Show detailed output including commit hashes and file diffs                                                      |
 
 **What it does:**
+
 1. Scans commits since the last tag for each package
 2. Determines the version bump from Conventional Commits
 3. Updates all `versionedFiles` with the new version
@@ -47,8 +48,8 @@ Generate or update `CHANGELOG.md` only, without bumping versions or creating tag
 ferrflow changelog [OPTIONS]
 ```
 
-| Flag | Description |
-|---|---|
+| Flag        | Description                                       |
+| ----------- | ------------------------------------------------- |
 | `--dry-run` | Print the changelog entry without writing to disk |
 
 ---
@@ -61,8 +62,8 @@ Scaffold a config file for the current repository. Detects existing version file
 ferrflow init [OPTIONS]
 ```
 
-| Flag | Description |
-|---|---|
+| Flag                | Description                                    |
+| ------------------- | ---------------------------------------------- |
 | `--format <FORMAT>` | Config file format: `json`, `json5`, or `toml` |
 
 ---
@@ -75,8 +76,8 @@ Show the current version of each package and whether a release would be triggere
 ferrflow status [OPTIONS]
 ```
 
-| Flag | Description |
-|---|---|
+| Flag                | Description                               |
+| ------------------- | ----------------------------------------- |
 | `--output <FORMAT>` | Output format: `text` (default) or `json` |
 
 Example output:
@@ -96,8 +97,8 @@ Print the current version of one or all packages. Useful in CI scripts.
 ferrflow version [PACKAGE] [OPTIONS]
 ```
 
-| Flag | Description |
-|---|---|
+| Flag     | Description    |
+| -------- | -------------- |
 | `--json` | Output as JSON |
 
 Returns the version from the latest git tag matching the package's tag template.
@@ -112,8 +113,8 @@ Print the latest tag for one or all packages.
 ferrflow tag [PACKAGE] [OPTIONS]
 ```
 
-| Flag | Description |
-|---|---|
+| Flag     | Description    |
+| -------- | -------------- |
 | `--json` | Output as JSON |
 
 ---
@@ -122,8 +123,8 @@ ferrflow tag [PACKAGE] [OPTIONS]
 
 These flags work with all commands:
 
-| Flag | Description |
-|---|---|
+| Flag              | Description                                                                                         |
+| ----------------- | --------------------------------------------------------------------------------------------------- |
 | `--config <PATH>` | Path to a custom config file (default: auto-detected). Also accepts `FERRFLOW_CONFIG` env variable. |
-| `--version` | Print the FerrFlow version and exit |
-| `--help`, `-h` | Print help |
+| `--version`       | Print the FerrFlow version and exit                                                                 |
+| `--help`, `-h`    | Print help                                                                                          |

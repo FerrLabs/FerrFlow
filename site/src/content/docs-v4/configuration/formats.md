@@ -3,7 +3,6 @@ title: Supported formats
 description: Version file formats that FerrFlow can read and update.
 ---
 
-
 <div class="ferr-tabs">
   <div class="ferr-tab" data-label="JSON"><p class="ferr-tab__label">JSON</p><div class="ferr-tab__body"><p>Used by Node.js (<code>package.json</code>).</p>
 <p>FerrFlow updates the top-level <code>version</code> field.</p>
@@ -100,13 +99,13 @@ format = &quot;gemspec&quot;
 <p>Swift PM derives a package&#39;s version from git tags, so there&#39;s no canonical location inside <code>Package.swift</code> — FerrFlow updates the first <code>let &lt;name&gt;Version = &quot;…&quot;</code> declaration. Constant names must end with <code>Version</code> (e.g. <code>packageVersion</code>, <code>AppVersion</code>) or be literally <code>version</code>. Dependency <code>.package(url:..., from: &quot;…&quot;)</code> arguments are <strong>not</strong> touched.</p>
 <pre><code class="language-swift">import PackageDescription
 
-let packageVersion = &quot;1.2.3&quot;   // ← updated
+let packageVersion = &quot;1.2.3&quot; // ← updated
 
 let package = Package(
-  name: &quot;MyPackage&quot;,
-  dependencies: [
-    .package(url: &quot;…&quot;, from: &quot;1.5.0&quot;),   // untouched
-  ]
+name: &quot;MyPackage&quot;,
+dependencies: [
+.package(url: &quot;…&quot;, from: &quot;1.5.0&quot;), // untouched
+]
 )
 </code></pre>
 <p>Config snippet:</p>
@@ -119,22 +118,22 @@ format = &quot;packageswift&quot;
 
 ## File → format quick reference
 
-| File | `format` | Selector / behaviour |
-|---|---|---|
-| `Cargo.toml` | `toml` | `package.version` |
-| `pyproject.toml` | `toml` | `project.version` or `tool.poetry.version` |
-| `package.json` | `json` | `version` |
-| `composer.json` | `json` | `version` |
-| `pom.xml` | `xml` | first `<version>` tag |
-| `*.csproj` | `csproj` | `<Version>` in `<PropertyGroup>` |
-| `build.gradle`, `build.gradle.kts` | `gradle` | `version = "…"` |
-| `Chart.yaml` | `helm` or `chartyaml` | top-level `version:` |
-| `pubspec.yaml` | `pubspecyaml` | top-level `version:` |
-| `mix.exs` | `mixexs` | `version: "…"` in project keyword list |
-| `*.gemspec` | `gemspec` | `<ident>.version = "…"` |
-| `Package.swift` | `packageswift` | top-level `let <name>Version = "…"` |
-| `go.mod` | `gomod` | git tag only — no file write |
-| `VERSION`, `VERSION.txt` | `txt` | entire file content |
+| File                               | `format`              | Selector / behaviour                       |
+| ---------------------------------- | --------------------- | ------------------------------------------ |
+| `Cargo.toml`                       | `toml`                | `package.version`                          |
+| `pyproject.toml`                   | `toml`                | `project.version` or `tool.poetry.version` |
+| `package.json`                     | `json`                | `version`                                  |
+| `composer.json`                    | `json`                | `version`                                  |
+| `pom.xml`                          | `xml`                 | first `<version>` tag                      |
+| `*.csproj`                         | `csproj`              | `<Version>` in `<PropertyGroup>`           |
+| `build.gradle`, `build.gradle.kts` | `gradle`              | `version = "…"`                            |
+| `Chart.yaml`                       | `helm` or `chartyaml` | top-level `version:`                       |
+| `pubspec.yaml`                     | `pubspecyaml`         | top-level `version:`                       |
+| `mix.exs`                          | `mixexs`              | `version: "…"` in project keyword list     |
+| `*.gemspec`                        | `gemspec`             | `<ident>.version = "…"`                    |
+| `Package.swift`                    | `packageswift`        | top-level `let <name>Version = "…"`        |
+| `go.mod`                           | `gomod`               | git tag only — no file write               |
+| `VERSION`, `VERSION.txt`           | `txt`                 | entire file content                        |
 
 ## Multiple files per package
 
@@ -156,7 +155,7 @@ path   = &quot;Cargo.toml&quot;
 format = &quot;toml&quot;
 
 [[package.versioned_files]]
-path   = &quot;npm/package.json&quot;
+path = &quot;npm/package.json&quot;
 format = &quot;json&quot;
 </code></pre>
 </div></div>

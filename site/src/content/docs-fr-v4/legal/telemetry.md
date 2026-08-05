@@ -3,18 +3,17 @@ title: Telemetrie
 description: Ce que FerrFlow collecte, comment les donnees sont anonymisees, et comment desactiver la telemetrie.
 ---
 
-
 FerrFlow collecte des donnees de telemetrie anonymes pour ameliorer l'outil. Cette page explique exactement ce qui est envoye, comment les donnees sont anonymisees, et comment desactiver la telemetrie.
 
 ## Ce qui est collecte
 
 A chaque execution d'une commande, FerrFlow peut envoyer un evenement contenant :
 
-| Champ | Description |
-|-------|-------------|
-| `event_type` | L'action effectuee : `check`, `release`, `version_bump` ou `init` |
-| `commits_count` | Nombre de commits depuis la derniere release |
-| `repo_hash` | Un hash SHA-256 de l'URL du remote git (voir ci-dessous) |
+| Champ           | Description                                                       |
+| --------------- | ----------------------------------------------------------------- |
+| `event_type`    | L'action effectuee : `check`, `release`, `version_bump` ou `init` |
+| `commits_count` | Nombre de commits depuis la derniere release                      |
+| `repo_hash`     | Un hash SHA-256 de l'URL du remote git (voir ci-dessous)          |
 
 Seuls les champs pertinents sont inclus. Les champs vides sont omis.
 

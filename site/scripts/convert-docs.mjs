@@ -52,9 +52,7 @@ function md(inner) {
 
 function dedent(text) {
   const lines = text.replace(/^\r?\n/, '').split('\n');
-  const indents = lines
-    .filter((l) => l.trim().length > 0)
-    .map((l) => l.match(/^\s*/)[0].length);
+  const indents = lines.filter((l) => l.trim().length > 0).map((l) => l.match(/^\s*/)[0].length);
   const min = indents.length ? Math.min(...indents) : 0;
   return lines.map((l) => l.slice(min)).join('\n');
 }
@@ -257,4 +255,6 @@ for (const { docsDir, outDir } of SOURCES) {
 
 generated.sort();
 for (const g of generated) console.log(g);
-console.log(`\nConverted ${total} files (${SOURCES.map((s) => relative(OUT, s.outDir)).join(' + ')}).`);
+console.log(
+  `\nConverted ${total} files (${SOURCES.map((s) => relative(OUT, s.outDir)).join(' + ')}).`,
+);

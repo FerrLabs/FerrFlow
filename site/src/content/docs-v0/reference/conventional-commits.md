@@ -8,18 +8,18 @@ FerrFlow follows the [Conventional Commits](https://www.conventionalcommits.org/
 
 ## Bump rules
 
-| Commit type | Version bump | Example |
-|---|---|---|
-| `feat:` | **minor** | `feat: add wallet subscriptions` |
-| `fix:` | patch | `fix: correct pagination offset` |
-| `perf:` | patch | `perf: cache user queries` |
-| `refactor:` | patch | `refactor: extract auth middleware` |
-| `feat!:` or `BREAKING CHANGE` | **major** | `feat!: remove deprecated endpoint` |
-| `chore:` | none | `chore: update dependencies` |
-| `docs:` | none | `docs: update README` |
-| `ci:` | none | `ci: add linting step` |
-| `style:` | none | `style: format code` |
-| `test:` | none | `test: add unit tests` |
+| Commit type                   | Version bump | Example                             |
+| ----------------------------- | ------------ | ----------------------------------- |
+| `feat:`                       | **minor**    | `feat: add wallet subscriptions`    |
+| `fix:`                        | patch        | `fix: correct pagination offset`    |
+| `perf:`                       | patch        | `perf: cache user queries`          |
+| `refactor:`                   | patch        | `refactor: extract auth middleware` |
+| `feat!:` or `BREAKING CHANGE` | **major**    | `feat!: remove deprecated endpoint` |
+| `chore:`                      | none         | `chore: update dependencies`        |
+| `docs:`                       | none         | `docs: update README`               |
+| `ci:`                         | none         | `ci: add linting step`              |
+| `style:`                      | none         | `style: format code`                |
+| `test:`                       | none         | `test: add unit tests`              |
 
 ## Breaking changes
 

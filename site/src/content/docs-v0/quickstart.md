@@ -4,7 +4,6 @@ description: Go from zero to your first automated release in under 5 minutes.
 slug: v0/docs/quickstart
 ---
 
-
 <ol>
 <li><p><strong>Scaffold the config</strong></p>
 <p>Run <code>ferrflow init</code> at the root of your repository. It detects your version files and writes a <code>ferrflow.toml</code>:</p>
@@ -34,8 +33,8 @@ format = &quot;toml&quot;
 → feat: add user authentication
 → fix: correct pagination offset
 
-Bump  my-app  0.1.0 → 0.2.0
-Tag   my-app@v0.2.0
+Bump my-app 0.1.0 → 0.2.0
+Tag my-app@v0.2.0
 </code></pre>
 </li>
 <li><p><strong>Run the release</strong></p>
@@ -52,9 +51,8 @@ Tag   my-app@v0.2.0
 </li>
 </ol>
 
-
 ## Next steps
 
-* Set up [GitHub Actions](/v0/docs/ci/github-actions) to run releases automatically on push to `main`
-* Configure a [monorepo](/v0/docs/configuration/monorepo) if you have multiple packages
-* Review the full [config reference](/v0/docs/configuration/config-file)
+- Set up [GitHub Actions](/v0/docs/ci/github-actions) to run releases automatically on push to `main`
+- Configure a [monorepo](/v0/docs/configuration/monorepo) if you have multiple packages
+- Review the full [config reference](/v0/docs/configuration/config-file)

@@ -3,7 +3,6 @@ title: Quick start
 description: Go from zero to your first automated release in under 5 minutes.
 ---
 
-
 <ol>
 <li><p><strong>Scaffold the config</strong></p>
 <p>Run <code>ferrflow init</code> at the root of your repository. It detects your version files and writes a <code>.ferrflow</code> config:</p>
@@ -37,8 +36,8 @@ description: Go from zero to your first automated release in under 5 minutes.
 → feat: add user authentication
 → fix: correct pagination offset
 
-Bump  my-app  0.1.0 → 0.2.0
-Tag   v0.2.0
+Bump my-app 0.1.0 → 0.2.0
+Tag v0.2.0
 </code></pre>
 </li>
 <li><p><strong>Run the release</strong></p>
@@ -54,7 +53,6 @@ Tag   v0.2.0
 </ul>
 </li>
 </ol>
-
 
 ## Next steps
 

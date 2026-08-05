@@ -3,7 +3,6 @@ title: Démarrage rapide
 description: De zéro à votre première release automatisée en moins de 5 minutes.
 ---
 
-
 <ol>
 <li><p><strong>Générer la configuration</strong></p>
 <p>Exécutez <code>ferrflow init</code> à la racine de votre repository. Il détecte vos fichiers de version et génère un fichier <code>.ferrflow</code> :</p>
@@ -37,8 +36,8 @@ description: De zéro à votre première release automatisée en moins de 5 minu
 → feat: add user authentication
 → fix: correct pagination offset
 
-Bump  my-app  0.1.0 → 0.2.0
-Tag   v0.2.0
+Bump my-app 0.1.0 → 0.2.0
+Tag v0.2.0
 </code></pre>
 </li>
 <li><p><strong>Lancer la release</strong></p>
@@ -54,7 +53,6 @@ Tag   v0.2.0
 </ul>
 </li>
 </ol>
-
 
 ## Étapes suivantes
 

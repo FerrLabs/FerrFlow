@@ -3,7 +3,6 @@ title: Quick start
 description: Go from zero to your first automated release in under 5 minutes.
 ---
 
-
 <ol>
 <li><p><strong>Scaffold the config</strong></p>
 <p>Run <code>ferrflow init</code> at the root of your repository. It detects your version files and writes a <code>.ferrflow</code> config:</p>
@@ -37,8 +36,8 @@ description: Go from zero to your first automated release in under 5 minutes.
 → feat: add user authentication
 → fix: correct pagination offset
 
-Bump  my-app  0.1.0 → 0.2.0
-Tag   v0.2.0
+Bump my-app 0.1.0 → 0.2.0
+Tag v0.2.0
 </code></pre>
 </li>
 <li><p><strong>Run the release</strong></p>
@@ -54,7 +53,6 @@ Tag   v0.2.0
 </ul>
 </li>
 </ol>
-
 
 <aside class="ferr-aside ferr-aside--tip"><p class="ferr-aside__title">Starting from scratch</p><div class="ferr-aside__body"><p>No prior tag? FerrFlow v3 bootstraps from the strategy&#39;s zero value automatically — the first <code>feat:</code> lands at <code>0.1.0</code>, the first <code>fix:</code> at <code>0.0.1</code>. You don&#39;t need to create a <code>v0.0.0</code> tag by hand. See <a href="/docs/reference/cli#which-version-is-bumped-from">how the baseline is chosen</a>.</p>
 </div></aside>

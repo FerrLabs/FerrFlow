@@ -3,7 +3,6 @@ title: Triggers de pipeline
 description: Choisir la bonne strategie de declenchement CI pour vos releases FerrFlow.
 ---
 
-
 FerrFlow fonctionne avec n'importe quelle strategie de declenchement CI. Cette page couvre les patterns les plus courants, quand les utiliser, et comment ils interagissent avec `releaseCommitMode`.
 
 ## Push sur main
@@ -50,8 +49,8 @@ name: Build & Publish
 on:
   push:
     tags:
-      - 'v*'          # single-repo: v1.2.0
-      - '*@v*'        # monorepo: api@v1.2.0, site@v0.5.1
+      - 'v*' # single-repo: v1.2.0
+      - '*@v*' # monorepo: api@v1.2.0, site@v0.5.1
 
 jobs:
   build:
@@ -174,11 +173,7 @@ jobs:
 Utilisez `releaseCommitMode: pr` pour que FerrFlow ouvre une pull request avec le bump de version au lieu de committer directement.
 
 ```yaml title="ferrflow.json"
-{
-  "workspace": {
-    "releaseCommitMode": "pr"
-  }
-}
+{ 'workspace': { 'releaseCommitMode': 'pr' } }
 ```
 
 ```yaml title=".github/workflows/release.yml"
@@ -210,10 +205,10 @@ jobs:
 
 ## Resume
 
-| Trigger | Automatique | Gate de revue | Ideal pour |
-|---------|-------------|---------------|------------|
-| Push sur main | Oui | Non | La plupart des projets |
-| Tag-triggered | Oui | Non | Build/deploy decouples |
-| Release-triggered | Non | Oui | Brouillon, revue, publication |
-| Manuel | Non | Oui | Cadence de release controlee |
-| Base sur PR | Partiel | Oui | Protection de branche / revue |
+| Trigger           | Automatique | Gate de revue | Ideal pour                    |
+| ----------------- | ----------- | ------------- | ----------------------------- |
+| Push sur main     | Oui         | Non           | La plupart des projets        |
+| Tag-triggered     | Oui         | Non           | Build/deploy decouples        |
+| Release-triggered | Non         | Oui           | Brouillon, revue, publication |
+| Manuel            | Non         | Oui           | Cadence de release controlee  |
+| Base sur PR       | Partiel     | Oui           | Protection de branche / revue |

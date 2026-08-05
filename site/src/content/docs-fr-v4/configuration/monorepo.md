@@ -3,7 +3,6 @@ title: Monorepo
 description: Versionner plusieurs packages indépendamment dans un seul repository.
 ---
 
-
 FerrFlow considère un repository comme un monorepo lorsque la configuration définit plus d'un package. Chaque package est versionné indépendamment en fonction de son propre historique git.
 
 ## Isolation des packages
@@ -309,13 +308,15 @@ tag_template = &quot;site-v{version}&quot;
   tagTemplate: &quot;{name}@v{version}&quot;
 
 package:
-  - name: api
-    path: packages/api
-    versioning: calver
-  - name: site
-    path: packages/site
-    tagTemplate: &quot;site-v{version}&quot;
-</code></pre>
+
+- name: api
+  path: packages/api
+  versioning: calver
+- name: site
+  path: packages/site
+  tagTemplate: &quot;site-v{version}&quot;
+  </code></pre>
+
 </div></div>
 </div>
 

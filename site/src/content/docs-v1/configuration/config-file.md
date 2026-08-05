@@ -3,7 +3,6 @@ title: Configuration
 description: Complete reference for the FerrFlow configuration file.
 ---
 
-
 FerrFlow supports four config file formats, searched in this order:
 
 1. `ferrflow.json`
@@ -72,13 +71,15 @@ format = &quot;toml&quot;
   tagTemplate: &quot;v{version}&quot;
 
 package:
-  - name: my-app
-    path: &quot;.&quot;
-    changelog: CHANGELOG.md
-    versionedFiles:
-      - path: Cargo.toml
-        format: toml
-</code></pre>
+
+- name: my-app
+  path: &quot;.&quot;
+  changelog: CHANGELOG.md
+  versionedFiles:
+  - path: Cargo.toml
+    format: toml
+    </code></pre>
+
 </div></div>
 </div>
 
@@ -92,26 +93,26 @@ All forms are equivalent.</p>
 
 Global settings that apply to all packages.
 
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `remote` | string | `"origin"` | Git remote to push to |
-| `branch` | string | auto-detected | Branch to push to (detected from remote HEAD) |
-| `tagTemplate` | string | `"v{version}"` or `"{name}@v{version}"` | Tag naming pattern. Uses `{version}` and `{name}` placeholders. Defaults to `v{version}` for single-package repos and `{name}@v{version}` for monorepos. |
-| `versioning` | string | `"semver"` | Default versioning strategy for all packages |
-| `releaseCommitMode` | string | `"commit"` | How to handle the release commit: `"commit"`, `"pr"`, or `"none"` |
-| `skipCi` | boolean | depends on mode | Add `[skip ci]` to release commits. Defaults to `true` when mode is `"commit"`, `false` otherwise. |
-| `autoMergeReleases` | boolean | `true` | Enable auto-merge on release PRs (only applies when mode is `"pr"`) |
-| `recoverMissedReleases` | boolean | `false` | When enabled, if FerrFlow finds unreleased commits spanning multiple version bumps, it creates all intermediate releases instead of jumping to the latest version |
-| `telemetry` | boolean | `true` | Send anonymous usage telemetry |
+| Field                   | Type    | Default                                 | Description                                                                                                                                                       |
+| ----------------------- | ------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `remote`                | string  | `"origin"`                              | Git remote to push to                                                                                                                                             |
+| `branch`                | string  | auto-detected                           | Branch to push to (detected from remote HEAD)                                                                                                                     |
+| `tagTemplate`           | string  | `"v{version}"` or `"{name}@v{version}"` | Tag naming pattern. Uses `{version}` and `{name}` placeholders. Defaults to `v{version}` for single-package repos and `{name}@v{version}` for monorepos.          |
+| `versioning`            | string  | `"semver"`                              | Default versioning strategy for all packages                                                                                                                      |
+| `releaseCommitMode`     | string  | `"commit"`                              | How to handle the release commit: `"commit"`, `"pr"`, or `"none"`                                                                                                 |
+| `skipCi`                | boolean | depends on mode                         | Add `[skip ci]` to release commits. Defaults to `true` when mode is `"commit"`, `false` otherwise.                                                                |
+| `autoMergeReleases`     | boolean | `true`                                  | Enable auto-merge on release PRs (only applies when mode is `"pr"`)                                                                                               |
+| `recoverMissedReleases` | boolean | `false`                                 | When enabled, if FerrFlow finds unreleased commits spanning multiple version bumps, it creates all intermediate releases instead of jumping to the latest version |
+| `telemetry`             | boolean | `true`                                  | Send anonymous usage telemetry                                                                                                                                    |
 
 ### Tag template
 
 The `tagTemplate` field controls how git tags are named. Available placeholders:
 
-| Placeholder | Description |
-|---|---|
+| Placeholder | Description                       |
+| ----------- | --------------------------------- |
 | `{version}` | The version number (e.g. `1.2.3`) |
-| `{name}` | The package name |
+| `{name}`    | The package name                  |
 
 <div class="ferr-tabs">
   <div class="ferr-tab" data-label="JSON"><p class="ferr-tab__label">JSON</p><div class="ferr-tab__body"><pre><code class="language-json">{
@@ -169,11 +170,11 @@ tag_template = &quot;{name}@v{version}&quot;
 
 Controls how FerrFlow handles the commit that updates version files and changelogs.
 
-| Mode | Behavior |
-|---|---|
-| `"commit"` | Commits directly to the current branch and pushes (default) |
-| `"pr"` | Creates a `release/` branch and opens a pull request |
-| `"none"` | Only creates tags and releases, does not commit file changes |
+| Mode       | Behavior                                                     |
+| ---------- | ------------------------------------------------------------ |
+| `"commit"` | Commits directly to the current branch and pushes (default)  |
+| `"pr"`     | Creates a `release/` branch and opens a pull request         |
+| `"none"`   | Only creates tags and releases, does not commit file changes |
 
 <div class="ferr-tabs">
   <div class="ferr-tab" data-label="JSON"><p class="ferr-tab__label">JSON</p><div class="ferr-tab__body"><pre><code class="language-json">{
@@ -208,14 +209,14 @@ auto_merge_releases = true
 
 FerrFlow supports multiple versioning strategies, configurable at workspace or package level.
 
-| Strategy | Format | Example progression |
-|---|---|---|
-| `semver` | `MAJOR.MINOR.PATCH` | `1.2.3` → `1.3.0` → `2.0.0` |
-| `calver` | `YYYY.MM.PATCH` | `2026.03.0` → `2026.03.1` → `2026.04.0` |
-| `calver-short` | `YY.MM.PATCH` | `26.03.0` → `26.03.1` |
-| `calver-seq` | `YYYY.MM.SEQ` | `2026.03.1` → `2026.03.2` |
-| `sequential` | `N` | `1` → `2` → `3` |
-| `zerover` | `0.MINOR.PATCH` | `0.1.0` → `0.2.0` (never reaches 1.0) |
+| Strategy       | Format              | Example progression                     |
+| -------------- | ------------------- | --------------------------------------- |
+| `semver`       | `MAJOR.MINOR.PATCH` | `1.2.3` → `1.3.0` → `2.0.0`             |
+| `calver`       | `YYYY.MM.PATCH`     | `2026.03.0` → `2026.03.1` → `2026.04.0` |
+| `calver-short` | `YY.MM.PATCH`       | `26.03.0` → `26.03.1`                   |
+| `calver-seq`   | `YYYY.MM.SEQ`       | `2026.03.1` → `2026.03.2`               |
+| `sequential`   | `N`                 | `1` → `2` → `3`                         |
+| `zerover`      | `0.MINOR.PATCH`     | `0.1.0` → `0.2.0` (never reaches 1.0)   |
 
 <div class="ferr-tabs">
   <div class="ferr-tab" data-label="JSON"><p class="ferr-tab__label">JSON</p><div class="ferr-tab__body"><pre><code class="language-json">{
@@ -246,14 +247,14 @@ versioning = &quot;calver&quot;
 
 Defines a package to version. You can have one or many.
 
-| Field | Required | Default | Description |
-|---|---|---|---|
-| `name` | yes | — | Package identifier, used in git tag prefix |
-| `path` | yes | — | Relative path to the package directory |
-| `changelog` | no | `{path}/CHANGELOG.md` | Path to the changelog file |
-| `sharedPaths` | no | `[]` | Paths that trigger this package when changed |
-| `versioning` | no | inherited from workspace | Override versioning strategy for this package |
-| `tagTemplate` | no | inherited from workspace | Override tag template for this package |
+| Field         | Required | Default                  | Description                                   |
+| ------------- | -------- | ------------------------ | --------------------------------------------- |
+| `name`        | yes      | —                        | Package identifier, used in git tag prefix    |
+| `path`        | yes      | —                        | Relative path to the package directory        |
+| `changelog`   | no       | `{path}/CHANGELOG.md`    | Path to the changelog file                    |
+| `sharedPaths` | no       | `[]`                     | Paths that trigger this package when changed  |
+| `versioning`  | no       | inherited from workspace | Override versioning strategy for this package |
+| `tagTemplate` | no       | inherited from workspace | Override tag template for this package        |
 
 ### `versionedFiles`
 
@@ -313,14 +314,14 @@ format = &quot;json&quot;
 </div></div>
 </div>
 
-| `format` | File | Field updated |
-|---|---|---|
-| `toml` | `Cargo.toml`, `pyproject.toml` | `[package].version` or `[project].version` |
-| `json` | `package.json` | `version` |
-| `xml` | `pom.xml` | First `<version>` element |
-| `gradle` | `build.gradle`, `build.gradle.kts` | `version = "..."` |
-| `gomod` | `go.mod` | No file update — version comes from git tags only |
-| `txt` | `VERSION`, `VERSION.txt` | Entire file content replaced |
+| `format` | File                               | Field updated                                     |
+| -------- | ---------------------------------- | ------------------------------------------------- |
+| `toml`   | `Cargo.toml`, `pyproject.toml`     | `[package].version` or `[project].version`        |
+| `json`   | `package.json`                     | `version`                                         |
+| `xml`    | `pom.xml`                          | First `<version>` element                         |
+| `gradle` | `build.gradle`, `build.gradle.kts` | `version = "..."`                                 |
+| `gomod`  | `go.mod`                           | No file update — version comes from git tags only |
+| `txt`    | `VERSION`, `VERSION.txt`           | Entire file content replaced                      |
 
 ## Complete examples
 
@@ -386,15 +387,17 @@ format = &quot;json&quot;
   tagTemplate: &quot;v{version}&quot;
 
 package:
-  - name: ferrflow
-    path: &quot;.&quot;
-    changelog: CHANGELOG.md
-    versionedFiles:
-      - path: Cargo.toml
-        format: toml
-      - path: npm/package.json
-        format: json
-</code></pre>
+
+- name: ferrflow
+  path: &quot;.&quot;
+  changelog: CHANGELOG.md
+  versionedFiles:
+  - path: Cargo.toml
+    format: toml
+  - path: npm/package.json
+    format: json
+    </code></pre>
+
 </div></div>
 </div>
 
@@ -485,24 +488,26 @@ format = &quot;json&quot;
   tagTemplate: &quot;{name}@v{version}&quot;
 
 package:
-  - name: api
-    path: packages/api
-    changelog: packages/api/CHANGELOG.md
-    sharedPaths:
-      - packages/shared/
-    versionedFiles:
-      - path: packages/api/Cargo.toml
-        format: toml
 
-  - name: site
-    path: packages/site
-    changelog: packages/site/CHANGELOG.md
-    sharedPaths:
-      - packages/shared/
+- name: api
+  path: packages/api
+  changelog: packages/api/CHANGELOG.md
+  sharedPaths:
+  - packages/shared/
     versionedFiles:
-      - path: packages/site/package.json
-        format: json
-</code></pre>
+  - path: packages/api/Cargo.toml
+    format: toml
+
+- name: site
+  path: packages/site
+  changelog: packages/site/CHANGELOG.md
+  sharedPaths:
+  - packages/shared/
+    versionedFiles:
+  - path: packages/site/package.json
+    format: json
+    </code></pre>
+
 </div></div>
 </div>
 

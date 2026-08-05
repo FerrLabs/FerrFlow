@@ -3,7 +3,6 @@ title: Installation
 description: Comment installer FerrFlow en local ou en CI.
 ---
 
-
 ## Installation locale
 
 <div class="ferr-tabs">

@@ -3,7 +3,6 @@ title: Pipeline Triggers
 description: Choose the right CI trigger strategy for your FerrFlow releases.
 ---
 
-
 FerrFlow works with any CI trigger strategy. This page covers the most common patterns, when to use each one, and how they interact with `releaseCommitMode`.
 
 ## Push to main
@@ -51,8 +50,8 @@ name: Build & Publish
 on:
   push:
     tags:
-      - 'v*'          # single-repo: v1.2.0
-      - '*@v*'        # monorepo: api@v1.2.0, site@v0.5.1
+      - 'v*' # single-repo: v1.2.0
+      - '*@v*' # monorepo: api@v1.2.0, site@v0.5.1
 
 jobs:
   build:
@@ -179,11 +178,7 @@ jobs:
 Use `releaseCommitMode: pr` to have FerrFlow open a pull request with the version bump instead of committing directly. The release completes when the PR is merged.
 
 ```yaml title="ferrflow.json"
-{
-  "workspace": {
-    "releaseCommitMode": "pr"
-  }
-}
+{ 'workspace': { 'releaseCommitMode': 'pr' } }
 ```
 
 ```yaml title=".github/workflows/release.yml"
@@ -259,10 +254,10 @@ jobs:
 
 ## Summary
 
-| Trigger | Automatic | Review gate | Best for |
-|---------|-----------|-------------|----------|
-| Push to main | Yes | No | Most projects |
-| Tag-triggered | Yes | No | Decoupled build/deploy |
-| Release-triggered | No | Yes | Draft → review → publish |
-| Manual | No | Yes | Controlled release cadence |
-| PR-based | Partial | Yes | Branch protection / review |
+| Trigger           | Automatic | Review gate | Best for                   |
+| ----------------- | --------- | ----------- | -------------------------- |
+| Push to main      | Yes       | No          | Most projects              |
+| Tag-triggered     | Yes       | No          | Decoupled build/deploy     |
+| Release-triggered | No        | Yes         | Draft → review → publish   |
+| Manual            | No        | Yes         | Controlled release cadence |
+| PR-based          | Partial   | Yes         | Branch protection / review |

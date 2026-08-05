@@ -4,7 +4,6 @@ description: Run FerrFlow releases automatically in GitLab CI.
 slug: v0/docs/ci/gitlab-ci
 ---
 
-
 ## Using the Docker image
 
 The official FerrFlow Docker image ships the binary and can be used directly as a GitLab CI job image.
@@ -31,7 +30,7 @@ release:
 release:
   image: ghcr.io/ferrlabs/ferrflow:latest
   variables:
-    GIT_DEPTH: 0          # full history — required for tag scanning
+    GIT_DEPTH: 0 # full history — required for tag scanning
     GITLAB_TOKEN: $CI_JOB_TOKEN
   script:
     - ferrflow release
@@ -48,7 +47,7 @@ release:
   image: ghcr.io/ferrlabs/ferrflow:latest
   variables:
     GIT_DEPTH: 0
-    GITLAB_TOKEN: $FERRFLOW_DEPLOY_TOKEN   # CI variable with write_repository access
+    GITLAB_TOKEN: $FERRFLOW_DEPLOY_TOKEN # CI variable with write_repository access
   script:
     - ferrflow release
   rules:

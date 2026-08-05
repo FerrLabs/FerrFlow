@@ -3,7 +3,6 @@ title: Introduction
 description: What FerrFlow is and why it exists.
 ---
 
-
 FerrFlow is a single binary that automates semantic versioning for any repository — monorepo or classic, any language.
 
 It reads your commit history, determines the right version bump, updates your version files, writes a changelog, creates a git tag, and publishes a release. Zero runtime dependencies.
@@ -23,13 +22,13 @@ It reads your commit history, determines the right version bump, updates your ve
 
 Most versioning tools are coupled to a specific ecosystem or require Node.js to be present in your CI.
 
-| Tool | Monorepo | Multi-language | Runtime |
-|---|---|---|---|
-| semantic-release | via plugins | JS/Node only | Node.js |
-| changesets | manual bump | JS only | Node.js |
-| release-please | limited | partial | Node.js |
-| cargo-release | no | Rust only | Rust |
-| **FerrFlow** | **native** | **any** | **none** |
+| Tool             | Monorepo    | Multi-language | Runtime  |
+| ---------------- | ----------- | -------------- | -------- |
+| semantic-release | via plugins | JS/Node only   | Node.js  |
+| changesets       | manual bump | JS only        | Node.js  |
+| release-please   | limited     | partial        | Node.js  |
+| cargo-release    | no          | Rust only      | Rust     |
+| **FerrFlow**     | **native**  | **any**        | **none** |
 
 FerrFlow ships as a compiled binary. Drop it in any CI environment without installing a runtime. A WASM build (`@ferrflow/wasm`) is also available for browser-side usage.
 

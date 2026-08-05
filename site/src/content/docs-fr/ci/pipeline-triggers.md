@@ -3,7 +3,6 @@ title: Triggers de pipeline
 description: Choisir la bonne strategie de declenchement CI pour vos releases FerrFlow.
 ---
 
-
 FerrFlow fonctionne avec n'importe quelle strategie de declenchement CI. Cette page couvre les patterns les plus courants, quand les utiliser, et comment ils interagissent avec `releaseCommitMode`.
 
 ## Push sur main
@@ -50,8 +49,8 @@ name: Build & Publish
 on:
   push:
     tags:
-      - 'v*'          # single-repo: v1.2.0
-      - '*@v*'        # monorepo: api@v1.2.0, site@v0.5.1
+      - 'v*' # single-repo: v1.2.0
+      - '*@v*' # monorepo: api@v1.2.0, site@v0.5.1
 
 jobs:
   build:
@@ -174,11 +173,7 @@ jobs:
 Utilisez `releaseCommitMode: pr` pour que FerrFlow ouvre une pull request avec le bump de version au lieu de committer directement.
 
 ```yaml title="ferrflow.json"
-{
-  "workspace": {
-    "releaseCommitMode": "pr"
-  }
-}
+{ 'workspace': { 'releaseCommitMode': 'pr' } }
 ```
 
 ```yaml title=".github/workflows/release.yml"
@@ -226,6 +221,7 @@ Une release enchaine plusieurs etapes a effet de bord : ecriture des fichiers de
 Depuis la v5.3, FerrFlow ecrit `.git/ferrflow.checkpoint.json` apres chaque phase reussie. La prochaine invocation `ferrflow release` sur le meme commit reprend a la phase enregistree et saute le travail deja fait — utile a l'echelle CI ou les pannes transitoires sont la norme. Le checkpoint est efface automatiquement quand la release se termine sans erreur.
 
 Deux garde-fous :
+
 - Verrouillage HEAD : le checkpoint enregistre le SHA du commit sur lequel la release tournait. Si vous avancez HEAD entre deux runs, FerrFlow refuse de reprendre et vous demande soit de revenir au commit enregistre, soit de supprimer le checkpoint manuellement. Ca evite de rejouer d'anciens tags sur un graphe de commits different.
 - Idempotence : les operations git et forge sous-jacentes sont deja idempotentes (pousser un tag deja pousse est un no-op, creer une release qui existe deja la reutilise), donc un crash en milieu de phase recupere proprement au run suivant.
 
@@ -233,10 +229,10 @@ Pour repartir de zero apres un crash dont vous ne voulez pas reprendre l'etat, s
 
 ## Resume
 
-| Trigger | Automatique | Gate de revue | Ideal pour |
-|---------|-------------|---------------|------------|
-| Push sur main | Oui | Non | La plupart des projets |
-| Tag-triggered | Oui | Non | Build/deploy decouples |
-| Release-triggered | Non | Oui | Brouillon, revue, publication |
-| Manuel | Non | Oui | Cadence de release controlee |
-| Base sur PR | Partiel | Oui | Protection de branche / revue |
+| Trigger           | Automatique | Gate de revue | Ideal pour                    |
+| ----------------- | ----------- | ------------- | ----------------------------- |
+| Push sur main     | Oui         | Non           | La plupart des projets        |
+| Tag-triggered     | Oui         | Non           | Build/deploy decouples        |
+| Release-triggered | Non         | Oui           | Brouillon, revue, publication |
+| Manuel            | Non         | Oui           | Cadence de release controlee  |
+| Base sur PR       | Partiel     | Oui           | Protection de branche / revue |

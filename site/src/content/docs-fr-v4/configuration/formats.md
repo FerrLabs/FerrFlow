@@ -3,7 +3,6 @@ title: Formats supportés
 description: Formats de fichiers de version que FerrFlow peut lire et mettre à jour.
 ---
 
-
 ## TOML
 
 Utilisé par Rust (`Cargo.toml`) et Python (`pyproject.toml`).
@@ -78,8 +77,8 @@ FerrFlow met à jour le champ `version` et, lorsqu'il est présent, maintient `a
 ```yaml
 apiVersion: v2
 name: my-app
-version: 1.2.3        # ← mis à jour
-appVersion: "1.2.3"   # ← mis à jour si présent
+version: 1.2.3 # ← mis à jour
+appVersion: '1.2.3' # ← mis à jour si présent
 ```
 
 ## Plusieurs fichiers par package
@@ -102,7 +101,7 @@ path   = &quot;Cargo.toml&quot;
 format = &quot;toml&quot;
 
 [[package.versioned_files]]
-path   = &quot;npm/package.json&quot;
+path = &quot;npm/package.json&quot;
 format = &quot;json&quot;
 </code></pre>
 </div></div>

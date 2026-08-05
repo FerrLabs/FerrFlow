@@ -4,7 +4,6 @@ description: Version multiple packages independently in a single repository.
 slug: v0/docs/configuration/monorepo
 ---
 
-
 FerrFlow treats a repository as a monorepo when `ferrflow.toml` defines more than one `[[package]]`. Each package is versioned independently based on its own git history.
 
 ## Package isolation
@@ -52,9 +51,9 @@ FerrFlow looks for the most recent tag matching `{name}@v*` to determine what co
 
 Packages release independently. In a single `ferrflow release` run:
 
-* `api` may bump from `1.2.0` → `1.3.0` (new `feat:` commit)
-* `site` may bump from `0.4.0` → `0.4.1` (only `fix:` commits)
-* `shared` may not release at all (only `chore:` commits)
+- `api` may bump from `1.2.0` → `1.3.0` (new `feat:` commit)
+- `site` may bump from `0.4.0` → `0.4.1` (only `fix:` commits)
+- `shared` may not release at all (only `chore:` commits)
 
 <aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>Use <code>ferrflow check</code> to preview exactly which packages would be released and at what version before committing to a release.</p>
 </div></aside>

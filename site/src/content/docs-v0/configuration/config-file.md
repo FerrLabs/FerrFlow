@@ -4,7 +4,6 @@ description: Complete reference for the ferrflow.toml configuration file.
 slug: v0/docs/configuration/config-file
 ---
 
-
 FerrFlow reads `ferrflow.toml` from the root of your repository. If no config file is found, it auto-detects common version files in the current directory.
 
 ## `[workspace]`
@@ -29,12 +28,12 @@ changelog = "packages/api/CHANGELOG.md"  # Where to write the changelog
 shared_paths = ["packages/shared/"]      # Changes here also trigger this package
 ```
 
-| Field | Required | Description |
-|---|---|---|
-| `name` | yes | Package identifier, used in git tag prefix |
-| `path` | yes | Relative path to the package directory |
-| `changelog` | no | Path to the changelog file (defaults to `{path}/CHANGELOG.md`) |
-| `shared_paths` | no | List of paths — changes in any of them trigger this package |
+| Field          | Required | Description                                                    |
+| -------------- | -------- | -------------------------------------------------------------- |
+| `name`         | yes      | Package identifier, used in git tag prefix                     |
+| `path`         | yes      | Relative path to the package directory                         |
+| `changelog`    | no       | Path to the changelog file (defaults to `{path}/CHANGELOG.md`) |
+| `shared_paths` | no       | List of paths — changes in any of them trigger this package    |
 
 ## `[[package.versioned_files]]`
 
@@ -46,13 +45,13 @@ path   = "packages/api/Cargo.toml"
 format = "toml"
 ```
 
-| `format` | File | Field updated |
-|---|---|---|
-| `toml` | `Cargo.toml`, `pyproject.toml` | `[package].version` |
-| `json` | `package.json` | `version` |
-| `xml` | `pom.xml` | First `<version>` element |
-| `gradle` | `build.gradle`, `build.gradle.kts` | `version = "..."` |
-| `gomod` | `go.mod` | No file update — version comes from git tags only |
+| `format` | File                               | Field updated                                     |
+| -------- | ---------------------------------- | ------------------------------------------------- |
+| `toml`   | `Cargo.toml`, `pyproject.toml`     | `[package].version`                               |
+| `json`   | `package.json`                     | `version`                                         |
+| `xml`    | `pom.xml`                          | First `<version>` element                         |
+| `gradle` | `build.gradle`, `build.gradle.kts` | `version = "..."`                                 |
+| `gomod`  | `go.mod`                           | No file update — version comes from git tags only |
 
 A package can have multiple versioned files:
 
