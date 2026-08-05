@@ -4,6 +4,13 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.52.0] - 2026-08-05
+
+### Features
+
+- feat(bot): exchange tokens on api.ferrflow.com instead of api.ferrlabs.com (#785)
+- feat(cli): add ferrflow why to explain a package's release decision (#784)
+
 ## [5.51.0] - 2026-08-04
 
 ### Features
