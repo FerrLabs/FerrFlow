@@ -51,7 +51,7 @@ jobs:
 Aucun secret ne quitte jamais votre repository. Chaque run échange une preuve d'identité contre un token :
 
 1. Le runner GitHub Actions émet un **token OIDC** court décrivant votre repository (audience `ferrflow.ferrlabs.com`).
-2. FerrFlow envoie ce token à **`api.ferrlabs.com`**, qui le vérifie contre les clés publiques de GitHub.
+2. FerrFlow envoie ce token à **`api.ferrflow.com`**, qui le vérifie contre les clés publiques de GitHub.
 3. Le service signe un **token d'installation scopé** pour l'app FerrFlow sur votre repo (avec une clé privée qui ne quitte jamais le KMS de FerrLabs) et le renvoie. Le token vit une heure.
 4. FerrFlow utilise ce token pour pousser tags, commits et releases — attribués à `ferrflow[bot]`.
 

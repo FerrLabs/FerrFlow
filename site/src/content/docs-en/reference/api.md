@@ -3,9 +3,11 @@ title: FerrFlow API
 description: Hosted HTTP endpoints for FerrFlow — validate configs, preview version bumps, resolve the latest release, and fetch the config schema.
 ---
 
-The FerrFlow API exposes a small set of hosted HTTP endpoints under `https://api.ferrlabs.com/v1/ferrflow/*`. They are backed by the same FerrFlow core the CLI runs, so `validate` and `preview` return results identical to `ferrflow validate` and `ferrflow check` — no second implementation to drift.
+The FerrFlow API exposes a small set of hosted HTTP endpoints under `https://api.ferrflow.com/v1/ferrflow/*`. They are backed by the same FerrFlow core the CLI runs, so `validate` and `preview` return results identical to `ferrflow validate` and `ferrflow check` — no second implementation to drift.
 
-Every endpoint is public (no authentication) and safe to call from CI, editors, or a browser. The machine-readable contract is served at [`/v1/ferrflow/openapi.json`](https://api.ferrlabs.com/v1/ferrflow/openapi.json) (OpenAPI 3.1).
+Every endpoint is public (no authentication) and safe to call from CI, editors, or a browser. The machine-readable contract is served at [`/v1/ferrflow/openapi.json`](https://api.ferrflow.com/v1/ferrflow/openapi.json) (OpenAPI 3.1).
+
+`https://api.ferrlabs.com/v1/ferrflow/*` reaches the same endpoints and keeps working indefinitely — it is where the API was first published, and released CLI versions still call it. Prefer `api.ferrflow.com` in anything new.
 
 ## `GET /v1/ferrflow/health`
 
@@ -20,7 +22,7 @@ Liveness and version probe. Powers status dashboards.
 Returns the config JSON Schema (`Content-Type: application/schema+json`), served from the schema bundled in the FerrFlow release — the same bytes the CLI validates against. Sends a strong `ETag` and `Cache-Control`, so point your editor's `$schema` here:
 
 ```json
-{ "$schema": "https://api.ferrlabs.com/v1/ferrflow/schema" }
+{ "$schema": "https://api.ferrflow.com/v1/ferrflow/schema" }
 ```
 
 `GET /v1/ferrflow/schema/v{major}` returns the schema frozen at a CLI major (e.g. `/schema/v5`). Only the current major is served today; older majors return `404` until per-major snapshots land.
@@ -30,7 +32,7 @@ Returns the config JSON Schema (`Content-Type: application/schema+json`), served
 Resolves the latest FerrFlow release from GitHub, cached server-side. Pass `platform` to get a single asset:
 
 ```bash
-curl "https://api.ferrlabs.com/v1/ferrflow/latest?platform=linux-x64"
+curl "https://api.ferrflow.com/v1/ferrflow/latest?platform=linux-x64"
 ```
 
 ```json
@@ -51,7 +53,7 @@ Releases are signed with [Sigstore](/verifying-releases/) — verify the `.bundl
 Validates a config without a repo — you send the config text and, optionally, the contents of the versioned files it references so the file-existence and version-consistency checks run. The result is identical to `ferrflow validate --json`.
 
 ```bash
-curl -X POST https://api.ferrlabs.com/v1/ferrflow/validate \
+curl -X POST https://api.ferrflow.com/v1/ferrflow/validate \
   -H 'content-type: application/json' \
   -d '{
     "config": "{\"package\":[{\"name\":\"app\",\"path\":\".\",\"versionedFiles\":[{\"path\":\"package.json\",\"format\":\"json\"}]}]}",
@@ -77,7 +79,7 @@ An invalid config is still a successful validation: the response is `200` with `
 Computes the version bumps and changelog for an explicit list of commits — the same logic as `ferrflow check`, as a service. No repo access; you pass the commits.
 
 ```bash
-curl -X POST https://api.ferrlabs.com/v1/ferrflow/preview \
+curl -X POST https://api.ferrflow.com/v1/ferrflow/preview \
   -H 'content-type: application/json' \
   -d '{
     "config": "{\"package\":[{\"name\":\"api\",\"path\":\".\"}]}",
