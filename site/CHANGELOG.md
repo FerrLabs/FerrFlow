@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.36.0] - 2026-08-05
+
+### Features
+
+- feat(docs): document the ferrflow why command (#771)
+
 ## [6.35.0] - 2026-08-04
 
 ### Features
