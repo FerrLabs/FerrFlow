@@ -35,6 +35,7 @@ mod lock;
 mod plan;
 mod release_json;
 mod summary;
+mod why;
 use checkpoint::Checkpoint;
 use drafts::publish_pending_drafts;
 use execute::{ReleasePlan, execute_release, print_dry_run_hooks};
@@ -43,6 +44,7 @@ use plan::{PackagePlan, PlanInputs, SkipReason, compute_plan};
 use rayon::prelude::*;
 use release_json::{GitInfo, ReleaseJson, ReleasedPackage, SkippedPackage};
 use summary::{TagToCreate, collect_outputs};
+pub use why::why;
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn run_release_logic(
