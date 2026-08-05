@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.37.1] - 2026-08-05
+
+### Refactoring
+
+- refactor: move packages/site to the repo root (#773)
+
 ## [6.37.0] - 2026-08-05
 
 ### Features
