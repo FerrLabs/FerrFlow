@@ -33,6 +33,7 @@ const LEGAL = ['legal', 'privacy', 'security', 'terms', 'cookies'];
 
 const DOC_DIRS: { dir: string; prefix: string }[] = [
   { dir: 'docs-en', prefix: '/docs/' },
+  { dir: 'docs-v5', prefix: '/v5/docs/' },
   { dir: 'docs-v4', prefix: '/v4/docs/' },
   { dir: 'docs-v3', prefix: '/v3/docs/' },
   { dir: 'docs-v2', prefix: '/v2/docs/' },
@@ -48,6 +49,8 @@ const docRoutes = DOC_DIRS.flatMap(({ dir, prefix }) => docSlugs(dir).map((s) =>
 const ALL_DOC_DIRS = [
   'docs-en',
   'docs-fr',
+  'docs-fr-v5',
+  'docs-v5',
   'docs-fr-v4',
   'docs-v4',
   'docs-v3',

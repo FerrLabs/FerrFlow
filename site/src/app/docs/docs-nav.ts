@@ -46,7 +46,8 @@ export const DOCS_NAV: readonly DocSection[] = [
 ];
 
 export const DOC_VERSIONS: readonly DocVersion[] = [
-  { slug: 'current', label: 'v5' },
+  { slug: 'current', label: 'v6' },
+  { slug: 'v5', label: 'v5' },
   { slug: 'v4', label: 'v4' },
   { slug: 'v3', label: 'v3' },
   { slug: 'v2', label: 'v2' },
