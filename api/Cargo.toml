@@ -20,7 +20,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 
 reqwest = { version = "0.13", default-features = false, features = ["rustls", "json"] }
-jsonwebtoken = "9"
+jsonwebtoken = "10"
 
 # The FerrFlow CLI core, linked as a library so `/validate`, `/preview` and
 # `/schema` answer with the exact same code the CLI runs — there is no second
