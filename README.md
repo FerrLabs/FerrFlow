@@ -550,7 +550,7 @@ steps:
   - uses: actions/checkout@v6
     with:
       fetch-depth: 0
-  - uses: FerrLabs/FerrFlow@v4
+  - uses: FerrLabs/FerrFlow@v6
     with:
       bot: true
 ```
@@ -561,5 +561,5 @@ Three auth modes are supported: `bot: true` uses the hosted FerrFlow App (recomm
 
 ## License
 
-[MPL-2.0](LICENSE)
+[MIT](LICENSE)
 
