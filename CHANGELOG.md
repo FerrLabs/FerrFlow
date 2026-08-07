@@ -4,6 +4,16 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.0.0] - 2026-08-07
+
+### Breaking Changes
+
+- chore!: relicense from MPL-2.0 to MIT (#813)
+
+### Bug Fixes
+
+- fix(action): verify the downloaded release archive against SHA256SUMS before extracting (#811)
+
 ## [5.52.1] - 2026-08-07
 
 ### Bug Fixes
