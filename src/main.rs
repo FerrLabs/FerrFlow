@@ -13,6 +13,7 @@ mod forge;
 mod formats;
 mod git;
 mod hooks;
+mod http;
 mod logging;
 mod manifest;
 mod monorepo;

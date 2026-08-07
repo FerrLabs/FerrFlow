@@ -73,7 +73,13 @@ impl BotTokenExchange {
             encode_query_component(&self.audience)
         );
 
-        let oidc_body: OidcResponse = ureq::get(&oidc_url)
+        // The bare `ureq::get` / `ureq::post` helpers build an agent with
+        // ureq's all-`None` timeout defaults, so a stalled runner or bot
+        // service would block the release indefinitely.
+        let agent = crate::http::agent();
+
+        let oidc_body: OidcResponse = agent
+            .get(&oidc_url)
             .header("Authorization", &format!("Bearer {req_token}"))
             .header("Accept", "application/json")
             .header(
@@ -91,7 +97,8 @@ impl BotTokenExchange {
         }
 
         let payload = serde_json::json!({ "token": oidc_body.value });
-        let mut response = match ureq::post(&self.endpoint)
+        let mut response = match agent
+            .post(&self.endpoint)
             .header("Content-Type", "application/json")
             .header("Accept", "application/json")
             .header(

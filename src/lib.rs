@@ -19,6 +19,8 @@ pub mod forge;
 #[cfg(feature = "cli")]
 pub mod git;
 #[cfg(feature = "cli")]
+pub mod http;
+#[cfg(feature = "cli")]
 pub mod manifest;
 #[cfg(feature = "cli")]
 pub mod publishers;
