@@ -47,6 +47,7 @@ runs:
       shell: bash
       env:
         INPUT_VERSION: ${{ inputs.version }}
+        GITHUB_TOKEN: ${{ github.token }}
       run: |
         set -euo pipefail
 
@@ -77,26 +78,54 @@ runs:
         ARCHIVE="ferrflow-${PLATFORM}-${ARCH_NAME}.${EXT}"
 
         if [ "$INPUT_VERSION" = "latest" ]; then
-          URL="https://github.com/FerrLabs/FerrFlow/releases/latest/download/${ARCHIVE}"
+          BASE="https://github.com/FerrLabs/FerrFlow/releases/latest/download"
         else
-          URL="https://github.com/FerrLabs/FerrFlow/releases/download/v${INPUT_VERSION}/${ARCHIVE}"
+          BASE="https://github.com/FerrLabs/FerrFlow/releases/download/v${INPUT_VERSION}"
         fi
 
         INSTALL_DIR="${RUNNER_TEMP:-$HOME/.local/bin}/ferrflow-bin"
+        DOWNLOAD_DIR="$(mktemp -d)"
         mkdir -p "$INSTALL_DIR"
 
+        curl --fail --location --silent --show-error \
+          --output "${DOWNLOAD_DIR}/${ARCHIVE}" "${BASE}/${ARCHIVE}"
+
+        # Verify the digest before anything is extracted or executed. A
+        # release without SHA256SUMS predates #789; warn rather than break
+        # every consumer pinned to an older version.
+        if curl --fail --location --silent --show-error \
+             --output "${DOWNLOAD_DIR}/SHA256SUMS" "${BASE}/SHA256SUMS"; then
+          grep " \*\?${ARCHIVE}\$" "${DOWNLOAD_DIR}/SHA256SUMS" > "${DOWNLOAD_DIR}/expected.sums" || true
+          if [ ! -s "${DOWNLOAD_DIR}/expected.sums" ]; then
+            echo "SHA256SUMS has no entry for ${ARCHIVE} — refusing to install" >&2
+            exit 1
+          fi
+          ( cd "$DOWNLOAD_DIR" && sha256sum -c expected.sums )
+          echo "Verified ${ARCHIVE} against SHA256SUMS"
+        else
+          echo "::warning::No SHA256SUMS published for this release; skipping checksum verification. Pin a version >= 5.52.0 to get verified installs."
+        fi
+
+        # Provenance is bound to a specific release, so it can only be
+        # checked on a pinned version. gh is preinstalled on GitHub-hosted
+        # runners; skip rather than fail where it isn't available.
+        if [ "$INPUT_VERSION" != "latest" ] && command -v gh >/dev/null 2>&1 && [ -n "${GITHUB_TOKEN:-}" ]; then
+          if gh attestation verify "${DOWNLOAD_DIR}/${ARCHIVE}" --repo FerrLabs/FerrFlow >/dev/null 2>&1; then
+            echo "Verified build provenance for ${ARCHIVE}"
+          else
+            echo "::warning::Could not verify build provenance for ${ARCHIVE} (older release, or gh attestation unavailable)"
+          fi
+        fi
+
         if [ "$PLATFORM" = "windows" ]; then
-          # Can't pipe into unzip (needs a seekable file), so download first.
-          TMP_ZIP="${RUNNER_TEMP:-/tmp}/ferrflow.zip"
-          curl --fail --location --silent --show-error --output "$TMP_ZIP" "$URL"
-          unzip -q -o "$TMP_ZIP" -d "$INSTALL_DIR"
-          rm -f "$TMP_ZIP"
+          unzip -q -o "${DOWNLOAD_DIR}/${ARCHIVE}" -d "$INSTALL_DIR"
           # No chmod needed on Windows; the .exe is already executable.
         else
-          curl --fail --location --silent --show-error "$URL" | tar -xz -C "$INSTALL_DIR"
+          tar -xzf "${DOWNLOAD_DIR}/${ARCHIVE}" -C "$INSTALL_DIR"
           chmod +x "$INSTALL_DIR/ferrflow"
         fi
 
+        rm -rf "$DOWNLOAD_DIR"
         echo "$INSTALL_DIR" >> "$GITHUB_PATH"
 
     # Git identity (`user.name` / `user.email`) is now set by the
