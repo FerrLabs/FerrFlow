@@ -168,6 +168,25 @@ jobs:
           /tmp/ferrflow completions zsh  > completions/_ferrflow
           /tmp/ferrflow completions fish > completions/ferrflow.fish
           tar -czf artifacts/ferrflow-completions.tar.gz -C completions .
+      - name: Generate SHA256SUMS
+        # The action verifies the archive it downloads against this file
+        # before extracting (#789). Written before provenance + cosign so
+        # the checksum manifest is itself attested and signed.
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          cd artifacts
+          : > SHA256SUMS
+          for f in ferrflow-*.tar.gz ferrflow-*.zip; do
+            [ -f "$f" ] || continue
+            sha256sum "$f" >> SHA256SUMS
+          done
+          if [ ! -s SHA256SUMS ]; then
+            echo "ERROR: no release archives found to checksum" >&2
+            exit 1
+          fi
+          cat SHA256SUMS
+
       - name: Attest build provenance
         uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4
         with:
@@ -214,7 +233,7 @@ jobs:
             echo "cosign signing failed for ${artifact} after 3 attempts" >&2
             return 1
           }
-          for artifact in artifacts/ferrflow-*.tar.gz artifacts/ferrflow-*.zip; do
+          for artifact in artifacts/ferrflow-*.tar.gz artifacts/ferrflow-*.zip artifacts/SHA256SUMS; do
             [ -f "$artifact" ] || continue
             echo "Signing $artifact"
             sign_with_retry "$artifact"
