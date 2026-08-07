@@ -9,7 +9,6 @@
 
 use anyhow::{Context, Result, anyhow};
 use std::collections::BTreeMap;
-use ureq::Agent;
 
 use super::{PublishContext, PublishOutcome};
 use crate::error_code::{self, ErrorCodeExt};
@@ -30,7 +29,7 @@ pub fn run(
         None => default_body(ctx),
     };
 
-    let agent = Agent::new_with_defaults();
+    let agent = crate::http::agent();
     let mut req = agent.post(&interpolated_url);
     for (k, v) in headers {
         let resolved = interpolate(v, ctx)?;

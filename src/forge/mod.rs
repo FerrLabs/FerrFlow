@@ -263,7 +263,7 @@ pub fn build_forge(kind: ForgeKind, token: String, slug: String, host: String) -
     // handshake per call. A 50-pkg release does ~150 HTTPS round-trips
     // against api.github.com — reusing the agent saves 2-8 seconds via
     // HTTP keep-alive. See #509.
-    let agent = ureq::Agent::new_with_defaults();
+    let agent = crate::http::agent();
     match kind {
         ForgeKind::Github => {
             let api_base = if host == "github.com" {
