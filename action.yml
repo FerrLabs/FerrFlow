@@ -45,8 +45,15 @@ runs:
   steps:
     - name: Install FerrFlow
       shell: bash
+      env:
+        INPUT_VERSION: ${{ inputs.version }}
       run: |
         set -euo pipefail
+
+        if [ "$INPUT_VERSION" != "latest" ] && ! printf '%s' "$INPUT_VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-+][A-Za-z0-9._-]+)*$'; then
+          echo "Invalid version: '$INPUT_VERSION' (expected 'latest' or X.Y.Z)" >&2
+          exit 1
+        fi
 
         OS=$(uname -s | tr '[:upper:]' '[:lower:]')
         ARCH=$(uname -m)
@@ -69,10 +76,10 @@ runs:
 
         ARCHIVE="ferrflow-${PLATFORM}-${ARCH_NAME}.${EXT}"
 
-        if [ "${{ inputs.version }}" = "latest" ]; then
+        if [ "$INPUT_VERSION" = "latest" ]; then
           URL="https://github.com/FerrLabs/FerrFlow/releases/latest/download/${ARCHIVE}"
         else
-          URL="https://github.com/FerrLabs/FerrFlow/releases/download/v${{ inputs.version }}/${ARCHIVE}"
+          URL="https://github.com/FerrLabs/FerrFlow/releases/download/v${INPUT_VERSION}/${ARCHIVE}"
         fi
 
         INSTALL_DIR="${RUNNER_TEMP:-$HOME/.local/bin}/ferrflow-bin"
@@ -119,9 +126,48 @@ runs:
         FERRFLOW_BOT: ${{ inputs.bot }}
         FERRFLOW_BOT_ENDPOINT: ${{ inputs.bot_endpoint }}
         FERRFLOW_BOT_AUDIENCE: ${{ inputs.bot_audience }}
-      run: ferrflow ${{ inputs.dry_run == 'true' && '--dry-run' || '' }} release ${{ inputs.force_version != '' && format('--force-version {0}', inputs.force_version) || '' }}
+        INPUT_DRY_RUN: ${{ inputs.dry_run }}
+        INPUT_FORCE_VERSION: ${{ inputs.force_version }}
+      run: |
+        set -euo pipefail
+
+        args=()
+        [ "$INPUT_DRY_RUN" = "true" ] && args+=(--dry-run)
+        args+=(release)
+
+        if [ -n "$INPUT_FORCE_VERSION" ]; then
+          if ! printf '%s' "$INPUT_FORCE_VERSION" | grep -Eq '^([A-Za-z0-9._@/-]+@)?[0-9]+\.[0-9]+\.[0-9]+([-+][A-Za-z0-9._-]+)*$'; then
+            echo "Invalid force_version: '$INPUT_FORCE_VERSION' (expected VERSION or NAME@VERSION)" >&2
+            exit 1
+          fi
+          args+=(--force-version "$INPUT_FORCE_VERSION")
+        fi
+
+        ferrflow "${args[@]}"
 
     - name: Run FerrFlow publishers
       if: inputs.mode == 'publish'
       shell: bash
-      run: ferrflow ${{ inputs.dry_run == 'true' && '--dry-run' || '' }} publish ${{ inputs.package }}
+      env:
+        FERRFLOW_BOT: ${{ inputs.bot }}
+        FERRFLOW_BOT_ENDPOINT: ${{ inputs.bot_endpoint }}
+        FERRFLOW_BOT_AUDIENCE: ${{ inputs.bot_audience }}
+        INPUT_DRY_RUN: ${{ inputs.dry_run }}
+        INPUT_PACKAGE: ${{ inputs.package }}
+      run: |
+        set -euo pipefail
+
+        args=()
+        [ "$INPUT_DRY_RUN" = "true" ] && args+=(--dry-run)
+        args+=(publish)
+
+        read -ra packages <<< "$INPUT_PACKAGE"
+        for pkg in ${packages[@]+"${packages[@]}"}; do
+          if ! printf '%s' "$pkg" | grep -Eq '^[A-Za-z0-9._@/-]+$'; then
+            echo "Invalid package name: '$pkg'" >&2
+            exit 1
+          fi
+          args+=("$pkg")
+        done
+
+        ferrflow "${args[@]}"
