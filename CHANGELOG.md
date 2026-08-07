@@ -4,6 +4,18 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [5.52.1] - 2026-08-07
+
+### Bug Fixes
+
+- fix(action): pass caller inputs through env instead of interpolating them into run scripts (#810)
+- fix(publish): point npm at the scoped .npmrc so private-registry publishes authenticate (#808)
+- fix(forge): set connect, response and global HTTP timeouts on release-path agents (#807)
+
+### Refactoring
+
+- refactor(http): drop explanatory comments per project style (#809)
+
 ## [5.52.0] - 2026-08-05
 
 ### Features
