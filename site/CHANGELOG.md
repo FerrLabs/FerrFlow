@@ -1,5 +1,12 @@
 # Changelog
 
+## [6.38.1] - 2026-08-07
+
+### Bug Fixes
+
+- fix(site): refresh FerrFlow v5.52.0 release data
+- fix(deps): update rust crate jsonwebtoken to v10 [security] (#775)
+
 ## [6.38.0] - 2026-08-05
 
 ### Features
