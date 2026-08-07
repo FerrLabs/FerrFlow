@@ -323,9 +323,12 @@ mod tests {
         }
     }
 
+    static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
     fn with_token<T>(f: impl FnOnce() -> T) -> T {
-        // SAFETY: a test-only var name used by these tests alone; the
-        // publisher reads it synchronously on this thread.
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        // SAFETY: a test-only var name used by these tests alone, and
+        // ENV_LOCK serialises every reader and writer of it.
         unsafe { std::env::set_var("FERRFLOW_TEST_NPM_TOKEN", "npm-secret-xyz") };
         let out = f();
         unsafe { std::env::remove_var("FERRFLOW_TEST_NPM_TOKEN") };
