@@ -6,11 +6,6 @@ const DEFAULT_GLOBAL_TIMEOUT: Duration = Duration::from_secs(120);
 
 const GLOBAL_TIMEOUT_ENV: &str = "FERRFLOW_HTTP_TIMEOUT";
 
-/// Every timeout in `ureq::Config` defaults to `None`, so an agent built
-/// with `Agent::new_with_defaults()` blocks on a stalled peer until the
-/// OS gives up — minutes to hours, with the release lock held the whole
-/// time and nothing for `retry_transient` to classify. Build release-path
-/// agents here instead.
 pub fn agent() -> ureq::Agent {
     agent_with_global_timeout(global_timeout())
 }
@@ -51,18 +46,12 @@ mod tests {
 
     #[test]
     fn parse_global_timeout_rejects_zero_and_garbage() {
-        // Zero would mean "no timeout" to a reader but ureq treats every
-        // duration as a real deadline, so it must not silently disable the
-        // budget this module exists to enforce.
         assert_eq!(parse_global_timeout("0"), None);
         assert_eq!(parse_global_timeout(""), None);
         assert_eq!(parse_global_timeout("30s"), None);
         assert_eq!(parse_global_timeout("-5"), None);
     }
 
-    /// The regression this module exists for: an agent whose config still
-    /// carries ureq's all-`None` defaults will hang a release. Assert the
-    /// three timeouts we care about are actually set.
     #[test]
     fn agent_config_has_connect_response_and_global_timeouts() {
         let agent = agent_with_global_timeout(Duration::from_secs(90));
@@ -77,8 +66,6 @@ mod tests {
         use std::io::Read;
         use std::net::TcpListener;
 
-        // Accept the connection, then never write a response — the exact
-        // shape that hangs forever on ureq's defaults.
         let listener = TcpListener::bind("127.0.0.1:0").expect("bind");
         let port = listener.local_addr().expect("addr").port();
         let handle = std::thread::spawn(move || {

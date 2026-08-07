@@ -73,9 +73,6 @@ impl BotTokenExchange {
             encode_query_component(&self.audience)
         );
 
-        // The bare `ureq::get` / `ureq::post` helpers build an agent with
-        // ureq's all-`None` timeout defaults, so a stalled runner or bot
-        // service would block the release indefinitely.
         let agent = crate::http::agent();
 
         let oidc_body: OidcResponse = agent
