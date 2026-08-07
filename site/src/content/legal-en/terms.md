@@ -14,7 +14,7 @@ lastUpdated: 2026-05-06
 <h2>2. Nature of the service</h2>
 <p>
   FerrFlow is a semantic versioning tool distributed under the
-  <strong>Mozilla Public License 2.0</strong> (MPL-2.0). The source code and full licence text
+  <strong>MIT License</strong> (MIT). The source code and full licence text
   are available at
   <a href="https://github.com/FerrLabs/FerrFlow">github.com/FerrLabs/FerrFlow</a>. FerrFlow is
   provided free of charge, without any warranty, express or implied.
@@ -36,7 +36,7 @@ lastUpdated: 2026-05-06
 
 <h2>5. Intellectual property</h2>
 <p>
-  The FerrFlow source code is distributed under the terms of the MPL-2.0 licence. The
+  The FerrFlow source code is distributed under the terms of the MIT licence. The
   "FerrLabs" and "FerrFlow" trademarks, as well as the editorial content of the Site (texts,
   graphics, logos), remain the exclusive property of Bryan Ferrando — FerrLabs.
 </p>

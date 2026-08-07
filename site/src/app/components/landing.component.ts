@@ -529,7 +529,7 @@ export class LandingComponent {
 
   protected readonly heroStats = computed<readonly HeroStat[]>(() => [
     { k: $localize`:@@hero.stat.latest:Latest`, v: this.ferrflowVersion() },
-    { k: $localize`:@@hero.stat.license:License`, v: 'MPL-2.0' },
+    { k: $localize`:@@hero.stat.license:License`, v: 'MIT' },
     { k: $localize`:@@hero.stat.lang:Lang`, v: 'Rust' },
     { k: $localize`:@@hero.stat.size:Download`, v: this.ferrflowBinarySize() },
   ]);
@@ -569,7 +569,7 @@ export class LandingComponent {
       i: 5,
       key: '06',
       title: $localize`:@@features.06.title:Open source`,
-      body: $localize`:@@features.06.body:MPL-2.0. Self-host, fork, audit. The Rust binary handles GitHub OIDC directly — minimal runners work out of the box.`,
+      body: $localize`:@@features.06.body:MIT. Self-host, fork, audit. The Rust binary handles GitHub OIDC directly — minimal runners work out of the box.`,
     },
   ];
 

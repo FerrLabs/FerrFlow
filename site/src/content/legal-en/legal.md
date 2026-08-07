@@ -45,7 +45,7 @@ lastUpdated: 2026-05-06
 </p>
 <p>
   The FerrFlow CLI itself is <strong>open-source software</strong> distributed under the
-  <strong>Mozilla Public License 2.0</strong> (MPL-2.0). The source code and full licence text
+  <strong>MIT License</strong> (MIT). The source code and full licence text
   are available at
   <a href="https://github.com/FerrLabs/FerrFlow">github.com/FerrLabs/FerrFlow</a>.
 </p>

@@ -91,7 +91,7 @@
   "features.05.title": "Canaux pré-release",
   "features.05.body": "Par branche ou par flag : alpha, beta, rc, dev. Les tags flottants ne sont jamais bougés par les pré-releases.",
   "features.06.title": "Open source",
-  "features.06.body": "MPL-2.0. Self-host, forkez, auditez. Le binaire Rust gère OIDC GitHub — les runners minimaux fonctionnent immédiatement.",
+  "features.06.body": "MIT. Self-host, forkez, auditez. Le binaire Rust gère OIDC GitHub — les runners minimaux fonctionnent immédiatement.",
   "install.eyebrow": "№ 03 — Installer",
   "install.title": "Installé en quelques secondes.",
   "install.sub": "Linux, macOS et Windows. Disponible en GitHub Action et en template GitLab CI.",
