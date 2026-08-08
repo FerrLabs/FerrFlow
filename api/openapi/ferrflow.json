@@ -15,7 +15,7 @@
   ],
   "tags": [{ "name": "ferrflow" }],
   "paths": {
-    "/v1/ferrflow/health": {
+    "/ferrflow/health": {
       "get": {
         "tags": ["ferrflow"],
         "summary": "Liveness + version",
@@ -32,7 +32,7 @@
         }
       }
     },
-    "/v1/ferrflow/schema": {
+    "/ferrflow/schema": {
       "get": {
         "tags": ["ferrflow"],
         "summary": "Current config JSON Schema",
@@ -45,7 +45,7 @@
         }
       }
     },
-    "/v1/ferrflow/schema/{version}": {
+    "/ferrflow/schema/{version}": {
       "get": {
         "tags": ["ferrflow"],
         "summary": "Config JSON Schema for a CLI major",
@@ -72,7 +72,7 @@
         }
       }
     },
-    "/v1/ferrflow/latest": {
+    "/ferrflow/latest": {
       "get": {
         "tags": ["ferrflow"],
         "summary": "Latest release + platform asset resolution",
@@ -118,7 +118,7 @@
         }
       }
     },
-    "/v1/ferrflow/validate": {
+    "/ferrflow/validate": {
       "post": {
         "tags": ["ferrflow"],
         "summary": "Hosted config validation",
@@ -140,7 +140,7 @@
         }
       }
     },
-    "/v1/ferrflow/preview": {
+    "/ferrflow/preview": {
       "post": {
         "tags": ["ferrflow"],
         "summary": "Hosted bump computation",
@@ -167,7 +167,7 @@
         }
       }
     },
-    "/v1/ferrflow/token": {
+    "/ferrflow/token": {
       "post": {
         "tags": ["ferrflow"],
         "summary": "Hosted bot installation token",

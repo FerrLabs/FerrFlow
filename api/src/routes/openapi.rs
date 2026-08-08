@@ -30,12 +30,12 @@ mod tests {
         );
         let paths = &doc["paths"];
         for path in [
-            "/v1/ferrflow/health",
-            "/v1/ferrflow/schema",
-            "/v1/ferrflow/latest",
-            "/v1/ferrflow/validate",
-            "/v1/ferrflow/preview",
-            "/v1/ferrflow/token",
+            "/ferrflow/health",
+            "/ferrflow/schema",
+            "/ferrflow/latest",
+            "/ferrflow/validate",
+            "/ferrflow/preview",
+            "/ferrflow/token",
         ] {
             assert!(paths.get(path).is_some(), "missing path {path}");
         }

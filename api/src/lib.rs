@@ -7,21 +7,73 @@ pub mod state;
 
 use axum::Router;
 use axum::http::{HeaderValue, Method, header};
+use axum::middleware;
+use ferrlabs_api_version::{ApiVersion, ApiVersionContext, negotiate};
 use tower_http::compression::CompressionLayer;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 
 use crate::state::AppState;
 
+/// The contract version this build serves.
+///
+/// Distinct from the package version on purpose: the API ships many times
+/// without the contract moving. Bump this only when a request or response
+/// shape changes in a way an existing caller would notice, and land a
+/// `Transform` in the same commit.
+const CURRENT_API_VERSION: ApiVersion = match ApiVersion::from_ymd(2026, 8, 8) {
+    Some(v) => v,
+    None => panic!("CURRENT_API_VERSION is not a calendar date"),
+};
+
+/// The oldest contract still served. Anything older is `410 Gone`.
+///
+/// Equal to the current one while the contract has never moved: no earlier
+/// date was ever promised. It stays put when `CURRENT_API_VERSION` advances —
+/// that gap is the compatibility window.
+const OLDEST_SUPPORTED_API_VERSION: ApiVersion = CURRENT_API_VERSION;
+
+/// Product-scoped, like the sibling APIs: `FerrLabs` is both the org and a
+/// product, so an org-wide header name would be ambiguous exactly here.
+const API_VERSION_HEADER: &str = "x-ferrflow-api-version";
+
+/// The negotiation context. Registry left empty: the contract has not moved
+/// since it shipped, so there is nothing to rewrite yet.
+fn api_version_context() -> ApiVersionContext {
+    ApiVersionContext::new(
+        API_VERSION_HEADER,
+        CURRENT_API_VERSION,
+        OLDEST_SUPPORTED_API_VERSION,
+    )
+    .expect("API version header and bounds are compile-time constants")
+}
+
 pub fn build_router(state: AppState, allowed_origins: &[String]) -> Router {
     let api = routes::router();
 
     Router::new()
-        // `/api/v1` is not a legacy wart we can drop: every released FerrFlow
-        // binary before the api.ferrflow.com move POSTs its OIDC token to
-        // `/api/v1/ferrflow/token`, and binaries cannot be updated in place.
+        // Le contrat se négocie par l'en-tête `x-ferrflow-api-version` : les
+        // routes vivent donc à la racine, sans version dans le chemin.
+        .merge(api.clone())
+        // ⚠️ DETTE À ÉCHÉANCE — RETIRER APRÈS LE 2027-02-08.
+        //
+        // Ces deux montages ne versionnent plus rien ; ils n'existent que
+        // pour les binaires FerrFlow déjà distribués, qui ont
+        // `/v1/ferrflow/token` (et, avant la bascule vers api.ferrflow.com,
+        // `/api/v1/ferrflow/token`) compilé en dur et ne peuvent pas être
+        // mis à jour à distance. Six mois suffisent largement à ce que les
+        // pipelines repassent sur une version récente.
+        //
+        // Pour retirer : supprimer les deux `.nest` ci-dessous et les tests
+        // `legacy_v1_*` plus bas. Voir la section « Dette à échéance » du
+        // CLAUDE.md à la racine.
         .nest("/v1", api.clone())
         .nest("/api/v1", api)
+        // Après le routage, pour lire la route résolue et non le chemin brut.
+        .layer(middleware::from_fn_with_state(
+            api_version_context(),
+            negotiate,
+        ))
         .layer(cors(allowed_origins))
         .layer(CompressionLayer::new())
         .layer(TraceLayer::new_for_http())
@@ -35,7 +87,16 @@ pub fn build_router(state: AppState, allowed_origins: &[String]) -> Router {
 fn cors(allowed_origins: &[String]) -> CorsLayer {
     let layer = CorsLayer::new()
         .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
-        .allow_headers([header::CONTENT_TYPE, header::ACCEPT])
+        .allow_headers([
+            header::CONTENT_TYPE,
+            header::ACCEPT,
+            header::HeaderName::from_static(API_VERSION_HEADER),
+        ])
+        // Sans l'expose, le navigateur masque la version servie et un client
+        // ne peut pas savoir quel contrat il a réellement obtenu.
+        .expose_headers([header::HeaderName::from_static(
+            ferrlabs_api_version::SERVED_HEADER,
+        )])
         .max_age(std::time::Duration::from_secs(3600));
 
     let parsed: Vec<HeaderValue> = allowed_origins
@@ -74,24 +135,49 @@ mod tests {
 
     #[tokio::test]
     async fn health_answers_on_the_canonical_path() {
-        let (status, body) = get("/v1/ferrflow/health").await;
+        let (status, body) = get("/ferrflow/health").await;
         assert_eq!(status, StatusCode::OK);
         assert_eq!(body["status"], "ok");
         assert_eq!(body["service"], "ferrflow-api");
     }
 
-    // Released binaries POST to `/api/v1/ferrflow/token`. If this mount ever
-    // disappears, every pinned FerrFlow version breaks at once.
+    /// La version servie est annoncée sur chaque réponse : c'est ce qui
+    /// remplace le préfixe de chemin, donc ce qui doit être vérifié.
     #[tokio::test]
-    async fn the_legacy_api_v1_mount_serves_the_same_routes() {
-        let (status, body) = get("/api/v1/ferrflow/health").await;
-        assert_eq!(status, StatusCode::OK);
-        assert_eq!(body["service"], "ferrflow-api");
+    async fn the_served_contract_version_is_announced() {
+        let resp = app()
+            .oneshot(
+                Request::builder()
+                    .uri("/ferrflow/health")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        assert!(
+            resp.headers()
+                .contains_key(ferrlabs_api_version::SERVED_HEADER),
+            "la réponse doit porter {}",
+            ferrlabs_api_version::SERVED_HEADER
+        );
+    }
+
+    /// ⚠️ À SUPPRIMER AVEC LES MONTAGES `/v1` ET `/api/v1` — APRÈS LE
+    /// 2027-02-08. Les binaires FerrFlow déjà distribués ont ces chemins
+    /// compilés en dur ; tant qu'ils circulent, ce test protège leur CI.
+    #[tokio::test]
+    async fn legacy_v1_mounts_serve_the_same_routes() {
+        for path in ["/v1/ferrflow/health", "/api/v1/ferrflow/health"] {
+            let (status, body) = get(path).await;
+            assert_eq!(status, StatusCode::OK, "{path}");
+            assert_eq!(body["service"], "ferrflow-api", "{path}");
+        }
     }
 
     #[tokio::test]
     async fn an_unknown_path_is_404() {
-        let (status, _) = get("/v1/ferrflow/nope").await;
+        let (status, _) = get("/ferrflow/nope").await;
         assert_eq!(status, StatusCode::NOT_FOUND);
     }
 
@@ -101,7 +187,7 @@ mod tests {
             .oneshot(
                 Request::builder()
                     .method("POST")
-                    .uri("/v1/ferrflow/validate")
+                    .uri("/ferrflow/validate")
                     .header("content-type", "application/json")
                     .body(Body::from(r#"{"config":"}{","format":"json"}"#))
                     .unwrap(),
@@ -120,7 +206,7 @@ mod tests {
             .oneshot(
                 Request::builder()
                     .method("POST")
-                    .uri("/v1/ferrflow/preview")
+                    .uri("/ferrflow/preview")
                     .header("content-type", "application/json")
                     .body(Body::from(
                         r#"{"config":"{\"package\":[{\"name\":\"app\",\"path\":\".\"}]}","format":"json","commits":[{"message":"feat!: rewrite"}],"current_versions":{"app":"1.2.3"}}"#,
@@ -144,7 +230,7 @@ mod tests {
             .oneshot(
                 Request::builder()
                     .method("POST")
-                    .uri("/v1/ferrflow/token")
+                    .uri("/ferrflow/token")
                     .header("content-type", "application/json")
                     .body(Body::from(format!(r#"{{"token":"{}"}}"#, "a".repeat(64))))
                     .unwrap(),
