@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.1.0] - 2026-08-08
+
+### Features
+
+- feat(bot): vise l'endpoint de jeton à la racine (#818)
+
 ## [6.0.0] - 2026-08-07
 
 ### Breaking Changes
