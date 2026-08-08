@@ -1,5 +1,15 @@
 # Changelog
 
+## [6.0.0] - 2026-08-08
+
+### Breaking Changes
+
+- feat(api)!: négocie le contrat par en-tête, routes servies à la racine (#784)
+
+### Bug Fixes
+
+- fix(site): refresh FerrFlow v5.52.1 release data
+
 ## [5.3.1] - 2026-08-07
 
 ### Bug Fixes
