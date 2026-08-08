@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.0.1] - 2026-08-08
+
+### Bug Fixes
+
+- fix(docker): câble le registre Kellnr dans le build de l'API (#787)
+
 ## [6.0.0] - 2026-08-08
 
 ### Breaking Changes
