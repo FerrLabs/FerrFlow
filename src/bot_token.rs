@@ -1,6 +1,10 @@
 use anyhow::{Context, Result, bail};
 
-const DEFAULT_ENDPOINT: &str = "https://api.ferrflow.com/v1/ferrflow/token";
+// L'API sert ses routes à la racine : le contrat se négocie par l'en-tête
+// `x-ferrflow-api-version`, plus par le chemin (FerrFlow-Cloud#784). Les
+// montages `/v1` y restent servis le temps que les binaires déjà distribués
+// sortent de circulation, mais les nouveaux visent directement la racine.
+const DEFAULT_ENDPOINT: &str = "https://api.ferrflow.com/ferrflow/token";
 const DEFAULT_AUDIENCE: &str = "ferrflow.ferrlabs.com";
 
 pub fn bot_mode_enabled() -> bool {
@@ -304,7 +308,7 @@ mod tests {
             ],
             || {
                 let ex = BotTokenExchange::default();
-                assert_eq!(ex.endpoint, "https://api.ferrflow.com/v1/ferrflow/token");
+                assert_eq!(ex.endpoint, "https://api.ferrflow.com/ferrflow/token");
                 assert_eq!(ex.audience, "ferrflow.ferrlabs.com");
             },
         );
