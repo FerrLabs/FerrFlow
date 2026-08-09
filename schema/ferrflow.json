@@ -82,6 +82,16 @@
           ],
           "default": "grouped"
         },
+        "releaseCommitBody": {
+          "type": "string",
+          "description": "What to put in the body of the release commit message, below the subject line. 'none' keeps the single-line subject. 'summary' lists one line per released package with its commit count. 'full' embeds the changelog section written for each package.",
+          "enum": [
+            "none",
+            "summary",
+            "full"
+          ],
+          "default": "none"
+        },
         "autoMergeReleases": {
           "type": "boolean",
           "description": "Automatically merge release PRs when releaseCommitMode is 'pr'.",

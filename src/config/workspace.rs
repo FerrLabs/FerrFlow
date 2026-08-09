@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use super::package::{FloatingTagLevel, VersioningStrategy};
 use super::types::{
     BranchChannelConfig, ForgeKind, HooksConfig, OrphanedTagStrategy, RegistryConfig,
-    ReleaseCommitMode, ReleaseCommitScope,
+    ReleaseCommitBody, ReleaseCommitMode, ReleaseCommitScope,
 };
 use std::collections::BTreeMap;
 
@@ -27,6 +27,8 @@ pub struct WorkspaceConfig {
     pub release_commit_mode: ReleaseCommitMode,
     #[serde(default, alias = "releaseCommitScope")]
     pub release_commit_scope: ReleaseCommitScope,
+    #[serde(default, alias = "releaseCommitBody")]
+    pub release_commit_body: ReleaseCommitBody,
     #[serde(default = "default_auto_merge", alias = "autoMergeReleases")]
     pub auto_merge_releases: bool,
     #[serde(default, alias = "skipCi")]

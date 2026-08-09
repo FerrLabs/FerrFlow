@@ -109,6 +109,15 @@ pub enum ReleaseCommitScope {
     PerPackage,
 }
 
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Default)]
+#[serde(rename_all = "kebab-case")]
+pub enum ReleaseCommitBody {
+    #[default]
+    None,
+    Summary,
+    Full,
+}
+
 /// Declarative registry-credential map shared across every publisher
 /// kind. Lets users say "the Kellnr registry's token is in
 /// CARGO_REGISTRIES_KELLNR_TOKEN" once at the workspace level instead
