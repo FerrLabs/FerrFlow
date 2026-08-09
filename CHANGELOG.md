@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.2.0] - 2026-08-09
+
+### Features
+
+- feat(release): add workspace.releaseCommitBody to embed the changelog in release commits (#822)
+
 ## [6.1.1] - 2026-08-09
 
 ### Bug Fixes
