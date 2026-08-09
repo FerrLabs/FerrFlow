@@ -1,5 +1,16 @@
 # Changelog
 
+## [7.0.0] - 2026-08-09
+
+### Breaking Changes
+
+- feat(api)!: négocie le contrat par en-tête, routes servies à la racine (#784)
+
+### Bug Fixes
+
+- fix(site): refresh FerrFlow v6.0.0 release data
+- fix(docker): câble le registre Kellnr dans le build de l'API (#787)
+
 ## [6.38.2] - 2026-08-08
 
 ### Bug Fixes
