@@ -1,5 +1,6 @@
-use crate::config::ChangelogConfig;
-#[cfg(feature = "cli")]
+use std::sync::OnceLock;
+
+use crate::config::{ChangelogConfig, CommitFormats};
 use crate::conventional_commits::determine_bump;
 use crate::conventional_commits::{
     BumpType, CommitCategory, breaking_footer_body, classify_commit, is_breaking, parse_header,
@@ -18,9 +19,18 @@ pub struct GitLog {
 #[derive(Default)]
 pub struct ChangelogRender<'a> {
     pub config: Option<&'a ChangelogConfig>,
+    pub formats: Option<&'a CommitFormats>,
     pub forge_base: Option<String>,
     pub last_tag: Option<String>,
     pub new_tag: Option<String>,
+}
+
+impl<'a> ChangelogRender<'a> {
+    fn formats(&self) -> &CommitFormats {
+        static FALLBACK: OnceLock<CommitFormats> = OnceLock::new();
+        self.formats
+            .unwrap_or_else(|| FALLBACK.get_or_init(CommitFormats::default))
+    }
 }
 
 #[cfg(feature = "cli")]
@@ -71,7 +81,7 @@ pub fn generate_only(config_path: Option<&Path>, dry_run: bool) -> Result<()> {
 
         let bump = commits
             .iter()
-            .map(|c| determine_bump(&c.message))
+            .map(|c| determine_bump(&c.message, &config.workspace.commit_formats))
             .max()
             .unwrap_or(BumpType::None);
 
@@ -115,6 +125,7 @@ pub fn generate_only(config_path: Option<&Path>, dry_run: bool) -> Result<()> {
         };
 
         let render = ChangelogRender {
+            formats: None,
             config: config.workspace.changelog.as_ref(),
             forge_base: forge_base.clone(),
             last_tag,
@@ -142,11 +153,11 @@ pub fn build_section_with(
 ) -> String {
     match render.config {
         Some(config) => build_rich_section(new_version, commits, config, render),
-        None => build_classic_section(new_version, commits),
+        None => build_classic_section(new_version, commits, render.formats()),
     }
 }
 
-fn build_classic_section(new_version: &str, commits: &[GitLog]) -> String {
+fn build_classic_section(new_version: &str, commits: &[GitLog], formats: &CommitFormats) -> String {
     let date = Local::now().format("%Y-%m-%d").to_string();
     let mut breaking = Vec::new();
     let mut features = Vec::new();
@@ -155,7 +166,7 @@ fn build_classic_section(new_version: &str, commits: &[GitLog]) -> String {
 
     for commit in commits {
         let subject = parse_subject(&commit.message);
-        match classify_commit(&commit.message) {
+        match classify_commit(&commit.message, formats) {
             CommitCategory::Breaking => breaking.push(format!("- {subject}")),
             CommitCategory::Feature => features.push(format!("- {subject}")),
             CommitCategory::Fix => fixes.push(format!("- {subject}")),
@@ -192,8 +203,8 @@ fn build_classic_section(new_version: &str, commits: &[GitLog]) -> String {
 
 const BREAKING_KEY: &str = "breaking";
 
-fn render_section_key(message: &str) -> Option<&'static str> {
-    if is_breaking(message) {
+fn render_section_key(message: &str, formats: &CommitFormats) -> Option<&'static str> {
+    if is_breaking(message, formats) {
         return Some(BREAKING_KEY);
     }
     let header = parse_header(message)?;
@@ -285,7 +296,7 @@ fn build_rich_section(
         std::collections::BTreeMap::new();
 
     for commit in commits {
-        let Some(key) = render_section_key(&commit.message) else {
+        let Some(key) = render_section_key(&commit.message, render.formats()) else {
             continue;
         };
         let entry = build_entry(commit, config, render);
@@ -330,7 +341,7 @@ fn build_entry(commit: &GitLog, config: &ChangelogConfig, render: &ChangelogRend
     let header = parse_header(&commit.message);
     let scope = header.as_ref().and_then(|h| h.scope.map(|s| s.to_string()));
 
-    let breaking = is_breaking(&commit.message);
+    let breaking = is_breaking(&commit.message, render.formats());
     let body = if breaking {
         let desc = breaking_footer_body(&commit.message);
         match (desc, header.as_ref()) {
@@ -647,14 +658,13 @@ mod tests {
     }
 
     #[test]
-    fn build_section_does_not_misclassify_feature_word() {
-        // `feature:` (no colon-delimited type) and `feat add` (no colon)
-        // are not the conventional `feat:` type and must not appear as
-        // features.
-        let commits = make_commits(&["feature: misnamed type", "feat add no colon"]);
+    fn build_section_treats_feature_as_a_feature_but_not_a_bare_feat() {
+        // `feature:` is a documented default alias since #247. `feat add`
+        // has no colon and matches nothing, so it stays out.
+        let commits = make_commits(&["feature: renamed type", "feat add no colon"]);
         let section = build_section("1.0.1", &commits);
-        assert!(!section.contains("### Features"));
-        assert!(!section.contains("misnamed type"));
+        assert!(section.contains("### Features"));
+        assert!(section.contains("renamed type"));
         assert!(!section.contains("no colon"));
     }
 
@@ -753,7 +763,7 @@ mod tests {
             "chore: noise",
         ]);
         let with_default = build_section_with("1.2.3", &commits, &ChangelogRender::default());
-        let classic = build_classic_section("1.2.3", &commits);
+        let classic = build_classic_section("1.2.3", &commits, &Default::default());
         assert_eq!(with_default, classic);
     }
 
@@ -761,12 +771,13 @@ mod tests {
     fn rich_render_with_no_config_field_matches_classic() {
         let commits = make_commits(&["feat: a", "fix: b"]);
         let render = ChangelogRender {
+            formats: None,
             config: None,
             ..Default::default()
         };
         assert_eq!(
             build_section_with("1.0.0", &commits, &render),
-            build_classic_section("1.0.0", &commits)
+            build_classic_section("1.0.0", &commits, &Default::default())
         );
     }
 
@@ -788,6 +799,7 @@ mod tests {
             "fix: small bug",
         ]);
         let render = ChangelogRender {
+            formats: None,
             config: Some(&cfg),
             ..Default::default()
         };
@@ -813,6 +825,7 @@ mod tests {
         };
         let commits = make_commits(&["fix(security): sanitize input"]);
         let render = ChangelogRender {
+            formats: None,
             config: Some(&cfg),
             ..Default::default()
         };
@@ -830,6 +843,7 @@ mod tests {
         };
         let commits = make_commits(&["docs: explain config"]);
         let r = ChangelogRender {
+            formats: None,
             config: Some(&with_docs),
             ..Default::default()
         };
@@ -840,6 +854,7 @@ mod tests {
             ..Default::default()
         };
         let r2 = ChangelogRender {
+            formats: None,
             config: Some(&hidden),
             ..Default::default()
         };
@@ -857,6 +872,7 @@ mod tests {
         };
         let commits = make_commits(&["feat: x"]);
         let r = ChangelogRender {
+            formats: None,
             config: Some(&cfg),
             ..Default::default()
         };
@@ -874,6 +890,7 @@ mod tests {
                 .to_string(),
         }];
         let r = ChangelogRender {
+            formats: None,
             config: Some(&cfg),
             ..Default::default()
         };
@@ -887,6 +904,7 @@ mod tests {
         let cfg = ChangelogConfig::default();
         let commits = make_commits(&["feat!: drop legacy flag"]);
         let r = ChangelogRender {
+            formats: None,
             config: Some(&cfg),
             ..Default::default()
         };
@@ -908,6 +926,7 @@ mod tests {
             "feat: top-level change",
         ]);
         let r = ChangelogRender {
+            formats: None,
             config: Some(&cfg),
             ..Default::default()
         };
@@ -933,6 +952,7 @@ mod tests {
             message: "feat: add endpoint".to_string(),
         }];
         let r = ChangelogRender {
+            formats: None,
             config: Some(&cfg),
             forge_base: Some("https://github.com/owner/repo".to_string()),
             ..Default::default()
@@ -952,6 +972,7 @@ mod tests {
         };
         let commits = make_commits(&["feat: add endpoint"]);
         let r = ChangelogRender {
+            formats: None,
             config: Some(&cfg),
             forge_base: None,
             ..Default::default()
@@ -970,6 +991,7 @@ mod tests {
         };
         let commits = make_commits(&["feat: x"]);
         let r = ChangelogRender {
+            formats: None,
             config: Some(&cfg),
             forge_base: Some("https://github.com/owner/repo".to_string()),
             last_tag: Some("v1.2.2".to_string()),
@@ -988,6 +1010,7 @@ mod tests {
         };
         let commits = make_commits(&["feat: x"]);
         let r = ChangelogRender {
+            formats: None,
             config: Some(&cfg),
             forge_base: Some("https://github.com/owner/repo".to_string()),
             last_tag: None,
@@ -1005,6 +1028,7 @@ mod tests {
         };
         let commits = make_commits(&["feat: kept", "perf: dropped", "fix: dropped"]);
         let r = ChangelogRender {
+            formats: None,
             config: Some(&cfg),
             ..Default::default()
         };
@@ -1020,6 +1044,7 @@ mod tests {
         let cfg = ChangelogConfig::default();
         let commits = make_commits(&["feat: f", "fix: b", "perf: p", "docs: d"]);
         let r = ChangelogRender {
+            formats: None,
             config: Some(&cfg),
             ..Default::default()
         };

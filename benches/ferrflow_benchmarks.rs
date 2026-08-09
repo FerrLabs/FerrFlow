@@ -33,7 +33,7 @@ fn bench_commit_parsing(c: &mut Criterion) {
         c.bench_function(&format!("commit_parsing/{size}"), |b| {
             b.iter(|| {
                 for msg in &messages {
-                    black_box(determine_bump(msg));
+                    black_box(determine_bump(msg, &Default::default()));
                 }
             });
         });
@@ -429,7 +429,10 @@ fn bench_full_check_flow(c: &mut Criterion) {
                 )
                 .unwrap();
                 for commit in &commits {
-                    black_box(determine_bump(&commit.message));
+                    black_box(determine_bump(
+                        &commit.message,
+                        &config.workspace.commit_formats,
+                    ));
                 }
                 black_box((&config, commits.len()));
             });

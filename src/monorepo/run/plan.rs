@@ -290,7 +290,7 @@ pub(super) fn compute_plan(
 
         let bump = commits
             .iter()
-            .map(|c| determine_bump(&c.message))
+            .map(|c| determine_bump(&c.message, &config.workspace.commit_formats))
             .max()
             .unwrap_or(BumpType::None);
 

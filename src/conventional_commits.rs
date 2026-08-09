@@ -1,6 +1,8 @@
 use regex::Regex;
 use std::sync::OnceLock;
 
+use crate::config::CommitFormats;
+
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum BumpType {
     None,
@@ -21,16 +23,11 @@ impl std::fmt::Display for BumpType {
 }
 
 static BREAKING_RE: OnceLock<Regex> = OnceLock::new();
-static FEAT_RE: OnceLock<Regex> = OnceLock::new();
 
 fn breaking_header_re() -> &'static Regex {
     BREAKING_RE.get_or_init(|| {
         Regex::new(r"^(feat|fix|refactor|perf|build|chore|docs|style|test|ci)(\(.+\))?!:").unwrap()
     })
-}
-
-fn feat_header_re() -> &'static Regex {
-    FEAT_RE.get_or_init(|| Regex::new(r"^feat(\(.+\))?:").unwrap())
 }
 
 static BREAKING_FOOTER_RE: OnceLock<Regex> = OnceLock::new();
@@ -56,8 +53,8 @@ fn breaking_scope_bang_re() -> &'static Regex {
     })
 }
 
-pub fn determine_bump(message: &str) -> BumpType {
-    match classify_commit(message) {
+pub fn determine_bump(message: &str, formats: &CommitFormats) -> BumpType {
+    match classify_commit(message, formats) {
         CommitCategory::Breaking => BumpType::Major,
         CommitCategory::Feature => BumpType::Minor,
         CommitCategory::Fix | CommitCategory::Refactor => BumpType::Patch,
@@ -87,33 +84,38 @@ pub enum CommitCategory {
     Other,
 }
 
-pub fn classify_commit(message: &str) -> CommitCategory {
-    let header = parse_subject(message);
+pub fn classify_commit(message: &str, formats: &CommitFormats) -> CommitCategory {
+    let subject = parse_subject(message);
+    let cs = formats.case_sensitive;
 
-    if breaking_header_re().is_match(header)
-        || breaking_scope_bang_re().is_match(header)
+    // Structural breaking markers are recognised whatever the configured
+    // patterns say. A `BREAKING CHANGE:` footer lives in the body, which
+    // subject globs cannot see, and `feat(api!):` puts the bang where a
+    // `*!:*` glob does not reach.
+    if breaking_header_re().is_match(subject)
+        || breaking_scope_bang_re().is_match(subject)
         || breaking_footer_re().is_match(message)
+        || formats.major.matches(subject, cs)
     {
         return CommitCategory::Breaking;
     }
-    if feat_header_re().is_match(header) {
+    if formats.minor.matches(subject, cs) {
         return CommitCategory::Feature;
     }
-    if fix_perf_header_re().is_match(header) {
-        return CommitCategory::Fix;
-    }
-    if refactor_header_re().is_match(header) {
-        return CommitCategory::Refactor;
+    if formats.patch.matches(subject, cs) {
+        // Patch splits into two changelog sections. The configured patterns
+        // only carry a bump level, so the section is resolved from the
+        // conventional prefix when there is one, and falls back to Fix.
+        return if refactor_header_re().is_match(subject) {
+            CommitCategory::Refactor
+        } else {
+            CommitCategory::Fix
+        };
     }
     CommitCategory::Other
 }
 
-static FIX_PERF_RE: OnceLock<Regex> = OnceLock::new();
 static REFACTOR_RE: OnceLock<Regex> = OnceLock::new();
-
-fn fix_perf_header_re() -> &'static Regex {
-    FIX_PERF_RE.get_or_init(|| Regex::new(r"^(fix|perf)(\(.+\))?:").unwrap())
-}
 
 fn refactor_header_re() -> &'static Regex {
     REFACTOR_RE.get_or_init(|| Regex::new(r"^refactor(\(.+\))?:").unwrap())
@@ -159,8 +161,8 @@ pub fn parse_header(message: &str) -> Option<ParsedHeader<'_>> {
     })
 }
 
-pub fn is_breaking(message: &str) -> bool {
-    matches!(classify_commit(message), CommitCategory::Breaking)
+pub fn is_breaking(message: &str, formats: &CommitFormats) -> bool {
+    matches!(classify_commit(message, formats), CommitCategory::Breaking)
 }
 
 pub fn breaking_footer_body(message: &str) -> Option<String> {
@@ -177,38 +179,199 @@ pub fn breaking_footer_body(message: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::{CATCH_ALL, PatternSet};
+
+    /// The permissive defaults are a deliberate behaviour change (#247), so
+    /// the documented escape hatch has to actually work: with strict
+    /// patterns every branch-style and capitalised variant goes back to
+    /// being ignored, and plain conventional commits are unaffected.
+    #[test]
+    fn strict_patterns_restore_the_pre_247_behaviour() {
+        let strict = CommitFormats {
+            major: PatternSet::Many(Vec::new()),
+            minor: vec!["feat:*", "feat(?*):*"].into(),
+            patch: vec![
+                "fix:*",
+                "fix(?*):*",
+                "perf:*",
+                "perf(?*):*",
+                "refactor:*",
+                "refactor(?*):*",
+            ]
+            .into(),
+            case_sensitive: true,
+        };
+        for ignored in [
+            "Feat/add-login",
+            "Fix/resolve-crash",
+            "Refactor/cleanup",
+            "Feat: add login",
+            "Fix: resolve crash",
+            "feature: add login",
+        ] {
+            assert_eq!(
+                determine_bump(ignored, &strict),
+                BumpType::None,
+                "{ignored:?} must not bump under the strict preset"
+            );
+        }
+        assert_eq!(determine_bump("feat: x", &strict), BumpType::Minor);
+        assert_eq!(determine_bump("fix(db): x", &strict), BumpType::Patch);
+        assert_eq!(determine_bump("refactor: x", &strict), BumpType::Patch);
+        assert_eq!(determine_bump("chore: x", &strict), BumpType::None);
+        assert_eq!(determine_bump("feat!: x", &strict), BumpType::Major);
+        assert_eq!(
+            determine_bump("fix: x\n\nBREAKING CHANGE: gone", &strict),
+            BumpType::Major
+        );
+    }
+
+    /// The structural breaking markers must survive whatever patterns are
+    /// configured — a `BREAKING CHANGE:` footer lives in the body, which a
+    /// subject glob cannot see, and `feat(api!):` puts the bang where
+    /// `*!:*` does not reach.
+    #[test]
+    fn structural_breaking_markers_survive_a_config_that_omits_them() {
+        let no_major = CommitFormats {
+            major: PatternSet::Many(Vec::new()),
+            minor: vec!["feat:*"].into(),
+            patch: vec!["fix:*"].into(),
+            case_sensitive: true,
+        };
+        assert_eq!(
+            determine_bump("fix: x\n\nBREAKING CHANGE: gone", &no_major),
+            BumpType::Major,
+            "footer must still win"
+        );
+        assert_eq!(
+            determine_bump("feat(api!): typo bang", &no_major),
+            BumpType::Major,
+            "scope-bang typo must still win"
+        );
+        assert_eq!(determine_bump("feat!: x", &no_major), BumpType::Major);
+    }
+
+    #[test]
+    fn permissive_defaults_pick_up_branch_style_prefixes() {
+        let d = CommitFormats::default();
+        assert_eq!(determine_bump("Feat/add-login", &d), BumpType::Minor);
+        assert_eq!(determine_bump("Fix/resolve-crash", &d), BumpType::Patch);
+        assert_eq!(determine_bump("Refactor/cleanup", &d), BumpType::Patch);
+        assert_eq!(determine_bump("Feat: add login", &d), BumpType::Minor);
+        assert_eq!(determine_bump("feature: add login", &d), BumpType::Minor);
+        assert_eq!(determine_bump("chore: deps", &d), BumpType::None);
+    }
+
+    #[test]
+    fn catch_all_patch_makes_every_commit_release() {
+        let f = CommitFormats {
+            major: PatternSet::Many(Vec::new()),
+            minor: vec!["feat:*"].into(),
+            patch: PatternSet::One(CATCH_ALL.to_string()),
+            case_sensitive: true,
+        };
+        assert_eq!(determine_bump("anything at all", &f), BumpType::Patch);
+        assert_eq!(determine_bump("chore: deps", &f), BumpType::Patch);
+        assert_eq!(determine_bump("feat: x", &f), BumpType::Minor);
+        assert_eq!(determine_bump("feat!: x", &f), BumpType::Major);
+    }
+
+    #[test]
+    fn priority_is_major_over_minor_over_patch() {
+        let f = CommitFormats {
+            major: PatternSet::One(CATCH_ALL.to_string()),
+            minor: PatternSet::One(CATCH_ALL.to_string()),
+            patch: PatternSet::One(CATCH_ALL.to_string()),
+            case_sensitive: true,
+        };
+        assert_eq!(determine_bump("whatever", &f), BumpType::Major);
+    }
+
+    #[test]
+    fn case_insensitive_config_accepts_any_casing() {
+        let f = CommitFormats {
+            major: PatternSet::Many(Vec::new()),
+            minor: vec!["feat:*", "feat(?*):*"].into(),
+            patch: vec!["fix:*", "fix(?*):*"].into(),
+            case_sensitive: false,
+        };
+        assert_eq!(determine_bump("FEAT: shouting", &f), BumpType::Minor);
+        assert_eq!(determine_bump("Fix(db): leak", &f), BumpType::Patch);
+    }
+
+    /// Configured patterns carry a bump level, not a changelog section, so
+    /// a patch-level match still has to land in the right section.
+    #[test]
+    fn patch_level_splits_into_fix_and_refactor_sections() {
+        let d = CommitFormats::default();
+        assert_eq!(classify_commit("refactor: x", &d), CommitCategory::Refactor);
+        assert_eq!(classify_commit("fix: x", &d), CommitCategory::Fix);
+        assert_eq!(classify_commit("perf: x", &d), CommitCategory::Fix);
+        assert_eq!(
+            classify_commit("Fix/branch-style", &d),
+            CommitCategory::Fix,
+            "non-conventional patch matches fall back to Fix"
+        );
+    }
 
     #[test]
     fn test_patch() {
-        assert_eq!(determine_bump("fix: correct typo"), BumpType::Patch);
-        assert_eq!(determine_bump("perf: faster query"), BumpType::Patch);
-        assert_eq!(determine_bump("refactor: clean up"), BumpType::Patch);
+        assert_eq!(
+            determine_bump("fix: correct typo", &Default::default()),
+            BumpType::Patch
+        );
+        assert_eq!(
+            determine_bump("perf: faster query", &Default::default()),
+            BumpType::Patch
+        );
+        assert_eq!(
+            determine_bump("refactor: clean up", &Default::default()),
+            BumpType::Patch
+        );
     }
 
     #[test]
     fn test_minor() {
-        assert_eq!(determine_bump("feat: add login"), BumpType::Minor);
-        assert_eq!(determine_bump("feat(auth): add JWT"), BumpType::Minor);
+        assert_eq!(
+            determine_bump("feat: add login", &Default::default()),
+            BumpType::Minor
+        );
+        assert_eq!(
+            determine_bump("feat(auth): add JWT", &Default::default()),
+            BumpType::Minor
+        );
     }
 
     #[test]
     fn test_major() {
-        assert_eq!(determine_bump("feat!: breaking change"), BumpType::Major);
         assert_eq!(
-            determine_bump("fix(api)!: remove endpoint"),
+            determine_bump("feat!: breaking change", &Default::default()),
             BumpType::Major
         );
         assert_eq!(
-            determine_bump("BREAKING CHANGE: removed X"),
+            determine_bump("fix(api)!: remove endpoint", &Default::default()),
+            BumpType::Major
+        );
+        assert_eq!(
+            determine_bump("BREAKING CHANGE: removed X", &Default::default()),
             BumpType::Major
         );
     }
 
     #[test]
     fn test_none() {
-        assert_eq!(determine_bump("chore: update deps"), BumpType::None);
-        assert_eq!(determine_bump("docs: update readme"), BumpType::None);
-        assert_eq!(determine_bump("ci: fix pipeline"), BumpType::None);
+        assert_eq!(
+            determine_bump("chore: update deps", &Default::default()),
+            BumpType::None
+        );
+        assert_eq!(
+            determine_bump("docs: update readme", &Default::default()),
+            BumpType::None
+        );
+        assert_eq!(
+            determine_bump("ci: fix pipeline", &Default::default()),
+            BumpType::None
+        );
     }
 
     #[test]
@@ -224,39 +387,51 @@ mod tests {
 
     #[test]
     fn test_scoped_commits() {
-        assert_eq!(determine_bump("fix(api): null check"), BumpType::Patch);
-        assert_eq!(determine_bump("feat(ui): new button"), BumpType::Minor);
-        assert_eq!(determine_bump("refactor(db): simplify"), BumpType::Patch);
+        assert_eq!(
+            determine_bump("fix(api): null check", &Default::default()),
+            BumpType::Patch
+        );
+        assert_eq!(
+            determine_bump("feat(ui): new button", &Default::default()),
+            BumpType::Minor
+        );
+        assert_eq!(
+            determine_bump("refactor(db): simplify", &Default::default()),
+            BumpType::Patch
+        );
     }
 
     #[test]
     fn test_breaking_change_in_body() {
         let msg = "feat: something\n\nBREAKING CHANGE: removed old API";
-        assert_eq!(determine_bump(msg), BumpType::Major);
+        assert_eq!(determine_bump(msg, &Default::default()), BumpType::Major);
     }
 
     #[test]
     fn test_breaking_change_hyphen_footer() {
         let msg = "feat: something\n\nBREAKING-CHANGE: removed old API";
-        assert_eq!(determine_bump(msg), BumpType::Major);
+        assert_eq!(determine_bump(msg, &Default::default()), BumpType::Major);
     }
 
     #[test]
     fn test_breaking_change_prose_is_not_major() {
         assert_eq!(
-            determine_bump("docs: note that BREAKING CHANGES are coming in v2"),
+            determine_bump(
+                "docs: note that BREAKING CHANGES are coming in v2",
+                &Default::default()
+            ),
             BumpType::None
         );
         let body = "feat: add flag\n\nBREAKING CHANGE will be handled later, not yet";
-        assert_eq!(determine_bump(body), BumpType::Minor);
+        assert_eq!(determine_bump(body, &Default::default()), BumpType::Minor);
         let plural = "chore: cleanup\n\nBREAKING CHANGES: none in this one";
-        assert_eq!(determine_bump(plural), BumpType::None);
+        assert_eq!(determine_bump(plural, &Default::default()), BumpType::None);
     }
 
     #[test]
     fn test_breaking_change_footer_missing_space_after_colon() {
         let msg = "feat: x\n\nBREAKING CHANGE:no-space-description";
-        assert_eq!(determine_bump(msg), BumpType::Minor);
+        assert_eq!(determine_bump(msg, &Default::default()), BumpType::Minor);
     }
 
     #[test]
@@ -268,61 +443,130 @@ mod tests {
 
     #[test]
     fn test_empty_message() {
-        assert_eq!(determine_bump(""), BumpType::None);
+        assert_eq!(determine_bump("", &Default::default()), BumpType::None);
     }
 
     #[test]
     fn test_whitespace_only_message() {
-        assert_eq!(determine_bump("   \n\n  "), BumpType::None);
+        assert_eq!(
+            determine_bump("   \n\n  ", &Default::default()),
+            BumpType::None
+        );
     }
 
     #[test]
     fn test_non_conventional_message() {
-        assert_eq!(determine_bump("update readme"), BumpType::None);
-        assert_eq!(determine_bump("fixed the thing"), BumpType::None);
-        assert_eq!(determine_bump("WIP"), BumpType::None);
+        assert_eq!(
+            determine_bump("update readme", &Default::default()),
+            BumpType::None
+        );
+        assert_eq!(
+            determine_bump("fixed the thing", &Default::default()),
+            BumpType::None
+        );
+        assert_eq!(determine_bump("WIP", &Default::default()), BumpType::None);
     }
 
     #[test]
     fn test_all_patch_types() {
-        assert_eq!(determine_bump("fix: something"), BumpType::Patch);
-        assert_eq!(determine_bump("perf: something"), BumpType::Patch);
-        assert_eq!(determine_bump("refactor: something"), BumpType::Patch);
+        assert_eq!(
+            determine_bump("fix: something", &Default::default()),
+            BumpType::Patch
+        );
+        assert_eq!(
+            determine_bump("perf: something", &Default::default()),
+            BumpType::Patch
+        );
+        assert_eq!(
+            determine_bump("refactor: something", &Default::default()),
+            BumpType::Patch
+        );
     }
 
     #[test]
     fn test_all_none_types() {
-        assert_eq!(determine_bump("chore: something"), BumpType::None);
-        assert_eq!(determine_bump("docs: something"), BumpType::None);
-        assert_eq!(determine_bump("ci: something"), BumpType::None);
-        assert_eq!(determine_bump("style: something"), BumpType::None);
-        assert_eq!(determine_bump("test: something"), BumpType::None);
-        assert_eq!(determine_bump("build: something"), BumpType::None);
+        assert_eq!(
+            determine_bump("chore: something", &Default::default()),
+            BumpType::None
+        );
+        assert_eq!(
+            determine_bump("docs: something", &Default::default()),
+            BumpType::None
+        );
+        assert_eq!(
+            determine_bump("ci: something", &Default::default()),
+            BumpType::None
+        );
+        assert_eq!(
+            determine_bump("style: something", &Default::default()),
+            BumpType::None
+        );
+        assert_eq!(
+            determine_bump("test: something", &Default::default()),
+            BumpType::None
+        );
+        assert_eq!(
+            determine_bump("build: something", &Default::default()),
+            BumpType::None
+        );
     }
 
     #[test]
     fn test_breaking_all_types() {
-        assert_eq!(determine_bump("fix!: breaking fix"), BumpType::Major);
-        assert_eq!(determine_bump("refactor!: breaking"), BumpType::Major);
-        assert_eq!(determine_bump("perf!: breaking"), BumpType::Major);
-        assert_eq!(determine_bump("chore!: breaking"), BumpType::Major);
-        assert_eq!(determine_bump("docs!: breaking"), BumpType::Major);
-        assert_eq!(determine_bump("style!: breaking"), BumpType::Major);
-        assert_eq!(determine_bump("test!: breaking"), BumpType::Major);
-        assert_eq!(determine_bump("build!: breaking"), BumpType::Major);
-        assert_eq!(determine_bump("ci!: breaking"), BumpType::Major);
+        assert_eq!(
+            determine_bump("fix!: breaking fix", &Default::default()),
+            BumpType::Major
+        );
+        assert_eq!(
+            determine_bump("refactor!: breaking", &Default::default()),
+            BumpType::Major
+        );
+        assert_eq!(
+            determine_bump("perf!: breaking", &Default::default()),
+            BumpType::Major
+        );
+        assert_eq!(
+            determine_bump("chore!: breaking", &Default::default()),
+            BumpType::Major
+        );
+        assert_eq!(
+            determine_bump("docs!: breaking", &Default::default()),
+            BumpType::Major
+        );
+        assert_eq!(
+            determine_bump("style!: breaking", &Default::default()),
+            BumpType::Major
+        );
+        assert_eq!(
+            determine_bump("test!: breaking", &Default::default()),
+            BumpType::Major
+        );
+        assert_eq!(
+            determine_bump("build!: breaking", &Default::default()),
+            BumpType::Major
+        );
+        assert_eq!(
+            determine_bump("ci!: breaking", &Default::default()),
+            BumpType::Major
+        );
     }
 
     #[test]
     fn test_breaking_with_scope() {
-        assert_eq!(determine_bump("chore(deps)!: breaking"), BumpType::Major);
-        assert_eq!(determine_bump("build(npm)!: breaking"), BumpType::Major);
+        assert_eq!(
+            determine_bump("chore(deps)!: breaking", &Default::default()),
+            BumpType::Major
+        );
+        assert_eq!(
+            determine_bump("build(npm)!: breaking", &Default::default()),
+            BumpType::Major
+        );
     }
 
     #[test]
     fn test_breaking_change_in_body_multiline() {
         let msg = "feat: add feature\n\nSome description.\n\nBREAKING CHANGE: removed old API";
-        assert_eq!(determine_bump(msg), BumpType::Major);
+        assert_eq!(determine_bump(msg, &Default::default()), BumpType::Major);
     }
 
     #[test]
@@ -348,49 +592,78 @@ mod tests {
 
     #[test]
     fn test_feat_not_in_middle_of_word() {
-        assert_eq!(determine_bump("featured something"), BumpType::None);
+        assert_eq!(
+            determine_bump("featured something", &Default::default()),
+            BumpType::None
+        );
     }
 
     #[test]
     fn test_deep_nested_scope() {
         assert_eq!(
-            determine_bump("feat(api/auth/jwt): add token"),
+            determine_bump("feat(api/auth/jwt): add token", &Default::default()),
             BumpType::Minor
         );
         assert_eq!(
-            determine_bump("fix(ui/modal): close on escape"),
+            determine_bump("fix(ui/modal): close on escape", &Default::default()),
             BumpType::Patch
         );
     }
 
+    /// All-caps stays unmatched under the default patterns; only the
+    /// Title-case variants were added by #247.
     #[test]
     fn test_uppercase_types_not_matched() {
-        assert_eq!(determine_bump("FEAT: add login"), BumpType::None);
-        assert_eq!(determine_bump("FIX: bug"), BumpType::None);
-        assert_eq!(determine_bump("Feat: add login"), BumpType::None);
+        assert_eq!(
+            determine_bump("FEAT: add login", &Default::default()),
+            BumpType::None
+        );
+        assert_eq!(
+            determine_bump("FIX: bug", &Default::default()),
+            BumpType::None
+        );
+        assert_eq!(
+            determine_bump("Feat: add login", &Default::default()),
+            BumpType::Minor
+        );
     }
 
     #[test]
     fn test_missing_colon() {
-        assert_eq!(determine_bump("feat add login"), BumpType::None);
-        assert_eq!(determine_bump("fix something"), BumpType::None);
+        assert_eq!(
+            determine_bump("feat add login", &Default::default()),
+            BumpType::None
+        );
+        assert_eq!(
+            determine_bump("fix something", &Default::default()),
+            BumpType::None
+        );
     }
 
     #[test]
     fn test_extra_space_after_type() {
-        assert_eq!(determine_bump("feat : add login"), BumpType::None);
+        assert_eq!(
+            determine_bump("feat : add login", &Default::default()),
+            BumpType::None
+        );
     }
 
     #[test]
     fn test_empty_scope() {
-        assert_eq!(determine_bump("feat(): add login"), BumpType::None);
-        assert_eq!(determine_bump("fix(): bug"), BumpType::None);
+        assert_eq!(
+            determine_bump("feat(): add login", &Default::default()),
+            BumpType::None
+        );
+        assert_eq!(
+            determine_bump("fix(): bug", &Default::default()),
+            BumpType::None
+        );
     }
 
     #[test]
     fn test_breaking_change_not_at_line_start() {
         let msg = "feat: something\n\nnot a BREAKING CHANGE here";
-        assert_eq!(determine_bump(msg), BumpType::Minor);
+        assert_eq!(determine_bump(msg, &Default::default()), BumpType::Minor);
     }
 
     #[test]
@@ -406,19 +679,19 @@ mod tests {
     #[test]
     fn test_multiline_body_feat_in_body_does_not_match() {
         let msg = "chore: update deps\n\nfeat: this is in the body";
-        assert_eq!(determine_bump(msg), BumpType::None);
+        assert_eq!(determine_bump(msg, &Default::default()), BumpType::None);
     }
 
     #[test]
     fn test_multiline_body_fix_in_body_does_not_match() {
         let msg = "chore: update deps\n\nfix: this is in the body";
-        assert_eq!(determine_bump(msg), BumpType::None);
+        assert_eq!(determine_bump(msg, &Default::default()), BumpType::None);
     }
 
     #[test]
     fn test_multiline_body_breaking_marker_in_body_does_not_match() {
         let msg = "chore: update deps\n\nfeat!: this is in the body";
-        assert_eq!(determine_bump(msg), BumpType::None);
+        assert_eq!(determine_bump(msg, &Default::default()), BumpType::None);
     }
 
     #[test]
@@ -470,10 +743,13 @@ mod tests {
 
     #[test]
     fn test_is_breaking() {
-        assert!(is_breaking("feat!: x"));
-        assert!(is_breaking("feat: x\n\nBREAKING CHANGE: y"));
-        assert!(!is_breaking("feat: x"));
-        assert!(!is_breaking("fix: y"));
+        assert!(is_breaking("feat!: x", &Default::default()));
+        assert!(is_breaking(
+            "feat: x\n\nBREAKING CHANGE: y",
+            &Default::default()
+        ));
+        assert!(!is_breaking("feat: x", &Default::default()));
+        assert!(!is_breaking("fix: y", &Default::default()));
     }
 
     #[test]
@@ -486,7 +762,11 @@ mod tests {
             "Breaking Change: gone",
         ] {
             let msg = format!("feat: x\n\n{footer}");
-            assert_eq!(determine_bump(&msg), BumpType::Major, "footer: {footer:?}");
+            assert_eq!(
+                determine_bump(&msg, &Default::default()),
+                BumpType::Major,
+                "footer: {footer:?}"
+            );
         }
     }
 
@@ -495,15 +775,18 @@ mod tests {
         // Missing the colon-space, plural, prose, and mid-line placement must
         // not trip the detector — we accept case variants, not any shape.
         assert_eq!(
-            determine_bump("feat: x\n\nBreaking change:nospace"),
+            determine_bump("feat: x\n\nBreaking change:nospace", &Default::default()),
             BumpType::Minor
         );
         assert_eq!(
-            determine_bump("chore: x\n\nbreaking changes: none"),
+            determine_bump("chore: x\n\nbreaking changes: none", &Default::default()),
             BumpType::None
         );
         assert_eq!(
-            determine_bump("feat: x\n\nthis is a breaking change: really"),
+            determine_bump(
+                "feat: x\n\nthis is a breaking change: really",
+                &Default::default()
+            ),
             BumpType::Minor
         );
     }
@@ -511,12 +794,18 @@ mod tests {
     #[test]
     fn bang_inside_scope_is_breaking() {
         assert_eq!(
-            determine_bump("feat(api!): remove endpoint"),
+            determine_bump("feat(api!): remove endpoint", &Default::default()),
             BumpType::Major
         );
-        assert_eq!(determine_bump("fix(db!): drop table"), BumpType::Major);
+        assert_eq!(
+            determine_bump("fix(db!): drop table", &Default::default()),
+            BumpType::Major
+        );
         // Bang not immediately before the closing paren is not a marker.
-        assert_eq!(determine_bump("feat(a!b): middle"), BumpType::Minor);
+        assert_eq!(
+            determine_bump("feat(a!b): middle", &Default::default()),
+            BumpType::Minor
+        );
     }
 
     #[test]
@@ -551,7 +840,7 @@ mod tests {
                 }
                 let message = std::fs::read_to_string(&path).unwrap();
                 assert_eq!(
-                    is_breaking(&message),
+                    is_breaking(&message, &Default::default()),
                     expect_breaking,
                     "fixture {:?} should classify breaking={expect_breaking}",
                     path.file_name().unwrap()
