@@ -83,7 +83,11 @@ pub(super) fn execute_release(plan: &mut ReleasePlan<'_>) -> Result<()> {
     } else {
         ""
     };
-    let commit_msg = format!("chore(release): {}{skip_ci}", release_parts.join(", "));
+    let commit_msg = super::commit_body::build_commit_message(
+        &format!("chore(release): {}{skip_ci}", release_parts.join(", ")),
+        plan.tags_to_create,
+        plan.config.workspace.release_commit_body,
+    );
     let mut floating_tag_names: Vec<String> = Vec::new();
 
     if !plan.dry_run {
@@ -211,10 +215,15 @@ fn run_commit_or_pr(
     match mode {
         ReleaseCommitMode::Commit => {
             if scope == ReleaseCommitScope::PerPackage && plan.tags_to_create.len() > 1 {
-                for (_, _, _, pkg_name, ver, _, _) in plan.tags_to_create {
+                for tag in plan.tags_to_create.iter() {
+                    let (_, _, _, pkg_name, ver, _, _) = tag;
                     if let Some(pkg_files) = plan.files_per_package.get(pkg_name) {
                         let refs: Vec<&str> = pkg_files.iter().map(String::as_str).collect();
-                        let msg = format!("chore(release): {pkg_name} v{ver}{skip_ci}");
+                        let msg = super::commit_body::build_commit_message(
+                            &format!("chore(release): {pkg_name} v{ver}{skip_ci}"),
+                            std::slice::from_ref(tag),
+                            plan.config.workspace.release_commit_body,
+                        );
                         create_commit(plan.repo, &refs, &msg)?;
                     }
                 }
@@ -258,10 +267,15 @@ fn run_commit_or_pr(
                 let commit_list: Vec<(Vec<&str>, String)> = plan
                     .tags_to_create
                     .iter()
-                    .filter_map(|(_, _, _, pkg_name, ver, _, _)| {
+                    .filter_map(|tag| {
+                        let (_, _, _, pkg_name, ver, _, _) = tag;
                         plan.files_per_package.get(pkg_name).map(|pf| {
                             let refs: Vec<&str> = pf.iter().map(String::as_str).collect();
-                            let msg = format!("chore(release): {pkg_name} v{ver}{skip_ci}");
+                            let msg = super::commit_body::build_commit_message(
+                                &format!("chore(release): {pkg_name} v{ver}{skip_ci}"),
+                                std::slice::from_ref(tag),
+                                plan.config.workspace.release_commit_body,
+                            );
                             (refs, msg)
                         })
                     })

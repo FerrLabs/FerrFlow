@@ -47,6 +47,7 @@ const CAMEL_CASE_KEYS: &[&str] = &[
     "recover_missed_releases",
     "release_commit_mode",
     "release_commit_scope",
+    "release_commit_body",
     "auto_merge_releases",
     "skip_ci",
     "commit_skip_markers",

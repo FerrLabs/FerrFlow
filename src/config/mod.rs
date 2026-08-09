@@ -32,8 +32,8 @@ pub use package::{
 #[allow(unused_imports)]
 pub use types::{
     BranchChannelConfig, ChannelValue, DockerSign, ForgeKind, HooksConfig, OnFailure,
-    OrphanedTagStrategy, PrereleaseIdentifier, PublisherConfig, RegistryConfig, ReleaseCommitMode,
-    ReleaseCommitScope,
+    OrphanedTagStrategy, PrereleaseIdentifier, PublisherConfig, RegistryConfig, ReleaseCommitBody,
+    ReleaseCommitMode, ReleaseCommitScope,
 };
 #[allow(unused_imports)]
 pub use workspace::{

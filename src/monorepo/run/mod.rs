@@ -24,6 +24,7 @@ use super::util::{auto_stage_new_files, collect_dirty_files};
 
 mod cascade;
 pub(super) mod checkpoint;
+mod commit_body;
 mod drafts;
 mod execute;
 #[cfg(test)]
