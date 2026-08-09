@@ -1,6 +1,7 @@
 {
   "$schema": "https://ferrflow.com/schema/ferrflow.json",
   "workspace": {
+    "releaseCommitBody": "full",
     "tagTemplate": "v{version}",
     "floatingTags": ["major"],
     "updateLockfiles": true,
