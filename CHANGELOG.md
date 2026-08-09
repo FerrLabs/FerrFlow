@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.1.1] - 2026-08-09
+
+### Bug Fixes
+
+- fix(ci): retire la notification cross-repo apres release (#819)
+
 ## [6.1.0] - 2026-08-08
 
 ### Features
