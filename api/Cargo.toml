@@ -26,7 +26,7 @@ reqwest = { version = "0.13", default-features = false, features = ["rustls", "j
 # piège que ferrfleet-api et ferrlabs-api ont déjà rencontré. `rust_crypto`
 # est le backend pur Rust (pas de dépendance de build C/NASM, pas de
 # `CryptoProvider::install_default()` à appeler).
-jsonwebtoken = { version = "10", features = ["rust_crypto"] }
+jsonwebtoken = { version = "11", features = ["rust_crypto"] }
 
 # Négociation du contrat par en-tête (`x-ferrflow-api-version`), partagée avec
 # les autres APIs FerrLabs. C'est ce qui rend le versionnage par chemin
