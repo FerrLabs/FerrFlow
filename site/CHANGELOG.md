@@ -1,5 +1,11 @@
 # Changelog
 
+## [7.1.0] - 2026-08-09
+
+### Features
+
+- feat(docs): document workspace.releaseCommitBody (#795)
+
 ## [7.0.1] - 2026-08-09
 
 ### Bug Fixes
