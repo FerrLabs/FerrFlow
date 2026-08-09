@@ -1,5 +1,13 @@
 # Changelog
 
+## [7.0.1] - 2026-08-09
+
+### Bug Fixes
+
+- fix(site): refresh FerrFlow v6.1.1 release data
+- fix(deps): update rust crate jsonwebtoken to v11 (#783)
+- fix(ci): retire le déclencheur cross-repo, garde le cycle de 6 h et le manuel (#789)
+
 ## [7.0.0] - 2026-08-09
 
 ### Breaking Changes
