@@ -92,6 +92,39 @@
           ],
           "default": "none"
         },
+        "commitFormats": {
+          "type": "object",
+          "description": "Which commit subjects map to which bump level. Resolution is major > minor > patch, first match wins. Breaking markers (feat!:, fix(api)!:, a BREAKING CHANGE: footer) are always detected structurally, whatever is configured here.",
+          "properties": {
+            "major": {
+              "description": "Extra patterns that force a major bump. Empty by default — structural breaking markers already cover the conventional forms.",
+              "oneOf": [
+                { "type": "string" },
+                { "type": "array", "items": { "type": "string" } }
+              ]
+            },
+            "minor": {
+              "description": "Patterns that select a minor bump. Defaults cover feat:, feat(scope):, feature:, and the Title-case and branch-style (Feat/) variants.",
+              "oneOf": [
+                { "type": "string" },
+                { "type": "array", "items": { "type": "string" } }
+              ]
+            },
+            "patch": {
+              "description": "Patterns that select a patch bump. Defaults cover fix:, perf:, refactor: and their Title-case and branch-style variants.",
+              "oneOf": [
+                { "type": "string" },
+                { "type": "array", "items": { "type": "string" } }
+              ]
+            },
+            "caseSensitive": {
+              "type": "boolean",
+              "description": "Match patterns exactly as written. Set false to lowercase both pattern and subject before matching. The 'all' catch-all keyword is recognised in any casing regardless.",
+              "default": true
+            }
+          },
+          "additionalProperties": false
+        },
         "autoMergeReleases": {
           "type": "boolean",
           "description": "Automatically merge release PRs when releaseCommitMode is 'pr'.",
