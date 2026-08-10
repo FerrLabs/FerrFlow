@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.0.0] - 2026-08-10
+
+### Breaking Changes
+
+- feat(commits)!: configurable commit formats via workspace.commitFormats (#824)
+
 ## [6.2.0] - 2026-08-09
 
 ### Features
