@@ -1,5 +1,11 @@
 # Changelog
 
+## [7.1.2] - 2026-08-10
+
+### Bug Fixes
+
+- fix(schema): sync served schema with the FerrFlow CLI source
+
 ## [7.1.1] - 2026-08-10
 
 ### Bug Fixes
