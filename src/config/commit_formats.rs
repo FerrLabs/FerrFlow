@@ -17,8 +17,14 @@ impl PatternSet {
         }
     }
 
+    // `all` is a keyword, not a pattern, so it is recognised whatever the
+    // casing — `case_sensitive` governs how subjects are matched, and letting
+    // it turn `"All"` into a literal that matches only the subject "all"
+    // would be a trap.
     fn is_catch_all(&self) -> bool {
-        self.patterns().iter().any(|p| p == CATCH_ALL)
+        self.patterns()
+            .iter()
+            .any(|p| p.eq_ignore_ascii_case(CATCH_ALL))
     }
 
     pub fn matches(&self, subject: &str, case_sensitive: bool) -> bool {
@@ -187,6 +193,18 @@ mod tests {
         let p: PatternSet = serde_json::from_str(r#""all""#).unwrap();
         assert!(p.matches("literally anything", true));
         assert!(p.matches("", true));
+    }
+
+    #[test]
+    fn catch_all_is_a_keyword_not_a_pattern_so_casing_is_irrelevant() {
+        for raw in [r#""All""#, r#""ALL""#, r#""all""#] {
+            let p: PatternSet = serde_json::from_str(raw).unwrap();
+            assert!(p.matches("chore: whatever", true), "{raw} should catch all");
+            assert!(
+                p.matches("chore: whatever", false),
+                "{raw} should catch all"
+            );
+        }
     }
 
     #[test]

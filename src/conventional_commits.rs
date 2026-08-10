@@ -117,8 +117,12 @@ pub fn classify_commit(message: &str, formats: &CommitFormats) -> CommitCategory
 
 static REFACTOR_RE: OnceLock<Regex> = OnceLock::new();
 
+// Case-insensitive and accepting `/` as well as `:` so the Title-case and
+// branch-style spellings the default patterns bump (`Refactor:`, `Refactor/`,
+// `refactor/`) reach the Refactoring section too, rather than being filed
+// under Bug Fixes because only the lowercase colon form was recognised.
 fn refactor_header_re() -> &'static Regex {
-    REFACTOR_RE.get_or_init(|| Regex::new(r"^refactor(\(.+\))?:").unwrap())
+    REFACTOR_RE.get_or_init(|| Regex::new(r"(?i)^refactor(\([^()]*\))?[:/]").unwrap())
 }
 
 pub fn parse_subject(message: &str) -> &str {

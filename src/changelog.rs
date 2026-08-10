@@ -204,23 +204,37 @@ fn build_classic_section(new_version: &str, commits: &[GitLog], formats: &Commit
 const BREAKING_KEY: &str = "breaking";
 
 fn render_section_key(message: &str, formats: &CommitFormats) -> Option<&'static str> {
-    if is_breaking(message, formats) {
-        return Some(BREAKING_KEY);
+    let header = parse_header(message);
+
+    // `perf`, `security` and `docs` get their own section but have no
+    // `commitFormats` level of their own, so they are still resolved from the
+    // conventional prefix. `docs` in particular never bumps yet is offered as
+    // an opt-in section.
+    if let Some(h) = header.as_ref() {
+        match h.commit_type {
+            "perf" => return Some("perf"),
+            "security" => return Some("security"),
+            "docs" => return Some("docs"),
+            _ => {}
+        }
     }
-    let header = parse_header(message)?;
+
     let is_security_scope = header
-        .scope
-        .map(|s| s.eq_ignore_ascii_case("security"))
-        .unwrap_or(false);
-    match header.commit_type {
-        "feat" => Some("feat"),
-        "fix" if is_security_scope => Some("security"),
-        "fix" => Some("fix"),
-        "perf" => Some("perf"),
-        "security" => Some("security"),
-        "docs" => Some("docs"),
-        "refactor" => Some("refactor"),
-        _ => None,
+        .as_ref()
+        .and_then(|h| h.scope)
+        .is_some_and(|s| s.eq_ignore_ascii_case("security"));
+
+    // Everything else follows `classify_commit`, so the section a commit lands
+    // in and the bump it produces are decided by the same rules. Resolving it
+    // from `parse_header` instead dropped every subject the header regex
+    // cannot parse — `Feat:`, `Fix/…` — while still letting it bump (#247).
+    match classify_commit(message, formats) {
+        CommitCategory::Breaking => Some(BREAKING_KEY),
+        CommitCategory::Feature => Some("feat"),
+        CommitCategory::Fix if is_security_scope => Some("security"),
+        CommitCategory::Fix => Some("fix"),
+        CommitCategory::Refactor => Some("refactor"),
+        CommitCategory::Other => None,
     }
 }
 
@@ -778,6 +792,53 @@ mod tests {
         assert_eq!(
             build_section_with("1.0.0", &commits, &render),
             build_classic_section("1.0.0", &commits, &Default::default())
+        );
+    }
+
+    /// The rich path resolved its section from `parse_header`, whose regex
+    /// requires a lowercase `^[a-z]+` type. Every shape #247 added — `Feat:`,
+    /// `Fix/`, `feature:` — therefore bumped the version and was then dropped
+    /// from the changelog, which is exactly the disagreement #525 removed.
+    #[test]
+    fn rich_render_keeps_permissive_commits_the_bump_counted() {
+        let cfg = ChangelogConfig {
+            sections: Some(sections(&[
+                ("feat", enabled()),
+                ("fix", enabled()),
+                ("refactor", enabled()),
+            ])),
+            ..Default::default()
+        };
+        let commits = make_commits(&[
+            "Feat: title-case feature",
+            "feature: aliased feature",
+            "Fix/branch-style-fix",
+            "Refactor/branch-style-refactor",
+        ]);
+        let formats = CommitFormats::default();
+        let render = ChangelogRender {
+            formats: Some(&formats),
+            config: Some(&cfg),
+            ..Default::default()
+        };
+        let s = build_section_with("1.1.0", &commits, &render);
+
+        for expected in [
+            "title-case feature",
+            "aliased feature",
+            "branch-style-fix",
+            "branch-style-refactor",
+        ] {
+            assert!(
+                s.contains(expected),
+                "{expected:?} bumped the version but never reached the changelog:\n{s}"
+            );
+        }
+        assert!(s.contains("### Features"));
+        assert!(s.contains("### Bug Fixes"));
+        assert!(
+            s.contains("### Code Refactoring"),
+            "branch-style refactor should keep its own section:\n{s}"
         );
     }
 

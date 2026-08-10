@@ -92,6 +92,39 @@
           ],
           "default": "none"
         },
+        "commitFormats": {
+          "type": "object",
+          "description": "Which commit subjects map to which bump level. Resolution is major > minor > patch, first match wins. Breaking markers (feat!:, fix(api)!:, a BREAKING CHANGE: footer) are always detected structurally, whatever is configured here.",
+          "properties": {
+            "major": {
+              "description": "Extra patterns that force a major bump. Empty by default — structural breaking markers already cover the conventional forms.",
+              "oneOf": [
+                { "type": "string" },
+                { "type": "array", "items": { "type": "string" } }
+              ]
+            },
+            "minor": {
+              "description": "Patterns that select a minor bump. Defaults cover feat:, feat(scope):, feature:, and the Title-case and branch-style (Feat/) variants.",
+              "oneOf": [
+                { "type": "string" },
+                { "type": "array", "items": { "type": "string" } }
+              ]
+            },
+            "patch": {
+              "description": "Patterns that select a patch bump. Defaults cover fix:, perf:, refactor: and their Title-case and branch-style variants.",
+              "oneOf": [
+                { "type": "string" },
+                { "type": "array", "items": { "type": "string" } }
+              ]
+            },
+            "caseSensitive": {
+              "type": "boolean",
+              "description": "Match patterns exactly as written. Set false to lowercase both pattern and subject before matching. The 'all' catch-all keyword is recognised in any casing regardless.",
+              "default": true
+            }
+          },
+          "additionalProperties": false
+        },
         "autoMergeReleases": {
           "type": "boolean",
           "description": "Automatically merge release PRs when releaseCommitMode is 'pr'.",
@@ -402,60 +435,6 @@
               "type": "string"
             }
           }
-        },
-        "commitFormats": {
-          "type": "object",
-          "description": "Which commit subjects map to which bump level. Resolution is major > minor > patch, first match wins. Breaking markers (`feat!:`, `fix(api)!:`, a `BREAKING CHANGE:` footer) are always detected structurally, whatever is configured here.",
-          "properties": {
-            "major": {
-              "description": "Extra patterns that force a major bump. Empty by default — structural breaking markers already cover the conventional forms.",
-              "oneOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              ]
-            },
-            "minor": {
-              "description": "Patterns that select a minor bump. Defaults cover `feat:`, `feat(scope):`, `feature:`, and the Title-case and branch-style (`Feat/`) variants.",
-              "oneOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              ]
-            },
-            "patch": {
-              "description": "Patterns that select a patch bump. Defaults cover `fix:`, `perf:`, `refactor:` and their Title-case and branch-style variants.",
-              "oneOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              ]
-            },
-            "caseSensitive": {
-              "type": "boolean",
-              "description": "Match patterns exactly as written. Set false to lowercase both pattern and subject before matching.",
-              "default": true
-            }
-          },
-          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -540,26 +519,15 @@
             "description": "Packages this package depends on. When one is bumped, this package is bumped too — by default with the same bump type. Each entry is either a package name or an object with a `propagate` policy.",
             "items": {
               "oneOf": [
-                {
-                  "type": "string"
-                },
+                { "type": "string" },
                 {
                   "type": "object",
-                  "required": [
-                    "name"
-                  ],
+                  "required": ["name"],
                   "properties": {
-                    "name": {
-                      "type": "string"
-                    },
+                    "name": { "type": "string" },
                     "propagate": {
                       "type": "string",
-                      "enum": [
-                        "same",
-                        "major-on-major",
-                        "patch",
-                        "none"
-                      ],
+                      "enum": ["same", "major-on-major", "patch", "none"],
                       "default": "same",
                       "description": "How this dependency's bump becomes a bump here. same: identical bump (a breaking upstream makes this package breaking too). major-on-major: major stays major, anything lower becomes a patch. patch: always a patch. none: no cascade from this dependency."
                     }
@@ -670,26 +638,15 @@
             "description": "Snake_case form of `dependsOn` — both spellings are accepted. Packages this package depends on. When one is bumped, this package is bumped too — by default with the same bump type. Each entry is either a package name or an object with a `propagate` policy.",
             "items": {
               "oneOf": [
-                {
-                  "type": "string"
-                },
+                { "type": "string" },
                 {
                   "type": "object",
-                  "required": [
-                    "name"
-                  ],
+                  "required": ["name"],
                   "properties": {
-                    "name": {
-                      "type": "string"
-                    },
+                    "name": { "type": "string" },
                     "propagate": {
                       "type": "string",
-                      "enum": [
-                        "same",
-                        "major-on-major",
-                        "patch",
-                        "none"
-                      ],
+                      "enum": ["same", "major-on-major", "patch", "none"],
                       "default": "same",
                       "description": "How this dependency's bump becomes a bump here. same: identical bump (a breaking upstream makes this package breaking too). major-on-major: major stays major, anything lower becomes a patch. patch: always a patch. none: no cascade from this dependency."
                     }
