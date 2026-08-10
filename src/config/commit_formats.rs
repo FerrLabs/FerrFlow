@@ -17,10 +17,6 @@ impl PatternSet {
         }
     }
 
-    // `all` is a keyword, not a pattern, so it is recognised whatever the
-    // casing — `case_sensitive` governs how subjects are matched, and letting
-    // it turn `"All"` into a literal that matches only the subject "all"
-    // would be a trap.
     fn is_catch_all(&self) -> bool {
         self.patterns()
             .iter()
@@ -47,14 +43,6 @@ impl PatternSet {
     }
 }
 
-/// `*` (any run, possibly empty) and `?` (exactly one char) over a commit
-/// subject.
-///
-/// Deliberately not `glob_match`, which the rest of the codebase uses for
-/// branch names: there `/` is a real separator and `*` must not cross it.
-/// A commit subject is prose — `fix: update src/foo.rs` and
-/// `feat(api/auth/jwt): x` both contain slashes — so path semantics would
-/// make `fix:*` fail on the majority of real messages (#247).
 fn wildcard_match(pattern: &str, text: &str) -> bool {
     let p: Vec<char> = pattern.chars().collect();
     let t: Vec<char> = text.chars().collect();
@@ -105,13 +93,6 @@ fn default_case_sensitive() -> bool {
     true
 }
 
-/// Empty on purpose. Every real breaking marker — `feat!:`, `fix(api)!:`,
-/// the `feat(api!):` typo, and a `BREAKING CHANGE:` footer — is detected
-/// structurally in `classify_commit`, whatever is configured here. A glob
-/// cannot express those precisely: `*!:*` matches any subject containing
-/// `!:` anywhere, which turns `fix: handle the !: token in the parser`
-/// into a major release. This level exists for teams whose breaking
-/// convention is something else entirely, e.g. `"major": "Breaking/*"`.
 fn default_major() -> PatternSet {
     PatternSet::Many(Vec::new())
 }

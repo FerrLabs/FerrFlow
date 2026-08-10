@@ -89,7 +89,6 @@ pub fn run(spec: &[String], json: bool, config_path: Option<&Path>) -> Result<()
 /// only touched other packages. Keeping just the ones that touched this package
 /// makes the commit list, the breaking-change list and the rendered changelog
 /// match what `ferrflow release` would produce for it (#752).
-///
 /// A commit whose changed files can't be read is kept rather than dropped —
 /// over-reporting is recoverable, silently hiding a commit is not.
 fn commit_touches_package(

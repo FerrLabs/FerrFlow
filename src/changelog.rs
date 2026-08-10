@@ -204,12 +204,13 @@ fn build_classic_section(new_version: &str, commits: &[GitLog], formats: &Commit
 const BREAKING_KEY: &str = "breaking";
 
 fn render_section_key(message: &str, formats: &CommitFormats) -> Option<&'static str> {
+    let category = classify_commit(message, formats);
+    if category == CommitCategory::Breaking {
+        return Some(BREAKING_KEY);
+    }
+
     let header = parse_header(message);
 
-    // `perf`, `security` and `docs` get their own section but have no
-    // `commitFormats` level of their own, so they are still resolved from the
-    // conventional prefix. `docs` in particular never bumps yet is offered as
-    // an opt-in section.
     if let Some(h) = header.as_ref() {
         match h.commit_type {
             "perf" => return Some("perf"),
@@ -224,17 +225,12 @@ fn render_section_key(message: &str, formats: &CommitFormats) -> Option<&'static
         .and_then(|h| h.scope)
         .is_some_and(|s| s.eq_ignore_ascii_case("security"));
 
-    // Everything else follows `classify_commit`, so the section a commit lands
-    // in and the bump it produces are decided by the same rules. Resolving it
-    // from `parse_header` instead dropped every subject the header regex
-    // cannot parse — `Feat:`, `Fix/…` — while still letting it bump (#247).
-    match classify_commit(message, formats) {
-        CommitCategory::Breaking => Some(BREAKING_KEY),
+    match category {
         CommitCategory::Feature => Some("feat"),
         CommitCategory::Fix if is_security_scope => Some("security"),
         CommitCategory::Fix => Some("fix"),
         CommitCategory::Refactor => Some("refactor"),
-        CommitCategory::Other => None,
+        CommitCategory::Breaking | CommitCategory::Other => None,
     }
 }
 
@@ -673,8 +669,6 @@ mod tests {
 
     #[test]
     fn build_section_treats_feature_as_a_feature_but_not_a_bare_feat() {
-        // `feature:` is a documented default alias since #247. `feat add`
-        // has no colon and matches nothing, so it stays out.
         let commits = make_commits(&["feature: renamed type", "feat add no colon"]);
         let section = build_section("1.0.1", &commits);
         assert!(section.contains("### Features"));
@@ -795,10 +789,24 @@ mod tests {
         );
     }
 
-    /// The rich path resolved its section from `parse_header`, whose regex
-    /// requires a lowercase `^[a-z]+` type. Every shape #247 added — `Feat:`,
-    /// `Fix/`, `feature:` — therefore bumped the version and was then dropped
-    /// from the changelog, which is exactly the disagreement #525 removed.
+    #[test]
+    fn rich_render_files_breaking_perf_and_docs_under_breaking_changes() {
+        let formats = CommitFormats::default();
+        for subject in ["perf!: drop legacy API", "docs!: remove the v1 guide"] {
+            assert_eq!(
+                render_section_key(subject, &formats),
+                Some(BREAKING_KEY),
+                "{subject:?} bumps major and must render as breaking"
+            );
+        }
+        assert_eq!(render_section_key("perf: cache", &formats), Some("perf"));
+        assert_eq!(render_section_key("docs: typo", &formats), Some("docs"));
+        assert_eq!(
+            render_section_key("security: patch", &formats),
+            Some("security")
+        );
+    }
+
     #[test]
     fn rich_render_keeps_permissive_commits_the_bump_counted() {
         let cfg = ChangelogConfig {

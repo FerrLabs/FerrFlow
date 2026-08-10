@@ -88,10 +88,6 @@ pub fn classify_commit(message: &str, formats: &CommitFormats) -> CommitCategory
     let subject = parse_subject(message);
     let cs = formats.case_sensitive;
 
-    // Structural breaking markers are recognised whatever the configured
-    // patterns say. A `BREAKING CHANGE:` footer lives in the body, which
-    // subject globs cannot see, and `feat(api!):` puts the bang where a
-    // `*!:*` glob does not reach.
     if breaking_header_re().is_match(subject)
         || breaking_scope_bang_re().is_match(subject)
         || breaking_footer_re().is_match(message)
@@ -103,9 +99,6 @@ pub fn classify_commit(message: &str, formats: &CommitFormats) -> CommitCategory
         return CommitCategory::Feature;
     }
     if formats.patch.matches(subject, cs) {
-        // Patch splits into two changelog sections. The configured patterns
-        // only carry a bump level, so the section is resolved from the
-        // conventional prefix when there is one, and falls back to Fix.
         return if refactor_header_re().is_match(subject) {
             CommitCategory::Refactor
         } else {
@@ -117,10 +110,6 @@ pub fn classify_commit(message: &str, formats: &CommitFormats) -> CommitCategory
 
 static REFACTOR_RE: OnceLock<Regex> = OnceLock::new();
 
-// Case-insensitive and accepting `/` as well as `:` so the Title-case and
-// branch-style spellings the default patterns bump (`Refactor:`, `Refactor/`,
-// `refactor/`) reach the Refactoring section too, rather than being filed
-// under Bug Fixes because only the lowercase colon form was recognised.
 fn refactor_header_re() -> &'static Regex {
     REFACTOR_RE.get_or_init(|| Regex::new(r"(?i)^refactor(\([^()]*\))?[:/]").unwrap())
 }
@@ -185,10 +174,6 @@ mod tests {
     use super::*;
     use crate::config::{CATCH_ALL, PatternSet};
 
-    /// The permissive defaults are a deliberate behaviour change (#247), so
-    /// the documented escape hatch has to actually work: with strict
-    /// patterns every branch-style and capitalised variant goes back to
-    /// being ignored, and plain conventional commits are unaffected.
     #[test]
     fn strict_patterns_restore_the_pre_247_behaviour() {
         let strict = CommitFormats {
@@ -230,10 +215,6 @@ mod tests {
         );
     }
 
-    /// The structural breaking markers must survive whatever patterns are
-    /// configured — a `BREAKING CHANGE:` footer lives in the body, which a
-    /// subject glob cannot see, and `feat(api!):` puts the bang where
-    /// `*!:*` does not reach.
     #[test]
     fn structural_breaking_markers_survive_a_config_that_omits_them() {
         let no_major = CommitFormats {
@@ -303,8 +284,6 @@ mod tests {
         assert_eq!(determine_bump("Fix(db): leak", &f), BumpType::Patch);
     }
 
-    /// Configured patterns carry a bump level, not a changelog section, so
-    /// a patch-level match still has to land in the right section.
     #[test]
     fn patch_level_splits_into_fix_and_refactor_sections() {
         let d = CommitFormats::default();
@@ -614,8 +593,6 @@ mod tests {
         );
     }
 
-    /// All-caps stays unmatched under the default patterns; only the
-    /// Title-case variants were added by #247.
     #[test]
     fn test_uppercase_types_not_matched() {
         assert_eq!(
