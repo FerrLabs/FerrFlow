@@ -206,7 +206,7 @@ fn explain(
         commits_for_package(repo, pkg, &inputs)?
             .into_iter()
             .map(|c| CommitReport {
-                bump: determine_bump(&c.message).to_string(),
+                bump: determine_bump(&c.message, &config.workspace.commit_formats).to_string(),
                 subject: c.message.lines().next().unwrap_or_default().to_string(),
                 hash: c.hash,
             })

@@ -342,6 +342,7 @@ pub(super) fn run_release_logic(
 
         if dry_run && verbose && !quiet {
             let changelog_render = ChangelogRender {
+                formats: Some(&config.workspace.commit_formats),
                 config: config.workspace.changelog.as_ref(),
                 forge_base: forge_base.clone(),
                 last_tag: last_tag.clone(),
@@ -422,7 +423,7 @@ pub(super) fn run_release_logic(
 
         let hook_commits: Vec<HookCommit> = commits
             .iter()
-            .map(|c| HookCommit::from_commit(&c.hash, &c.message))
+            .map(|c| HookCommit::from_commit(&c.hash, &c.message, &config.workspace.commit_formats))
             .collect();
         let hook_bumped_files: Vec<HookFile> = pkg
             .versioned_files
@@ -523,6 +524,7 @@ pub(super) fn run_release_logic(
             }
 
             let changelog_render = ChangelogRender {
+                formats: Some(&config.workspace.commit_formats),
                 config: config.workspace.changelog.as_ref(),
                 forge_base: forge_base.clone(),
                 last_tag: last_tag.clone(),

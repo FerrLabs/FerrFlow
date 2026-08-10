@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+use super::commit_formats::CommitFormats;
 use super::package::{FloatingTagLevel, VersioningStrategy};
 use super::types::{
     BranchChannelConfig, ForgeKind, HooksConfig, OrphanedTagStrategy, RegistryConfig,
@@ -29,6 +30,8 @@ pub struct WorkspaceConfig {
     pub release_commit_scope: ReleaseCommitScope,
     #[serde(default, alias = "releaseCommitBody")]
     pub release_commit_body: ReleaseCommitBody,
+    #[serde(default, alias = "commitFormats")]
+    pub commit_formats: CommitFormats,
     #[serde(default = "default_auto_merge", alias = "autoMergeReleases")]
     pub auto_merge_releases: bool,
     #[serde(default, alias = "skipCi")]

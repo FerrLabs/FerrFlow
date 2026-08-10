@@ -14,14 +14,14 @@ pub struct HookCommit {
 }
 
 impl HookCommit {
-    pub fn from_commit(hash: &str, message: &str) -> Self {
+    pub fn from_commit(hash: &str, message: &str, formats: &crate::config::CommitFormats) -> Self {
         let header = crate::conventional_commits::parse_header(message);
         HookCommit {
             hash: hash.to_string(),
             message: crate::conventional_commits::parse_subject(message).to_string(),
             commit_type: header.as_ref().map(|h| h.commit_type.to_string()),
             scope: header.as_ref().and_then(|h| h.scope.map(str::to_string)),
-            breaking: crate::conventional_commits::is_breaking(message),
+            breaking: crate::conventional_commits::is_breaking(message, formats),
         }
     }
 }
@@ -65,23 +65,25 @@ mod tests {
 
     #[test]
     fn hook_commit_extracts_type_scope_and_breaking() {
-        let c = HookCommit::from_commit("abc1234", "feat(api): add endpoint");
+        let c = HookCommit::from_commit("abc1234", "feat(api): add endpoint", &Default::default());
         assert_eq!(c.hash, "abc1234");
         assert_eq!(c.message, "feat(api): add endpoint");
         assert_eq!(c.commit_type.as_deref(), Some("feat"));
         assert_eq!(c.scope.as_deref(), Some("api"));
         assert!(!c.breaking);
 
-        let breaking = HookCommit::from_commit("d", "feat!: drop the old flag");
+        let breaking =
+            HookCommit::from_commit("d", "feat!: drop the old flag", &Default::default());
         assert!(breaking.breaking);
         assert_eq!(breaking.scope, None);
 
-        let footer = HookCommit::from_commit("e", "fix: x\n\nBREAKING CHANGE: gone");
+        let footer =
+            HookCommit::from_commit("e", "fix: x\n\nBREAKING CHANGE: gone", &Default::default());
         assert!(footer.breaking);
         // The serialized message is the subject only, not the footer.
         assert_eq!(footer.message, "fix: x");
 
-        let plain = HookCommit::from_commit("f", "just a plain message");
+        let plain = HookCommit::from_commit("f", "just a plain message", &Default::default());
         assert_eq!(plain.commit_type, None);
         assert_eq!(plain.scope, None);
         assert!(!plain.breaking);
@@ -89,7 +91,12 @@ mod tests {
 
     #[test]
     fn hook_commit_json_omits_absent_type_and_scope() {
-        let json = serde_json::to_string(&HookCommit::from_commit("h", "chore: bump")).unwrap();
+        let json = serde_json::to_string(&HookCommit::from_commit(
+            "h",
+            "chore: bump",
+            &Default::default(),
+        ))
+        .unwrap();
         // `type` present (chore), `scope` absent, `breaking` always present.
         assert!(json.contains(r#""type":"chore""#));
         assert!(!json.contains("scope"));

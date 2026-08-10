@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 
 use crate::error_code::{self, ErrorCodeExt};
 
+mod commit_formats;
 mod format;
 mod groups;
 #[cfg(feature = "cli")]
@@ -16,6 +17,8 @@ mod package;
 mod types;
 mod workspace;
 
+#[allow(unused_imports)]
+pub use commit_formats::{CATCH_ALL, CommitFormats, PatternSet};
 #[allow(unused_imports)]
 pub use format::{ConfigFileFormat, ConfigFormatHandler, format_handler};
 #[allow(unused_imports)]

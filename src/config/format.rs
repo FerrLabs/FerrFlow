@@ -48,6 +48,8 @@ const CAMEL_CASE_KEYS: &[&str] = &[
     "release_commit_mode",
     "release_commit_scope",
     "release_commit_body",
+    "commit_formats",
+    "case_sensitive",
     "auto_merge_releases",
     "skip_ci",
     "commit_skip_markers",

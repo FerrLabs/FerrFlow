@@ -6,8 +6,14 @@ use ferrflow::conventional_commits;
 use ferrflow::versioning;
 
 #[wasm_bindgen]
-pub fn determine_bump(message: &str) -> String {
-    conventional_commits::determine_bump(message).to_string()
+pub fn determine_bump(message: &str, formats_json: Option<String>) -> Result<String, JsError> {
+    let formats = match formats_json.as_deref().map(str::trim) {
+        Some(raw) if !raw.is_empty() => {
+            serde_json::from_str(raw).map_err(|e| JsError::new(&e.to_string()))?
+        }
+        _ => config::CommitFormats::default(),
+    };
+    Ok(conventional_commits::determine_bump(message, &formats).to_string())
 }
 
 #[wasm_bindgen]

@@ -5,6 +5,7 @@ use serde::Serialize;
 use std::path::Path;
 
 use crate::changelog::{ChangelogRender, build_section_with};
+use crate::config::CommitFormats;
 use crate::config::{Config, PackageConfig, WorkspaceConfig};
 use crate::conventional_commits::{
     BumpType, determine_bump, is_breaking, parse_header, parse_subject,
@@ -43,7 +44,7 @@ pub fn run(spec: &[String], json: bool, config_path: Option<&Path>) -> Result<()
 
     let overall = commits
         .iter()
-        .map(|c| determine_bump(&c.message))
+        .map(|c| determine_bump(&c.message, &config.workspace.commit_formats))
         .max()
         .unwrap_or(BumpType::None);
 
@@ -59,16 +60,27 @@ pub fn run(spec: &[String], json: bool, config_path: Option<&Path>) -> Result<()
     let to_version = to_ref.trim_start_matches('v').to_string();
     let render = ChangelogRender {
         config: config.workspace.changelog.as_ref(),
+        formats: Some(&config.workspace.commit_formats),
         forge_base,
         last_tag: Some(from_tag.clone()),
         new_tag: Some(to_tag.clone()),
     };
     let changelog = build_section_with(&to_version, &commits, &render);
 
+    let report = DiffReport {
+        pkg,
+        from: from_ref,
+        to: to_ref,
+        overall,
+        commits: &commits,
+        files: &files,
+        changelog: &changelog,
+        formats: &config.workspace.commit_formats,
+    };
     if json {
-        print_json(pkg, from_ref, to_ref, overall, &commits, &files, &changelog)?;
+        print_json(&report)?;
     } else {
-        print_human(pkg, from_ref, to_ref, overall, &commits, &files, &changelog);
+        print_human(&report);
     }
     Ok(())
 }
@@ -77,7 +89,6 @@ pub fn run(spec: &[String], json: bool, config_path: Option<&Path>) -> Result<()
 /// only touched other packages. Keeping just the ones that touched this package
 /// makes the commit list, the breaking-change list and the rendered changelog
 /// match what `ferrflow release` would produce for it (#752).
-///
 /// A commit whose changed files can't be read is kept rather than dropped —
 /// over-reporting is recoverable, silently hiding a commit is not.
 fn commit_touches_package(
@@ -182,6 +193,17 @@ fn resolve_endpoint(
     .error_code(error_code::DIFF_ENDPOINT_UNRESOLVED)
 }
 
+struct DiffReport<'a> {
+    pkg: &'a PackageConfig,
+    from: &'a str,
+    to: &'a str,
+    overall: BumpType,
+    commits: &'a [crate::git::GitLog],
+    files: &'a [String],
+    changelog: &'a str,
+    formats: &'a CommitFormats,
+}
+
 fn bump_label(bump: BumpType) -> ColoredString {
     match bump {
         BumpType::Major => "major".red().bold(),
@@ -191,15 +213,18 @@ fn bump_label(bump: BumpType) -> ColoredString {
     }
 }
 
-fn print_human(
-    pkg: &PackageConfig,
-    from: &str,
-    to: &str,
-    overall: BumpType,
-    commits: &[crate::git::GitLog],
-    files: &[String],
-    changelog: &str,
-) {
+fn print_human(r: &DiffReport<'_>) {
+    let DiffReport {
+        pkg,
+        from,
+        to,
+        overall,
+        commits,
+        files,
+        changelog,
+        formats,
+    } = *r;
+
     println!(
         "{}  {} → {}  ({})\n",
         pkg.name.bold(),
@@ -215,14 +240,16 @@ fn print_human(
     for c in commits {
         println!(
             "  {:<5}  {}  {}",
-            bump_label(determine_bump(&c.message)),
+            bump_label(determine_bump(&c.message, formats)),
             c.hash.dimmed(),
             parse_subject(&c.message)
         );
     }
 
-    let breaking: Vec<&crate::git::GitLog> =
-        commits.iter().filter(|c| is_breaking(&c.message)).collect();
+    let breaking: Vec<&crate::git::GitLog> = commits
+        .iter()
+        .filter(|c| is_breaking(&c.message, formats))
+        .collect();
     if !breaking.is_empty() {
         println!(
             "\n{}",
@@ -276,15 +303,18 @@ struct DiffJson<'a> {
     changelog: &'a str,
 }
 
-fn print_json(
-    pkg: &PackageConfig,
-    from: &str,
-    to: &str,
-    overall: BumpType,
-    commits: &[crate::git::GitLog],
-    files: &[String],
-    changelog: &str,
-) -> Result<()> {
+fn print_json(r: &DiffReport<'_>) -> Result<()> {
+    let DiffReport {
+        pkg,
+        from,
+        to,
+        overall,
+        commits,
+        files,
+        changelog,
+        formats,
+    } = *r;
+
     let commit_json: Vec<CommitJson> = commits
         .iter()
         .map(|c| {
@@ -294,14 +324,14 @@ fn print_json(
                 subject: parse_subject(&c.message).to_string(),
                 commit_type: header.as_ref().map(|h| h.commit_type.to_string()),
                 scope: header.as_ref().and_then(|h| h.scope.map(str::to_string)),
-                breaking: is_breaking(&c.message),
-                bump: determine_bump(&c.message).to_string(),
+                breaking: is_breaking(&c.message, formats),
+                bump: determine_bump(&c.message, formats).to_string(),
             }
         })
         .collect();
     let breaking: Vec<String> = commits
         .iter()
-        .filter(|c| is_breaking(&c.message))
+        .filter(|c| is_breaking(&c.message, formats))
         .map(|c| parse_subject(&c.message).to_string())
         .collect();
 

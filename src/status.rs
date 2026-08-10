@@ -73,7 +73,7 @@ pub fn run(
         )?;
         let has_changes = commits
             .iter()
-            .map(|c| determine_bump(&c.message))
+            .map(|c| determine_bump(&c.message, &config.workspace.commit_formats))
             .any(|b| b != BumpType::None);
 
         statuses.push(PackageStatus {
