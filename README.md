@@ -550,7 +550,7 @@ steps:
   - uses: actions/checkout@v6
     with:
       fetch-depth: 0
-  - uses: FerrLabs/FerrFlow@v6
+  - uses: FerrLabs/FerrFlow@v7
     with:
       bot: true
 ```
