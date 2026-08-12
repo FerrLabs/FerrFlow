@@ -1,5 +1,19 @@
 # Changelog
 
+## [6.1.0] - 2026-08-12
+
+### Features
+
+- feat(docs): document workspace.releaseCommitBody (#795)
+
+### Bug Fixes
+
+- fix(site): refresh FerrFlow v7.0.0 release data
+- fix(ci): accorde pull-requests write au job appelant les reusables (#799)
+- fix(schema): sync served schema with the FerrFlow CLI source
+- fix(site): refresh FerrFlow v6.2.0 release data
+- fix(site): refresh FerrFlow v6.1.1 release data
+
 ## [6.0.2] - 2026-08-09
 
 ### Bug Fixes
