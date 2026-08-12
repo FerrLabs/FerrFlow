@@ -1,5 +1,12 @@
 # Changelog
 
+## [7.1.3] - 2026-08-12
+
+### Bug Fixes
+
+- fix(site): refresh FerrFlow v7.0.0 release data
+- fix(ci): accorde pull-requests write au job appelant les reusables (#799)
+
 ## [7.1.2] - 2026-08-10
 
 ### Bug Fixes
