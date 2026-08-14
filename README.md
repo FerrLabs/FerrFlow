@@ -1,4 +1,11 @@
+<div align="center">
+
 # FerrFlow
+
+**Universal semantic versioning for monorepos and classic repos.**
+
+Reads your commit history, works out the right version bump, updates your version files,<br />
+writes the changelog, and cuts the tagged release. Any language, any repo layout.
 
 [![Latest release](https://img.shields.io/github/v/release/FerrLabs/FerrFlow)](https://github.com/FerrLabs/FerrFlow/releases/latest)
 [![Quality Gate](https://sonar.ferrlabs.com/api/project_badges/measure?project=ferrflow&metric=alert_status&token=sqb_53f0d93466bd01a6c6a94a15125d5aa8390c67fa)](https://sonar.ferrlabs.com/dashboard?id=ferrflow)
@@ -7,13 +14,20 @@
 [![Socket Badge](https://badge.socket.dev/npm/package/ferrflow/latest)](https://badge.socket.dev/npm/package/ferrflow/latest)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/FerrLabs/FerrFlow/badge)](https://scorecard.dev/viewer/?uri=github.com/FerrLabs/FerrFlow)
 
-Universal semantic versioning for monorepos and classic repos.
+[Documentation](https://ferrflow.com/docs) | [Changelog](https://ferrlabs.com/changelog/) | [GitHub App](https://github.com/apps/ferrflow)
 
-FerrFlow reads your commit history, determines the right version bump, updates your version files, generates a changelog, and creates a tagged release — for any language, any repo layout.
+</div>
 
 ## Why FerrFlow?
 
-A single compiled binary with no runtime dependencies. Native monorepo support, multi-language versioning, and works with any repo layout.
+One compiled binary, no runtime to install. Native monorepo support, 16 version-file formats
+across every ecosystem below, and it works with whatever layout your repo already has.
+
+```bash
+ferrflow release
+```
+
+That is the whole release: bump, changelog, tag, GitHub release.
 
 ## Supported version files
 
@@ -33,7 +47,7 @@ A single compiled binary with no runtime dependencies. Native monorepo support, 
 | `packageswift` | `Package.swift` | Swift | top-level `let <name>Version = "…"` |
 | `cabal` | `*.cabal` | Haskell | top-level `version:` field |
 | `cmake` | `CMakeLists.txt` | C / C++ | `VERSION` argument of `project()` |
-| `gomod` | `go.mod` | Go | git tag only — no file write |
+| `gomod` | `go.mod` | Go | git tag only, no file write |
 | `txt` | `VERSION`, `VERSION.txt` | Any | entire file content |
 
 ## Installation
@@ -138,7 +152,7 @@ ferrflow migrate                        # auto-detects .releaserc
 ferrflow migrate --from semantic-release
 ```
 
-It maps `tagFormat`, `branches`, and the common plugins (`changelog`, `exec`, `github`/`gitlab`) to their FerrFlow equivalents, and prints a summary of what mapped, what was ignored, and what needs manual review — anything without a FerrFlow equivalent is surfaced, never guessed. JSON `.releaserc` is supported today; YAML `.releaserc` and JS `release.config.js` are reported as unsupported rather than mis-parsed.
+It maps `tagFormat`, `branches`, and the common plugins (`changelog`, `exec`, `github`/`gitlab`) to their FerrFlow equivalents, and prints a summary of what mapped, what was ignored, and what needs manual review. Anything without a FerrFlow equivalent is surfaced, never guessed. JSON `.releaserc` is supported today; YAML `.releaserc` and JS `release.config.js` are reported as unsupported rather than mis-parsed.
 
 ### JSON Schema
 
@@ -555,7 +569,7 @@ steps:
       bot: true
 ```
 
-That's it — no `setup-node`, no extra dependencies. FerrFlow's Rust binary handles the OIDC exchange directly, so minimal self-hosted runners work out of the box.
+That is the whole job. No `setup-node`, no extra dependencies. FerrFlow's Rust binary handles the OIDC exchange directly, so minimal self-hosted runners work out of the box.
 
 Three auth modes are supported: `bot: true` uses the hosted FerrFlow App (recommended); `token: <PAT>` uses a personal access token or your own GitHub App token (DIY); omitting both falls back to the workflow's `GITHUB_TOKEN` (simplest, but release events won't trigger downstream workflows).
 
