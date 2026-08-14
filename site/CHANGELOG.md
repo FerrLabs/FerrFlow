@@ -1,5 +1,11 @@
 # Changelog
 
+## [7.2.0] - 2026-08-14
+
+### Features
+
+- feat(docs): document workspace.commitFormats (#798)
+
 ## [7.1.3] - 2026-08-12
 
 ### Bug Fixes
