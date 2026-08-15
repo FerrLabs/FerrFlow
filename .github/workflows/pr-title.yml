@@ -10,6 +10,13 @@ permissions:
 jobs:
   conventional:
     name: Conventional commits
+    # Un push sur la branche de la PR ne peut pas changer son titre : revalider
+    # sur `synchronize` recalcule la meme reponse, et Renovate rebase en
+    # permanence. Le job est saute plutot que le declencheur retire : le
+    # workflow produit quand meme un check run sur le nouveau SHA de tete, ce
+    # dont un status check requis a besoin, et un job saute n'occupe aucun
+    # runner. Voir FerrLabs/.github#252.
+    if: github.event.action != 'synchronize'
     runs-on: ubuntu-latest
     steps:
       - uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6
