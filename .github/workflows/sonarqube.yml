@@ -39,6 +39,12 @@ jobs:
 
   scan:
     needs: version
+    # The reusable workflow declares `pull-requests: write` (it posts the diff
+    # against the base project). The job would otherwise inherit the read-only
+    # workflow-level block above, and GitHub rejects the run before it starts.
+    permissions:
+      contents: read
+      pull-requests: write
     uses: FerrLabs/.github/.github/workflows/reusable-sonarqube-scan.yml@5aec567fa6bfb149af54fc1819b1603bb7205c28 # main
     with:
       runner: ubuntu-latest
