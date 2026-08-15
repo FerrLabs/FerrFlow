@@ -98,24 +98,39 @@ impl BotTokenExchange {
         }
 
         let payload = serde_json::json!({ "token": oidc_body.value });
-        let mut response = match agent
-            .post(&self.endpoint)
-            .header("Content-Type", "application/json")
-            .header("Accept", "application/json")
-            .header(
-                "User-Agent",
-                concat!("ferrflow/", env!("CARGO_PKG_VERSION")),
-            )
-            .send_json(payload)
-        {
-            Ok(r) => r,
-            Err(ureq::Error::StatusCode(code)) => {
-                return Err(map_status_error(code));
-            }
-            Err(err) => {
-                bail!(
-                    "FerrFlow hosted bot unavailable: {err}. Check https://status.ferrlabs.com or fall back to a PAT via `token:`."
-                );
+        let mut attempt = 0u32;
+        let mut response = loop {
+            attempt += 1;
+            let outcome = agent
+                .post(&self.endpoint)
+                .header("Content-Type", "application/json")
+                .header("Accept", "application/json")
+                .header(
+                    "User-Agent",
+                    concat!("ferrflow/", env!("CARGO_PKG_VERSION")),
+                )
+                .send_json(payload.clone());
+
+            match outcome {
+                Ok(r) => break r,
+                Err(err) => {
+                    let retryable = is_retryable(&err);
+                    if retryable && attempt < MAX_EXCHANGE_ATTEMPTS {
+                        let backoff = backoff_for(attempt);
+                        tracing::warn!(
+                            "FerrFlow bot token exchange failed ({err}); retrying in {}s (attempt {attempt}/{MAX_EXCHANGE_ATTEMPTS})",
+                            backoff.as_secs()
+                        );
+                        std::thread::sleep(backoff);
+                        continue;
+                    }
+                    return Err(match err {
+                        ureq::Error::StatusCode(code) => map_status_error(code),
+                        other => anyhow::anyhow!(
+                            "FerrFlow hosted bot unavailable: {other}. Check https://status.ferrlabs.com or fall back to a PAT via `token:`."
+                        ),
+                    });
+                }
             }
         };
 
@@ -133,6 +148,24 @@ impl BotTokenExchange {
             expires_at: body.expires_at,
             repository: body.repository,
         })
+    }
+}
+
+const MAX_EXCHANGE_ATTEMPTS: u32 = 3;
+const EXCHANGE_BACKOFF_SECS: [u64; 2] = [2, 6];
+
+fn backoff_for(attempt: u32) -> std::time::Duration {
+    let secs = EXCHANGE_BACKOFF_SECS
+        .get((attempt - 1) as usize)
+        .copied()
+        .unwrap_or(6);
+    std::time::Duration::from_secs(secs)
+}
+
+fn is_retryable(err: &ureq::Error) -> bool {
+    match err {
+        ureq::Error::StatusCode(code) => matches!(code, 429 | 500..=599),
+        _ => true,
     }
 }
 
@@ -360,6 +393,37 @@ mod tests {
                 );
             },
         );
+    }
+
+    #[test]
+    fn retries_transport_errors_and_server_faults() {
+        assert!(is_retryable(&ureq::Error::StatusCode(502)));
+        assert!(is_retryable(&ureq::Error::StatusCode(503)));
+        assert!(is_retryable(&ureq::Error::StatusCode(500)));
+        assert!(is_retryable(&ureq::Error::StatusCode(429)));
+    }
+
+    #[test]
+    fn does_not_retry_what_a_retry_cannot_fix() {
+        assert!(!is_retryable(&ureq::Error::StatusCode(401)));
+        assert!(!is_retryable(&ureq::Error::StatusCode(404)));
+        assert!(!is_retryable(&ureq::Error::StatusCode(400)));
+    }
+
+    #[test]
+    fn backoff_grows_then_plateaus() {
+        assert_eq!(backoff_for(1).as_secs(), 2);
+        assert_eq!(backoff_for(2).as_secs(), 6);
+        assert_eq!(backoff_for(9).as_secs(), 6);
+    }
+
+    #[test]
+    fn a_502_run_is_bounded_by_the_attempt_cap() {
+        let total: u64 = (1..MAX_EXCHANGE_ATTEMPTS)
+            .map(|a| backoff_for(a).as_secs())
+            .sum();
+        assert_eq!(MAX_EXCHANGE_ATTEMPTS, 3);
+        assert_eq!(total, 8, "a fully-failing exchange must not stall the job");
     }
 
     #[test]
