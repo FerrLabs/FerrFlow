@@ -104,11 +104,7 @@ pub enum UpdateOutcome {
     Failed { program: String, detail: String },
 }
 
-pub fn update_for_manifest(
-    repo_root: &Path,
-    manifest_rel: &str,
-    package_name: &str,
-) -> anyhow::Result<UpdateOutcome> {
+pub fn update_for_manifest(repo_root: &Path, manifest_rel: &str) -> anyhow::Result<UpdateOutcome> {
     let manifest_path = join_within_repo(repo_root, manifest_rel)?;
     let filename = match manifest_path.file_name().and_then(|n| n.to_str()) {
         Some(name) => name,
@@ -125,15 +121,29 @@ pub fn update_for_manifest(
         else {
             continue;
         };
+        let per_package = match lockfile.update_kind {
+            UpdateKind::PerPackage => match manifest_package_name(&manifest_path) {
+                Some(name) => Some(name),
+                None => return Ok(UpdateOutcome::UnsupportedManifest),
+            },
+            UpdateKind::Whole => None,
+        };
         return Ok(run_update(
             repo_root,
             &lockfile_path,
             lockfile,
-            package_name,
+            per_package.as_deref(),
         ));
     }
 
     Ok(UpdateOutcome::NoLockfile)
+}
+
+fn manifest_package_name(manifest_path: &Path) -> Option<String> {
+    let content = std::fs::read_to_string(manifest_path).ok()?;
+    let doc = content.parse::<toml_edit::DocumentMut>().ok()?;
+    let name = doc.get("package")?.get("name")?.as_str()?;
+    Some(name.to_string())
 }
 
 fn locate_lockfile(repo_root: &Path, manifest_dir: &Path, filename: &str) -> Option<PathBuf> {
@@ -150,22 +160,34 @@ fn locate_lockfile(repo_root: &Path, manifest_dir: &Path, filename: &str) -> Opt
     }
 }
 
+fn update_args(lockfile: &Lockfile, per_package: Option<&str>, offline: bool) -> Vec<String> {
+    let mut args: Vec<String> = lockfile.base_args.iter().map(|a| a.to_string()).collect();
+    if let Some(name) = per_package {
+        args.push("-p".to_string());
+        args.push(name.to_string());
+        if offline {
+            args.push("--offline".to_string());
+        }
+    }
+    args
+}
+
 fn run_update(
     repo_root: &Path,
     lockfile_path: &Path,
     lockfile: &Lockfile,
-    package_name: &str,
+    per_package: Option<&str>,
 ) -> UpdateOutcome {
     let lockfile_dir = lockfile_path.parent().unwrap_or(repo_root);
 
-    let mut cmd = std::process::Command::new(lockfile.program);
-    cmd.current_dir(lockfile_dir);
-    cmd.args(lockfile.base_args);
-    if let UpdateKind::PerPackage = lockfile.update_kind {
-        cmd.arg("-p").arg(package_name).arg("--offline");
-    }
+    let run = |offline: bool| {
+        std::process::Command::new(lockfile.program)
+            .current_dir(lockfile_dir)
+            .args(update_args(lockfile, per_package, offline))
+            .output()
+    };
 
-    let output = match cmd.output() {
+    let mut output = match run(per_package.is_some()) {
         Ok(output) => output,
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
             return UpdateOutcome::NotOnPath {
@@ -179,6 +201,13 @@ fn run_update(
             };
         }
     };
+
+    if !output.status.success()
+        && per_package.is_some()
+        && let Ok(retry) = run(false)
+    {
+        output = retry;
+    }
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -222,11 +251,72 @@ mod tests {
         assert_eq!(Manifest::from_manifest_filename("Chart.yaml"), None);
     }
 
+    fn cargo() -> Lockfile {
+        Manifest::CargoToml.lockfiles()[0]
+    }
+
+    #[test]
+    fn the_retry_drops_offline_so_a_cold_registry_cache_can_be_filled() {
+        let first = update_args(&cargo(), Some("ferrgames-discord"), true);
+        assert_eq!(first, ["update", "-p", "ferrgames-discord", "--offline"]);
+
+        let retry = update_args(&cargo(), Some("ferrgames-discord"), false);
+        assert_eq!(
+            retry,
+            ["update", "-p", "ferrgames-discord"],
+            "the release job checks out and installs the toolchain but never builds, \
+             so the registry cache is empty and --offline cannot resolve dependencies"
+        );
+    }
+
+    #[test]
+    fn whole_lockfile_updates_never_get_offline_or_a_package() {
+        let args = update_args(&cargo(), None, true);
+        assert_eq!(args, ["update"]);
+    }
+
+    #[test]
+    fn cargo_updates_the_crate_name_not_the_ferrflow_package_name() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        let member = root.join("crates").join("api");
+        std::fs::create_dir_all(member.join("src")).unwrap();
+        std::fs::write(
+            root.join("Cargo.toml"),
+            "[workspace]\nresolver = \"3\"\nmembers = [\"crates/api\"]\n",
+        )
+        .unwrap();
+        std::fs::write(
+            member.join("Cargo.toml"),
+            "[package]\nname = \"ferrgames-api\"\nversion = \"2.0.0\"\nedition = \"2024\"\n",
+        )
+        .unwrap();
+        std::fs::write(member.join("src").join("lib.rs"), "").unwrap();
+        std::fs::write(
+            root.join("Cargo.lock"),
+            "version = 4\n\n[[package]]\nname = \"ferrgames-api\"\nversion = \"1.0.0\"\n",
+        )
+        .unwrap();
+
+        let outcome = update_for_manifest(root, "crates/api/Cargo.toml").unwrap();
+
+        assert_eq!(
+            outcome,
+            UpdateOutcome::Updated {
+                lockfile_rel: "Cargo.lock".to_string()
+            },
+            "the ferrflow package is named `api` but the crate is `ferrgames-api`; \
+             passing the ferrflow name to `cargo update -p` fails and leaves the lock stale"
+        );
+        let lock = std::fs::read_to_string(root.join("Cargo.lock")).unwrap();
+        assert!(lock.contains("2.0.0"), "lockfile not bumped: {lock}");
+    }
+
     #[test]
     fn unsupported_manifest_is_a_noop() {
         let dir = tempfile::tempdir().unwrap();
         std::fs::write(dir.path().join("Chart.yaml"), "version: 1.0.0\n").unwrap();
-        let outcome = update_for_manifest(dir.path(), "Chart.yaml", "app").unwrap();
+        let outcome = update_for_manifest(dir.path(), "Chart.yaml").unwrap();
         assert_eq!(outcome, UpdateOutcome::UnsupportedManifest);
     }
 
@@ -238,7 +328,7 @@ mod tests {
             "[package]\nname = \"app\"\nversion = \"1.0.0\"\n",
         )
         .unwrap();
-        let outcome = update_for_manifest(dir.path(), "Cargo.toml", "app").unwrap();
+        let outcome = update_for_manifest(dir.path(), "Cargo.toml").unwrap();
         assert_eq!(outcome, UpdateOutcome::NoLockfile);
     }
 

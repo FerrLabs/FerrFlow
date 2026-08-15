@@ -878,7 +878,7 @@ mod lockfile_flow {
         .unwrap();
         std::fs::write(dir.path().join("mix.lock"), "%{}\n").unwrap();
 
-        let outcome = lockfiles::update_for_manifest(dir.path(), "mix.exs", "app").unwrap();
+        let outcome = lockfiles::update_for_manifest(dir.path(), "mix.exs").unwrap();
         if program_on_path("mix") {
             assert!(matches!(
                 outcome,

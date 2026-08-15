@@ -970,7 +970,7 @@ pub(super) fn refresh_lockfiles(
 
     let mut handled: HashSet<String> = HashSet::new();
     for vf in &pkg.versioned_files {
-        let outcome = match lockfiles::update_for_manifest(root, &vf.path, &pkg.name) {
+        let outcome = match lockfiles::update_for_manifest(root, &vf.path) {
             Ok(outcome) => outcome,
             Err(err) => {
                 tracing::warn!(package = %pkg.name, manifest = %vf.path, error = %err, "lockfile update skipped");
