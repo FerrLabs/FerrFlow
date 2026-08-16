@@ -179,8 +179,6 @@ fn bench_config_loading(c: &mut Criterion) {
     }
 }
 
-/// Create a git repo with `num_commits` commits and a tag at `tag_at` position.
-/// Returns the TempDir (must be kept alive) and the opened Repository.
 fn run_git(dir: &std::path::Path, args: &[&str]) -> String {
     run_git_with_stdin(dir, args, None)
 }
@@ -279,7 +277,6 @@ fn create_bench_repo(num_commits: usize, tag_at: usize) -> (TempDir, gix::Reposi
 }
 
 fn bench_git_operations(c: &mut Criterion) {
-    // Benchmark get_commits_since_last_tag with varying history sizes
     for (label, total_commits, tag_position) in [
         ("git_commits/100", 100, 0),
         ("git_commits/1000", 1_000, 0),
@@ -302,7 +299,6 @@ fn bench_git_operations(c: &mut Criterion) {
         });
     }
 
-    // Benchmark find_last_tag_name
     for (label, total_commits, tag_position) in [
         ("git_find_tag/100", 100, 50),
         ("git_find_tag/1000", 1_000, 500),
@@ -315,7 +311,6 @@ fn bench_git_operations(c: &mut Criterion) {
         });
     }
 
-    // Benchmark collect_all_tags
     {
         let (_dir, repo) = create_bench_repo(100, 50);
         c.bench_function("git_collect_tags/single_tag", |b| {
@@ -325,7 +320,6 @@ fn bench_git_operations(c: &mut Criterion) {
         });
     }
 
-    // Benchmark get_changed_files
     for (label, total_commits) in [
         ("git_changed_files/100", 100),
         ("git_changed_files/1000", 1_000),
@@ -338,7 +332,6 @@ fn bench_git_operations(c: &mut Criterion) {
         });
     }
 
-    // Benchmark get_changed_files_since_tag
     for (label, total_commits, tag_position) in [
         ("git_changed_since_tag/100_commits_50_since", 100, 50),
         ("git_changed_since_tag/1000_commits_500_since", 1_000, 500),
@@ -356,7 +349,6 @@ fn bench_git_operations(c: &mut Criterion) {
 }
 
 fn bench_validate(c: &mut Criterion) {
-    // Benchmark config loading + validation (the local part of validate)
     for (label, num_pkgs) in [
         ("validate/single", 1),
         ("validate/mono_50", 50),
@@ -367,7 +359,6 @@ fn bench_validate(c: &mut Criterion) {
             let config_path = dir.path().join(".ferrflow");
             std::fs::write(&config_path, generate_config_json(num_pkgs)).unwrap();
 
-            // Create version files so validation passes
             for i in 1..=num_pkgs {
                 let pkg_dir = dir.path().join(format!("packages/pkg-{i:03}"));
                 std::fs::create_dir_all(&pkg_dir).unwrap();
@@ -398,18 +389,15 @@ fn bench_validate(c: &mut Criterion) {
 }
 
 fn bench_full_check_flow(c: &mut Criterion) {
-    // Benchmark the complete check flow: config load + git log + commit parsing + bump determination
     for (label, num_commits) in [
         ("full_check_flow/100_commits", 100),
         ("full_check_flow/1000_commits", 1_000),
     ] {
         let (_dir, repo) = create_bench_repo(num_commits, 0);
 
-        // Write a config into the repo dir
         let config_content = generate_config_json(1);
         std::fs::write(_dir.path().join(".ferrflow"), &config_content).unwrap();
 
-        // Create version file (directory MUST exist before write)
         std::fs::create_dir_all(_dir.path().join("packages/pkg-001")).unwrap();
         std::fs::write(
             _dir.path().join("packages/pkg-001/package.json"),

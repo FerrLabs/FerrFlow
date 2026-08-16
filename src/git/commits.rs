@@ -175,10 +175,6 @@ pub fn create_branch_and_commits(
         .trim()
         .to_string();
 
-    // `-f` so a persistent release branch left over from a prior run in
-    // the same checkout is reset to the fresh release commit rather than
-    // failing on "branch already exists" (#703). Safe: the release branch
-    // is never the checked-out branch.
     run_git(workdir, &["branch", "-f", branch_name])
         .with_context(|| format!("git branch -f {branch_name} failed"))?;
 

@@ -4,7 +4,6 @@ use colored::Colorize;
 use super::{Forge, MergeRequestResult, ReleaseResult};
 use crate::error_code::{self, ErrorCodeExt};
 
-/// See `github::PER_PAGE` — same justification, same number.
 const PER_PAGE: u32 = 100;
 const MAX_PAGES: u32 = 100;
 
@@ -20,10 +19,6 @@ impl GitLabForge {
         self.slug.replace('/', "%2F")
     }
 
-    /// Walk every page of a GitLab list endpoint. Same shape as the
-    /// GitHub helper: stop when a page returns fewer than `PER_PAGE`
-    /// items. GitLab supports the `?per_page=&page=` parameters
-    /// identically to GitHub, so the universal trick works. See #524.
     fn paginated_json_array(&self, base_url: &str, what: &str) -> Result<Vec<serde_json::Value>> {
         let mut all = Vec::new();
         for page in 1..=MAX_PAGES {
@@ -203,8 +198,6 @@ impl Forge for GitLabForge {
             self.encoded_project_id(),
             mr_id
         );
-        // Paginate — long-lived release MRs can accumulate hundreds of
-        // notes from CI / bots / reviewers. See #524.
         let notes = self.paginated_json_array(&base_url, "MR notes")?;
         for note in notes {
             if let Some(body) = note["body"].as_str()

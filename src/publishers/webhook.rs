@@ -1,12 +1,3 @@
-//! Generic POST notifier — Slack incoming webhook, Discord, custom
-//! services. JSON body + header map both support `{name}`,
-//! `{version}`, `{tag}`, `{url}` and `{env:NAME}` interpolation.
-//!
-//! Idempotency caveat: webhooks have none by design — re-posting will
-//! send a duplicate message. This is acceptable for notifications,
-//! and the crash-resume checkpoint (#549) anchors at the phase level
-//! so post_publish only fires once per successful release.
-
 use anyhow::{Context, Result, anyhow};
 use std::collections::BTreeMap;
 
@@ -93,10 +84,6 @@ fn interpolate_value(v: &serde_json::Value, ctx: &PublishContext<'_>) -> Result<
     }
 }
 
-/// Walk a string and replace every `{env:NAME}` token with the value
-/// of the env var. Missing env vars are an error (a webhook with an
-/// unset `Authorization: Bearer {env:SLACK_TOKEN}` should NOT send
-/// anonymously).
 fn resolve_env_placeholders(s: &str) -> Result<String> {
     let mut out = String::with_capacity(s.len());
     let mut rest = s;
@@ -148,8 +135,6 @@ mod tests {
     #[test]
     fn env_placeholder_resolves_when_set() {
         // SAFETY: This is a test-only var name that's never used elsewhere; the
-        // process-wide write happens once and tests run sequentially within the same
-        // process so this can't race with anything reading the same key.
         unsafe {
             std::env::set_var("FERRFLOW_TEST_WEBHOOK_TOKEN", "secret-123");
         }

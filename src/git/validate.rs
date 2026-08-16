@@ -93,7 +93,6 @@ mod tests {
 
     #[test]
     fn allows_tab() {
-        // Tabs are technically allowed in refs (rare but not unsafe).
         assert!(ensure_safe_refname_fragment("foo\tbar", "tag").is_ok());
     }
 }

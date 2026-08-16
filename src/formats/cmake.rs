@@ -9,16 +9,6 @@ pub struct CmakeVersionFile;
 
 static VERSION_RE: OnceLock<Regex> = OnceLock::new();
 
-// Anchored on the `project(` call so a `set(FOO_VERSION …)` elsewhere in the
-// file can't match. `[^)]*?` keeps the search inside that call's parentheses,
-// which is also what lets the common multi-line form work:
-//
-//     project(MyProj
-//         VERSION 1.2.3
-//         LANGUAGES CXX)
-//
-// Command names are case-insensitive in CMake; the `VERSION` keyword is
-// conventionally uppercase but is matched case-insensitively for tolerance.
 fn version_re() -> &'static Regex {
     VERSION_RE
         .get_or_init(|| Regex::new(r"(?is)\bproject\s*\([^)]*?\bVERSION\s+([^\s)]+)").unwrap())
@@ -105,8 +95,6 @@ add_executable(app main.cpp)
         assert!(out.contains("project(MyProject VERSION 2.0.0 LANGUAGES CXX)"));
     }
 
-    // `cmake_minimum_required(VERSION 3.20)` is the CMake tool version, not the
-    // project version. Bumping it would raise the required toolchain.
     #[test]
     fn cmake_minimum_required_is_not_mistaken_for_the_project_version() {
         let f = write_temp(FIXTURE);
@@ -141,8 +129,6 @@ add_executable(app main.cpp)
         assert_eq!(CmakeVersionFile.read_version(f.path()).unwrap(), "3.1.4");
     }
 
-    // A `set(..._VERSION ...)` variable is not the project version, and must not
-    // be picked up when the project() call carries no VERSION of its own.
     #[test]
     fn set_version_variable_is_not_matched() {
         let f = write_temp("project(Foo LANGUAGES CXX)\nset(FOO_VERSION 7.7.7)\n");

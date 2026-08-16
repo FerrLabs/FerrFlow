@@ -26,8 +26,6 @@ fn is_transient_classifies_network_errors_as_retryable() {
 
 #[test]
 fn is_transient_classifies_libgit2_odb_staleness_as_retryable() {
-    // E2006 firing immediately after a successful branch push, when
-    // libgit2's ODB cache hasn't caught up with objects we just wrote.
     let err = anyhow::anyhow!("Failed to push tags")
         .context("object is no commit object; class=Invalid (3)");
     assert!(is_transient_git_error(&err));
@@ -50,8 +48,6 @@ fn is_transient_does_not_retry_terminal_errors() {
     let err = anyhow::anyhow!("authentication failed: bad token");
     assert!(!is_transient_git_error(&err));
 
-    // Unknown error: default to not retrying so we don't mask logic
-    // bugs with infinite retry-attempts.
     let err = anyhow::anyhow!("something completely unexpected happened");
     assert!(!is_transient_git_error(&err));
 }
@@ -92,7 +88,6 @@ fn parse_ls_remote_tags_returns_empty_for_empty_input() {
 
 #[test]
 fn parse_ls_remote_tags_extracts_lightweight_tag_sha() {
-    // Lightweight tag — only the bare line, no ^{} deref entry.
     let input = "0123456789abcdef0123456789abcdef01234567\trefs/tags/site@v0.13.0\n";
     let map = parse_ls_remote_tags(input);
     assert_eq!(
@@ -103,9 +98,6 @@ fn parse_ls_remote_tags_extracts_lightweight_tag_sha() {
 
 #[test]
 fn parse_ls_remote_tags_prefers_dereferenced_commit_for_annotated_tag() {
-    // Annotated tags: ls-remote emits two lines — the tag object SHA, and
-    // the commit it points to with `^{}`. We must prefer the commit so it
-    // can be compared with the local commit SHA from peel_to_commit().
     let input = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\trefs/tags/site@v0.13.0\n\
                  bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\trefs/tags/site@v0.13.0^{}\n";
     let map = parse_ls_remote_tags(input);
@@ -168,12 +160,6 @@ fn create_annotated_tag(repo: &Repository, tag_name: &str, message: &str) {
     git(workdir, &["tag", "-a", tag_name, "-m", message]);
 }
 
-// ── local_tag_target_sha — feeds the diverged-tag check in push_tags ──
-//
-// The remote side of that comparison uses ls-remote's dereferenced `^{}`
-// entry, i.e. the commit. If the local side resolves an annotated tag to
-// the tag OBJECT instead of peeling to the commit, every annotated tag
-// looks diverged from a remote it is actually in sync with.
 #[test]
 fn local_tag_target_sha_peels_annotated_tags_to_the_commit() {
     let (dir, repo) = init_repo();
@@ -209,10 +195,6 @@ fn local_tag_target_sha_errors_on_a_missing_tag() {
     assert!(local_tag_target_sha(&repo, "v9.9.9").is_err());
 }
 
-// -----------------------------------------------------------------------
-// open_repo / get_repo_root
-// -----------------------------------------------------------------------
-
 #[test]
 fn open_repo_valid() {
     let (dir, _) = init_repo();
@@ -223,7 +205,6 @@ fn open_repo_valid() {
 #[test]
 fn open_repo_not_a_repo() {
     let dir = tempfile::tempdir().unwrap();
-    // Empty dir, no .git
     let sub = dir.path().join("not_a_repo");
     std::fs::create_dir_all(&sub).unwrap();
     assert!(open_repo(&sub).is_err());
@@ -238,10 +219,6 @@ fn get_repo_root_returns_workdir() {
         dir.path().canonicalize().unwrap()
     );
 }
-
-// -----------------------------------------------------------------------
-// tag_exists / create_tag
-// -----------------------------------------------------------------------
 
 #[test]
 fn tag_exists_false_when_no_tags() {
@@ -273,10 +250,6 @@ fn create_tag_fails_if_exists() {
     create_tag(&repo, "v1.0.0", "Release v1.0.0").unwrap();
     assert!(create_tag(&repo, "v1.0.0", "Duplicate").is_err());
 }
-
-// -----------------------------------------------------------------------
-// find_last_tag_name
-// -----------------------------------------------------------------------
 
 #[test]
 fn find_last_tag_name_no_tags() {
@@ -333,10 +306,6 @@ fn find_last_tag_name_monorepo_prefix() {
     );
 }
 
-// -----------------------------------------------------------------------
-// find_highest_semver_tag
-// -----------------------------------------------------------------------
-
 #[test]
 fn find_highest_semver_returns_none_when_no_matching_tags() {
     let (dir, repo) = init_repo();
@@ -349,10 +318,6 @@ fn find_highest_semver_returns_none_when_no_matching_tags() {
 
 #[test]
 fn find_highest_semver_picks_highest_not_latest_in_time() {
-    // Reproduces the real-world drift scenario: an older-in-time but
-    // higher-semver tag (v3.0.0) exists alongside a later-in-time but
-    // lower-semver tag (v2.2.0). `find_last_tag` would return v2.2.0;
-    // `find_highest_semver_tag` must return v3.0.0.
     let (dir, repo) = init_repo();
     create_commit_in_repo(&repo, dir.path(), "a.txt", "first");
     create_lightweight_tag(&repo, "api@v3.0.0");
@@ -413,7 +378,6 @@ fn find_highest_semver_ignores_floating_tags() {
 fn find_highest_semver_skips_non_semver_tags() {
     let (dir, repo) = init_repo();
     create_commit_in_repo(&repo, dir.path(), "a.txt", "first");
-    // "api@vnightly" matches the prefix but isn't a valid semver.
     create_lightweight_tag(&repo, "api@vnightly");
     create_lightweight_tag(&repo, "api@v1.0.0");
 
@@ -425,8 +389,6 @@ fn find_highest_semver_skips_non_semver_tags() {
 
 #[test]
 fn find_highest_semver_respects_orphan_warn_strategy() {
-    // An orphaned higher tag is ignored under Warn — we don't want to
-    // use a tag that points at a branch no longer reachable from HEAD.
     let (dir, repo) = init_repo();
     create_commit_in_repo(&repo, dir.path(), "a.txt", "first");
     create_lightweight_tag(&repo, "api@v1.0.0");
@@ -444,10 +406,6 @@ fn find_highest_semver_respects_orphan_warn_strategy() {
         .unwrap();
     assert_eq!(result.0, "api@v1.0.0");
 }
-
-// -----------------------------------------------------------------------
-// get_commits_since_last_tag
-// -----------------------------------------------------------------------
 
 #[test]
 fn get_commits_since_last_tag_no_tags() {
@@ -485,7 +443,6 @@ fn get_commits_since_last_tag_with_tag() {
     )
     .unwrap();
     assert_eq!(commits.len(), 2);
-    // Most recent first (topological order)
     assert!(commits[0].message.contains("third"));
     assert!(commits[1].message.contains("second"));
 }
@@ -613,10 +570,6 @@ fn subject_has_skip_marker_subject_only() {
     assert!(!subject_has_skip_marker("anything", &[]));
 }
 
-// -----------------------------------------------------------------------
-// get_changed_files
-// -----------------------------------------------------------------------
-
 #[test]
 fn get_changed_files_initial_commit() {
     let (dir, repo) = init_repo();
@@ -635,10 +588,6 @@ fn get_changed_files_subsequent_commit() {
     let files = get_changed_files(&repo).unwrap();
     assert_eq!(files, vec!["b.txt".to_string()]);
 }
-
-// -----------------------------------------------------------------------
-// get_changed_files_since_tag
-// -----------------------------------------------------------------------
 
 #[test]
 fn get_changed_files_since_tag_all_when_no_tag() {
@@ -830,10 +779,6 @@ fn walks_stay_correct_with_commit_graph_present() {
     );
 }
 
-// -----------------------------------------------------------------------
-// create_commit
-// -----------------------------------------------------------------------
-
 #[test]
 fn create_commit_adds_files() {
     let (dir, repo) = init_repo();
@@ -845,10 +790,6 @@ fn create_commit_adds_files() {
     let msg = git(dir.path(), &["log", "-1", "--format=%B"]);
     assert!(msg.contains("feat: add new file"));
 }
-
-// -----------------------------------------------------------------------
-// create_branch_and_commit
-// -----------------------------------------------------------------------
 
 #[test]
 fn create_branch_and_commit_works() {
@@ -891,10 +832,6 @@ fn create_branch_and_commits_multiple() {
     assert!(parent_msg.contains("chore(release): pkg1 v1.0.0"));
 }
 
-// -----------------------------------------------------------------------
-// get_remote_url
-// -----------------------------------------------------------------------
-
 #[test]
 fn get_remote_url_https() {
     let (dir, repo) = init_repo();
@@ -924,10 +861,6 @@ fn get_remote_url_no_remote() {
     let url = get_remote_url(&repo, "origin");
     assert_eq!(url, None);
 }
-
-// -----------------------------------------------------------------------
-// extract_url_password
-// -----------------------------------------------------------------------
 
 #[test]
 fn extract_url_password_https_with_token() {
@@ -1042,10 +975,6 @@ fn configure_git_command_injects_credential_helper_inline() {
 
 #[test]
 fn configure_git_command_single_quote_escapes_dangerous_token_chars() {
-    // Single-quoted shell strings only need ' escaping. A token containing
-    // ' must become '\'' (close-quote, escaped-quote, re-open-quote). The
-    // payload string itself can still contain `;rm -rf /;#` as literal text,
-    // but the surrounding quotes guarantee the shell never interprets it.
     let _guard = EnvGuard::new().set("FERRFLOW_TOKEN", "evil';rm -rf /;#");
     let mut cmd = std::process::Command::new("git");
     configure_git_command(&mut cmd, "https://github.com/owner/repo.git");
@@ -1055,11 +984,6 @@ fn configure_git_command_single_quote_escapes_dangerous_token_chars() {
         .find(|a| a.starts_with("credential.helper="))
         .expect("expected credential.helper config");
 
-    // The expected substring once embedded:
-    //   password='evil'\'';rm -rf /;#'
-    // = sh-parsed as literal "evil" + literal "'" + literal ";rm -rf /;#".
-    // The `\'` outside the surrounding `'...'` is a literal apostrophe,
-    // not a quote-state toggle — so the odd `'` count is by design.
     assert!(
         helper_arg.contains(r"password='evil'\'';rm -rf /;#'"),
         "expected single-quote escape, got: {helper_arg}"
@@ -1074,7 +998,6 @@ fn configure_git_command_strips_git_trace_env() {
     cmd.env("GIT_CURL_VERBOSE", "1");
     cmd.env("GIT_TRACE_CURL", "1");
     configure_git_command(&mut cmd, "https://github.com/owner/repo.git");
-    // get_envs returns Some(None) for env_remove'd vars.
     let removed: std::collections::HashSet<String> = cmd
         .get_envs()
         .filter(|(_, v)| v.is_none())
@@ -1221,12 +1144,6 @@ fn create_or_move_tag_moves_existing() {
     assert!(super::tag_exists(&repo, "v1"));
 }
 
-// -----------------------------------------------------------------------
-// orphaned tag handling
-// -----------------------------------------------------------------------
-
-/// Creates an orphaned tag scenario: tag points to a commit not reachable
-/// from HEAD, but whose tree hash and message match HEAD's commit.
 fn create_orphaned_tag_scenario(tag_name: &str) -> (Repository, tempfile::TempDir) {
     let (dir, repo) = init_repo();
     create_commit_in_repo(&repo, dir.path(), "a.txt", "feat: original");
@@ -1362,7 +1279,6 @@ fn get_commits_since_last_stable_tag_skips_prereleases() {
     create_annotated_tag(&repo, "v2.0.0-beta.2", "Release v2.0.0-beta.2");
     create_commit_in_repo(&repo, dir.path(), "d.txt", "fix: last fix");
 
-    // Stable commits should include everything since v1.0.0
     let commits = get_commits_since_last_stable_tag(
         &repo,
         "v",
@@ -1373,7 +1289,6 @@ fn get_commits_since_last_stable_tag_skips_prereleases() {
     .unwrap();
     assert_eq!(commits.len(), 3);
 
-    // Regular commits should include only since v2.0.0-beta.2
     let commits = get_commits_since_last_tag(
         &repo,
         "v",
@@ -1398,10 +1313,6 @@ fn collect_all_tags_returns_tag_names() {
     assert!(tags.contains(&"v1.1.0-beta.1".to_string()));
 }
 
-// Note: credentials_callback was deleted with the libgit2 dependency.
-// The token_for_url tests below cover the equivalent behaviour for the
-// new credential helper protocol path.
-
 #[test]
 fn is_prerelease_tag_detection() {
     assert!(!is_prerelease_tag("v1.0.0", "v"));
@@ -1414,28 +1325,23 @@ fn is_prerelease_tag_detection() {
 
 #[test]
 fn is_floating_tag_detection() {
-    // Floating tags: major-only or major.minor
     assert!(is_floating_tag("v2", "v"));
     assert!(is_floating_tag("v2.3", "v"));
     assert!(is_floating_tag("v10", "v"));
     assert!(is_floating_tag("v0", "v"));
 
-    // Full version tags are NOT floating
     assert!(!is_floating_tag("v2.14.1", "v"));
     assert!(!is_floating_tag("v0.1.0", "v"));
     assert!(!is_floating_tag("v1.0.0", "v"));
     assert!(!is_floating_tag("v10.20.30", "v"));
 
-    // Monorepo prefixes
     assert!(is_floating_tag("api@v1", "api@v"));
     assert!(is_floating_tag("api@v1.2", "api@v"));
     assert!(!is_floating_tag("api@v1.2.3", "api@v"));
 
-    // Pre-release tags are NOT floating (contain non-digit chars)
     assert!(!is_floating_tag("v2.0.0-beta.1", "v"));
     assert!(!is_floating_tag("v1.0.0-rc.1", "v"));
 
-    // Edge case: prefix matches exactly (empty version part)
     assert!(!is_floating_tag("v", "v"));
 }
 
@@ -1455,16 +1361,11 @@ fn find_last_tag_skips_floating_tags() {
     assert_eq!(result.name, "v1.0.0");
 }
 
-// -----------------------------------------------------------------------
-// resolve_current_branch
-// -----------------------------------------------------------------------
-
 #[test]
 fn resolve_branch_from_head() {
     let (dir, repo) = init_repo();
     create_commit_in_repo(&repo, dir.path(), "a.txt", "initial");
     let branch = resolve_current_branch(&repo, "fallback");
-    // HEAD points to the default branch, not "fallback"
     assert_ne!(branch, "fallback");
     assert!(!branch.is_empty());
 }
@@ -1481,24 +1382,6 @@ fn resolve_branch_detached_returns_non_empty() {
     assert!(!branch.is_empty());
 }
 
-// -----------------------------------------------------------------------
-// push — concurrent-release rejection (#765, supersedes the #367 rebase)
-// -----------------------------------------------------------------------
-
-/// Simulates what the release bot does when a concurrent push advances
-/// main between the action's checkout and its push:
-///
-///   A  ← common base
-///   ├── B   (fast-forward on the remote while we were working —
-///   │       analog of a feature PR merging just before we push)
-///   └── X   (our local release commit, parent = A)
-///
-/// `push` must REJECT here rather than rebase X onto B. Release tags are
-/// created before the push, so rebasing would rewrite HEAD and strand them
-/// on the orphaned X — and the tag names themselves are stale once a
-/// concurrent run has published that version (#765). The rejection is what
-/// drives `monorepo::release`'s regenerate loop, which resets to the remote
-/// tip and recomputes the plan against B.
 #[test]
 fn push_rejects_when_remote_advanced_instead_of_rebasing() {
     let base_dir = tempfile::tempdir().unwrap();
@@ -1568,17 +1451,6 @@ fn push_rejects_when_remote_advanced_instead_of_rebasing() {
     );
 }
 
-// ── reset_branch_to_remote — used by the release retry path ─────────
-//
-// Topology (same skeleton as the rebase test):
-//   A   ← shared base (pushed)
-//   ├── B   (advances on the remote)
-//   └── X   (our local in-progress release commit, plus dirty files)
-//
-// After reset_branch_to_remote, local HEAD must be at B (remote tip),
-// X must be gone, and dirty working-tree files introduced after X
-// must have been wiped — that's the contract the release retry loop
-// depends on.
 #[test]
 fn reset_branch_to_remote_drops_local_commit_and_dirty_tree() {
     let base_dir = tempfile::tempdir().unwrap();
@@ -1643,32 +1515,23 @@ fn reset_branch_to_remote_drops_local_commit_and_dirty_tree() {
     assert_eq!(symref, "refs/heads/main");
 }
 
-// is_push_rejected_error — used by the retry trigger.
 #[test]
 fn is_push_rejected_error_recognises_known_signatures() {
-    // GIT_PUSH_REJECTED via attached ErrorCode.
     let e = anyhow::anyhow!("upstream rejected the push").context(error_code::GIT_PUSH_REJECTED);
     assert!(is_push_rejected_error(&e));
 
-    // Rebase conflict bail message.
     let e =
         anyhow::anyhow!("Rebase conflict: cannot rebase release commits on top of remote 'main'.");
     assert!(is_push_rejected_error(&e));
 
-    // Server-side rule violation phrasing as it comes back from GitHub.
     let e = anyhow::anyhow!("refs/heads/main: push declined due to repository rule violations");
     assert!(is_push_rejected_error(&e));
 
-    // Plain non-fast-forward from libgit2.
     let e = anyhow::anyhow!(
         "Updates were rejected because the tip of your current branch is non-fast-forward"
     );
     assert!(is_push_rejected_error(&e));
 
-    // A concurrent run published the version this plan plotted, so the tag
-    // exists on the remote at a different commit (#765). Regenerating replans
-    // on top of the winner; without this the run hard-failed with E2006 and
-    // silently dropped every other package it was about to release.
     let e = anyhow::anyhow!(
         "Tag(s) already exist on remote pointing to a different commit: \
          api@v3.13.3 (local 1e3ed96 != remote c3ae651)."
@@ -1676,12 +1539,9 @@ fn is_push_rejected_error_recognises_known_signatures() {
     .context(error_code::GIT_PUSH_TAGS);
     assert!(is_push_rejected_error(&e));
 
-    // Unrelated error must not match.
     let e = anyhow::anyhow!("hook failed: prettier exited with status 1");
     assert!(!is_push_rejected_error(&e));
 }
-
-// ── get_changed_files_for_commit — feeds per-package scoping in `diff` ──
 
 fn commit_file_at(dir: &Path, rel: &str, message: &str) -> String {
     let path = dir.join(rel);
@@ -1702,8 +1562,6 @@ fn oid(sha: &str) -> gix::ObjectId {
     gix::ObjectId::from_hex(sha.as_bytes()).expect("valid sha")
 }
 
-/// A commit reports only what it changed, not the whole tree — otherwise every
-/// commit would look like it touched every package.
 #[test]
 fn changed_files_for_commit_lists_only_that_commit_s_paths() {
     let (dir, _repo) = init_repo();
@@ -1716,8 +1574,6 @@ fn changed_files_for_commit_lists_only_that_commit_s_paths() {
     assert_eq!(files, vec!["packages/web/app.ts".to_string()]);
 }
 
-/// The first commit has no parent, so its whole tree counts as added rather
-/// than erroring out.
 #[test]
 fn changed_files_for_the_root_commit_is_its_whole_tree() {
     let (dir, _repo) = init_repo();

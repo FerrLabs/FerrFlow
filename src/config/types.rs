@@ -149,120 +149,59 @@ pub struct RegistryConfig {
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 #[serde(tag = "kind", rename_all = "kebab-case")]
 pub enum PublisherConfig {
-    /// `cargo publish` to crates.io or a custom registry (Kellnr,
-    /// Cloudsmith, …). `registry` references the
-    /// `workspace.registries.<name>` map; the default `crates-io` is
-    /// implicit.
     Cargo {
         #[serde(default)]
         registry: Option<String>,
-        /// Mirrors `cargo publish --allow-dirty`. Default false.
         #[serde(default, rename = "allowDirty")]
         allow_dirty: bool,
-        /// Mirrors `cargo publish --no-verify`. Default false.
-        ///
-        /// Set this when publishing a batch of inter-dependent
-        /// workspace crates: the verify build would otherwise require
-        /// each just-published crate to propagate to the registry
-        /// index before the next dependent crate can resolve it, which
-        /// makes a multi-crate release order- and timing-sensitive.
-        /// `--no-verify` skips that build (the workspace was already
-        /// built + tested in CI) and makes the batch publish robust.
         #[serde(default, rename = "noVerify")]
         no_verify: bool,
-        /// Extra raw arguments appended to the `cargo publish`
-        /// invocation. Escape hatch for flags FerrFlow doesn't model
-        /// (e.g. `--features`, `--target`). Passed verbatim.
         #[serde(default)]
         args: Vec<String>,
     },
-    /// `npm publish` to npmjs.org, GitHub Packages, or a custom
-    /// registry. `registry` references workspace registries.
     Npm {
         #[serde(default)]
         registry: Option<String>,
-        /// Distribution tag passed to `npm publish --tag`. Defaults to
-        /// `"latest"` for stable, `"<channel>"` for prereleases — the
-        /// publisher fills in at execution time.
         #[serde(default)]
         tag: Option<String>,
-        /// `--access public|restricted` for scoped packages.
         #[serde(default)]
         access: Option<String>,
-        /// Extra raw arguments appended to `npm publish` (e.g.
-        /// `--provenance`, `--dry-run`). Passed verbatim.
         #[serde(default)]
         args: Vec<String>,
     },
-    /// Docker `buildx` push with optional Sigstore signing.
     Docker {
-        /// Fully-qualified image base, without the tag (e.g.
-        /// `ghcr.io/ferrlabs/auth`).
         image: String,
-        /// Tag templates. `{version}`, `{major}`, `{minor}`, `latest`
-        /// are recognized.
         #[serde(default = "default_docker_tags")]
         tags: Vec<String>,
-        /// Target platforms for buildx multi-arch. Defaults to
-        /// `linux/amd64` (single-arch) when omitted.
         #[serde(default)]
         platforms: Vec<String>,
-        /// Build context (relative to the package path). Defaults to
-        /// `"."` (the package root).
         #[serde(default = "default_docker_context")]
         context: String,
-        /// `Dockerfile` location relative to `context`. Defaults to
-        /// `"Dockerfile"`.
         #[serde(default = "default_dockerfile")]
         dockerfile: String,
-        /// Sigstore keyless signing. `sigstore` = cosign keyless,
-        /// `none` = no signature.
         #[serde(default)]
         sign: DockerSign,
-        /// Extra raw arguments passed to `docker buildx build`,
-        /// inserted before the build context positional (e.g.
-        /// `--build-arg`, `--cache-from`, `--provenance=false`).
         #[serde(default)]
         args: Vec<String>,
     },
-    /// OCI helm chart push.
     Helm {
-        /// Chart directory relative to the package path.
         #[serde(default = "default_helm_chart_path")]
         chart: String,
-        /// Target OCI registry, e.g. `oci://ghcr.io/ferrlabs/charts`.
         registry: String,
-        /// Extra raw arguments appended to `helm push` (e.g.
-        /// `--insecure-skip-tls-verify`). Passed verbatim.
         #[serde(default)]
         args: Vec<String>,
     },
-    /// Attach an extra file to the GitHub Release that
-    /// `ferrflow release` just created. Useful for SBOMs, signed
-    /// blobs, install scripts, etc.
     GithubReleaseAsset {
-        /// Path to the file to upload, relative to the package path.
         path: String,
-        /// Override the asset's filename on GitHub. Defaults to the
-        /// path's basename.
         #[serde(default, rename = "displayName")]
         display_name: Option<String>,
-        /// Extra raw arguments appended to `gh release upload` (e.g.
-        /// `--repo`). Passed verbatim.
         #[serde(default)]
         args: Vec<String>,
     },
-    /// Generic POST notifier — Slack incoming webhook, Discord,
-    /// custom internal services. The JSON body has access to
-    /// `{name}`, `{version}`, `{tag}`, `{url}` placeholders.
     Webhook {
         url: String,
-        /// JSON body template. If omitted, FerrFlow sends a default
-        /// payload `{"package": "...", "version": "..."}`.
         #[serde(default)]
         body: Option<serde_json::Value>,
-        /// Header map. Values support `{env:NAME}` interpolation for
-        /// secrets, evaluated at publish time.
         #[serde(default)]
         headers: std::collections::BTreeMap<String, String>,
     },

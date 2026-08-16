@@ -25,13 +25,6 @@ use std::path::{Component, Path, PathBuf};
 use crate::config::{FileFormat, VersionedFile};
 use crate::error_code::{self, ErrorCodeExt};
 
-/// Join `relative` onto `repo_root` and reject any path that:
-/// - is absolute (escapes the repo via `/etc/passwd`),
-/// - contains a `..` component that climbs above `repo_root`.
-///
-/// Lexical containment (no I/O / symlink resolution) — sufficient for
-/// rejecting config-driven traversal, and safe to call on paths that
-/// don't yet exist on disk (write_version creates them). See #553.
 pub(crate) fn join_within_repo(repo_root: &Path, relative: &str) -> Result<PathBuf> {
     let rel = Path::new(relative);
     if rel.is_absolute() {
@@ -204,7 +197,6 @@ mod tests {
 
     #[test]
     fn join_within_repo_allows_balanced_parent_segments() {
-        // `a/b/../c` ends up at `a/c` inside the repo — legal.
         let joined = join_within_repo(Path::new("/repo"), "a/b/../c").unwrap();
         assert!(joined.starts_with("/repo"));
     }

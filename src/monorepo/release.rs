@@ -152,10 +152,6 @@ fn cleanup_failed_release_attempt(
     let target_branch = crate::git::resolve_current_branch(&repo, &config.workspace.branch);
     crate::git::reset_branch_to_remote(&repo, &config.workspace.remote, &target_branch)?;
 
-    // The tags and the release commit this checkpoint recorded are gone, so
-    // it has to go with them. A surviving `TagsCreated` makes the next
-    // attempt skip tag creation and then push tags that were just deleted
-    // (E2006), which also leaves floating tags stranded.
     Checkpoint::delete(root)?;
     Ok(())
 }
@@ -194,8 +190,6 @@ mod tests {
         serde_json::from_str(r#"{"workspace":{"branch":"main","remote":"origin"}}"#).unwrap()
     }
 
-    // A release attempt that got as far as creating tags, then lost the
-    // push. Mirrors what the regenerate loop hands to the cleanup.
     fn repo_with_failed_attempt() -> (tempfile::TempDir, std::path::PathBuf, HashSet<String>) {
         let base = tempfile::tempdir().unwrap();
 
@@ -230,9 +224,6 @@ mod tests {
         (base, local, pre_attempt_tags)
     }
 
-    // The regression behind #662: cleanup deleted the tags but left the
-    // checkpoint at TagsCreated, so the next attempt skipped tag creation
-    // and pushed a v1.1.1 that no longer existed (E2006).
     #[test]
     fn cleanup_drops_the_checkpoint_that_recorded_the_deleted_tags() {
         let (_base, local, pre) = repo_with_failed_attempt();
@@ -259,7 +250,6 @@ mod tests {
         assert!(!after.contains("v1"), "floating tag must be gone");
     }
 
-    // Tags that predate the attempt are not ours to delete.
     #[test]
     fn cleanup_keeps_tags_that_existed_before_the_attempt() {
         let base = tempfile::tempdir().unwrap();

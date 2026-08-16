@@ -4,7 +4,6 @@ use std::path::{Path, PathBuf};
 use crate::config::{FileFormat, VersionedFile};
 use crate::error_code::{self, ErrorCodeExt};
 
-/// Dependency tables rewritten in a `package.json`.
 const JSON_SECTIONS: &[&str] = &[
     "dependencies",
     "devDependencies",
@@ -12,7 +11,6 @@ const JSON_SECTIONS: &[&str] = &[
     "optionalDependencies",
 ];
 
-/// Dependency tables rewritten in a `Cargo.toml`.
 const TOML_SECTIONS: &[&str] = &["dependencies", "dev-dependencies", "build-dependencies"];
 
 /// A manifest rewrite that has been computed but not yet applied, so a dry run
@@ -62,13 +60,6 @@ pub fn supports_dependency_updates(format: &FileFormat) -> bool {
     matches!(format, FileFormat::Json | FileFormat::Toml)
 }
 
-/// Replaces the version inside a constraint while keeping its operator, so
-/// `^1.2.3` becomes `^2.0.0` rather than a bare pin.
-///
-/// Returns `None` for anything that is not a plain operator + version:
-/// wildcards, `workspace:*`, `file:`/`git:` specs, multi-part ranges. Those
-/// carry intent we cannot preserve, and silently rewriting them would be worse
-/// than leaving them for a human.
 fn rewrite_constraint(existing: &str, new_version: &str) -> Option<String> {
     let trimmed = existing.trim();
     if trimmed.is_empty()
@@ -89,7 +80,6 @@ fn rewrite_constraint(existing: &str, new_version: &str) -> Option<String> {
     {
         return None;
     }
-    // `1.x` / `1.*` are ranges, not pins — the same reasoning as above.
     if version
         .chars()
         .any(|c| matches!(c, 'x' | 'X' | '*' | '|' | ' '))
@@ -113,8 +103,6 @@ fn rewrite_json(content: &str, dep_name: &str, new_version: &str) -> Option<Stri
 
     let mut out = content.to_string();
     let mut changed = false;
-    // Walk sections back to front: every splice shifts the offsets after it,
-    // and later sections sit later in the file.
     let mut spans: Vec<(usize, usize)> = JSON_SECTIONS
         .iter()
         .filter_map(|section| {
@@ -151,8 +139,6 @@ fn rewrite_toml(content: &str, dep_name: &str, new_version: &str) -> Option<Stri
             continue;
         };
 
-        // `dep = "1.2"` and `dep = { version = "1.2", path = ".." }` are both
-        // common; a path/git-only entry has no version to rewrite.
         if let Some(existing) = entry.as_str() {
             if let Some(replacement) = rewrite_constraint(existing, new_version)
                 && replacement != existing
@@ -196,8 +182,6 @@ mod tests {
         }
     }
 
-    // Everything below carries intent a version pin would destroy. Leaving
-    // them alone is the whole safety story of this module.
     #[test]
     fn refuses_specs_it_cannot_preserve() {
         for existing in [
@@ -236,8 +220,6 @@ mod tests {
         );
     }
 
-    // A name appearing in several tables must be updated in all of them, and
-    // the offsets must survive multiple splices in one pass.
     #[test]
     fn rewrites_every_section_that_mentions_the_dependency() {
         let original = "{\n  \"dependencies\": {\n    \"core\": \"^1.4.0\"\n  },\n  \"devDependencies\": {\n    \"core\": \"~1.4.0\"\n  },\n  \"peerDependencies\": {\n    \"core\": \"1.4.0\"\n  }\n}\n";
@@ -273,7 +255,6 @@ mod tests {
         );
     }
 
-    // A path-only or git-only dependency has no version to move.
     #[test]
     fn leaves_a_dependency_with_no_version_alone() {
         let original = "[dependencies]\ncore = { path = \"../core\" }\n";
@@ -297,8 +278,6 @@ mod tests {
         }
     }
 
-    // Planning must not touch the file — that is what makes `--dry-run` able to
-    // report the rewrite it would perform.
     #[test]
     fn planning_reports_the_change_without_writing_it() {
         let dir = tempfile::tempdir().unwrap();
@@ -320,8 +299,6 @@ mod tests {
         );
     }
 
-    // A second pass over an already-current manifest must plan nothing, or the
-    // release commit would carry a file with no diff.
     #[test]
     fn an_already_current_manifest_plans_nothing() {
         let dir = tempfile::tempdir().unwrap();

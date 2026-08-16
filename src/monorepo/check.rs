@@ -49,8 +49,6 @@ pub fn check(
         &root, &config, true, verbose, json, false, false, None, channel, false, false, timing,
     )?;
 
-    // On a cache miss we just walked the whole history; leave a commit-graph
-    // behind so the next `check` (pre-commit hook, local retry) is faster (#690).
     crate::git::write_commit_graph_if_absent(&repo);
 
     if let (Some(key), Some(out)) = (&cache_key, &out) {

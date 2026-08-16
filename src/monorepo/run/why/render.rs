@@ -189,8 +189,6 @@ mod tests {
         assert_eq!(truncate("feat: short", 52), "feat: short");
     }
 
-    // Commit subjects are arbitrary user text; slicing on bytes would panic on
-    // a multi-byte character straddling the cut.
     #[test]
     fn truncate_cuts_on_characters_not_bytes() {
         let subject = "féat: ".repeat(20);

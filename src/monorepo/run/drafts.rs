@@ -8,13 +8,6 @@ use crate::formats::read_version;
 
 use super::super::preview::build_forge_instance;
 
-/// When the run didn't bump anything (no new commits since the last
-/// release) but a previous run left draft releases dangling on the
-/// forge, publish them now so the release cycle terminates.
-///
-/// Skipped on draft / dry-run mode (we don't want to publish anything
-/// the user explicitly opted into keeping as a draft). Per-package
-/// errors are logged but never abort the run.
 pub(super) fn publish_pending_drafts(
     repo: &Repository,
     config: &Config,

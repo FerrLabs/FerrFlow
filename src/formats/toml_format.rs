@@ -6,21 +6,6 @@ use toml_edit::{DocumentMut, Item};
 
 pub struct TomlVersionFile;
 
-/// Read the version string from a Cargo / pyproject / Poetry TOML
-/// document, in the order that Rust monorepos / Python projects expect:
-///
-/// 1. `[package].version = "x"` — single-crate Cargo or pyproject (PEP 621).
-/// 2. `[package].version = { workspace = true }` — Cargo workspace
-///    inheritance: in this case we resolve from `[workspace.package].version`
-///    inside the same file (only the workspace root Cargo.toml carries
-///    that table). A member-only manifest with `version.workspace = true`
-///    and no `[workspace.package]` is unreachable from FerrFlow's per-file
-///    model and returns a clear, actionable error pointing at the
-///    workspace root. See #523.
-/// 3. `[workspace.package].version` directly — virtual workspaces (no
-///    `[package]` at root) and the workspace root itself.
-/// 4. `[project].version` — pyproject (PEP 621).
-/// 5. `[tool.poetry].version` — pyproject (Poetry).
 fn read_toml_version(doc: &DocumentMut, location: &str) -> Result<String> {
     if let Some(pkg) = doc.get("package")
         && let Some(version) = pkg.get("version")
@@ -75,10 +60,6 @@ fn read_toml_version(doc: &DocumentMut, location: &str) -> Result<String> {
         .error_code(error_code::TOML_VERSION_NOT_FOUND)?
 }
 
-/// Returns true when an `Item` is the inline table `{ workspace = true }`.
-/// Cargo's spec accepts both dotted (`version.workspace = true`) and
-/// inline (`version = { workspace = true }`) forms, which toml_edit
-/// normalizes to the same `InlineTable` shape.
 fn is_workspace_inherit(item: &Item) -> bool {
     if let Some(t) = item.as_inline_table() {
         return t.get("workspace").and_then(|v| v.as_bool()) == Some(true);
@@ -151,12 +132,8 @@ mod tests {
         assert!(content.contains("edition = \"2021\""));
     }
 
-    // ---------- #523: Cargo workspace.version inheritance ----------
-
     #[test]
     fn read_workspace_root_with_workspace_package_version() {
-        // Pure virtual workspace — no [package] section, just
-        // [workspace.package].
         let f = write_temp(
             "[workspace]\nmembers = [\"crates/*\"]\n\n[workspace.package]\nversion = \"2.5.0\"\n",
         );
@@ -165,8 +142,6 @@ mod tests {
 
     #[test]
     fn read_workspace_root_with_package_inheriting_dotted() {
-        // Root Cargo.toml that also acts as a member, with the dotted
-        // form `version.workspace = true`.
         let f = write_temp(
             "[workspace]\nmembers = [\"members/*\"]\n\n\
              [workspace.package]\nversion = \"3.1.4\"\n\n\
@@ -177,7 +152,6 @@ mod tests {
 
     #[test]
     fn read_workspace_root_with_package_inheriting_inline() {
-        // Same scenario, inline-table form `version = { workspace = true }`.
         let f = write_temp(
             "[workspace]\nmembers = [\"members/*\"]\n\n\
              [workspace.package]\nversion = \"3.1.4\"\n\n\
@@ -188,10 +162,6 @@ mod tests {
 
     #[test]
     fn read_member_without_workspace_table_errors_actionably() {
-        // Member Cargo.toml: declares inheritance but has no
-        // [workspace.package] to resolve from. Must produce a clear
-        // error pointing at the workspace root, not a generic
-        // "no version found".
         let f = write_temp(
             "[package]\nname = \"member\"\nversion.workspace = true\nedition = \"2021\"\n",
         );
@@ -213,7 +183,6 @@ mod tests {
         let f = write_temp(input);
         TomlVersionFile.write_version(f.path(), "2.0.0").unwrap();
         let content = std::fs::read_to_string(f.path()).unwrap();
-        // The workspace version got bumped...
         assert!(content.contains("[workspace.package]"));
         let workspace_section_start = content.find("[workspace.package]").unwrap();
         let after_workspace_section = &content[workspace_section_start..];
@@ -221,9 +190,7 @@ mod tests {
             after_workspace_section.contains("version = \"2.0.0\""),
             "workspace.package.version should be bumped"
         );
-        // ...and the `[package]` inheritance marker is left untouched.
         assert!(content.contains("version.workspace = true"));
-        // Read-back resolves to the new version.
         assert_eq!(TomlVersionFile.read_version(f.path()).unwrap(), "2.0.0");
     }
 
@@ -282,12 +249,6 @@ impl VersionFile for TomlVersionFile {
             .with_context(|| format!("Invalid TOML in {}", file_path.display()))
             .error_code(error_code::TOML_PARSE)?;
 
-        // Decision: when `[package].version` is the workspace inheritance
-        // marker we bump `[workspace.package].version` instead (if present
-        // in the same file). This is what a workspace-root Cargo.toml that
-        // both defines `[workspace.package]` AND a `[package]` with
-        // `version.workspace = true` looks like, and bumping the workspace
-        // value cascades through every member without us touching them.
         let mut written = false;
 
         if let Some(pkg_version) = doc.get("package").and_then(|p| p.get("version"))
@@ -341,9 +302,6 @@ impl VersionFile for TomlVersionFile {
         }
 
         if !written {
-            // Surface the inheritance case specifically — the generic
-            // "could not find" message points users in the wrong
-            // direction when they actually have a workspace member.
             if let Some(version_item) = doc.get("package").and_then(|p| p.get("version"))
                 && is_workspace_inherit(version_item)
             {

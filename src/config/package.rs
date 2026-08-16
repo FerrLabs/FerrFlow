@@ -23,10 +23,6 @@ pub struct PackageConfig {
     pub floating_tags: Option<Vec<FloatingTagLevel>>,
     #[serde(default)]
     pub hooks: Option<HooksConfig>,
-    /// Declarative publish targets. Evaluated in declaration order
-    /// after the git push + GitHub Release create the new tag. v1
-    /// only emits dry-run preview lines; per-kind execution lands in
-    /// follow-up PRs.
     #[serde(default)]
     pub publishers: Vec<PublisherConfig>,
     #[serde(default, alias = "updateLockfiles")]
@@ -69,17 +65,10 @@ impl Dependency {
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Default)]
 #[serde(rename_all = "kebab-case")]
 pub enum PropagatePolicy {
-    /// The dependent gets the same bump the upstream got. A breaking upstream
-    /// makes the dependent breaking too, which is the honest signal: the
-    /// dependent now builds against a breaking API.
     #[default]
     Same,
-    /// A major upstream makes the dependent major; anything else is a patch.
     MajorOnMajor,
-    /// Always a patch, whatever the upstream did. FerrFlow's behaviour before
-    /// propagation existed.
     Patch,
-    /// The dependent is not bumped at all for this upstream.
     None,
 }
 
@@ -222,17 +211,6 @@ impl PackageConfig {
 pub struct VersionedFile {
     pub path: String,
     pub format: FileFormat,
-    /// Optional selector to disambiguate which occurrence in the file is the
-    /// version to bump. Syntax depends on the format:
-    ///
-    /// - `xml`: a slash-delimited path of tag names rooted at the document
-    ///   element, e.g. `/project/version`. Without a selector the handler
-    ///   targets the first `<version>` that is a direct child of the root
-    ///   element — which fixes the common Maven `<parent>` pitfall.
-    /// - `txt`: a regex with a single capture group that brackets the
-    ///   version string, e.g. `^VERSION=(.+)$`.
-    ///
-    /// Other formats currently ignore this field.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub selector: Option<String>,
 }
@@ -244,30 +222,21 @@ pub enum FileFormat {
     #[serde(rename = "gomod")]
     GoMod,
     Gradle,
-    /// `values.yaml` templating for Helm charts. For the top-level
-    /// `Chart.yaml` manifest use [`FileFormat::ChartYaml`] instead.
     Helm,
     Json,
     Toml,
     Txt,
     Xml,
-    /// `pubspec.yaml` for Dart / Flutter packages.
     #[serde(rename = "pubspecyaml")]
     PubspecYaml,
-    /// `mix.exs` for Elixir / Mix projects.
     #[serde(rename = "mixexs")]
     MixExs,
-    /// `Chart.yaml` for Helm chart top-level manifests.
     #[serde(rename = "chartyaml")]
     ChartYaml,
-    /// `*.gemspec` for Ruby gems.
     Gemspec,
-    /// `Package.swift` for Swift packages.
     #[serde(rename = "packageswift")]
     PackageSwift,
-    /// `*.cabal` for Haskell packages.
     Cabal,
-    /// `CMakeLists.txt` — the `VERSION` argument of the `project()` call.
     #[serde(rename = "cmake")]
     Cmake,
 }
@@ -301,7 +270,6 @@ mod tests {
         serde_json::from_str(json).expect("valid dependency")
     }
 
-    // The plain-string form predates policies and must keep working.
     #[test]
     fn a_plain_string_dependency_uses_the_default_policy() {
         let d = dep(r#""core""#);
@@ -321,8 +289,6 @@ mod tests {
         assert_eq!(dep(r#"{"name":"core"}"#).propagate(), PropagatePolicy::Same);
     }
 
-    // The bug this feature exists for: a breaking upstream used to hand its
-    // dependents a patch, so consumers upgraded straight into a breaking API.
     #[test]
     fn same_policy_forwards_the_upstream_bump_unchanged() {
         for bump in [BumpType::Major, BumpType::Minor, BumpType::Patch] {
@@ -357,7 +323,6 @@ mod tests {
         );
     }
 
-    // An upstream that did not move must never manufacture a downstream bump.
     #[test]
     fn no_upstream_bump_never_produces_one_downstream() {
         for p in [
@@ -376,15 +341,12 @@ mod tests {
         assert!(p.is_touched_by(&files(&["packages/api/src/main.rs"]), true));
     }
 
-    // The whole point of scoping: a sibling package's commit must not count.
     #[test]
     fn ignores_files_of_a_sibling_package() {
         let p = pkg("packages/api", &[]);
         assert!(!p.is_touched_by(&files(&["packages/web/src/app.ts"]), true));
     }
 
-    // `packages/api-client` must not match the `packages/api` package just
-    // because the string starts the same way.
     #[test]
     fn a_sibling_with_a_shared_prefix_does_not_match() {
         let p = pkg("packages/api", &[]);
@@ -403,7 +365,6 @@ mod tests {
         assert!(p.is_touched_by(&files(&["Cargo.lock"]), true));
     }
 
-    // A single-package repo owns every commit, so scoping must never filter.
     #[test]
     fn a_single_package_repo_owns_everything() {
         let p = pkg("packages/api", &[]);

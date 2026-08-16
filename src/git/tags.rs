@@ -229,7 +229,6 @@ pub(super) fn find_matching_commit(
     orphaned_commit: &gix::Commit<'_>,
     strategy: &OrphanedTagStrategy,
 ) -> Option<ObjectId> {
-    // Warn never recovers a commit; bail before paying for the walk.
     if matches!(strategy, OrphanedTagStrategy::Warn) {
         return None;
     }

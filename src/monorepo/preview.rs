@@ -91,12 +91,6 @@ fn format_preview_comment(packages: &[CheckPackage]) -> String {
     body
 }
 
-/// Escape a string for safe insertion into a GitHub-flavored Markdown
-/// table cell. Closes a markdown-injection vector where a package name
-/// like `foo](https://evil)` or one containing `|` / newline / `<script>`
-/// could break out of the cell or inject arbitrary content. github.com
-/// renders the preview comment as untrusted user content but custom forge
-/// installs (Gitea, Forgejo) may not — escape defensively at the source.
 pub(super) fn escape_md_cell(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     for ch in s.chars() {
@@ -151,14 +145,10 @@ mod tests {
 
     #[test]
     fn escape_md_cell_blocks_link_injection() {
-        // Without escaping this would render as a link.
-        // With escaping the `]` is fine but `<` (from a malicious payload)
-        // and embedded angle brackets are HTML-encoded.
         assert_eq!(
             escape_md_cell("foo](javascript:alert(1))"),
             "foo](javascript:alert(1))"
         );
-        // Combined attack: package name containing both pipe and HTML.
         assert_eq!(escape_md_cell("|<img src=x>"), r"\|&lt;img src=x&gt;");
     }
 }

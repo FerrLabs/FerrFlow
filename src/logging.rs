@@ -123,7 +123,6 @@ mod tests {
         });
 
         let out = String::from_utf8(buf.0.lock().unwrap().clone()).unwrap();
-        // Message text only — no timestamp, level, target, or key=value fields.
         assert_eq!(out, "✓ pushed and verified\n");
     }
 }

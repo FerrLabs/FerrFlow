@@ -183,8 +183,6 @@ fn test_zerover_clamps_non_zero_major() {
 
 #[test]
 fn test_zerover_clears_prerelease_and_build_metadata() {
-    // Stable bumps must drop pre-release + build metadata, matching
-    // bump_semver's behaviour. See #553.
     assert_eq!(
         bump_zerover("0.4.0-beta.1", BumpType::Minor).unwrap(),
         "0.5.0"

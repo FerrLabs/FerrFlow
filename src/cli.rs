@@ -15,27 +15,21 @@ use crate::timing::Timing;
 #[command(about = "Universal semantic versioning for monorepos and classic repos")]
 #[command(version)]
 pub struct Cli {
-    /// Dry run — show what would happen without making changes
     #[arg(long, global = true)]
     pub dry_run: bool,
 
-    /// Verbose output
     #[arg(short, long, global = true)]
     pub verbose: bool,
 
-    /// Path to config file (overrides auto-detection, env: FERRFLOW_CONFIG)
     #[arg(long, global = true, env = "FERRFLOW_CONFIG")]
     pub config: Option<PathBuf>,
 
-    /// Print a per-stage timing breakdown to stderr after the command finishes
     #[arg(long, global = true)]
     pub timing: bool,
 
-    /// Max threads for CPU-parallel work (per-package planning). Default: all cores. `1` forces single-threaded.
     #[arg(long, global = true, env = "FERRFLOW_JOBS", value_name = "N")]
     pub jobs: Option<usize>,
 
-    /// Log output format. `human` (default) keeps the colored terminal output; `json` emits one structured JSON event per line for CI ingestion.
     #[arg(long, value_enum, default_value_t = LogFormat::default(), global = true)]
     pub log_format: LogFormat,
 
@@ -45,161 +39,96 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// Show what versions would be bumped (dry run)
     Check {
-        /// Output as JSON
         #[arg(long)]
         json: bool,
-        /// Pre-release channel override (e.g. beta, rc, dev)
         #[arg(long)]
         channel: Option<String>,
-        /// Post a preview comment on the current PR/MR
         #[arg(long)]
         comment: bool,
     },
-    /// Bump versions, update changelogs, create tags and push
     Release {
-        /// Output a single JSON object describing the release
         #[arg(long)]
         json: bool,
-        /// Allow floating tags to move backward to a lower version
         #[arg(long)]
         force: bool,
-        /// Force a specific version, skipping commit analysis.
-        /// Format: VERSION (single repo) or NAME@VERSION (monorepo)
         #[arg(long, value_name = "VERSION")]
         force_version: Option<String>,
-        /// Pre-release channel override (e.g. beta, rc, dev)
         #[arg(long)]
         channel: Option<String>,
-        /// Create releases as drafts (GitHub only). A subsequent `ferrflow release`
-        /// without --draft detects and publishes the draft for the version being
-        /// released — older drafts left by failed runs are not swept up.
-        /// On GitLab this is a no-op — the release is published immediately
-        /// (the GitLab releases API has no draft state); a warning is printed.
         #[arg(long)]
         draft: bool,
-        /// Break an existing `.git/ferrflow.lock` before acquiring it.
-        /// Use only when you're sure no other `ferrflow release` is running —
-        /// for example, after a crash that left the lockfile behind.
         #[arg(long)]
         force_unlock: bool,
     },
-    /// Run the configured publishers for the currently-released version
-    /// of each package, without bumping or tagging. Use after `release`
-    /// has cut the version — typically in a separate CI job that has the
-    /// build toolchain and registry auth the publishers need (docker
-    /// buildx, helm, npm, …).
     Publish {
-        /// Packages to publish. Omit to auto-detect from the triggering tag
-        /// (GITHUB_REF / CI_COMMIT_TAG), falling back to every package.
         packages: Vec<String>,
-        /// Publish every package, ignoring any triggering-tag scope.
         #[arg(short = 'a', long)]
         all: bool,
     },
-    /// Generate/update CHANGELOG.md only
     Changelog,
-    /// Scaffold a ferrflow configuration file
     Init {
-        /// Config file format (json, json5, toml)
         #[arg(long)]
         format: Option<ConfigFileFormat>,
-        /// Also scaffold a .ferrflow.manifest.json snapshot and enable
-        /// manifest mode in the generated config
         #[arg(long)]
         manifest: bool,
     },
-    /// Print each package name, current version, and last release tag
     Status {
-        /// Output format
         #[arg(long, value_enum, default_value = "text")]
         output: OutputFormat,
     },
-    /// Explain why a package would or would not be released
     Why {
-        /// Package name (required in monorepos, optional in single repos)
         package: Option<String>,
-        /// Pre-release channel override (e.g. beta, rc, dev)
         #[arg(long)]
         channel: Option<String>,
-        /// Output as JSON
         #[arg(long)]
         json: bool,
     },
-    /// Compare two versions of a package: commits, bumps, files, and changelog
     Diff {
-        /// `[package] <from>..<to>` — the version range (contains `..`), optionally preceded by a package name
         #[arg(value_name = "SPEC", required = true, num_args = 1..=2)]
         spec: Vec<String>,
-        /// Output as JSON
         #[arg(long)]
         json: bool,
     },
-    /// Print the current version of a package
     Version {
-        /// Package name (required in monorepos, optional in single repos)
         package: Option<String>,
-        /// Output as JSON
         #[arg(long)]
         json: bool,
     },
-    /// Print the last release tag of a package
     Tag {
-        /// Package name (required in monorepos, optional in single repos)
         package: Option<String>,
-        /// Output as JSON
         #[arg(long)]
         json: bool,
     },
-    /// Validate config and versioned files
     Validate {
-        /// Output as JSON
         #[arg(long)]
         json: bool,
-        /// Remote repository (e.g. owner/repo for GitHub, or gitlab:group/project)
         #[arg(long)]
         repo: Option<String>,
-        /// Git ref for remote validation (branch, tag, commit)
         #[arg(long, name = "ref")]
         git_ref: Option<String>,
     },
-    /// Generate shell completion scripts
     Completions {
-        /// Shell to generate completions for
         shell: Shell,
     },
-    /// Manage the cross-run cache under .git/ferrflow-cache/
     Cache {
         #[command(subcommand)]
         command: CacheCommand,
     },
-    /// Regenerate the version manifest from current filesystem state.
-    /// Requires workspace.manifest_file to be configured. Use this to
-    /// repair a manifest that diverged from the package files (e.g. after
-    /// a crashed release).
     SyncManifest,
-    /// Generate a ferrflow config from another release tool's config
     Migrate {
-        /// Source tool (auto-detected if omitted)
         #[arg(long, value_enum)]
         from: Option<MigrateSourceArg>,
     },
-    /// Run read-only diagnostics on the repo, config, and forge setup
     Doctor {
-        /// Output format
         #[arg(long, value_enum, default_value = "human")]
         format: DoctorFormat,
-        /// Also probe the forge API (rate limit / auth). Requires a token.
         #[arg(long)]
         online: bool,
     },
-    /// Print the bundled JSON schema for the ferrflow config file
     Schema {
-        /// Pretty-print the schema instead of compact single-line JSON
         #[arg(long)]
         pretty: bool,
-        /// Write to a file instead of stdout
         #[arg(long, value_name = "FILE")]
         output: Option<PathBuf>,
     },
@@ -230,7 +159,6 @@ impl From<MigrateSourceArg> for crate::config::MigrateSource {
 
 #[derive(Subcommand)]
 pub enum CacheCommand {
-    /// Delete the cross-run cache directory
     Clear,
 }
 
@@ -538,7 +466,6 @@ mod tests {
         }
     }
 
-    // The package is optional so single-package repos need no argument.
     #[test]
     fn parse_why_without_a_package() {
         let cli = parse(&["ferrflow", "why"]);

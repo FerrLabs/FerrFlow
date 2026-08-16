@@ -1,14 +1,3 @@
-//! `helm package` + `helm push` executor for OCI registries.
-//!
-//! Behaviour:
-//! - `helm package <chart-dir> -d <tmp>` to build the `<name>-<v>.tgz`.
-//! - `helm push <tarball> <oci-registry>` to publish.
-//! - Idempotent: when `helm show chart <registry>/<name>:<version>`
-//!   succeeds, the chart is already pushed → skip.
-//! - Auth: requires the caller to have done `helm registry login`
-//!   beforehand. Same model as docker — FerrFlow doesn't touch the
-//!   user's helm credentials store.
-
 use anyhow::{Context, Result, anyhow};
 use std::process::Command;
 

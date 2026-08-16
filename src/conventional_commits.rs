@@ -32,21 +32,12 @@ fn breaking_header_re() -> &'static Regex {
 
 static BREAKING_FOOTER_RE: OnceLock<Regex> = OnceLock::new();
 
-// Case-insensitive so `breaking-change:` / `Breaking Change:` are caught
-// alongside the spec's uppercase form, but the structural rules stay
-// strict: the token must be at a line start, use a single space or hyphen,
-// and be followed by a colon-space. Prose mentions ("a breaking change in
-// the API") and the plural ("BREAKING CHANGES:") therefore never match.
 fn breaking_footer_re() -> &'static Regex {
     BREAKING_FOOTER_RE.get_or_init(|| Regex::new(r"(?mi)^BREAKING[ -]CHANGE: ").unwrap())
 }
 
 static BREAKING_SCOPE_BANG_RE: OnceLock<Regex> = OnceLock::new();
 
-// A `!` placed inside the scope (`feat(api!):`) instead of after it
-// (`feat(api)!:`) is a common typo; treat it as breaking too. The bang
-// must sit immediately before the closing paren, so `feat(a!b):` is not
-// a breaking marker.
 fn breaking_scope_bang_re() -> &'static Regex {
     BREAKING_SCOPE_BANG_RE.get_or_init(|| {
         Regex::new(r"^(feat|fix|refactor|perf|build|chore|docs|style|test|ci)\([^()]*!\):").unwrap()
@@ -67,20 +58,10 @@ pub fn determine_bump(message: &str, formats: &CommitFormats) -> BumpType {
 /// so the two can't disagree the way they used to. See #525.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CommitCategory {
-    /// `feat!:`, `fix(scope)!:`, etc. or a `BREAKING CHANGE:` footer.
     Breaking,
-    /// `feat:` or `feat(scope):` (and not breaking).
     Feature,
-    /// `fix:` / `perf:` — patch-bumping bug or performance changes.
     Fix,
-    /// `refactor:` — patch-bumping internal restructuring. Distinct
-    /// from `Fix` so the changelog can render it as its own section
-    /// (the prior code dropped refactor commits entirely from the
-    /// changelog while still letting them trigger a release).
     Refactor,
-    /// `chore:` / `docs:` / `ci:` / `style:` / `test:` / `build:` or any
-    /// non-conventional message. Doesn't bump and shouldn't appear in
-    /// the user-facing changelog.
     Other,
 }
 
@@ -138,9 +119,6 @@ pub struct ParsedHeader<'a> {
 pub fn parse_header(message: &str) -> Option<ParsedHeader<'_>> {
     let subject = parse_subject(message);
     let caps = header_re().captures(subject)?;
-    // A `!` at the end of the scope (`feat(api!):`) is a breaking marker,
-    // not part of the scope name — surface it as `breaking_bang` and hand
-    // callers the clean scope so the changelog groups under `api`, not `api!`.
     let raw_scope = caps.name("scope").map(|m| m.as_str());
     let scope_bang = raw_scope.is_some_and(|s| s.ends_with('!'));
     let scope = raw_scope
@@ -753,8 +731,6 @@ mod tests {
 
     #[test]
     fn breaking_footer_stays_strict_on_malformed_shapes() {
-        // Missing the colon-space, plural, prose, and mid-line placement must
-        // not trip the detector — we accept case variants, not any shape.
         assert_eq!(
             determine_bump("feat: x\n\nBreaking change:nospace", &Default::default()),
             BumpType::Minor
@@ -782,7 +758,6 @@ mod tests {
             determine_bump("fix(db!): drop table", &Default::default()),
             BumpType::Major
         );
-        // Bang not immediately before the closing paren is not a marker.
         assert_eq!(
             determine_bump("feat(a!b): middle", &Default::default()),
             BumpType::Minor

@@ -49,22 +49,10 @@ pub enum Phase {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Checkpoint {
     pub schema_version: u32,
-    /// The HEAD commit SHA observed when the release started — what the
-    /// in-progress release was operating on. Used to detect "HEAD
-    /// moved" on resume.
     pub head_sha: String,
-    /// Unix-epoch seconds, for debugging. Not used by the
-    /// resume policy itself.
     pub started_at: u64,
-    /// Highest phase that finished without erroring.
     pub phase: Phase,
-    /// The release commit's SHA, populated once the commit phase
-    /// finishes. Surfaces in the resume log line so the user can verify
-    /// the resume is operating on what they expect.
     pub commit_sha: Option<String>,
-    /// Tags that this release expects to create. Recorded at start so a
-    /// resume can sanity-check that the in-flight release matches the
-    /// tag set we'd recompute today.
     pub tag_names: Vec<String>,
 }
 
@@ -237,7 +225,6 @@ mod tests {
         let mut cp = Checkpoint::new("a".into(), vec![]);
         cp.advance(Phase::TagsCreated);
         assert_eq!(cp.phase, Phase::TagsCreated);
-        // Trying to "advance" back to a smaller phase is a no-op.
         cp.advance(Phase::Pending);
         assert_eq!(cp.phase, Phase::TagsCreated);
     }
@@ -251,9 +238,6 @@ mod tests {
         assert!(Phase::ReleasesCreated < Phase::PostPublishDone);
     }
 
-    // `Pushed` is written to disk for the first time as of #770 — before that
-    // it was declared but never advanced. A wrong serde rename would surface
-    // as a resume that silently re-pushes tags it already pushed.
     #[test]
     fn pushed_phase_round_trips_through_disk() {
         let dir = init_test_repo();
@@ -267,10 +251,6 @@ mod tests {
         assert_eq!(loaded.phase, Phase::Pushed);
     }
 
-    // #770 slotted `Pushed` between `TagsCreated` and `ReleasesCreated`.
-    // Checkpoints written by earlier versions record one of the surrounding
-    // phases and must keep their meaning: a run that got as far as creating
-    // releases still skips both steps, one that only tagged still does both.
     #[test]
     fn checkpoints_predating_the_push_phase_keep_their_meaning() {
         let mut tagged = Checkpoint::new("a".into(), vec![]);
@@ -300,7 +280,6 @@ mod tests {
         let dir = init_test_repo();
         let cp = Checkpoint::new("a".into(), vec![]);
         cp.save(dir.path()).unwrap();
-        // After save, no .tmp file is left behind.
         let tmp = Checkpoint::path(dir.path()).with_extension("json.tmp");
         assert!(!tmp.exists(), "tmp file should be cleaned up after rename");
     }

@@ -1,20 +1,3 @@
-//! `npm publish` executor.
-//!
-//! Behaviour:
-//! - Validates the registry's `tokenEnv` is exported before spawning
-//!   npm — fails fast with a clearer message than npm's "401
-//!   Unauthorized" deep inside the publish flow.
-//! - Writes a transient `.npmrc` into a temp dir and points npm at it
-//!   via `NPM_CONFIG_USERCONFIG`, so existing user `.npmrc` files
-//!   (project + global) are neither read for auth nor modified.
-//!   Removed when the publish returns.
-//! - Idempotent: npm registries reject re-publishing a version with a
-//!   distinct error ("cannot publish over the previously published
-//!   versions") that we recognize and return as a successful skip.
-//! - Public-registry URL surfaces in the step summary; for GitHub
-//!   Packages and private mirrors we leave the URL empty (template
-//!   would be wrong as often as right).
-
 use anyhow::{Context, Result, anyhow};
 use std::path::Path;
 use std::process::Command;
@@ -328,7 +311,6 @@ mod tests {
     fn with_token<T>(f: impl FnOnce() -> T) -> T {
         let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         // SAFETY: a test-only var name used by these tests alone, and
-        // ENV_LOCK serialises every reader and writer of it.
         unsafe { std::env::set_var("FERRFLOW_TEST_NPM_TOKEN", "npm-secret-xyz") };
         let out = f();
         unsafe { std::env::remove_var("FERRFLOW_TEST_NPM_TOKEN") };

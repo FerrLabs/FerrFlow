@@ -162,7 +162,6 @@ mod manifest_flow {
         write_pkg(dir.path(), "web", "2.0.0");
         write_config(dir.path(), true, "none");
         commit_file(dir.path(), "seed.txt", "x", "chore: seed", 1_960_000_000);
-        // Only `api` has a releasable commit; `web` stays at its file version.
         commit_file(
             dir.path(),
             "api/feature.txt",
@@ -262,7 +261,6 @@ mod manifest_flow {
 
         let err = run_release(dir.path()).unwrap_err();
         assert!(format!("{err:?}").contains("sync-manifest"));
-        // The blocked release must not have mutated the package file.
         let api = std::fs::read_to_string(dir.path().join("api/version.json")).unwrap();
         assert!(api.contains("1.1.0"));
     }
@@ -299,7 +297,6 @@ mod manifest_flow {
     #[test]
     fn status_reads_from_manifest_when_present() {
         let (dir, _repo) = init_repo();
-        // File says 1.0.0 but manifest says 1.1.0 — status must trust the manifest.
         write_pkg(dir.path(), "api", "1.0.0");
         write_pkg(dir.path(), "web", "2.0.0");
         write_config(dir.path(), true, "none");
@@ -936,8 +933,6 @@ mod cycle_detection {
         let config_path = root.join(".ferrflow");
         let config = Config::load(root, Some(&config_path)).unwrap();
 
-        // A real (non-dry-run) release: if the cycle were not caught up
-        // front, this would start writing version bumps and tags.
         let err = with_cwd(root, || {
             run_release_logic(
                 root,
@@ -973,7 +968,6 @@ mod cycle_detection {
             "{message}"
         );
 
-        // No partial release: both version files are untouched.
         let api = std::fs::read_to_string(root.join("api/package.json")).unwrap();
         let web = std::fs::read_to_string(root.join("web/package.json")).unwrap();
         assert!(

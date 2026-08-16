@@ -9,9 +9,6 @@ use crate::timing::Timing;
 use anyhow::Result;
 use serde::Serialize;
 
-/// Resolve a package's current version when no `versioned_files` entry
-/// is configured (tag-only package — see #531). Returns the latest
-/// matching semver tag if any, otherwise `None`.
 fn version_from_tags(
     repo: &Repository,
     pkg: &crate::config::PackageConfig,
@@ -200,12 +197,6 @@ pub fn tag(
             println!("{}", last_tag.unwrap_or_else(|| "none".to_string()));
         }
     } else {
-        // Build the tag index ONCE across the multi-package loop. Without
-        // it, each find_last_tag_name call ran tag_foreach independently
-        // (200 pkg × 200 tag callbacks ≈ 40k invocations) plus per-tag
-        // graph_descendant_of (now O(1) via the embedded ancestor set).
-        // The index pre-resolves both, leaving per-package work as a
-        // linear scan over already-resolved entries.
         let strategy = config.workspace.orphaned_tag_strategy;
         let index = timing.stage("build TagIndex", || TagIndex::build(&repo).ok());
         let resolve_start = std::time::Instant::now();
@@ -214,14 +205,10 @@ pub fn tag(
             .iter()
             .map(|pkg| {
                 let prefix = pkg.tag_prefix(&config.workspace, config.is_monorepo());
-                // Fast path via the index for the Warn strategy; tree-hash /
-                // message recovery falls back to the slow per-call form
-                // which still uses the embedded ancestor set.
                 let tag = match index.as_ref().and_then(|idx| {
                     idx.find_last_tag_name(&prefix, strategy)
                         .map(Some)
                         .or_else(|| {
-                            // Non-Warn strategy: index returns None, fall back
                             find_last_tag_name_with_cache(
                                 &repo,
                                 &prefix,
@@ -431,10 +418,6 @@ mod tests {
         .unwrap();
     }
 
-    // Issue #531: a package without `versionedFiles` must still resolve a
-    // current version (from tag history, or 0.0.0 bootstrap) and a next
-    // version. Today's behaviour skipped the package entirely, which made
-    // Docker-image / content repos unreleasable.
     fn setup_tag_only_package(dir: &std::path::Path) {
         fs::write(
             dir.join(".ferrflow"),

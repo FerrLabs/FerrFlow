@@ -22,8 +22,6 @@ pub fn get_changed_files(repo: &Repository) -> Result<Vec<String>> {
         .find_commit(head)
         .map(|c| c.parent_ids().map(|id| id.detach()).collect())
         .unwrap_or_default();
-    // `git diff-tree` prints nothing for merge commits unless -m/-c is given;
-    // the previous shell-out inherited that, so an empty list is the contract.
     if parents.len() > 1 {
         return Ok(vec![]);
     }

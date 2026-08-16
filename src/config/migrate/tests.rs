@@ -31,7 +31,6 @@ fn tag_format_with_prefix_and_suffix() {
     );
 }
 
-// main/master are the stable line; a prerelease:true branch becomes a channel.
 #[test]
 fn branches_map_stable_and_prerelease() {
     let (cfg, _) = build(r#"{"branches": ["main", {"name": "beta", "prerelease": true}]}"#);
@@ -45,7 +44,6 @@ fn branches_map_stable_and_prerelease() {
     ));
 }
 
-// `prerelease` can name the identifier directly, distinct from the branch name.
 #[test]
 fn prerelease_string_names_the_channel() {
     let (cfg, _) = build(r#"{"branches": [{"name": "next-major", "prerelease": "next"}]}"#);
@@ -55,7 +53,6 @@ fn prerelease_string_names_the_channel() {
     ));
 }
 
-// prerelease:false is a maintenance branch, not a channel.
 #[test]
 fn prerelease_false_is_not_a_channel() {
     let (cfg, _) = build(r#"{"branches": [{"name": "1.x", "prerelease": false}]}"#);
@@ -103,7 +100,6 @@ fn gitlab_plugin_sets_the_forge() {
     assert!(matches!(cfg.workspace.forge, ForgeKind::Gitlab));
 }
 
-// Every exec command maps to the hook that runs at the equivalent phase.
 #[test]
 fn exec_commands_map_to_hooks() {
     let (cfg, _) = build(
@@ -123,8 +119,6 @@ fn exec_commands_map_to_hooks() {
     assert_eq!(hooks.pre_release.as_deref(), Some("npm run lint"));
 }
 
-// The bump rules are fixed, so custom releaseRules can't be honoured — the user
-// must be told, not silently ignored.
 #[test]
 fn custom_release_rules_warn() {
     let (_, report) = build(
@@ -148,7 +142,6 @@ fn default_commit_analyzer_does_not_warn() {
     );
 }
 
-// npm publishing semantics differ; a silent map would mislead.
 #[test]
 fn npm_plugin_warns_rather_than_mapping() {
     let (_, report) = build(r#"{"plugins": ["@semantic-release/npm"]}"#);
@@ -166,12 +159,10 @@ fn unknown_plugin_warns() {
     );
 }
 
-// repositoryUrl has no field — it must be reported, not dropped in silence.
 #[test]
 fn repository_url_is_reported_as_ignored() {
     let (cfg, report) = build(r#"{"repositoryUrl": "https://github.com/o/r.git"}"#);
     assert!(report.ignored.iter().any(|i| i.contains("repositoryUrl")));
-    // and it does not leak into the config anywhere
     assert!(cfg.workspace.tag_template.is_none());
 }
 
@@ -180,7 +171,6 @@ fn empty_releaserc_still_produces_a_usable_config() {
     let (cfg, report) = build("{}");
     assert_eq!(cfg.packages.len(), 1);
     assert_eq!(cfg.packages[0].path, ".");
-    // the single-package caveat is always surfaced
     assert!(report.warnings.iter().any(|w| w.contains("single-package")));
 }
 
@@ -189,12 +179,10 @@ fn malformed_json_is_an_error() {
     assert!(build_config_from_releaserc("{ not json").is_err());
 }
 
-// JSON5 tolerance: real .releaserc files sometimes carry comments/trailing commas.
 #[test]
 fn json5_features_are_tolerated() {
     let (cfg, _) = build(
         r#"{
-            // stable only
             "tagFormat": "v${version}",
         }"#,
     );
@@ -206,7 +194,6 @@ fn source_label_is_stable() {
     assert_eq!(Source::SemanticRelease.label(), "semantic-release");
 }
 
-// A YAML `.releaserc` converts to JSON that the existing converter accepts.
 #[test]
 fn yaml_config_converts_then_migrates() {
     let yaml = "\
@@ -243,6 +230,5 @@ fn yaml_to_json_produces_parseable_json() {
 
 #[test]
 fn malformed_yaml_is_an_error() {
-    // An unclosed flow sequence is not valid YAML.
     assert!(yaml_to_json("plugins: [unclosed").is_err());
 }

@@ -97,9 +97,6 @@ pub fn generate_only(config_path: Option<&Path>, dry_run: bool) -> Result<()> {
         )?;
         let last_tag = highest_tag.as_ref().map(|(tag, _version)| tag.clone());
 
-        // `versionedFiles` is optional — see #531. If no file is
-        // configured, fall back to the highest existing tag, then to
-        // 0.0.0 if there are no tags yet.
         let current_version = match pkg.versioned_files.first() {
             Some(vf) => read_version(vf, &root)?,
             None => highest_tag
@@ -637,10 +634,6 @@ mod tests {
 
     #[test]
     fn build_section_chore_docs_excluded_refactor_kept() {
-        // chore/docs/ci/style/test/build don't bump and don't appear in
-        // the user-facing changelog. refactor: DOES bump (patch) and
-        // must appear, otherwise a release shows up with an empty
-        // changelog section. See #525.
         let commits = make_commits(&[
             "refactor: clean up",
             "chore: update deps",

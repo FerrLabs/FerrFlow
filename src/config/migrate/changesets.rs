@@ -48,9 +48,6 @@ pub(super) fn build(raw: &str, root: &Path) -> Result<(Config, MigrationReport)>
     let mut report = MigrationReport::default();
     let mut workspace = WorkspaceConfig::default();
 
-    // The defining difference: changesets versions from hand-written
-    // `.changeset/*.md` intent files; ferrflow versions from conventional
-    // commits. This is the one thing a user MUST know after migrating.
     report.warnings.push(
         "changesets versions from `.changeset/*.md` files — ferrflow versions from conventional \
          commits instead. Adopt Conventional Commits; your existing `.changeset/*.md` files are \
@@ -96,8 +93,6 @@ pub(super) fn build(raw: &str, root: &Path) -> Result<(Config, MigrationReport)>
         ));
     }
 
-    // changesets discovers packages from the JS workspace; ferrflow needs them
-    // listed explicitly, so expand the same globs it uses (#747).
     let discovered = super::workspace_packages::discover(root);
     let packages = if discovered.is_empty() {
         report.warnings.push(
@@ -163,9 +158,6 @@ fn scaffold_package(name: String, path: String) -> PackageConfig {
     }
 }
 
-/// `linked` / `fixed` name packages by their npm name. A group entry that
-/// matches nothing we scaffolded would make the migrated config fail
-/// `ferrflow validate`, so say which ones up front.
 fn warn_about_unmatched_groups(
     cs: &ChangesetsConfig,
     packages: &[PackageConfig],
@@ -197,8 +189,6 @@ fn warn_about_unmatched_groups(
 mod tests {
     use super::*;
 
-    /// Builds against an empty directory, i.e. a repo that declares no JS
-    /// workspace — the single-root-package fallback.
     fn build_ok(raw: &str) -> (Config, MigrationReport) {
         let dir = tempfile::tempdir().unwrap();
         build(raw, dir.path()).expect("valid changesets config")
@@ -210,7 +200,6 @@ mod tests {
         std::fs::write(path, contents).unwrap();
     }
 
-    /// A pnpm monorepo laid out the way changesets expects.
     fn workspace_dir() -> tempfile::TempDir {
         let dir = tempfile::tempdir().unwrap();
         let root = dir.path();
@@ -249,8 +238,6 @@ mod tests {
         );
     }
 
-    // The whole point of #747: a discovered workspace makes the linked/fixed
-    // groups reference packages that actually exist in the emitted config.
     #[test]
     fn discovered_packages_satisfy_the_linked_groups() {
         let dir = workspace_dir();

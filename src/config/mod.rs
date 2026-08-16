@@ -88,13 +88,11 @@ impl Config {
     }
 
     fn discover(repo_root: &Path) -> Vec<PathBuf> {
-        // Ordered search list: json > json5 > toml > ts > js > .ferrflow
         #[cfg_attr(not(feature = "cli"), allow(unused_mut))]
         let mut search: Vec<&str> = CONFIG_FORMATS.iter().map(|h| h.filename()).collect();
 
         #[cfg(feature = "cli")]
         {
-            // Insert ts/js before .ferrflow (last element)
             let dotfile_pos = search.len() - 1;
             search.insert(dotfile_pos, TS_CONFIG_FILENAME);
             search.insert(dotfile_pos + 1, JS_CONFIG_FILENAME);

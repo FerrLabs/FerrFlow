@@ -5,27 +5,6 @@ use std::path::Path;
 
 pub struct JsonVersionFile;
 
-/// Find the byte span of the *string contents* (between the surrounding
-/// quotes) of a top-level key's value in a JSON document.
-///
-/// Returns the start..end byte offsets of the value text, so the caller
-/// can do `content[..start] + new_value + content[end..]` to replace just
-/// that span — preserving every byte of indentation, key order, escape
-/// characters in other strings, and trailing-newline state in the
-/// surrounding document.
-///
-/// Returns `None` when:
-/// - the document is not an object,
-/// - the requested key is missing at the top level,
-/// - the value of the requested key is not a string.
-///
-/// In any of those cases the caller should fall back to the serde
-/// round-trip path.
-///
-/// Caller must ensure `content` parses as JSON (we do that with
-/// `serde_json::from_str` before calling this). This walker doesn't try
-/// to be lenient with malformed input — it returns `None` and lets the
-/// fallback handle it.
 fn find_top_level_string_value_span(content: &str, target_key: &str) -> Option<(usize, usize)> {
     let bytes = content.as_bytes();
     let n = bytes.len();
@@ -73,13 +52,6 @@ fn find_top_level_string_value_span(content: &str, target_key: &str) -> Option<(
     }
 }
 
-/// Returns the byte index of the first non-whitespace byte at or after
-/// `start`, or `bytes.len()` if all remaining bytes are whitespace.
-/// Span of the string value at `section.key`, e.g. `dependencies.core`.
-///
-/// Same contract as [`find_top_level_string_value_span`] — the caller has
-/// already validated the JSON — but descends one level so a dependency
-/// constraint can be spliced without reformatting the file.
 pub(super) fn find_nested_string_value_span(
     content: &str,
     section: &str,
@@ -92,7 +64,6 @@ pub(super) fn find_nested_string_value_span(
     Some((start, end))
 }
 
-/// Offset of the value for `target_key` in the object beginning at `from`.
 fn find_object_value_start(bytes: &[u8], from: usize, target_key: &str) -> Option<usize> {
     let n = bytes.len();
     let mut i = skip_ws(bytes, from);
@@ -137,10 +108,6 @@ fn skip_ws(bytes: &[u8], mut i: usize) -> usize {
     i
 }
 
-/// Read a JSON string starting at the opening quote at index `i`.
-/// Returns `(content_start, content_end, index_after_closing_quote)`,
-/// where `content_start..content_end` covers the string's bytes between
-/// the quotes (escapes still encoded), or `None` on truncated input.
 fn read_string(bytes: &[u8], i: usize) -> Option<(usize, usize, usize)> {
     let n = bytes.len();
     if i >= n || bytes[i] != b'"' {
@@ -163,9 +130,6 @@ fn read_string(bytes: &[u8], i: usize) -> Option<(usize, usize, usize)> {
     None
 }
 
-/// Skip past a JSON value (string, number, bool, null, object, array)
-/// starting at byte `i`. Returns the index right after the value, or
-/// `None` on truncated/malformed input.
 fn skip_value(bytes: &[u8], i: usize) -> Option<usize> {
     let n = bytes.len();
     if i >= n {
@@ -315,9 +279,6 @@ mod tests {
 
     #[test]
     fn write_ignores_nested_version_keys() {
-        // package.json frequently has nested `"version"` keys inside
-        // dependencies, engines, etc. The top-level bump must not touch
-        // those.
         let original = "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": {\n      \"version\": \"9.9.9\"\n    }\n  }\n}\n";
         let f = write_temp(original);
         JsonVersionFile.write_version(f.path(), "1.0.1").unwrap();
@@ -380,9 +341,6 @@ impl VersionFile for JsonVersionFile {
             .with_context(|| format!("Cannot read {}", file_path.display()))
             .error_code(error_code::JSON_READ)?;
 
-        // Validate the file is well-formed JSON before we touch it; this
-        // catches the case where someone hand-edited it into garbage and
-        // we'd otherwise surgically write into the middle of a broken doc.
         serde_json::from_str::<serde_json::Value>(&content)
             .with_context(|| format!("Invalid JSON in {}", file_path.display()))
             .error_code(error_code::JSON_PARSE)?;
@@ -396,10 +354,6 @@ impl VersionFile for JsonVersionFile {
                 s
             }
             None => {
-                // No top-level string `version` field — fall back to the
-                // serde round-trip so we still bump (acquiring a `version`
-                // field on a file that didn't have one). This loses
-                // formatting, but the alternative is silently failing.
                 let mut v: serde_json::Value = serde_json::from_str(&content)
                     .with_context(|| format!("Invalid JSON in {}", file_path.display()))
                     .error_code(error_code::JSON_PARSE)?;

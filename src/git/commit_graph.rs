@@ -76,7 +76,6 @@ mod tests {
 
         assert!(!commit_graph_present(&repo), "a fresh repo has no graph");
 
-        // min_commits = 0 forces the write path on this tiny fixture.
         maybe_write(&repo, 0);
         assert!(
             commit_graph_present(&repo),
@@ -89,7 +88,6 @@ mod tests {
         let (dir, repo) = init_repo();
         commit_file(dir.path(), "a.txt", "x", "chore: a", 1_900_000_000);
 
-        // The default 1000-commit gate blocks this 1-commit repo.
         maybe_write(&repo, MIN_COMMITS);
         assert!(
             !commit_graph_present(&repo),

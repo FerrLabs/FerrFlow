@@ -5,19 +5,11 @@ use std::path::PathBuf;
 use crate::config::Config;
 use crate::error_code::{self, ErrorCodeExt};
 
-/// Percent-encode bytes outside the unreserved set, preserving forward
-/// slashes so a multi-segment path (`src/lib/foo.rs`) keeps its
-/// structure. Used when interpolating user-supplied paths into URL
-/// path positions. See #553.
 #[cfg(feature = "cli")]
 fn encode_path(s: &str) -> String {
     encode_with_safe(s, |b| matches!(b, b'/'))
 }
 
-/// Percent-encode bytes outside the unreserved set with no exceptions —
-/// the value lands in a single URL query parameter and must not
-/// smuggle further `?`, `&`, `=`, or `#` characters. Used for the git
-/// ref (`?ref=…`).
 #[cfg(feature = "cli")]
 fn encode_query_value(s: &str) -> String {
     encode_with_safe(s, |_| false)
@@ -176,8 +168,6 @@ pub struct GitLabSource {
 impl FileSource for GitLabSource {
     fn read_file(&self, path: &str) -> Result<Option<Vec<u8>>> {
         let project_id = format!("{}/{}", self.owner, self.repo);
-        // Percent-encode everything (including the embedded slash) so
-        // the project id and the file path land as single URL segments.
         let encoded_project = encode_query_value(&project_id);
         let encoded_path = encode_query_value(path);
         let mut url = format!(

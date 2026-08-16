@@ -37,9 +37,6 @@ impl Source {
     }
 }
 
-/// semantic-release config filenames (cosmiconfig for the `release` key), in
-/// preference order. JSON/JSON5 is read directly; `.js/.cjs/.mjs` is evaluated
-/// with node; `.yaml/.yml` is parsed as YAML — see [`read_source_as_json`].
 const SEMANTIC_RELEASE_FILES: &[&str] = &[
     ".releaserc",
     ".releaserc.json",
@@ -116,10 +113,6 @@ fn find_semantic_release_config() -> Option<PathBuf> {
         .find(|p| p.exists())
 }
 
-/// Read a release-tool config file and return a JSON string the JSON
-/// converters can parse. `.js/.cjs/.mjs` is evaluated with node, `.yaml/.yml`
-/// is parsed as YAML, and everything else (`.json`, `.json5`, extensionless)
-/// is handed straight to the json5-tolerant parsers.
 pub(super) fn read_source_as_json(path: &Path) -> Result<String> {
     let ext = path
         .extension()
@@ -139,9 +132,6 @@ fn read_file(path: &Path) -> Result<String> {
         .error_code(error_code::CONFIG_NOT_FOUND)
 }
 
-/// Evaluate a JS/TS release config to JSON by importing it with node and
-/// printing its resolved default export. Same trust model as evaluating a
-/// `ferrflow.js` config — it's the user's own repo, run locally.
 fn eval_js_to_json(path: &Path) -> Result<String> {
     let file_url = super::loader_js::path_to_file_url(path)?;
     let script = format!(
@@ -182,7 +172,6 @@ fn eval_js_to_json(path: &Path) -> Result<String> {
         .error_code(error_code::CONFIG_INVALID_OUTPUT)
 }
 
-/// Convert a YAML config to a JSON string so the JSON converters can consume it.
 pub(super) fn yaml_to_json(raw: &str) -> Result<String> {
     let value: serde_json::Value = serde_norway::from_str(raw)
         .map_err(|e| anyhow::anyhow!("could not parse YAML config: {e}"))
@@ -231,7 +220,6 @@ enum PrereleaseFlag {
     Name(String),
 }
 
-/// A plugin is either `"name"` or `["name", { options }]`.
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 enum PluginEntry {
@@ -354,8 +342,6 @@ pub(super) fn default_package_name() -> String {
         .unwrap_or_else(|| "app".to_string())
 }
 
-/// `v${version}` → `v{{version}}`. semantic-release only defines the
-/// `${version}` token; anything else is passed through and flagged.
 fn convert_tag_format(tag_format: &str) -> String {
     tag_format.replace("${version}", "{{version}}")
 }
@@ -370,9 +356,6 @@ fn convert_branches(branches: &Branches, report: &mut MigrationReport) -> Vec<Br
     for spec in specs {
         match spec {
             BranchSpec::Name(name) => {
-                // A bare non-release branch name in the list is a maintenance
-                // or next branch; semantic-release treats `main`/`master` as
-                // the stable line.
                 let is_stable = name == "main" || name == "master";
                 out.push(BranchChannelConfig {
                     name: name.clone(),
@@ -533,8 +516,6 @@ fn migrate_semantic_release() -> Result<()> {
     write_and_report(Source::SemanticRelease, &path, &config, &report)
 }
 
-/// Serialize the migrated config to `.ferrflow` (JSON) and print the report.
-/// Shared by every source converter.
 pub(super) fn write_and_report(
     source: Source,
     from: &Path,

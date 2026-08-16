@@ -6,9 +6,6 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::error_code::{self, ErrorCodeExt};
 
-/// Stale-lock TTL. A lockfile older than this is treated as orphaned
-/// (the previous ferrflow run crashed without releasing it). 30 minutes
-/// is comfortably longer than any realistic monorepo release.
 const STALE_LOCK_TTL: Duration = Duration::from_secs(30 * 60);
 
 /// RAII lock guard for `ferrflow release`. Acquires `.git/ferrflow.lock`
@@ -25,8 +22,6 @@ const STALE_LOCK_TTL: Duration = Duration::from_secs(30 * 60);
 #[derive(Debug)]
 pub struct ReleaseLock {
     path: PathBuf,
-    /// Held open for the duration of the release run. Dropping the File
-    /// closes the descriptor; Drop on the guard also unlinks the path.
     _handle: File,
 }
 
@@ -116,7 +111,6 @@ fn read_lock_info(path: &Path) -> Option<String> {
     Some(buf)
 }
 
-/// Returns true if the lock was deleted (stale) and the caller can retry.
 fn take_over_if_stale(path: &Path) -> Result<bool> {
     let metadata = match std::fs::metadata(path) {
         Ok(m) => m,
@@ -130,7 +124,6 @@ fn take_over_if_stale(path: &Path) -> Result<bool> {
     if modified < STALE_LOCK_TTL {
         return Ok(false);
     }
-    // Older than TTL — take it over.
     let _ = std::fs::remove_file(path);
     Ok(true)
 }
@@ -185,9 +178,6 @@ mod tests {
         let first = ReleaseLock::acquire(dir.path()).unwrap();
         let _second = ReleaseLock::acquire_force(dir.path())
             .expect("force-unlock should succeed even if held");
-        // First drops at end of scope; second's path still points to the
-        // same file, so the second drop will also try to remove. Either
-        // way the file is gone at scope end.
         drop(first);
     }
 

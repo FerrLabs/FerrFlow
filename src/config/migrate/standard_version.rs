@@ -76,8 +76,6 @@ pub(super) fn build(raw: &str) -> Result<(Config, MigrationReport)> {
             .push(format!("tagPrefix → tagTemplate {template}"));
     }
 
-    // packageFiles are read for the current version, bumpFiles are written;
-    // ferrflow's versionedFiles do both, so union them (bumpFiles win on dupes).
     let mut versioned_files: Vec<VersionedFile> = Vec::new();
     let mut seen: Vec<String> = Vec::new();
     for bf in rc.bump_files.iter().chain(rc.package_files.iter()) {
@@ -279,7 +277,6 @@ mod tests {
     fn unrecognised_file_type_warns_and_is_skipped() {
         let (cfg, report) =
             build_ok(r#"{"bumpFiles": [{"filename": "weird.xyz", "type": "mystery"}]}"#);
-        // falls back to the package.json default since nothing mapped
         assert_eq!(cfg.packages[0].versioned_files[0].path, "package.json");
         assert!(report.warnings.iter().any(|w| w.contains("weird.xyz")));
     }
