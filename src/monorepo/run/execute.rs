@@ -15,7 +15,7 @@ use crate::hooks::{HookContext, HookPoint, resolve_hook, resolve_on_failure, run
 use crate::versioning::truncate_version;
 
 use super::checkpoint::{Checkpoint, Phase};
-use super::summary::{TagToCreate, write_github_step_summary};
+use super::summary::{PlannedTag, write_github_step_summary};
 use crate::forge::{Forge, ReleaseResult};
 use crate::monorepo::preview::build_forge_instance;
 use crate::monorepo::util::{auto_stage_new_files, collect_dirty_files};
@@ -36,7 +36,7 @@ pub(super) struct ReleasePlan<'a> {
     pub verbose: bool,
     pub force: bool,
     pub draft: bool,
-    pub tags_to_create: &'a [TagToCreate],
+    pub tags_to_create: &'a [PlannedTag],
     pub hook_contexts: &'a [(HookContext, usize)],
     pub files_to_commit: &'a mut Vec<String>,
     pub files_per_package: &'a mut HashMap<String, Vec<String>>,
@@ -76,7 +76,7 @@ pub(super) fn execute_release(plan: &mut ReleasePlan<'_>) -> Result<()> {
     let release_parts: Vec<String> = plan
         .tags_to_create
         .iter()
-        .map(|(_, _, _, name, ver, _, _)| format!("{name} v{ver}"))
+        .map(|t| format!("{} v{}", t.package, t.version))
         .collect();
     let skip_ci = if plan.config.workspace.effective_skip_ci() {
         " [skip ci]"
@@ -216,11 +216,10 @@ fn run_commit_or_pr(
         ReleaseCommitMode::Commit => {
             if scope == ReleaseCommitScope::PerPackage && plan.tags_to_create.len() > 1 {
                 for tag in plan.tags_to_create.iter() {
-                    let (_, _, _, pkg_name, ver, _, _) = tag;
-                    if let Some(pkg_files) = plan.files_per_package.get(pkg_name) {
+                    if let Some(pkg_files) = plan.files_per_package.get(&tag.package) {
                         let refs: Vec<&str> = pkg_files.iter().map(String::as_str).collect();
                         let msg = super::commit_body::build_commit_message(
-                            &format!("chore(release): {pkg_name} v{ver}{skip_ci}"),
+                            &format!("chore(release): {} v{}{skip_ci}", tag.package, tag.version),
                             std::slice::from_ref(tag),
                             plan.config.workspace.release_commit_body,
                         );
@@ -268,11 +267,13 @@ fn run_commit_or_pr(
                     .tags_to_create
                     .iter()
                     .filter_map(|tag| {
-                        let (_, _, _, pkg_name, ver, _, _) = tag;
-                        plan.files_per_package.get(pkg_name).map(|pf| {
+                        plan.files_per_package.get(&tag.package).map(|pf| {
                             let refs: Vec<&str> = pf.iter().map(String::as_str).collect();
                             let msg = super::commit_body::build_commit_message(
-                                &format!("chore(release): {pkg_name} v{ver}{skip_ci}"),
+                                &format!(
+                                    "chore(release): {} v{}{skip_ci}",
+                                    tag.package, tag.version
+                                ),
                                 std::slice::from_ref(tag),
                                 plan.config.workspace.release_commit_body,
                             );
@@ -300,7 +301,7 @@ fn run_commit_or_pr(
                     "Automated release commit.\n\n{}",
                     plan.tags_to_create
                         .iter()
-                        .map(|(tag, _, _, _, _, _, _)| format!("- `{tag}`"))
+                        .map(|t| format!("- `{}`", t.tag))
                         .collect::<Vec<_>>()
                         .join("\n")
                 );
@@ -375,15 +376,15 @@ fn run_commit_or_pr(
 }
 
 fn create_release_tags(plan: &mut ReleasePlan<'_>) -> Result<()> {
-    for (tag_name, tag_msg, _, pkg_name, _, _, _) in plan.tags_to_create {
-        create_tag(plan.repo, tag_name, tag_msg)?;
+    for t in plan.tags_to_create {
+        create_tag(plan.repo, &t.tag, &t.message)?;
         if let Some((_, lines)) = plan
             .pkg_outputs
             .iter_mut()
             .rev()
-            .find(|(n, _)| n == pkg_name)
+            .find(|(n, _)| n == &t.package)
         {
-            lines.push(format!("  ✓ Created tag {}", tag_name.cyan()));
+            lines.push(format!("  ✓ Created tag {}", t.tag.cyan()));
         }
     }
     Ok(())
@@ -393,20 +394,20 @@ fn create_and_move_floating_tags(
     plan: &mut ReleasePlan<'_>,
     floating_tag_names: &mut Vec<String>,
 ) -> Result<()> {
-    for (_, _, _, pkg_name, new_version, _, is_pre) in plan.tags_to_create {
-        if *is_pre {
+    for t in plan.tags_to_create {
+        if t.is_prerelease {
             continue;
         }
         let pkg = plan
             .config
             .packages
             .iter()
-            .find(|p| &p.name == pkg_name)
-            .ok_or_else(|| anyhow::anyhow!("package '{pkg_name}' not found in config"))
+            .find(|p| p.name == t.package)
+            .ok_or_else(|| anyhow::anyhow!("package '{}' not found in config", t.package))
             .error_code(error_code::MONOREPO_PACKAGE_NOT_FOUND)?;
         let levels = pkg.effective_floating_tags(&plan.config.workspace);
         for level in levels {
-            if let Some(truncated) = truncate_version(new_version, *level) {
+            if let Some(truncated) = truncate_version(&t.version, *level) {
                 let float_tag = pkg.tag_for_version(
                     &plan.config.workspace,
                     plan.config.is_monorepo(),
@@ -417,7 +418,7 @@ fn create_and_move_floating_tags(
                     && let Some(old_ver) = old_msg.strip_prefix("Release ")
                     && semver::Version::parse(old_ver.trim_start_matches('v'))
                         .ok()
-                        .zip(semver::Version::parse(new_version.trim_start_matches('v')).ok())
+                        .zip(semver::Version::parse(t.version.trim_start_matches('v')).ok())
                         .is_some_and(|(old, new)| new < old)
                 {
                     if !plan.force {
@@ -425,7 +426,7 @@ fn create_and_move_floating_tags(
                             "Floating tag {} would move backward ({} → {}). Use --force to override.",
                             float_tag,
                             old_ver,
-                            new_version,
+                            t.version,
                         ))
                         .error_code(error_code::MONOREPO_PUSH_FAILED)?;
                     }
@@ -433,19 +434,19 @@ fn create_and_move_floating_tags(
                         "{}",
                         format!(
                             "  ⚠ Floating tag {} moves backward ({} → {})",
-                            float_tag, old_ver, new_version,
+                            float_tag, old_ver, t.version,
                         )
                         .yellow()
                     );
                 }
-                let msg = format!("Release {new_version}");
+                let msg = format!("Release {}", t.version);
                 let moved = create_or_move_tag(plan.repo, &float_tag, &msg)?;
                 let verb = if moved { "Moved" } else { "Created" };
                 if let Some((_, lines)) = plan
                     .pkg_outputs
                     .iter_mut()
                     .rev()
-                    .find(|(n, _)| n == pkg_name)
+                    .find(|(n, _)| n == &t.package)
                 {
                     lines.push(format!("  ✓ {} floating tag {}", verb, float_tag.cyan()));
                 }
@@ -481,11 +482,7 @@ fn run_release_summary_hook(plan: &ReleasePlan<'_>, point: HookPoint) -> Result<
     let ws_hooks = plan.config.workspace.hooks.as_ref();
     if let Some(cmd) = resolve_hook(None, ws_hooks, point) {
         let on_failure = resolve_on_failure(None, ws_hooks);
-        let tags: Vec<String> = plan
-            .tags_to_create
-            .iter()
-            .map(|(t, _, _, _, _, _, _)| t.clone())
-            .collect();
+        let tags: Vec<String> = plan.tags_to_create.iter().map(|t| t.tag.clone()).collect();
         let mut ctx =
             HookContext::release_summary(plan.root, &tags, plan.dry_run, plan.config.is_monorepo());
         if let Some((first, _)) = plan.hook_contexts.first() {
@@ -514,11 +511,7 @@ fn push_refs(
     mode: ReleaseCommitMode,
     floating_tag_names: &[String],
 ) -> Result<()> {
-    let tag_refs: Vec<&str> = plan
-        .tags_to_create
-        .iter()
-        .map(|(t, _, _, _, _, _, _)| t.as_str())
-        .collect();
+    let tag_refs: Vec<&str> = plan.tags_to_create.iter().map(|t| t.tag.as_str()).collect();
 
     if let ReleaseCommitMode::Commit = mode {
         push(plan.repo, &plan.config.workspace.remote, plan.target_branch)?;
@@ -570,9 +563,9 @@ fn publish_releases_with(plan: &mut ReleasePlan<'_>, forge: &dyn Forge) -> Resul
     let outcomes: Vec<(String, String, TagReleaseOutcome)> = pool.install(|| {
         plan.tags_to_create
             .par_iter()
-            .map(|(tag_name, _, body, pkg_name, _, _, is_pre)| {
-                let outcome = process_release_tag(forge, tag_name, body, *is_pre, draft);
-                (tag_name.clone(), pkg_name.clone(), outcome)
+            .map(|t| {
+                let outcome = process_release_tag(forge, &t.tag, &t.body, t.is_prerelease, draft);
+                (t.tag.clone(), t.package.clone(), outcome)
             })
             .collect()
     });

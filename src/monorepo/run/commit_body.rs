@@ -1,10 +1,10 @@
 use crate::config::ReleaseCommitBody;
 
-use super::summary::TagToCreate;
+use super::summary::PlannedTag;
 
 pub(super) fn build_commit_message(
     subject: &str,
-    tags: &[TagToCreate],
+    tags: &[PlannedTag],
     mode: ReleaseCommitBody,
 ) -> String {
     match render_body(tags, mode) {
@@ -13,7 +13,7 @@ pub(super) fn build_commit_message(
     }
 }
 
-fn render_body(tags: &[TagToCreate], mode: ReleaseCommitBody) -> Option<String> {
+fn render_body(tags: &[PlannedTag], mode: ReleaseCommitBody) -> Option<String> {
     match mode {
         ReleaseCommitBody::None => None,
         ReleaseCommitBody::Summary => render_summary(tags),
@@ -21,28 +21,35 @@ fn render_body(tags: &[TagToCreate], mode: ReleaseCommitBody) -> Option<String> 
     }
 }
 
-fn render_summary(tags: &[TagToCreate]) -> Option<String> {
+fn render_summary(tags: &[PlannedTag]) -> Option<String> {
     let lines: Vec<String> = tags
         .iter()
-        .map(|(_, _, _, name, version, commits, _)| {
-            let plural = if *commits == 1 { "commit" } else { "commits" };
-            format!("- {name} {version} ({commits} {plural})")
+        .map(|t| {
+            let plural = if t.commit_count == 1 {
+                "commit"
+            } else {
+                "commits"
+            };
+            format!(
+                "- {} {} ({} {plural})",
+                t.package, t.version, t.commit_count
+            )
         })
         .collect();
     (!lines.is_empty()).then(|| lines.join("\n"))
 }
 
-fn render_full(tags: &[TagToCreate]) -> Option<String> {
+fn render_full(tags: &[PlannedTag]) -> Option<String> {
     let multi = tags.len() > 1;
     let sections: Vec<String> = tags
         .iter()
-        .filter_map(|(_, _, body, name, version, _, _)| {
-            let trimmed = body.trim();
+        .filter_map(|t| {
+            let trimmed = t.body.trim();
             if trimmed.is_empty() {
                 return None;
             }
             Some(if multi {
-                format!("## {name} {version}\n\n{trimmed}")
+                format!("## {} {}\n\n{trimmed}", t.package, t.version)
             } else {
                 trimmed.to_string()
             })
@@ -55,16 +62,16 @@ fn render_full(tags: &[TagToCreate]) -> Option<String> {
 mod tests {
     use super::*;
 
-    fn tag(name: &str, version: &str, body: &str, commits: i32) -> TagToCreate {
-        (
-            format!("{name}@v{version}"),
-            format!("Release {name}@v{version}"),
-            body.to_string(),
-            name.to_string(),
-            version.to_string(),
-            commits,
-            false,
-        )
+    fn tag(name: &str, version: &str, body: &str, commits: i32) -> PlannedTag {
+        PlannedTag {
+            tag: format!("{name}@v{version}"),
+            message: format!("Release {name}@v{version}"),
+            body: body.to_string(),
+            package: name.to_string(),
+            version: version.to_string(),
+            commit_count: commits,
+            is_prerelease: false,
+        }
     }
 
     const SUBJECT: &str = "chore(release): api v1.2.0";
@@ -126,7 +133,7 @@ mod tests {
 
     #[test]
     fn summary_is_one_bounded_line_per_package() {
-        let tags: Vec<TagToCreate> = (0..50)
+        let tags: Vec<PlannedTag> = (0..50)
             .map(|i| {
                 tag(
                     &format!("pkg{i}"),

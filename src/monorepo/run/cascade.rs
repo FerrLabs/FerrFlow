@@ -12,7 +12,7 @@ use crate::versioning::compute_next_version;
 use super::super::types::CheckPackage;
 use super::super::util::tags_for_package;
 use super::release_json::ReleasedPackage;
-use super::summary::TagToCreate;
+use super::summary::PlannedTag;
 use crate::changelog::update_changelog;
 
 /// Mutable accumulators the cascade writes into, shared with the main
@@ -24,7 +24,7 @@ pub(super) struct CascadeSink<'a> {
     pub released: &'a mut Vec<ReleasedPackage>,
     pub files_to_commit: &'a mut Vec<String>,
     pub files_per_package: &'a mut HashMap<String, Vec<String>>,
-    pub tags_to_create: &'a mut Vec<TagToCreate>,
+    pub tags_to_create: &'a mut Vec<PlannedTag>,
     pub pkg_outputs: &'a mut Vec<(String, Vec<String>)>,
     /// Name -> the bump each already-released package received this run. The
     /// cascade reads it to know what to propagate, and extends it as it goes.
@@ -180,18 +180,18 @@ pub(super) fn run_dependency_cascade(
                 sink.pkg_outputs.push((pkg.name.clone(), lines));
             }
             let body = format!("Dependency update: {}", dep_trigger.join(", "));
-            sink.tags_to_create.push((
+            sink.tags_to_create.push(PlannedTag {
                 tag,
-                format!(
+                message: format!(
                     "Release {}",
                     pkg.tag_for_version(&config.workspace, config.is_monorepo(), &new_version)
                 ),
                 body,
-                pkg.name.clone(),
-                new_version.clone(),
-                0,
-                false,
-            ));
+                package: pkg.name.clone(),
+                version: new_version.clone(),
+                commit_count: 0,
+                is_prerelease: false,
+            });
             sink.bumped.insert(pkg.name.clone(), bump);
             sink.bumped_versions.insert(pkg.name.clone(), new_version);
             *sink.any_bumped = true;

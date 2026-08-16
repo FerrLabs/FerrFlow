@@ -12,7 +12,7 @@ use crate::hooks::HookContext;
 
 use super::checkpoint::{Checkpoint, Phase};
 use super::execute::{ReleasePlan, execute_release};
-use super::summary::TagToCreate;
+use super::summary::PlannedTag;
 
 fn git(dir: &Path, args: &[&str]) -> String {
     let out = Command::new("git")
@@ -194,16 +194,16 @@ impl Forge for RecordingForge {
     }
 }
 
-fn tag_to_create(tag: &str, pkg: &str, version: &str) -> TagToCreate {
-    (
-        tag.to_string(),
-        format!("{pkg} {version}"),
-        "release notes".to_string(),
-        pkg.to_string(),
-        version.to_string(),
-        1,
-        false,
-    )
+fn tag_to_create(tag: &str, pkg: &str, version: &str) -> PlannedTag {
+    PlannedTag {
+        tag: tag.to_string(),
+        message: format!("{pkg} {version}"),
+        body: "release notes".to_string(),
+        package: pkg.to_string(),
+        version: version.to_string(),
+        commit_count: 1,
+        is_prerelease: false,
+    }
 }
 
 /// Drives the publish half of `execute_release`. The checkpoint starts at
@@ -211,12 +211,12 @@ fn tag_to_create(tag: &str, pkg: &str, version: &str) -> TagToCreate {
 /// creates the tags itself — and execution lands directly on push → publish.
 fn run_publish_phase(
     harness: &Harness,
-    tags: &[TagToCreate],
+    tags: &[PlannedTag],
     forge: &dyn Forge,
 ) -> (Result<()>, Vec<(String, ReleaseResult)>) {
     let mut checkpoint = Checkpoint::new(
         harness.git(&["rev-parse", "HEAD"]).trim().to_string(),
-        tags.iter().map(|(t, ..)| t.clone()).collect(),
+        tags.iter().map(|t| t.tag.clone()).collect(),
     );
     checkpoint.advance(Phase::TagsCreated);
 
