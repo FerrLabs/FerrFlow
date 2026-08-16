@@ -161,6 +161,11 @@ fn backoff_for(attempt: u32) -> std::time::Duration {
 fn is_retryable(err: &ureq::Error) -> bool {
     match err {
         ureq::Error::StatusCode(code) => matches!(code, 429 | 500..=599),
+        ureq::Error::BadUri(_)
+        | ureq::Error::InvalidProxyUrl
+        | ureq::Error::TooManyRedirects
+        | ureq::Error::BodyExceedsLimit(_)
+        | ureq::Error::Pem(_) => false,
         _ => true,
     }
 }
@@ -397,6 +402,17 @@ mod tests {
         assert!(!is_retryable(&ureq::Error::StatusCode(401)));
         assert!(!is_retryable(&ureq::Error::StatusCode(404)));
         assert!(!is_retryable(&ureq::Error::StatusCode(400)));
+        assert!(!is_retryable(&ureq::Error::InvalidProxyUrl));
+        assert!(!is_retryable(&ureq::Error::TooManyRedirects));
+    }
+
+    #[test]
+    fn a_mistyped_endpoint_fails_immediately() {
+        let bad = ureq::Error::BadUri("h ttp://typo".to_string());
+        assert!(
+            !is_retryable(&bad),
+            "FERRFLOW_BOT_ENDPOINT is user-set, so a typo must not burn the retry budget"
+        );
     }
 
     #[test]
