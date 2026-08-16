@@ -9,7 +9,8 @@ writes the changelog, and cuts the tagged release. Any language, any repo layout
 
 [![Latest release](https://img.shields.io/github/v/release/FerrLabs/FerrFlow)](https://github.com/FerrLabs/FerrFlow/releases/latest)
 [![Quality Gate](https://sonar.ferrlabs.com/api/project_badges/measure?project=ferrflow&metric=alert_status&token=sqb_53f0d93466bd01a6c6a94a15125d5aa8390c67fa)](https://sonar.ferrlabs.com/dashboard?id=ferrflow)
-[![Coverage](https://sonar.ferrlabs.com/api/project_badges/measure?project=ferrflow&metric=coverage&token=sqb_53f0d93466bd01a6c6a94a15125d5aa8390c67fa)](https://sonar.ferrlabs.com/dashboard?id=ferrflow)
+[![Maintainability](https://sonar.ferrlabs.com/api/project_badges/measure?project=ferrflow&metric=sqale_rating&token=sqb_53f0d93466bd01a6c6a94a15125d5aa8390c67fa)](https://sonar.ferrlabs.com/dashboard?id=ferrflow)
+[![Security](https://sonar.ferrlabs.com/api/project_badges/measure?project=ferrflow&metric=security_rating&token=sqb_53f0d93466bd01a6c6a94a15125d5aa8390c67fa)](https://sonar.ferrlabs.com/dashboard?id=ferrflow)
 [![License](https://img.shields.io/github/license/FerrLabs/FerrFlow)](LICENSE)
 [![Socket Badge](https://badge.socket.dev/npm/package/ferrflow/latest)](https://badge.socket.dev/npm/package/ferrflow/latest)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/FerrLabs/FerrFlow/badge)](https://scorecard.dev/viewer/?uri=github.com/FerrLabs/FerrFlow)
