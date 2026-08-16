@@ -27,19 +27,13 @@ impl PatternSet {
         if self.is_catch_all() {
             return true;
         }
-        let haystack = if case_sensitive {
-            subject.to_string()
-        } else {
-            subject.to_lowercase()
-        };
-        self.patterns().iter().any(|p| {
-            let pattern = if case_sensitive {
-                p.clone()
-            } else {
-                p.to_lowercase()
-            };
-            wildcard_match(&pattern, &haystack)
-        })
+        if case_sensitive {
+            return self.patterns().iter().any(|p| wildcard_match(p, subject));
+        }
+        let haystack = subject.to_lowercase();
+        self.patterns()
+            .iter()
+            .any(|p| wildcard_match(&p.to_lowercase(), &haystack))
     }
 }
 

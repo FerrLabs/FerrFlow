@@ -44,7 +44,7 @@ use forced::{Forced, parse_forced_version};
 use plan::{PackagePlan, PlanInputs, SkipReason, compute_plan};
 use rayon::prelude::*;
 use release_json::{GitInfo, ReleaseJson, ReleasedPackage, SkippedPackage};
-use summary::{TagToCreate, collect_outputs};
+use summary::{PlannedTag, collect_outputs};
 pub use why::why;
 
 #[allow(clippy::too_many_arguments)]
@@ -196,7 +196,7 @@ pub(super) fn run_release_logic(
     let mut skipped: Vec<SkippedPackage> = Vec::new();
     let mut files_to_commit: Vec<String> = Vec::new();
     let mut files_per_package: HashMap<String, Vec<String>> = HashMap::new();
-    let mut tags_to_create: Vec<TagToCreate> = Vec::new();
+    let mut tags_to_create: Vec<PlannedTag> = Vec::new();
     let mut hook_contexts: Vec<(HookContext, usize)> = Vec::new(); // (ctx, pkg_index)
     // Name -> bump, so the dependency cascade can propagate the real bump
     // type instead of assuming a patch.
@@ -574,15 +574,15 @@ pub(super) fn run_release_logic(
                 }
             }
 
-            tags_to_create.push((
-                tag.clone(),
-                format!("Release {tag}"),
+            tags_to_create.push(PlannedTag {
+                tag: tag.clone(),
+                message: format!("Release {tag}"),
                 body,
-                pkg.name.clone(),
-                new_version.clone(),
-                commits.len() as i32,
+                package: pkg.name.clone(),
+                version: new_version.clone(),
+                commit_count: commits.len() as i32,
                 is_prerelease,
-            ));
+            });
         }
 
         hook_contexts.push((hook_ctx, pkg_idx));
@@ -650,7 +650,7 @@ pub(super) fn run_release_logic(
         if !dry_run && let Some(manifest_rel) = config.workspace.manifest_file.as_deref() {
             let overrides: std::collections::BTreeMap<String, String> = tags_to_create
                 .iter()
-                .map(|(_, _, _, name, ver, _, _)| (name.clone(), ver.clone()))
+                .map(|t| (t.package.clone(), t.version.clone()))
                 .collect();
             let packages = crate::manifest::snapshot_with_overrides(config, root, &overrides);
             let commit = repo
@@ -680,10 +680,7 @@ pub(super) fn run_release_logic(
             .ok()
             .map(|id| id.to_string())
             .unwrap_or_default();
-        let tag_names: Vec<String> = tags_to_create
-            .iter()
-            .map(|(t, _, _, _, _, _, _)| t.clone())
-            .collect();
+        let tag_names: Vec<String> = tags_to_create.iter().map(|t| t.tag.clone()).collect();
         let mut checkpoint = if dry_run {
             None
         } else {
@@ -735,10 +732,7 @@ pub(super) fn run_release_logic(
         let release_result = execute_release(&mut plan);
         timing.record("release commit phase", release_start.elapsed());
 
-        let released_tags: Vec<String> = tags_to_create
-            .iter()
-            .map(|(t, _, _, _, _, _, _)| t.clone())
-            .collect();
+        let released_tags: Vec<String> = tags_to_create.iter().map(|t| t.tag.clone()).collect();
         let ws_hooks = config.workspace.hooks.as_ref();
         match release_result {
             Ok(()) => {
@@ -834,10 +828,7 @@ pub(super) fn run_release_logic(
         let tags_pushed = if dry_run {
             Vec::new()
         } else {
-            tags_to_create
-                .iter()
-                .map(|(t, _, _, _, _, _, _)| t.clone())
-                .collect()
+            tags_to_create.iter().map(|t| t.tag.clone()).collect()
         };
         let payload = ReleaseJson {
             released,

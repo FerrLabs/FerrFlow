@@ -62,12 +62,12 @@ impl BotTokenExchange {
     pub fn issue(&self) -> Result<IssuedToken> {
         let req_url = std::env::var("ACTIONS_ID_TOKEN_REQUEST_URL").map_err(|_| {
             anyhow::anyhow!(
-                "bot mode requires `permissions: id-token: write` in your workflow — ACTIONS_ID_TOKEN_REQUEST_URL not set"
+                "bot mode requires `permissions: id-token: write` in your workflow: ACTIONS_ID_TOKEN_REQUEST_URL not set"
             )
         })?;
         let req_token = std::env::var("ACTIONS_ID_TOKEN_REQUEST_TOKEN").map_err(|_| {
             anyhow::anyhow!(
-                "bot mode requires `permissions: id-token: write` in your workflow — ACTIONS_ID_TOKEN_REQUEST_TOKEN not set"
+                "bot mode requires `permissions: id-token: write` in your workflow: ACTIONS_ID_TOKEN_REQUEST_TOKEN not set"
             )
         })?;
 
