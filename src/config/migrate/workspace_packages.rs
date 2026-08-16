@@ -1,12 +1,8 @@
 use std::path::Path;
 
-/// A `package.json` found by expanding the JS workspace globs.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct DiscoveredPackage {
-    /// `name` from the manifest, falling back to the directory name when the
-    /// manifest is nameless (private workspace roots often are).
     pub name: String,
-    /// Slash-separated path relative to the repo root.
     pub path: String,
 }
 
@@ -22,15 +18,8 @@ const SKIP_DIRS: &[&str] = &[
     "vendor",
 ];
 
-/// Deep enough for `apps/*/packages/*` style layouts without walking a whole
-/// monorepo's build output.
 const MAX_DEPTH: usize = 6;
 
-/// Reads workspace globs from `package.json` and `pnpm-workspace.yaml`, then
-/// returns every `package.json` under a directory matching one of them.
-///
-/// Returns an empty vec when the repo declares no workspace, which is the
-/// signal to fall back to a single root package.
 pub(super) fn discover(root: &Path) -> Vec<DiscoveredPackage> {
     let globs = workspace_globs(root);
     if globs.is_empty() {
@@ -63,9 +52,7 @@ fn globs_from_package_json(root: &Path) -> Vec<String> {
         return Vec::new();
     };
     match value.get("workspaces") {
-        // npm / yarn classic: "workspaces": ["packages/*"]
         Some(serde_json::Value::Array(items)) => string_list(items),
-        // yarn berry: "workspaces": { "packages": ["packages/*"] }
         Some(serde_json::Value::Object(obj)) => obj
             .get("packages")
             .and_then(|p| p.as_array())
@@ -100,7 +87,6 @@ fn string_list(items: &[serde_json::Value]) -> Vec<String> {
         .collect()
 }
 
-/// `./packages/*` and `packages/*/` both mean `packages/*`.
 fn normalise_glob(raw: &str) -> String {
     raw.trim_start_matches("./")
         .trim_end_matches('/')
@@ -141,8 +127,6 @@ fn collect(
     }
 }
 
-/// Negated globs (`!packages/internal`) never include anything; `discover`
-/// subtracts them after the walk.
 fn matches_glob(glob: &str, rel: &str) -> bool {
     !glob.starts_with('!') && glob_match::glob_match(glob, rel)
 }
@@ -240,8 +224,6 @@ mod tests {
         assert_eq!(found[0].path, "apps/web");
     }
 
-    // node_modules holds thousands of package.json files; walking into it would
-    // both be slow and scaffold dependencies as if they were our packages.
     #[test]
     fn node_modules_is_never_walked() {
         let dir = tempfile::tempdir().unwrap();

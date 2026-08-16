@@ -85,12 +85,6 @@ pub fn run(spec: &[String], json: bool, config_path: Option<&Path>) -> Result<()
     Ok(())
 }
 
-/// The raw range holds every commit between the two tags, including ones that
-/// only touched other packages. Keeping just the ones that touched this package
-/// makes the commit list, the breaking-change list and the rendered changelog
-/// match what `ferrflow release` would produce for it (#752).
-/// A commit whose changed files can't be read is kept rather than dropped —
-/// over-reporting is recoverable, silently hiding a commit is not.
 fn commit_touches_package(
     repo: &crate::git::Repository,
     pkg: &PackageConfig,
@@ -165,9 +159,6 @@ fn resolve_package<'a>(config: &'a Config, name: Option<&str>) -> Result<&'a Pac
     }
 }
 
-/// Resolve a range endpoint to a commit. Tries the endpoint as a literal tag
-/// first (real tag / `v1.4.0` in a single-package repo), then as the package's
-/// tag for that version (`api@v1.4.0`).
 fn resolve_endpoint(
     repo: &crate::git::Repository,
     pkg: &PackageConfig,
@@ -361,7 +352,6 @@ mod tests {
         let one = vec!["v1.0.0..v2.0.0".to_string()];
         assert_eq!(parse_spec(&one).unwrap(), (None, "v1.0.0..v2.0.0"));
 
-        // package can be given after the range too
         let rev = vec!["v1.0.0..v2.0.0".to_string(), "api".to_string()];
         assert_eq!(parse_spec(&rev).unwrap(), (Some("api"), "v1.0.0..v2.0.0"));
     }

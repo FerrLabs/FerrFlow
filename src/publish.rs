@@ -121,10 +121,6 @@ fn match_package_for_tag<'a>(config: &'a Config, tag: &str) -> Option<&'a Packag
         .map(|(pkg, _)| pkg)
 }
 
-/// Resolve the version currently on disk for `pkg` — the last released
-/// version, since `publish` runs after `release` has written and tagged
-/// it. Falls back to the highest matching tag for tag-only packages
-/// (#531) that carry no `versionedFiles`.
 fn current_version(
     repo: &Repository,
     pkg: &PackageConfig,
@@ -202,16 +198,12 @@ mod tests {
         )
         .unwrap();
         commit_file(dir.path(), "init.txt", "x", "chore: init", 1_800_000_003);
-        // No publishers → nothing runs, no error.
         with_cwd(dir.path(), || run(Some(&cfg), &[], false, true, false)).unwrap();
     }
 
     #[test]
     fn dry_run_dispatches_publisher_against_current_version() {
         let (dir, _repo) = init_repo();
-        // cargo publisher with no registry targets crates.io, so it skips
-        // token validation and short-circuits to DryRun without spawning
-        // cargo — exercising the read-version → dispatch path end to end.
         let cfg = write_config(
             dir.path(),
             r#"{"package": [{"name": "a", "path": ".", "versionedFiles": [{"path": "Cargo.toml", "format": "toml"}], "publishers": [{"kind": "cargo"}]}]}"#,
@@ -254,7 +246,6 @@ mod tests {
             r#"{"package": [{"name": "img", "path": ".", "changelog": "CHANGELOG.md"}]}"#,
         );
         commit_file(dir.path(), "init.txt", "x", "chore: init", 1_800_000_006);
-        // Single-package repo → default tag template is `v{version}`.
         git(dir.path(), &["tag", "v1.4.0"]);
         let config = Config::load(dir.path(), None).unwrap();
         let v = current_version(&repo, &config.packages[0], &config, dir.path()).unwrap();

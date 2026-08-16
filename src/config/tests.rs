@@ -3,10 +3,6 @@ use super::format::{format_handler, snake_to_camel, to_camel_case_keys};
 use super::loader_js::path_to_file_url;
 use super::*;
 
-// -----------------------------------------------------------------------
-// Config parsing (all formats)
-// -----------------------------------------------------------------------
-
 #[test]
 fn parse_json_config() {
     let json = r#"{
@@ -166,8 +162,6 @@ fn parse_versioning_strategies() {
 
 #[test]
 fn workspace_versioning_defaults_to_none() {
-    // Unset `versioning` in config should deserialize to None so callers
-    // can tell "user said nothing" apart from "user said semver".
     let json = r#"{ "workspace": {}, "package": [] }"#;
     let config: Config = serde_json::from_str(json).unwrap();
     assert_eq!(config.workspace.versioning, None);
@@ -192,10 +186,6 @@ fn parse_all_versioning_variants() {
         );
     }
 }
-
-// -----------------------------------------------------------------------
-// Effective versioning
-// -----------------------------------------------------------------------
 
 #[test]
 fn effective_versioning_inherits_workspace() {
@@ -321,10 +311,6 @@ fn effective_versioning_falls_back_to_semver_without_tags() {
     );
 }
 
-// -----------------------------------------------------------------------
-// Tag template
-// -----------------------------------------------------------------------
-
 fn make_pkg(name: &str, tag_template: Option<&str>) -> PackageConfig {
     PackageConfig {
         name: name.into(),
@@ -427,10 +413,6 @@ fn tag_template_name_placeholder() {
     assert_eq!(pkg.tag_for_version(&ws, true, "3.0.0"), "frontend-v3.0.0");
 }
 
-// -----------------------------------------------------------------------
-// is_monorepo
-// -----------------------------------------------------------------------
-
 #[test]
 fn is_monorepo_single() {
     let config = Config {
@@ -448,10 +430,6 @@ fn is_monorepo_multi() {
     };
     assert!(config.is_monorepo());
 }
-
-// -----------------------------------------------------------------------
-// Auto-detect
-// -----------------------------------------------------------------------
 
 #[test]
 fn auto_detect_empty_dir() {
@@ -515,10 +493,6 @@ fn auto_detect_multiple_files() {
     assert_eq!(config.packages[0].versioned_files.len(), 2);
 }
 
-// -----------------------------------------------------------------------
-// Config load with explicit path
-// -----------------------------------------------------------------------
-
 #[test]
 fn load_explicit_json() {
     let dir = tempfile::tempdir().unwrap();
@@ -552,10 +526,6 @@ fn load_explicit_not_found() {
     let path = dir.path().join("nope.json");
     assert!(Config::load_explicit(&path).is_err());
 }
-
-// -----------------------------------------------------------------------
-// Config serialization roundtrip
-// -----------------------------------------------------------------------
 
 #[test]
 fn json_roundtrip() {
@@ -672,10 +642,6 @@ fn toml_roundtrip() {
     assert_eq!(parsed.packages[0].name, "test");
 }
 
-// -----------------------------------------------------------------------
-// effective_skip_ci
-// -----------------------------------------------------------------------
-
 #[test]
 fn effective_skip_ci_defaults_true_for_commit_mode() {
     let ws = WorkspaceConfig {
@@ -722,10 +688,6 @@ fn effective_skip_ci_explicit_override() {
     };
     assert!(ws2.effective_skip_ci());
 }
-
-// -----------------------------------------------------------------------
-// Config::load — discovery logic
-// -----------------------------------------------------------------------
 
 #[test]
 fn load_discovers_json_config() {
@@ -785,7 +747,6 @@ fn load_fails_on_multiple_config_files() {
 #[test]
 fn load_falls_back_to_auto_detect() {
     let dir = tempfile::tempdir().unwrap();
-    // No config file, but a Cargo.toml exists
     std::fs::write(
         dir.path().join("Cargo.toml"),
         "[package]\nversion = \"0.1.0\"\n",
@@ -802,13 +763,11 @@ fn load_falls_back_to_auto_detect() {
 #[test]
 fn load_with_explicit_path_overrides_discovery() {
     let dir = tempfile::tempdir().unwrap();
-    // Put a decoy in the root
     std::fs::write(
         dir.path().join("ferrflow.json"),
         r#"{"package":[{"name":"decoy","path":"."}]}"#,
     )
     .unwrap();
-    // Put the real config elsewhere
     let sub = dir.path().join("custom");
     std::fs::create_dir_all(&sub).unwrap();
     std::fs::write(
@@ -819,10 +778,6 @@ fn load_with_explicit_path_overrides_discovery() {
     let config = Config::load(dir.path(), Some(&sub.join("my.json"))).unwrap();
     assert_eq!(config.packages[0].name, "real");
 }
-
-// -----------------------------------------------------------------------
-// Auto-detect edge cases
-// -----------------------------------------------------------------------
 
 #[test]
 fn auto_detect_version_txt() {
@@ -852,7 +807,6 @@ fn auto_detect_prefers_version_over_version_txt() {
     std::fs::write(dir.path().join("VERSION"), "1.0.0\n").unwrap();
     std::fs::write(dir.path().join("VERSION.txt"), "1.0.0\n").unwrap();
     let config = Config::auto_detect(dir.path());
-    // Should only pick one (VERSION, the first checked)
     let txt_files: Vec<_> = config.packages[0]
         .versioned_files
         .iter()
@@ -931,10 +885,6 @@ fn auto_detect_uses_dir_name_as_package_name() {
     assert_eq!(config.packages[0].name, dir_name);
 }
 
-// -----------------------------------------------------------------------
-// snake_to_camel
-// -----------------------------------------------------------------------
-
 #[test]
 fn snake_to_camel_basic() {
     assert_eq!(snake_to_camel("tag_template"), "tagTemplate");
@@ -950,10 +900,6 @@ fn snake_to_camel_no_underscores() {
     assert_eq!(snake_to_camel("name"), "name");
     assert_eq!(snake_to_camel(""), "");
 }
-
-// -----------------------------------------------------------------------
-// to_camel_case_keys
-// -----------------------------------------------------------------------
 
 #[test]
 fn to_camel_case_keys_transforms_known_keys() {
@@ -981,10 +927,6 @@ fn to_camel_case_keys_nested() {
     assert!(pkg.get("sharedPaths").is_some());
 }
 
-// -----------------------------------------------------------------------
-// JSON5 roundtrip
-// -----------------------------------------------------------------------
-
 #[test]
 fn json5_roundtrip() {
     let handler = Json5Format;
@@ -997,10 +939,6 @@ fn json5_roundtrip() {
     assert_eq!(parsed.packages[0].name, "test");
 }
 
-// -----------------------------------------------------------------------
-// Dotfile roundtrip
-// -----------------------------------------------------------------------
-
 #[test]
 fn dotfile_roundtrip() {
     let handler = DotfileFormat;
@@ -1012,10 +950,6 @@ fn dotfile_roundtrip() {
     let parsed = handler.parse(&serialized).unwrap();
     assert_eq!(parsed.packages[0].name, "test");
 }
-
-// -----------------------------------------------------------------------
-// ReleaseCommitMode parsing
-// -----------------------------------------------------------------------
 
 #[test]
 fn parse_release_commit_modes() {
@@ -1083,10 +1017,6 @@ fn defer_publish_parses_camel_case_alias() {
     assert!(config.workspace.defer_publish);
 }
 
-// -----------------------------------------------------------------------
-// load_explicit with json5
-// -----------------------------------------------------------------------
-
 #[test]
 fn load_explicit_json5() {
     let dir = tempfile::tempdir().unwrap();
@@ -1095,10 +1025,6 @@ fn load_explicit_json5() {
     let config = Config::load_explicit(&path).unwrap();
     assert_eq!(config.packages[0].name, "x");
 }
-
-// -----------------------------------------------------------------------
-// format_handler
-// -----------------------------------------------------------------------
 
 #[test]
 fn format_handler_returns_correct_filenames() {
@@ -1119,10 +1045,6 @@ fn format_handler_returns_correct_filenames() {
         ".ferrflow"
     );
 }
-
-// -----------------------------------------------------------------------
-// Config::is_monorepo edge case
-// -----------------------------------------------------------------------
 
 #[test]
 fn is_monorepo_empty() {
@@ -1176,7 +1098,6 @@ fn parse_json_ignores_unknown_fields() {
 
 #[test]
 fn default_workspace_config_values() {
-    // Default trait gives empty strings; serde defaults give "origin"/"main"
     let ws = WorkspaceConfig::default();
     assert_eq!(ws.versioning, None);
     assert!(ws.tag_template.is_none());
@@ -1187,7 +1108,6 @@ fn default_workspace_config_values() {
 
 #[test]
 fn serde_default_workspace_values() {
-    // When deserialized from JSON with explicit workspace, serde defaults fill missing fields
     let json = r#"{"workspace":{"remote":"origin"},"package":[]}"#;
     let config: Config = serde_json::from_str(json).unwrap();
     assert_eq!(config.workspace.remote, "origin");
@@ -1251,7 +1171,6 @@ fn tag_prefix_no_version_placeholder() {
         publishers: vec![],
         update_lockfiles: None,
     };
-    // When template has no {version}, prefix is the entire template
     assert_eq!(pkg.tag_prefix(&ws, false), "release-latest");
 }
 
@@ -1308,7 +1227,6 @@ fn load_with_relative_explicit_path() {
 #[test]
 fn auto_detect_no_version_files() {
     let dir = tempfile::tempdir().unwrap();
-    // Empty dir, no recognizable version files
     let config = Config::auto_detect(dir.path());
     assert!(config.packages.is_empty());
 }
@@ -1405,14 +1323,9 @@ fn channel_value_rejects_true() {
     assert!(matches!(config.channel, ChannelValue::Stable(true)));
 }
 
-// -----------------------------------------------------------------------
-// JS/TS config loading (requires node/tsx on PATH)
-// -----------------------------------------------------------------------
-
 #[cfg(feature = "cli")]
 #[test]
 fn load_explicit_js_config() {
-    // Skip if node is not available
     if std::process::Command::new("node")
         .arg("--version")
         .output()
@@ -1521,7 +1434,6 @@ fn load_explicit_js_not_found() {
 #[cfg(feature = "cli")]
 #[test]
 fn load_explicit_ts_config() {
-    // Skip if tsx cannot actually execute a TS file (not just --version)
     let dir = tempfile::tempdir().unwrap();
     let probe = dir.path().join("probe.mts");
     std::fs::write(&probe, "process.stdout.write('ok');").unwrap();
@@ -1590,10 +1502,8 @@ fn load_explicit_js_function_hooks() {
     .unwrap();
     let config = Config::load_explicit(&path).unwrap();
     assert_eq!(config.packages[0].name, "hook-app");
-    // String hook should remain as-is
     let hooks = config.workspace.hooks.unwrap();
     assert_eq!(hooks.pre_bump.as_deref(), Some("echo hello"));
-    // Function hook should be converted to a node command
     let post_bump = hooks.post_bump.unwrap();
     assert!(
         post_bump.contains("node"),
@@ -1605,7 +1515,6 @@ fn load_explicit_js_function_hooks() {
 #[cfg(feature = "cli")]
 #[test]
 fn path_to_file_url_unix_style() {
-    // Test the URL conversion with a temp path
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("test.js");
     std::fs::write(&path, "").unwrap();
@@ -1614,10 +1523,6 @@ fn path_to_file_url_unix_style() {
     assert!(url.contains("test.js"));
     assert!(!url.contains('\\'));
 }
-
-// -----------------------------------------------------------------------
-// publishers + registries (RFC v1 — parse/dry-run preview only)
-// -----------------------------------------------------------------------
 
 #[test]
 fn registries_parse_in_workspace_section() {

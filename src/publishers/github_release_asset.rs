@@ -1,12 +1,3 @@
-//! Upload a sidecar file to the GitHub Release that
-//! `ferrflow release` just created.
-//!
-//! Uses `gh release upload --clobber` so a re-run replaces the asset
-//! rather than failing — the upload is the load-bearing step and we'd
-//! rather end up with the *new* file than refuse to write because the
-//! *old* file is there. For users who want strict no-clobber, they
-//! can do that with a `webhook` publisher and a CI step instead.
-
 use anyhow::{Context, Result, anyhow};
 use std::process::Command;
 

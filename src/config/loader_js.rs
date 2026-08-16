@@ -16,14 +16,11 @@ pub(crate) fn path_to_file_url(path: &Path) -> Result<String> {
 
     let path_str = canonical.to_string_lossy().to_string();
 
-    // Strip Windows UNC prefix (\\?\) and normalize separators
     let normalized = path_str
         .strip_prefix(r"\\?\")
         .unwrap_or(&path_str)
         .replace('\\', "/");
 
-    // On Unix, paths start with / so file:// + /path = file:///path (correct).
-    // On Windows, paths are C:/... so we need file:///C:/... (extra slash).
     if normalized.starts_with('/') {
         Ok(format!("file://{normalized}"))
     } else {
@@ -31,9 +28,6 @@ pub(crate) fn path_to_file_url(path: &Path) -> Result<String> {
     }
 }
 
-/// JS snippet that resolves the config, converts function hooks to shell
-/// commands that re-invoke the config file at hook time, and dumps the result
-/// as JSON to stdout.
 const LOADER_SCRIPT: &str = r#"
 function reifyHooks(hooks, fileUrl, runtime, hookPath) {
   if (!hooks || typeof hooks !== 'object') return hooks;
@@ -81,14 +75,6 @@ pub(crate) fn load_js_ts_config(path: &Path) -> Result<Config> {
     let file_url = path_to_file_url(path)?;
 
     let output = if ext == "ts" {
-        // For TS: write a temporary .mjs loader that dynamically imports the .ts
-        // file via file URL. tsx handles the TS→JS transpilation at import time.
-        //
-        // The wrapper lives in `tempfile::tempdir()` rather than next to the
-        // user's .ts: writing into a directory we don't own opens a symlink
-        // TOCTOU (a cohabiting process can create the path pointing at e.g.
-        // ~/.bashrc, and `fs::write` follows it). Tsx still resolves the .ts
-        // via absolute `file://` URL, so its CWD doesn't matter.
         let wrapper_tempdir = tempfile::tempdir()
             .with_context(|| "Failed to create temporary directory for TS loader")
             .error_code(error_code::CONFIG_WRITE_LOADER)?;
@@ -128,11 +114,9 @@ pub(crate) fn load_js_ts_config(path: &Path) -> Result<Config> {
             })
             .error_code(error_code::CONFIG_EVAL_TS);
 
-        // tempdir auto-deletes on drop — no manual remove_file needed.
         drop(wrapper_tempdir);
         result?
     } else {
-        // .js — use node with inline script
         let script = loader_body(&file_url, "node");
 
         let parent = path.parent().unwrap_or(Path::new("."));

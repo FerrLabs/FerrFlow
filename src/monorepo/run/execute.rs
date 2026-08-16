@@ -20,13 +20,6 @@ use crate::forge::{Forge, ReleaseResult};
 use crate::monorepo::preview::build_forge_instance;
 use crate::monorepo::util::{auto_stage_new_files, collect_dirty_files};
 
-/// Inputs threaded through the execution phase. Bundling these as one
-/// `&mut ReleasePlan` keeps the per-step function signatures readable —
-/// the planning phase used to declare 14 mutable locals and pass them
-/// piecewise across each git/forge operation.
-///
-/// Lifetime: borrows from the caller's locals; lives only for the
-/// duration of a single `run_release_logic` invocation.
 pub(super) struct ReleasePlan<'a> {
     pub repo: &'a Repository,
     pub config: &'a Config,
@@ -42,33 +35,14 @@ pub(super) struct ReleasePlan<'a> {
     pub files_per_package: &'a mut HashMap<String, Vec<String>>,
     pub pkg_outputs: &'a mut Vec<(String, Vec<String>)>,
     pub shared_outputs: &'a mut Vec<String>,
-    /// Per-tag forge release metadata captured from `create_release`,
-    /// surfaced in `release --json`. Empty on dry-run.
     pub forge_results: &'a mut Vec<(String, ReleaseResult)>,
-    /// Crash-resume marker, persisted at `.git/ferrflow.checkpoint.json`
-    /// as each phase succeeds. `None` on dry-run (we never write
-    /// anything in that mode) and on resumed runs that already finished
-    /// every phase. See #549.
     pub checkpoint: Option<&'a mut Checkpoint>,
-    /// Pre-resolved forge. `None` — the production path — resolves one from
-    /// config at publish time, which keeps the forge auto-detection probe off
-    /// dry-runs and off releases that never reach the publish phase. Tests
-    /// inject a double to observe what the publish step does (or, for the
-    /// ordering guarantee, that it never ran).
     pub forge: Option<&'a dyn Forge>,
 }
 
-/// Run the commit / branch+PR / tag / floating-tag / forge-release /
-/// push phase of a release, given the per-package decisions already
-/// captured into `plan.tags_to_create`.
-///
-/// Behaviour-preserving extraction from `run_release_logic` — see #529.
 pub(super) fn execute_release(plan: &mut ReleasePlan<'_>) -> Result<()> {
     run_pre_commit_hooks(plan)?;
 
-    // Snapshot files_to_commit AFTER pre-commit hooks may have appended
-    // auto-staged paths. Clone to own the strings — `plan` itself stays
-    // mutably borrowable by the commit/push helpers below.
     let files_snapshot: Vec<String> = plan.files_to_commit.clone();
     let mode = plan.config.workspace.release_commit_mode;
     let scope = plan.config.workspace.release_commit_scope;
@@ -102,9 +76,6 @@ pub(super) fn execute_release(plan: &mut ReleasePlan<'_>) -> Result<()> {
                 &release_parts,
                 skip_ci,
             )?;
-            // Record HEAD post-commit so the checkpoint reflects the
-            // actual release commit (not the pre-bump HEAD we started
-            // from). Useful for debug + future resume sanity checks.
             if let (Some(cp), Some(id)) = (plan.checkpoint.as_mut(), plan.repo.head_id().ok()) {
                 cp.commit_sha = Some(id.to_string());
             }
@@ -197,9 +168,6 @@ fn run_pre_commit_hooks(plan: &mut ReleasePlan<'_>) -> Result<()> {
 }
 
 fn release_branch_name(target_branch: &str) -> String {
-    // Namespaced under `ferrflow/` and scoped per target so there's exactly one
-    // long-lived release branch per target. Slashes in the target are flattened
-    // to keep it a single ref level (avoids git dir/file ref conflicts).
     format!("ferrflow/release-{}", target_branch.replace('/', "-"))
 }
 
@@ -235,12 +203,9 @@ fn run_commit_or_pr(
             }
         }
         ReleaseCommitMode::Pr => {
-            // One stable branch per target so the same PR is reused across
-            // commits instead of a new one opening per version (#703).
             let branch_name = release_branch_name(plan.target_branch);
             let remote = &plan.config.workspace.remote;
 
-            // Don't clobber commits a human pushed onto the release branch.
             match release_branch_foreign_commit(plan.repo, remote, &branch_name, plan.target_branch)
             {
                 Ok(Some(subject)) => {
@@ -289,8 +254,6 @@ fn run_commit_or_pr(
             } else {
                 create_branch_and_commit(plan.repo, &branch_name, file_refs, commit_msg)?;
             }
-            // Force-push: the branch is rebuilt from the fresh release commit
-            // every run, so the open PR updates in place.
             force_push_branch(plan.repo, remote, &branch_name)?;
             plan.shared_outputs
                 .push(format!("✓ Pushed branch {}", branch_name.cyan()));
@@ -501,11 +464,6 @@ fn run_release_summary_hook(plan: &ReleasePlan<'_>, point: HookPoint) -> Result<
     Ok(())
 }
 
-// Git lands first, the forge second (#770). Publishing a release that
-// references a tag the remote doesn't have yet means every failure in between
-// leaves the forge ahead of git: releases published against a missing ref, and
-// on GitHub/Gitea a lightweight tag auto-created from `target_commitish` that
-// shadows the annotated tag carrying the changelog body.
 fn push_refs(
     plan: &mut ReleasePlan<'_>,
     mode: ReleaseCommitMode,
@@ -700,13 +658,6 @@ fn run_post_publish_hooks(plan: &mut ReleasePlan<'_>) -> Result<()> {
                 plan.root,
             )?;
         }
-        // Declarative publishers preview. v1 ships the plan only —
-        // Declarative publishers: cargo executes for real now (#572 +
-        // this PR), the other kinds still preview-only until their PR
-        // lands. The dispatcher hides the kind-by-kind degradation —
-        // users see uniform "[kind] action … → status" log lines and
-        // can declare their full publishing plan today without waiting
-        // for every executor.
         run_publishers_for_package(plan, pkg, &ctx.package, &ctx.new_version, &ctx.tag)?;
     }
     Ok(())
@@ -719,9 +670,6 @@ fn run_publishers_for_package(
     new_version: &str,
     tag: &str,
 ) -> Result<()> {
-    // `deferPublish` hands publishing off to a separate `ferrflow
-    // publish` run (typically a CI job that carries the build toolchain
-    // the release job lacks). Skip the inline run here.
     if plan.config.workspace.defer_publish {
         return Ok(());
     }
@@ -738,10 +686,6 @@ fn run_publishers_for_package(
     crate::publishers::run_all(&pkg.publishers, &pub_ctx)
 }
 
-/// Dry-run hook trace: when nothing will actually fire (no commit, no
-/// tag push), still print what the user's PreCommit/PrePublish/PostPublish
-/// hooks WOULD have run. Mirrors the old inline `else if dry_run &&
-/// any_bumped` branch.
 pub(super) fn print_dry_run_hooks(plan: &ReleasePlan<'_>) -> Result<()> {
     for (ctx, pkg_idx) in plan.hook_contexts {
         let pkg = &plan.config.packages[*pkg_idx];
@@ -864,10 +808,7 @@ mod tag_release_tests {
     #[test]
     fn release_branch_name_is_stable_and_target_scoped() {
         assert_eq!(release_branch_name("main"), "ferrflow/release-main");
-        // The name must not depend on the version — that's what keeps one
-        // long-lived PR per target instead of a new one per release (#703).
         assert_eq!(release_branch_name("main"), release_branch_name("main"));
-        // Slashes in the target are flattened to one ref level.
         assert_eq!(
             release_branch_name("release/beta"),
             "ferrflow/release-release-beta"
@@ -1035,9 +976,7 @@ mod tag_release_tests {
             release_url_for_tag(&results, "api@v1.0.0").as_deref(),
             Some("https://forge/api")
         );
-        // Tag released but the forge returned no URL.
         assert_eq!(release_url_for_tag(&results, "web@v2.0.0"), None);
-        // Tag not in this batch's forge results.
         assert_eq!(release_url_for_tag(&results, "cli@v3.0.0"), None);
     }
 }

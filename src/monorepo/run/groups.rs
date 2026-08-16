@@ -197,7 +197,6 @@ mod tests {
             );
             assert_eq!(plan.tag, format!("{name}@v1.1.0"));
         }
-        // The patch member was raised to the group minor.
         assert_eq!(as_bump(&plans[1]).new_version, "1.1.0");
     }
 

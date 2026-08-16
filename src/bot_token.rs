@@ -1,9 +1,5 @@
 use anyhow::{Context, Result, bail};
 
-// L'API sert ses routes à la racine : le contrat se négocie par l'en-tête
-// `x-ferrflow-api-version`, plus par le chemin (FerrFlow-Cloud#784). Les
-// montages `/v1` y restent servis le temps que les binaires déjà distribués
-// sortent de circulation, mais les nouveaux visent directement la racine.
 const DEFAULT_ENDPOINT: &str = "https://api.ferrflow.com/ferrflow/token";
 const DEFAULT_AUDIENCE: &str = "ferrflow.ferrlabs.com";
 
@@ -216,9 +212,6 @@ pub fn ensure_bot_token() -> Result<()> {
         .context("failed to obtain FerrFlow bot token")?;
 
     // SAFETY: set_var mutates the process environment, which is UB (#710) if
-    // another thread is concurrently reading or writing it. main() calls this
-    // before concurrency::init spawns the rayon pool, so no other thread is
-    // alive at this point. The EXCHANGED guard above keeps it one-shot.
     unsafe {
         std::env::set_var("GITHUB_TOKEN", &issued.token);
         std::env::set_var("FERRFLOW_TOKEN", &issued.token);
@@ -328,10 +321,6 @@ mod tests {
         });
     }
 
-    // Asserted against the literals, not the constants: the point is that these
-    // two values are a contract with the deployed service, not that the struct
-    // copies its own defaults. The audience in particular is what the server
-    // checks the OIDC token against, so a change here rejects every runner.
     #[test]
     fn defaults_use_hosted_endpoint_and_audience() {
         with_env(

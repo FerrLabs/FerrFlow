@@ -10,11 +10,6 @@ use super::repo::Repository;
 use super::retry::retry_transient;
 use super::shell::run_git;
 
-// Resolved in-process via gix rather than `git rev-list -n 1` per tag: this
-// runs once per pushed tag, and each process spawn costs 10-20ms on Windows —
-// seconds on a 200-package release. Fully peeling matters: an annotated tag's
-// ref points at the tag object, while the remote comparison below uses the
-// ls-remote `^{}` (commit) form.
 pub(super) fn local_tag_target_sha(repo: &Repository, tag: &str) -> Result<String> {
     let reference = repo
         .find_reference(&format!("refs/tags/{tag}"))
@@ -155,10 +150,6 @@ fn resolve_push_source(repo: &Repository, branch: &str) -> String {
     }
 }
 
-// Overwrite the remote branch with the local one. Used by the persistent
-// release PR (#703): each run rebuilds the same release branch from the
-// fresh release commit and force-pushes it, so the open PR updates in place
-// instead of a new branch/PR being opened per version.
 pub fn force_push_branch(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
     super::validate::ensure_safe_refname_fragment(remote_name, "remote name")?;
     super::validate::ensure_safe_refname_fragment(branch, "branch name")?;
@@ -174,7 +165,6 @@ fn try_force_push_branch_once(repo: &Repository, remote_name: &str, branch: &str
     let push_url = get_remote_url(repo, remote_name)
         .ok_or_else(|| anyhow!("Remote '{remote_name}' has no URL"))?;
     let source = resolve_push_source(repo, branch);
-    // A leading '+' on the refspec forces the update.
     let refspec = format!("+{source}:refs/heads/{branch}");
 
     let mut cmd = std::process::Command::new("git");
@@ -196,10 +186,6 @@ fn try_force_push_branch_once(repo: &Repository, remote_name: &str, branch: &str
 }
 
 // SAFETY GUARD for the persistent release PR: before force-pushing the
-// release branch we make sure we won't clobber work a human pushed onto it.
-// Returns the subject of the first commit on the remote release branch (not
-// on `base`) that FerrFlow didn't author (i.e. isn't a `chore(release):`
-// commit), or None when the branch is absent or holds only release commits.
 pub fn release_branch_foreign_commit(
     repo: &Repository,
     remote_name: &str,
@@ -235,7 +221,6 @@ pub fn release_branch_foreign_commit(
         ))
         .error_code(error_code::GIT_INSPECT_RELEASE_BRANCH);
     }
-    // Branch not on the remote yet — nothing to clobber.
     if String::from_utf8_lossy(&ls_out.stdout).trim().is_empty() {
         return Ok(None);
     }
@@ -458,12 +443,6 @@ pub fn reset_branch_to_remote(repo: &Repository, remote_name: &str, branch: &str
     Ok(())
 }
 
-// Rebasing here would rewrite HEAD while the release tags created in an
-// earlier phase stay pinned to the pre-rebase commit, so the run would push
-// orphaned tags — or collide with a version a concurrent run just published
-// (E2006). A rejected push is surfaced instead, letting the regenerate loop in
-// `monorepo::release` reset to the remote tip and recompute the whole plan
-// against the new base.
 pub fn push(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
     try_push_branch(repo, remote_name, branch)
         .with_context(|| format!("Failed to push branch '{branch}'"))

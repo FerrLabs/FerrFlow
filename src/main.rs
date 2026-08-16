@@ -28,11 +28,6 @@ mod validate;
 mod version_diff;
 mod versioning;
 
-// Allocator swap for the CLI hot paths. The default system allocator
-// (glibc malloc / Windows HeapAlloc) is well-known to be suboptimal on
-// alloc-heavy short-lived CLIs; mimalloc consistently wins 5-15% on
-// commit-walk / tag-scan / regex-capture workloads — see #507. Disabled
-// in tests so they don't drag in the dep when not needed.
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
@@ -44,10 +39,6 @@ fn main() {
 
     logging::init_logging(cli.verbose, cli.log_format);
 
-    // Exchange the bot token here, while the process is still single-threaded:
-    // it writes GITHUB_TOKEN/FERRFLOW_TOKEN with set_var, and the next line
-    // (concurrency::init) spawns the rayon pool on --jobs. set_var racing a
-    // live worker is UB (#710), so it must run before any thread exists.
     if cli.command.needs_bot_token()
         && let Err(err) = bot_token::ensure_bot_token()
     {

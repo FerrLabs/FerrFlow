@@ -129,7 +129,6 @@ fn probe_status(agent: &ureq::Agent, url: &str) -> Option<u16> {
     match agent.get(url).header("User-Agent", "ferrflow").call() {
         Ok(response) => Some(response.status().as_u16()),
         Err(ureq::Error::StatusCode(code)) => Some(code),
-        // DNS failure, connection refused, TLS error, timeout: no answer.
         Err(_) => None,
     }
 }
@@ -139,16 +138,12 @@ fn kind_from_probe_statuses(
     gitea: Option<u16>,
     github: Option<u16>,
 ) -> Option<ForgeKind> {
-    // GitLab's version endpoint requires auth, so a 401 confirms the API is
-    // there just as well as a 200; a 404 means it isn't GitLab.
     if matches!(gitlab, Some(200) | Some(401)) {
         return Some(ForgeKind::Gitlab);
     }
-    // Gitea / Forgejo serve /api/v1/version publicly.
     if gitea == Some(200) {
         return Some(ForgeKind::Gitea);
     }
-    // GitHub Enterprise's REST root is public.
     if github == Some(200) {
         return Some(ForgeKind::Github);
     }
@@ -160,21 +155,11 @@ pub fn extract_host(url: &str) -> Option<String> {
         .strip_prefix("https://")
         .or_else(|| url.strip_prefix("http://"))
     {
-        // Strip the authority (everything up to the first '/').
         let authority = rest.split('/').next()?;
-        // If userinfo is present (`user[:password]@host`), take what's
-        // after the LAST '@'. The previous implementation returned the
-        // whole `userinfo@host` substring, which a) couldn't match
-        // detect_forge_from_url's hostname allow-list and b) could be
-        // used to confuse downstream forge-host construction when a
-        // malicious remote URL embeds a fake userinfo segment.
         let host_port = authority.rsplit('@').next()?;
-        // Drop the optional `:port` suffix.
         let host = host_port.split(':').next()?;
         valid_host(host)
     } else if url.contains('@') && url.contains(':') {
-        // SSH form: `user@host:owner/repo`. Take what's after the LAST '@'
-        // and before the first ':'.
         let after_at = url.rsplit('@').next()?;
         let host = after_at.split(':').next()?;
         valid_host(host)
@@ -257,12 +242,6 @@ pub fn resolve_token(kind: ForgeKind) -> Option<String> {
 }
 
 pub fn build_forge(kind: ForgeKind, token: String, slug: String, host: String) -> Box<dyn Forge> {
-    // One Agent per Forge instance, shared across every HTTP call this
-    // forge performs during a release. ureq's bare module-level helpers
-    // (`ureq::get`, `ureq::post`, ...) create a fresh agent + TLS
-    // handshake per call. A 50-pkg release does ~150 HTTPS round-trips
-    // against api.github.com — reusing the agent saves 2-8 seconds via
-    // HTTP keep-alive. See #509.
     let agent = crate::http::agent();
     match kind {
         ForgeKind::Github => {
@@ -297,10 +276,6 @@ pub fn build_forge(kind: ForgeKind, token: String, slug: String, host: String) -
             })
         }
         ForgeKind::Bitbucket => {
-            // Cloud speaks REST 2.0 under api.bitbucket.org; Server / Data
-            // Center uses a different base (`/rest/api/1.0`) and is out of
-            // scope for now (#656) — build it so the tag still lands, but
-            // only Cloud gets a forge-side release URL.
             let is_cloud = host == "bitbucket.org";
             let api_base = if is_cloud {
                 "https://api.bitbucket.org/2.0".to_string()
@@ -412,7 +387,6 @@ mod tests {
 
     #[test]
     fn probe_classifier_maps_statuses_to_kinds() {
-        // GitLab: 200 or 401 on /api/v4/version (the endpoint needs auth).
         assert_eq!(
             kind_from_probe_statuses(Some(200), None, None),
             Some(ForgeKind::Gitlab)
@@ -421,22 +395,18 @@ mod tests {
             kind_from_probe_statuses(Some(401), None, None),
             Some(ForgeKind::Gitlab)
         );
-        // GitLab is checked first and wins if several endpoints answer.
         assert_eq!(
             kind_from_probe_statuses(Some(401), Some(200), Some(200)),
             Some(ForgeKind::Gitlab)
         );
-        // Gitea / Forgejo: public /api/v1/version, and not GitLab.
         assert_eq!(
             kind_from_probe_statuses(Some(404), Some(200), None),
             Some(ForgeKind::Gitea)
         );
-        // GitHub Enterprise: public /api/v3 root, others absent.
         assert_eq!(
             kind_from_probe_statuses(Some(404), Some(404), Some(200)),
             Some(ForgeKind::Github)
         );
-        // Nothing recognisable → no forge.
         assert_eq!(
             kind_from_probe_statuses(Some(404), Some(404), Some(404)),
             None
@@ -446,7 +416,6 @@ mod tests {
 
     #[test]
     fn probe_short_circuits_known_saas_hosts_without_network() {
-        // Known hosts resolve via detect_forge_from_url, so these never probe.
         assert_eq!(
             detect_forge_with_probe("https://github.com/o/r.git"),
             Some(ForgeKind::Github)
@@ -743,13 +712,9 @@ mod tests {
 
     #[test]
     fn extract_host_rejects_non_hostname_chars() {
-        // Defense in depth: a derived "host" that isn't a syntactically
-        // valid hostname must not be used to build the API base and
-        // receive the bearer token.
         assert_eq!(extract_host("https://ho st/owner/repo"), None);
         assert_eq!(extract_host("https://host_underscore/o/r"), None);
         assert_eq!(extract_host("https://h%40ck/o/r"), None);
-        // Legit self-hosted hostnames still pass.
         assert_eq!(
             extract_host("https://git.corp.example.com/o/r").as_deref(),
             Some("git.corp.example.com")

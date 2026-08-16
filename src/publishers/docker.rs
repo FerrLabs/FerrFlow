@@ -1,29 +1,3 @@
-//! `docker buildx build --push` executor with optional Sigstore.
-//!
-//! Behaviour:
-//! - Resolves tag templates (`{version}`, `{major}`, `{minor}`,
-//!   `latest`) so users declare a single tag pattern in config and
-//!   we expand it per release.
-//! - Probes the registry with `docker manifest inspect <image>:<tag>`
-//!   before building; if every requested tag is already present, we
-//!   skip the build entirely. Crash-resume friendly and CI re-run
-//!   friendly.
-//! - Runs `docker buildx build --platform … --tag … --push` from the
-//!   package's `context` (relative to the package path) with the
-//!   configured `dockerfile`. Multi-arch is one buildx invocation,
-//!   not N consecutive docker pushes — that's the only way to publish
-//!   the right manifest list.
-//! - When `sign: sigstore`, runs `cosign sign --yes <image>@<digest>`
-//!   for the produced manifest. We sign the digest, not the floating
-//!   tag, so the signature stays valid even if `latest` later moves.
-//!
-//! Auth assumption: the caller has already logged into the target
-//! registry — that's how every other docker step in the CI works
-//! (`docker login ghcr.io -u … -p $GITHUB_TOKEN` happens once per
-//! workflow, not per push). FerrFlow doesn't try to manage docker
-//! credentials; it would conflict with the rest of the runner's
-//! docker state.
-
 use anyhow::{Context, Result, anyhow};
 use std::path::Path;
 use std::process::Command;
@@ -53,9 +27,6 @@ pub fn run(
         return Ok(PublishOutcome::DryRun);
     }
 
-    // Idempotency probe: if every requested image:tag already
-    // resolves on the registry, skip. We accept partial-overlap as a
-    // need-to-build (a previous run wrote some tags but not all).
     let probe = image_refs
         .iter()
         .all(|r| manifest_exists(r).unwrap_or(false));
@@ -88,8 +59,6 @@ pub fn run(
     }
     cmd.arg("--metadata-file")
         .arg(metadata_path(ctx.package_path));
-    // User-supplied flags go BEFORE the build-context positional —
-    // buildx rejects flags that follow the context argument.
     cmd.args(extra_args);
     cmd.arg(&context_path);
 
@@ -109,7 +78,6 @@ pub fn run(
         .error_code(error_code::CONFIG_INVALID_PATH);
     }
 
-    // Optional sigstore signing — sign the digest, not the tag.
     if matches!(sign, DockerSign::Sigstore) {
         let digest = read_manifest_digest(&metadata_path(ctx.package_path)).with_context(
             || "could not read manifest digest from buildx metadata for cosign signing",
@@ -131,8 +99,6 @@ pub fn run(
         }
     }
 
-    // Best-effort cleanup of the metadata file. Not fatal if it
-    // sticks around — buildx will overwrite next run.
     let _ = std::fs::remove_file(metadata_path(ctx.package_path));
 
     Ok(PublishOutcome::Published {
@@ -144,10 +110,6 @@ fn metadata_path(package_path: &Path) -> std::path::PathBuf {
     package_path.join(".ferrflow-buildx-metadata.json")
 }
 
-/// Read the top-level manifest digest written by `docker buildx
-/// build --metadata-file`. Buildx's JSON shape isn't 100% stable
-/// across versions, so we accept either of the two field names we've
-/// seen in the wild.
 fn read_manifest_digest(path: &Path) -> Result<String> {
     let raw = std::fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
     let v: serde_json::Value =
@@ -162,9 +124,6 @@ fn read_manifest_digest(path: &Path) -> Result<String> {
     ))
 }
 
-/// `docker manifest inspect <ref>` — succeeds (exit 0) when the
-/// manifest is on the registry; non-zero otherwise. We don't care
-/// about the payload; just the boolean.
 fn manifest_exists(image_ref: &str) -> Result<bool> {
     let out = Command::new("docker")
         .arg("manifest")
@@ -175,10 +134,6 @@ fn manifest_exists(image_ref: &str) -> Result<bool> {
     Ok(out.status.success())
 }
 
-/// Expand `{version}`, `{major}`, `{minor}`, `latest` in the
-/// per-image tag templates. We deliberately leave `{patch}` out for
-/// now — it's redundant with `{version}` and adding it later is
-/// backwards compatible. See RFC #571.
 fn expand_tags(templates: &[String], new_version: &str) -> Vec<String> {
     let (major, minor) = split_major_minor(new_version);
     templates
@@ -197,10 +152,6 @@ fn expand_tags(templates: &[String], new_version: &str) -> Vec<String> {
         .collect()
 }
 
-/// Returns (major, "major.minor") slices of the version string. If
-/// the version isn't dot-separated (e.g. `2026.06` calver) we return
-/// (None, None) and the `{major}` / `{minor}` placeholders stay as
-/// literals — easier to debug than producing wrong-looking tags.
 fn split_major_minor(v: &str) -> (Option<&str>, Option<&str>) {
     let core = v
         .split_once('-')
@@ -279,8 +230,6 @@ mod tests {
             &["{version}".into(), "{major}".into(), "{minor}".into()],
             "1.2.3-beta.1+ci.42",
         );
-        // `{version}` keeps the suffix (matches the actual release);
-        // `{major}/{minor}` are split from the bare-core.
         assert_eq!(tags[0], "1.2.3-beta.1+ci.42");
         assert_eq!(tags[1], "1");
         assert_eq!(tags[2], "1.2");
@@ -294,9 +243,6 @@ mod tests {
 
     #[test]
     fn split_major_minor_calver_yields_partial() {
-        // A calver-shaped "2026.06" has no patch — we get (Some, Some)
-        // for major/minor and `{minor}` resolves to "2026.06" which
-        // is correct for the calver semantics.
         let (maj, min) = split_major_minor("2026.06");
         assert_eq!(maj, Some("2026"));
         assert_eq!(min, Some("2026.06"));

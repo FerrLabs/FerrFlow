@@ -81,7 +81,6 @@ mod end_to_end {
             let repo = open_repo(root).ok();
             let repo_ref = repo.as_ref();
             let section = checks::repo_section(repo_ref, None, root);
-            // A freshly `git init`-ed repo has no commits yet.
             assert_eq!(find(&section, "commit history").status, Status::Error);
             Ok(())
         })
@@ -103,7 +102,6 @@ mod end_to_end {
         let discovered = Config::discovered_config_paths(root);
         let section = checks::config_section(config.as_ref(), None, &discovered, root);
 
-        // packages/api does not exist on disk — the report must point at it.
         assert!(
             section
                 .checks
@@ -122,13 +120,11 @@ mod end_to_end {
         write(root, "ferrflow.toml", "");
 
         let discovered = Config::discovered_config_paths(root);
-        // Config::load errors on ambiguity, so doctor sees no parsed config.
         let section = checks::config_section(None, None, &discovered, root);
 
         let config_file = find(&section, "config file");
         assert_eq!(config_file.status, Status::Error);
         assert!(config_file.detail.as_deref().unwrap().contains("ambiguous"));
-        // No second, duplicate "config parses" error.
         assert_eq!(section.checks.len(), 1);
     }
 

@@ -35,8 +35,6 @@ impl Fixture {
     }
 }
 
-/// Three packages: `core` standalone, `api` with a shared path and a default
-/// (`same`) dependency on core, `web` with a `patch` policy on core.
 fn monorepo() -> Fixture {
     let (dir, repo) = init_repo();
     let root = dir.path().to_path_buf();
@@ -115,8 +113,6 @@ fn a_feat_commit_on_the_package_explains_the_minor_bump() {
     }
 }
 
-// The whole point of the command: name the files that were examined and say
-// which rule each one failed, instead of a bare "not touched".
 #[test]
 fn an_untouched_package_lists_the_files_that_did_not_match() {
     let fx = monorepo();
@@ -157,8 +153,6 @@ fn a_shared_path_hit_names_the_rule_that_matched() {
     );
 }
 
-// A package skipped on its own commits still releases when an upstream moves.
-// Reporting "not touched" and stopping there would contradict the next release.
 #[test]
 fn a_cascaded_package_reports_the_dependency_as_the_trigger() {
     let fx = monorepo();
@@ -194,7 +188,6 @@ fn a_cascaded_package_reports_the_dependency_as_the_trigger() {
         ),
     }
 
-    // Same upstream, default policy: `api` takes the major.
     let api = fx.explain("api");
     match bump_of(&api) {
         Decision::Bump { bump, to, .. } => {
@@ -207,8 +200,6 @@ fn a_cascaded_package_reports_the_dependency_as_the_trigger() {
     }
 }
 
-// "I committed five times and nothing released" — the commits have to be listed
-// with their classification, or the skip reason is unactionable.
 #[test]
 fn a_chore_only_history_still_lists_the_commits_it_rejected() {
     let fx = monorepo();
@@ -264,8 +255,6 @@ fn a_never_released_package_reports_no_tag() {
     );
 }
 
-// `matching_rule` restates `is_touched_by` one file at a time so the report can
-// name the rule; if the two ever disagree the explanation is a lie.
 #[test]
 fn the_per_file_rule_agrees_with_the_touch_check() {
     let fx = monorepo();

@@ -180,7 +180,6 @@ fn collect_package(path_default: &str, monorepo: bool) -> PackageConfig {
 const DEFAULT_MANIFEST_FILE: &str = ".ferrflow.manifest.json";
 
 pub fn init(format: Option<ConfigFileFormat>, manifest: bool) -> Result<()> {
-    // Check if any config file already exists
     for handler in CONFIG_FORMATS {
         let path = PathBuf::from(handler.filename());
         if path.exists() {

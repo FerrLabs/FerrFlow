@@ -1,24 +1,11 @@
 use anyhow::Result;
 
-/// Parsed `--force-version` input.
-///
-/// `name` is `Some` only when the input was `NAME@VERSION` (mandatory in
-/// monorepo mode). `version` excludes any leading `v` prefix —
-/// callers can `strip_prefix('v')` once at use time if needed but
-/// validation has already accepted both forms.
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct Forced<'a> {
     pub name: Option<&'a str>,
     pub version: &'a str,
 }
 
-/// Parse and validate the `--force-version` CLI input.
-///
-/// Returns `Ok(None)` when the user didn't pass `--force-version` at all.
-/// Returns an error when:
-/// - the input is malformed (empty name or empty version in `NAME@VERSION`)
-/// - the input is bare `VERSION` but the config is a monorepo
-/// - the version part doesn't parse as semver (with or without leading `v`)
 pub(super) fn parse_forced_version<'a>(
     force_version: Option<&'a str>,
     is_monorepo: bool,
@@ -57,10 +44,6 @@ pub(super) fn parse_forced_version<'a>(
     Ok(Some(parsed))
 }
 
-/// Resolve the forced version applicable to a given package.
-///
-/// In single-package mode (`Forced.name == None`) every package matches.
-/// In monorepo mode only the targeted package gets the forced version.
 pub(super) fn forced_version_for<'a>(
     forced: &Option<Forced<'a>>,
     pkg_name: &str,

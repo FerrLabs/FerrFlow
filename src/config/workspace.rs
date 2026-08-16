@@ -14,8 +14,6 @@ pub struct WorkspaceConfig {
     pub remote: String,
     #[serde(default = "default_branch")]
     pub branch: String,
-    // Telemetry was removed in v5.33; the key stays accepted so existing
-    // configs neither warn nor fail schema validation. Nothing reads it.
     #[serde(default = "default_telemetry", alias = "telemetry")]
     pub anonymous_telemetry: bool,
     #[serde(default)]
@@ -48,62 +46,20 @@ pub struct WorkspaceConfig {
     pub hooks: Option<HooksConfig>,
     #[serde(default)]
     pub branches: Option<Vec<BranchChannelConfig>>,
-    /// Named registry credentials shared by `package.publishers[]`.
-    /// Keyed by a short identifier (e.g. `"kellnr"`, `"gh-packages"`)
-    /// that publishers reference by name. Lets users declare auth
-    /// once and reuse it across every cargo / npm / docker entry. See
-    /// the publisher RFC.
     #[serde(default)]
     pub registries: BTreeMap<String, RegistryConfig>,
-    /// When `true`, `ferrflow release` does NOT run the configured
-    /// `publishers` inline — it defers them to a separate `ferrflow
-    /// publish` invocation. Default `false` (publishers run at the end
-    /// of `release`, as usual). Set `true` when the release job is
-    /// minimal but publishing needs a build toolchain (docker buildx,
-    /// helm, a built npm dist) that lives in another CI job. `ferrflow
-    /// publish` always runs the publishers regardless of this flag.
     #[serde(default, alias = "deferPublish")]
     pub defer_publish: bool,
     #[serde(default)]
     pub changelog: Option<ChangelogConfig>,
-    /// Opt-in single-file source of truth for per-package versions.
-    /// When set (e.g. `".ferrflow.manifest.json"`), `ferrflow release`
-    /// writes a full version snapshot to this path (relative to the repo
-    /// root) as part of the release commit, validates it against the
-    /// versioned files at release start, and `status` / `version` read
-    /// from it. `None` (default) leaves all behaviour unchanged.
     #[serde(default, alias = "manifestFile")]
     pub manifest_file: Option<String>,
-    /// Opt-in lockfile auto-refresh. When `true`, after `ferrflow
-    /// release` bumps a manifest (`Cargo.toml`, `package.json`,
-    /// `pyproject.toml`, `Gemfile`, `mix.exs`) it refreshes the sibling
-    /// lockfile (`Cargo.lock`, `package-lock.json` / `pnpm-lock.yaml` /
-    /// `yarn.lock`, `poetry.lock` / `uv.lock`, `Gemfile.lock`,
-    /// `mix.lock`) with the package manager's offline / lockfile-only
-    /// mode and stages it in the same release commit. Default `false`
-    /// (no behaviour change). A missing package manager or an
-    /// unresolvable offline update is warned about, never fatal. Set
-    /// `package.updateLockfiles = false` to opt a single package out.
     #[serde(default, alias = "updateLockfiles")]
     pub update_lockfiles: bool,
-    /// Rewrite the version constraint a dependent declares for a package
-    /// that was just bumped, so consumers stop pinning the old range.
-    /// Only `json` (package.json) and `toml` (Cargo.toml) manifests are
-    /// rewritten, and only plain operator + version constraints — a
-    /// `workspace:*`, `file:` or multi-part range is left for a human.
-    /// Default `false`: this writes into manifests, so it is opt-in.
     #[serde(default, alias = "updateDependents")]
     pub update_dependents: bool,
-    /// Packages that share a version line when co-released. When any
-    /// member of a group has a releasable commit, every member is bumped
-    /// to the same version (the highest resulting version across the
-    /// group). Names stay distinct. Each inner array is one group.
     #[serde(default)]
     pub linked: Vec<Vec<String>>,
-    /// Packages locked to an identical version forever. Behaves like
-    /// [`linked`](Self::linked) but is intended for packages that must
-    /// never diverge; `ferrflow validate` warns when their versions have
-    /// drifted apart. Each inner array is one group.
     #[serde(default)]
     pub fixed: Vec<Vec<String>>,
 }

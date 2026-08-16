@@ -183,9 +183,6 @@ pub(super) fn versioning_section(config: Option<&Config>, root: &Path) -> Sectio
         )),
     }
 
-    // On-disk versions only — the tag walk that computes last-tag / next
-    // version lives in `ferrflow status` / `check`, and its orphaned-tag
-    // warnings would drown out a diagnostic report.
     for pkg in &config.packages {
         let version = pkg
             .versioned_files

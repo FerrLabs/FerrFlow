@@ -45,9 +45,6 @@ fn commit_file(path: &Path, name: &str, contents: &str, message: &str) {
     git(path, &["commit", "-m", message]);
 }
 
-/// A real local repo wired to a real bare remote, which is what the push
-/// helpers need — they shell out to `git push` and inspect `ls-remote`, so
-/// there is nothing meaningful to mock at that layer.
 struct Harness {
     _dir: tempfile::TempDir,
     root: PathBuf,
@@ -99,9 +96,6 @@ impl Harness {
             .collect()
     }
 
-    /// Publishes `tag` on the remote at a commit the local repo does not have,
-    /// without moving the remote branch. That is the concurrent-release shape:
-    /// our branch push still fast-forwards, but the tag push collides.
     fn publish_divergent_remote_tag(&self, tag: &str) {
         let helper = self._dir.path().join("helper");
         init_workdir(&helper);
@@ -206,9 +200,6 @@ fn tag_to_create(tag: &str, pkg: &str, version: &str) -> PlannedTag {
     }
 }
 
-/// Drives the publish half of `execute_release`. The checkpoint starts at
-/// `TagsCreated` so the commit and tag-creation phases are skipped — the test
-/// creates the tags itself — and execution lands directly on push → publish.
 fn run_publish_phase(
     harness: &Harness,
     tags: &[PlannedTag],
@@ -253,10 +244,6 @@ fn run_publish_phase(
     (result, forge_results)
 }
 
-// The guarantee behind #770: git is the source of truth and lands first, so a
-// failed tag push must leave the forge untouched. Before the reorder, releases
-// were published first and this scenario left N releases pointing at a tag the
-// remote never received.
 #[test]
 fn a_failed_tag_push_publishes_no_release() {
     let harness = Harness::new();
@@ -304,8 +291,6 @@ fn a_successful_push_lands_the_tag_then_publishes_it() {
     assert_eq!(forge_results.len(), 1);
 }
 
-// The annotated tag carries the changelog body. #770 removed `target_commitish`
-// so the forge can no longer mint a lightweight tag of its own that shadows it.
 #[test]
 fn the_pushed_tag_keeps_its_annotation() {
     let harness = Harness::new();

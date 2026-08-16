@@ -22,10 +22,6 @@ impl Forge for BitbucketForge {
         _prerelease: bool,
         _draft: bool,
     ) -> Result<ReleaseResult> {
-        // Bitbucket has no "release" object — the annotated tag FerrFlow
-        // already pushed *is* the release. On Cloud we look the tag up to
-        // return its canonical web URL; Server / Data Center is out of scope
-        // for now (#656), so the tag stands on its own with no forge URL.
         if !self.is_cloud {
             return Ok(ReleaseResult::default());
         }
@@ -53,12 +49,10 @@ impl Forge for BitbucketForge {
     }
 
     fn find_draft_release(&self, _tag: &str) -> Result<Option<u64>> {
-        // Bitbucket has no draft releases.
         Ok(None)
     }
 
     fn publish_release(&self, _release_id: u64) -> Result<()> {
-        // Nothing to publish — there are no draft releases on Bitbucket.
         Ok(())
     }
 
@@ -158,8 +152,6 @@ mod tests {
 
     #[test]
     fn server_release_is_tag_only_without_a_network_call() {
-        // is_cloud == false short-circuits before any HTTP, so this must not
-        // hang or panic and must report no forge URL.
         let result = make_forge(false)
             .create_release("v1.0.0", "notes", false, false)
             .unwrap();

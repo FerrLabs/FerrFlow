@@ -128,10 +128,6 @@ fn changed_files_since_oid_cached(
     Ok(files)
 }
 
-/// Which file set decided whether a package counts as touched, and what that
-/// decision was. `ferrflow why` reports it, so it lives here rather than being
-/// re-derived — a second implementation would eventually disagree with the one
-/// the release actually uses.
 pub(super) struct TouchOutcome {
     pub touched: bool,
     pub recovered: bool,
@@ -185,8 +181,6 @@ pub(super) fn evaluate_touch(
     })
 }
 
-/// The commits a release would classify for `pkg`: everything back to its last
-/// tag, or to its last *stable* tag when the run is not a prerelease.
 pub(super) fn commits_for_package(
     repo: &Repository,
     pkg: &PackageConfig,
@@ -465,9 +459,6 @@ mod tests {
         git(&root, &["add", "-A"]);
         commit_file(&root, "seed.txt", "x", "chore: seed", 1_950_000_000);
 
-        // One tag per package so each package's commit walk starts from a
-        // distinct baseline — this makes the bump decisions order-sensitive
-        // enough that a racy parallel scan would diverge from sequential.
         for n in names {
             git(&root, &["tag", &format!("{n}-v1.0.0")]);
         }

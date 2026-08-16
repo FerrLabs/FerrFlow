@@ -8,12 +8,6 @@ use crate::error_code::ErrorCode;
 /// render anyhow's multi-line Debug with an orphaned `Caused by:` and a blank
 /// line. Both the coded and uncoded paths now format the same way (see #694).
 pub fn error_report_lines(err: &anyhow::Error) -> Vec<String> {
-    // anyhow finds the ErrorCode through the whole chain, but the code is
-    // attached with `.context(code)`, so it also surfaces as a chain link whose
-    // Display is the bare code (`E1001`). Filter that link out by value rather
-    // than by `downcast_ref` on the chain: the context wrapper doesn't downcast
-    // back to ErrorCode on `&dyn Error`, so the naive filter leaves a duplicated
-    // `error[E1001]: E1001` head.
     let code = err.downcast_ref::<ErrorCode>().copied();
     let code_str = code.map(|c| c.to_string());
 
@@ -61,8 +55,6 @@ mod tests {
 
     #[test]
     fn uncoded_error_keeps_every_cause_on_its_own_line() {
-        // The bot-token shape from #694: a context wrapping a specific cause,
-        // with no ErrorCode attached.
         let err = anyhow::Result::<()>::Err(anyhow::anyhow!(
             "FerrFlow hosted bot service unavailable (503). Check https://status.ferrlabs.com"
         ))
@@ -95,7 +87,6 @@ mod tests {
         assert_eq!(lines[0], "error[E1001]: config file not found");
         assert_eq!(lines[lines.len() - 2], "");
         assert!(lines.last().unwrap().starts_with("  For help: "));
-        // The ErrorCode itself is a chain link but must not print as a cause.
         assert!(
             !lines
                 .iter()
@@ -103,8 +94,6 @@ mod tests {
         );
     }
 
-    // The ErrorCode is stripped from the causes so it never doubles as a
-    // "Caused by:" line.
     #[test]
     fn coded_error_with_extra_context_lists_the_real_causes_only() {
         let err = anyhow::Result::<()>::Err(anyhow::anyhow!("permission denied"))

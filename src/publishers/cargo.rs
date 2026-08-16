@@ -1,31 +1,11 @@
-//! `cargo publish` executor.
-//!
-//! Behaviour:
-//! - Resolves the target registry: when `registry` is `Some(name)`,
-//!   look up `workspace.registries.<name>` to validate that the
-//!   referenced token env var is exported. Missing env var ⇒ clear
-//!   error (we don't want to discover this after `cargo publish` has
-//!   uploaded everything to crates.io by mistake).
-//! - Runs `cargo publish` (or `cargo publish --dry-run` for dry-runs)
-//!   in the package directory.
-//! - Treats "already uploaded" / "already in use" as a successful
-//!   idempotent skip — this is the load-bearing property for retry
-//!   semantics + crash-resume (#549). cargo's exit code is 101 in
-//!   both the real-error and already-published cases, so we have to
-//!   pattern-match on stderr; tests pin the recognized phrasings.
-
 use anyhow::{Context, Result, anyhow};
 use std::process::Command;
 
 use super::{PublishContext, PublishOutcome};
 use crate::error_code::{self, ErrorCodeExt};
 
-/// Total `cargo publish` attempts before giving up on a transient failure.
 const MAX_PUBLISH_ATTEMPTS: u32 = 3;
 
-/// Backoff before retry N (seconds). Sized for private-registry index lag:
-/// after a dependency is published, sparse-index propagation can take a few
-/// seconds, during which a dependent's publish fails to resolve it.
 const PUBLISH_RETRY_BACKOFF_SECS: [u64; 2] = [5, 15];
 
 pub fn run(
@@ -37,9 +17,6 @@ pub fn run(
 ) -> Result<PublishOutcome> {
     let registry_label = registry.unwrap_or("crates-io");
 
-    // Validate that the configured token env var is exported so we
-    // fail fast before invoking cargo, with a clearer message than
-    // cargo's own "token not found".
     if let Some(name) = registry {
         let r = ctx
             .registries
@@ -128,10 +105,6 @@ pub fn run(
     }
 }
 
-/// Recognize the various phrasings cargo + private registries use to
-/// say "this version is already on the registry". Tested with cases
-/// pulled from real failure logs across crates.io, Kellnr, and
-/// Cloudsmith.
 fn classify_already_published(stderr: &str) -> bool {
     let needles = [
         "is already uploaded",
@@ -144,13 +117,6 @@ fn classify_already_published(stderr: &str) -> bool {
     needles.iter().any(|n| lower.contains(n))
 }
 
-/// Recognize failures that are worth retrying rather than aborting the
-/// release: a private registry's sparse index lagging behind a
-/// just-published dependency (so a dependent can't resolve it yet), plus
-/// generic network blips. A genuinely missing/misconfigured dependency
-/// matches too and will simply fail again after the retries are spent —
-/// the cost is a slower failure, the benefit is surviving index lag
-/// without a manual whole-release re-run.
 fn classify_transient(stderr: &str) -> bool {
     let needles = [
         "no matching package named",
@@ -170,9 +136,6 @@ fn classify_transient(stderr: &str) -> bool {
     needles.iter().any(|n| lower.contains(n))
 }
 
-/// Pick the first non-empty, non-progress-spinner line from cargo's
-/// output so the error message users see is informative instead of
-/// the trailing "exit code 101" wrapper.
 fn first_meaningful_line(stderr: &str, stdout: &str) -> String {
     for src in [stderr, stdout] {
         for line in src.lines().rev() {
@@ -180,7 +143,6 @@ fn first_meaningful_line(stderr: &str, stdout: &str) -> String {
             if trimmed.is_empty() {
                 continue;
             }
-            // Strip ANSI color escapes that some Cargo versions emit.
             if trimmed.starts_with("\u{1b}[") {
                 continue;
             }
@@ -196,9 +158,6 @@ fn first_meaningful_line(stderr: &str, stdout: &str) -> String {
         .to_string()
 }
 
-/// crates.io has a stable URL shape. Custom registries vary, so we
-/// only render the URL for the canonical public registry — better no
-/// link than a wrong one in the step summary.
 fn derive_crate_url(name: &str, version: &str, registry: Option<&str>) -> Option<String> {
     if registry.is_none() {
         Some(format!("https://crates.io/crates/{name}/{version}"))
@@ -300,7 +259,6 @@ mod tests {
 
     #[test]
     fn classify_transient_recognizes_index_lag_and_network() {
-        // kellnr index lag: dependent published before its dep is indexed.
         assert!(classify_transient(
             "error: failed to verify package tarball\n\nCaused by:\n  no matching package named `ferrlabs-errors` found\n  ... required by package `ferrlabs-auth v0.8.0`"
         ));
@@ -308,7 +266,6 @@ mod tests {
             "error: failed to select a version for the requirement `ferrlabs-db = \"^0.4\"`"
         ));
         assert!(classify_transient("error: 503 Service Unavailable"));
-        // A version that's already up is not "transient" — it's a skip.
         assert!(!classify_transient(
             "error: crate version `0.1.0` is already uploaded"
         ));

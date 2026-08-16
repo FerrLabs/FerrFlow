@@ -3,15 +3,8 @@ use anyhow::{Context, Result};
 use super::{Forge, MergeRequestResult, ReleaseResult};
 use crate::error_code::{self, ErrorCodeExt};
 
-/// Per-page size for paginated GitHub list endpoints. 100 is the API
-/// maximum (smaller values just multiply round-trips).
 const PER_PAGE: u32 = 100;
 
-/// Hard ceiling on how many pages we'll fetch before bailing. 100 pages
-/// × 100 items = 10,000 items, well past anything a release-tagging
-/// path needs to scan. The guard is here to prevent a misbehaving API
-/// (one that keeps returning a full page) from looping forever. See
-/// #524.
 const MAX_PAGES: u32 = 100;
 
 pub struct GitHubForge {
@@ -22,15 +15,6 @@ pub struct GitHubForge {
 }
 
 impl GitHubForge {
-    /// Fetch every page of a GitHub list endpoint and return the items
-    /// concatenated. Stops as soon as a page returns fewer than
-    /// `PER_PAGE` items (the universal end-of-pagination signal, used
-    /// by GitHub, GitLab, Forgejo, Bitbucket alike). `base_url` must
-    /// already include the path; we append `?per_page=&page=` ourselves.
-    ///
-    /// Short-circuit: most release-time calls hit small lists (a few
-    /// recent releases / comments on a release PR), so the typical path
-    /// is one HTTP round-trip.
     fn paginated_json_array(&self, base_url: &str, what: &str) -> Result<Vec<serde_json::Value>> {
         let mut all = Vec::new();
         for page in 1..=MAX_PAGES {
@@ -100,8 +84,6 @@ impl Forge for GitHubForge {
 
     fn find_draft_release(&self, tag: &str) -> Result<Option<u64>> {
         let base_url = format!("{}/repos/{}/releases", self.api_base, self.slug);
-        // Paginate so repos with >30 (the GitHub default page size) or
-        // even >100 releases still find the matching draft. See #524.
         let releases = self
             .paginated_json_array(&base_url, "GitHub releases")
             .error_code(error_code::GITHUB_LIST_RELEASES)?;
@@ -231,8 +213,6 @@ impl Forge for GitHubForge {
             "{}/repos/{}/issues/{}/comments",
             self.api_base, self.slug, pr_id
         );
-        // Paginate so a long-lived release PR with hundreds of comments
-        // still finds the marker comment. See #524.
         let comments = self.paginated_json_array(&base_url, "PR comments")?;
         for comment in comments {
             if let Some(body) = comment["body"].as_str()

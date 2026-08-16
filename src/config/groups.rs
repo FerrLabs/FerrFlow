@@ -102,7 +102,6 @@ mod tests {
     #[test]
     fn valid_groups_pass() {
         let c = config(&["a", "b", "c"], r#"[["a","b"]]"#, r#"[["c","a"]]"#);
-        // a is in linked and fixed → not allowed
         assert!(c.validate_groups().is_err());
 
         let c = config(&["a", "b", "c"], r#"[["a","b"]]"#, "[]");

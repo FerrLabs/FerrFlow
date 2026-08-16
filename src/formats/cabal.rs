@@ -9,10 +9,6 @@ pub struct CabalVersionFile;
 
 static VERSION_RE: OnceLock<Regex> = OnceLock::new();
 
-// Cabal field names are case-insensitive and top-level fields sit at column 0,
-// which is what keeps this off `version:` fields nested inside stanzas. The
-// leading `^` also excludes `cabal-version:`, a different field that would
-// otherwise match a looser pattern.
 fn version_re() -> &'static Regex {
     VERSION_RE.get_or_init(|| Regex::new(r"(?im)^(version[ \t]*:[ \t]*)(\S+)").unwrap())
 }
@@ -103,8 +99,6 @@ library
         assert!(out.contains("name:               my-package"));
     }
 
-    // `cabal-version` declares the format of the file, not the package
-    // version. Bumping it would change which Cabal features are available.
     #[test]
     fn cabal_version_field_is_not_mistaken_for_the_package_version() {
         let f = write_temp(FIXTURE);
@@ -115,8 +109,6 @@ library
         assert!(out.contains("cabal-version:      2.4"));
     }
 
-    // Stanza fields are indented; only the column-0 field is the package
-    // version. A nested `version:` must not win.
     #[test]
     fn indented_version_field_is_ignored() {
         let f = write_temp("name: pkg\nversion: 1.0.0\n\nlibrary\n    version: 9.9.9\n");

@@ -15,9 +15,6 @@ use super::release_json::ReleasedPackage;
 use super::summary::PlannedTag;
 use crate::changelog::update_changelog;
 
-/// Mutable accumulators the cascade writes into, shared with the main
-/// release pipeline. Bundled so the cascade keeps one parameter for its
-/// output state instead of seven `&mut` arguments.
 pub(super) struct CascadeSink<'a> {
     pub any_bumped: &'a mut bool,
     pub json_packages: &'a mut Vec<CheckPackage>,
@@ -26,18 +23,10 @@ pub(super) struct CascadeSink<'a> {
     pub files_per_package: &'a mut HashMap<String, Vec<String>>,
     pub tags_to_create: &'a mut Vec<PlannedTag>,
     pub pkg_outputs: &'a mut Vec<(String, Vec<String>)>,
-    /// Name -> the bump each already-released package received this run. The
-    /// cascade reads it to know what to propagate, and extends it as it goes.
     pub bumped: &'a mut HashMap<String, BumpType>,
-    /// Name -> the version each package landed on, consumed by the
-    /// dependent-manifest rewrite once every bump is known.
     pub bumped_versions: &'a mut HashMap<String, String>,
 }
 
-/// Bump every package that depends (transitively) on a package
-/// already bumped this run, propagating the upstream's bump through each
-/// dependency's `PropagatePolicy`. Iterates to a fixed point, capped at
-/// `packages.len()` rounds to break circular dependencies.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn run_dependency_cascade(
     config: &Config,
@@ -60,9 +49,6 @@ pub(super) fn run_dependency_cascade(
             if sink.bumped.contains_key(&pkg.name) {
                 continue;
             }
-            // Several dependencies may have moved at once under different
-            // policies; the strongest resulting bump wins, the same way a
-            // package's own commits resolve to their highest bump.
             let bump = pkg
                 .depends_on
                 .iter()
@@ -200,12 +186,6 @@ pub(super) fn run_dependency_cascade(
     Ok(())
 }
 
-/// Rewrites the constraints dependents declare for packages bumped this run.
-///
-/// Gated on `workspace.update_dependents` by the caller. Only manifests the
-/// rewriter understands are touched; anything else is silently left alone, so
-/// enabling this can never fail a release over a manifest shape we do not
-/// model. A dry run plans and reports the same rewrites without writing them.
 pub(super) fn update_dependent_manifests(
     config: &Config,
     root: &Path,
@@ -218,8 +198,6 @@ pub(super) fn update_dependent_manifests(
 
     for pkg in &config.packages {
         for dep in &pkg.depends_on {
-            // A `none` dependent is deliberately held back from the cascade, so
-            // its manifest must stay on the constraint it declares today.
             if dep.propagate() == PropagatePolicy::None {
                 continue;
             }
@@ -263,7 +241,6 @@ pub(super) fn update_dependent_manifests(
 mod tests {
     use super::*;
 
-    // core is bumped; cli propagates it, docs opts out with `none`.
     fn workspace() -> tempfile::TempDir {
         let dir = tempfile::tempdir().unwrap();
         let root = dir.path();
@@ -318,8 +295,6 @@ mod tests {
         (lines, files_to_commit)
     }
 
-    // `propagate: "none"` holds the package back from the cascade, so its
-    // manifest must keep declaring the version it was built against.
     #[test]
     fn a_dependent_that_opts_out_of_the_cascade_keeps_its_constraint() {
         let dir = workspace();

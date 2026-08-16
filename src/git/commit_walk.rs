@@ -8,10 +8,6 @@ use std::sync::{Arc, Mutex};
 use super::commits::{GitLog, get_commits_since_oid, subject_has_skip_marker};
 use super::repo::Repository;
 
-// A hidden revwalk only visits commits past the stop boundary, so with one
-// or two touched packages it is far cheaper than decoding all of HEAD's
-// ancestry. The shared walk only starts paying for itself once several
-// packages ask, hence the arming threshold.
 const SHARED_WALK_THRESHOLD: usize = 2;
 
 pub struct CommitWalkCache {
@@ -40,12 +36,6 @@ impl CommitWalkCache {
         }
     }
 
-    // Decodes HEAD's ancestry once and answers every per-package
-    // "commits since <tag commit>" from it: the hidden set of a stop is
-    // recovered with an in-memory parent walk instead of a fresh revwalk
-    // per package. A stop that is not an ancestor of HEAD may still hide
-    // shared history the parent map cannot see, so that case falls back
-    // to the plain hidden revwalk.
     pub fn commits_since(&self, repo: &Repository, stop: Option<ObjectId>) -> Result<Vec<GitLog>> {
         let already_built = self
             .built

@@ -40,8 +40,6 @@ pub(super) struct Explanation {
 #[derive(Serialize)]
 struct TouchReport {
     touched: bool,
-    /// The package was pulled in by `recoverMissedReleases`, so the file set
-    /// below spans everything since its last tag rather than just HEAD.
     recovered: bool,
     files: Vec<FileMatch>,
 }
@@ -49,7 +47,6 @@ struct TouchReport {
 #[derive(Serialize)]
 struct FileMatch {
     path: String,
-    /// The `path` / `sharedPaths` prefix this file matched, if any.
     #[serde(skip_serializing_if = "Option::is_none")]
     matched: Option<String>,
 }
@@ -199,9 +196,6 @@ fn explain(
     let touch = evaluate_touch(repo, pkg, &inputs)?;
     let plan = compute_plan(repo, pkg, &inputs)?;
 
-    // The commit list is evidence, not a decision: when the package is skipped
-    // for not being touched there is nothing to classify, and walking the
-    // history anyway would only invite the reader to argue with the verdict.
     let commits = if touch.touched {
         commits_for_package(repo, pkg, &inputs)?
             .into_iter()
@@ -261,9 +255,6 @@ fn explain(
     })
 }
 
-/// The `path` / `sharedPaths` prefix that makes `file` belong to `pkg`, mirroring
-/// [`PackageConfig::is_touched_by`] one file at a time so the report can name the
-/// rule that fired.
 fn matching_rule(pkg: &PackageConfig, file: &str, is_monorepo: bool) -> Option<String> {
     if !is_monorepo {
         return Some("single-package repo".to_string());
@@ -282,9 +273,6 @@ fn matching_rule(pkg: &PackageConfig, file: &str, is_monorepo: bool) -> Option<S
     })
 }
 
-/// Every package the release would bump, and with what. Seeded from each
-/// package's own plan, then propagated through `dependsOn` to a fixed point the
-/// same way the release cascade does.
 fn cascade_bumps(
     repo: &crate::git::Repository,
     root: &Path,
@@ -313,8 +301,6 @@ fn cascade_bumps(
             if bump == BumpType::None {
                 continue;
             }
-            // The release skips a cascaded package whose version would not move;
-            // mirror that so the explanation cannot promise a bump that never lands.
             let unchanged = other
                 .versioned_files
                 .first()
@@ -405,9 +391,6 @@ fn decide(
         unreachable!("plan is either a bump or a skip");
     };
 
-    // A package can be skipped on its own commits and still be released because
-    // something it depends on moved — the report has to say so, or it flatly
-    // contradicts what the next `ferrflow release` does.
     if let Some(bump) = cascade.get(&pkg.name).copied()
         && bump != BumpType::None
         && let Some(next) = read_version_for_cascade(pkg, root)

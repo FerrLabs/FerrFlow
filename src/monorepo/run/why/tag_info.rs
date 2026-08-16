@@ -12,8 +12,6 @@ pub(super) struct TagReport {
     pub commit: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub age: Option<String>,
-    /// A tag on a commit no longer reachable from HEAD (rebased away, force
-    /// pushed) is why a package can look released and still replay its history.
     pub reachable_from_head: bool,
 }
 
@@ -104,8 +102,6 @@ mod tests {
         }
     }
 
-    // Clock skew between the committer and this machine must not render as a
-    // nonsense duration.
     #[test]
     fn a_tag_from_the_future_is_labelled_not_negative() {
         assert_eq!(describe_elapsed(-500), "in the future");

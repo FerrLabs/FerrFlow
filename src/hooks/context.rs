@@ -80,7 +80,6 @@ mod tests {
         let footer =
             HookCommit::from_commit("e", "fix: x\n\nBREAKING CHANGE: gone", &Default::default());
         assert!(footer.breaking);
-        // The serialized message is the subject only, not the footer.
         assert_eq!(footer.message, "fix: x");
 
         let plain = HookCommit::from_commit("f", "just a plain message", &Default::default());
@@ -97,7 +96,6 @@ mod tests {
             &Default::default(),
         ))
         .unwrap();
-        // `type` present (chore), `scope` absent, `breaking` always present.
         assert!(json.contains(r#""type":"chore""#));
         assert!(!json.contains("scope"));
         assert!(json.contains(r#""breaking":false"#));

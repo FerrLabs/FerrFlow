@@ -28,7 +28,6 @@ pub(super) fn run() -> Result<()> {
 
 #[derive(Debug, Deserialize, Default)]
 struct ReleasePleaseConfig {
-    // BTreeMap → deterministic (path-sorted) output.
     #[serde(default)]
     packages: BTreeMap<String, PackageEntry>,
     #[serde(default, rename = "release-type")]
@@ -53,13 +52,10 @@ struct PackageEntry {
     component: Option<String>,
     #[serde(default, rename = "changelog-path")]
     changelog_path: Option<String>,
-    // release-please's explicit version file (ruby, simple, …). When present it
-    // wins over the release-type default.
     #[serde(default, rename = "version-file")]
     version_file: Option<String>,
 }
 
-/// A release-please plugin: a bare `"name"` or `{ "type": ..., ... }`.
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 enum Plugin {
@@ -78,7 +74,6 @@ pub(super) fn build(raw: &str) -> Result<(Config, MigrationReport)> {
         .error_code(error_code::CONFIG_INVALID_JSON)?;
 
     let mut report = MigrationReport::default();
-    // release-please always drives releases through a release PR.
     let mut workspace = WorkspaceConfig {
         release_commit_mode: ReleaseCommitMode::Pr,
         ..Default::default()
@@ -87,7 +82,6 @@ pub(super) fn build(raw: &str) -> Result<(Config, MigrationReport)> {
         .mapped
         .push("release-please PR flow → releaseCommitMode: pr".to_string());
 
-    // Component-in-tag → a {name}-scoped tag template.
     if rp.include_component_in_tag.unwrap_or(false) {
         let sep = rp.tag_separator.as_deref().unwrap_or("-");
         let template = format!("{{name}}{sep}v{{version}}");
@@ -115,8 +109,6 @@ pub(super) fn build(raw: &str) -> Result<(Config, MigrationReport)> {
         packages.push(build_package(path, entry, default_type, &mut report));
     }
 
-    // A release-please-config with no `packages` map is malformed for a
-    // manifest release; scaffold a single root package so the output is usable.
     if packages.is_empty() {
         packages.push(build_package(
             ".",
@@ -154,7 +146,6 @@ fn build_package(
 
     let rt = entry.release_type.as_deref().or(default_type);
     let versioned_files = if let Some(vf_path) = &entry.version_file {
-        // release-please's explicit `version-file` wins over the type default.
         let joined = join_path(path, vf_path);
         match format_from_ext(&joined) {
             Some(format) => {
@@ -225,9 +216,6 @@ fn name_from_path(path: &str) -> String {
     }
 }
 
-/// Map a release-please `release-type` to the version file ferrflow bumps for
-/// it. Returns None for types that carry no single in-repo version file (e.g.
-/// `go`, which release-please versions from tags alone) — the caller warns.
 fn versioned_file_for(release_type: &str, pkg_path: &str) -> Option<VersionedFile> {
     let (file, format) = match release_type {
         "node" => ("package.json", FileFormat::Json),
@@ -237,8 +225,6 @@ fn versioned_file_for(release_type: &str, pkg_path: &str) -> Option<VersionedFil
         "dart" => ("pubspec.yaml", FileFormat::PubspecYaml),
         "elixir" => ("mix.exs", FileFormat::MixExs),
         "expo" => ("app.json", FileFormat::Json),
-        // pom.xml: the xml handler's default selector targets the first
-        // <version> child of the root, sidestepping the <parent><version> pit.
         "maven" => ("pom.xml", FileFormat::Xml),
         "simple" => ("version.txt", FileFormat::Txt),
         _ => return None,
@@ -280,8 +266,6 @@ fn format_from_ext(path: &str) -> Option<FileFormat> {
     }
 }
 
-/// Translate a release-please plugin. Only `linked-versions` has a direct
-/// ferrflow equivalent (→ a `linked` version group); the rest are reported.
 fn apply_plugin(plugin: &Plugin, workspace: &mut WorkspaceConfig, report: &mut MigrationReport) {
     if let Plugin::Config { kind, components } = plugin
         && kind == "linked-versions"
@@ -405,7 +389,6 @@ mod tests {
 
     #[test]
     fn unmappable_release_type_warns_and_leaves_files_empty() {
-        // `go` versions from tags — there's no in-repo version file to bump.
         let (cfg, report) = build_ok(r#"{"packages": {".": {"release-type": "go"}}}"#);
         assert!(cfg.packages[0].versioned_files.is_empty());
         assert!(report.warnings.iter().any(|w| w.contains("go")));
@@ -465,9 +448,6 @@ mod tests {
         ));
     }
 
-    // `CMakeLists.txt` ends in `.txt`, so the cmake branch has to be checked
-    // first or the file is inferred as a plain-text version file and the whole
-    // CMakeLists gets overwritten with a bare version string.
     #[test]
     fn cmakelists_is_inferred_as_cmake_not_txt() {
         let (cfg, _) = build_ok(
@@ -492,7 +472,6 @@ mod tests {
 
     #[test]
     fn version_file_with_unknown_extension_warns() {
-        // A Ruby version.rb needs a Txt regex selector, which we can't infer.
         let (cfg, report) = build_ok(
             r#"{"packages": {".": {"release-type": "ruby", "version-file": "lib/foo/version.rb"}}}"#,
         );

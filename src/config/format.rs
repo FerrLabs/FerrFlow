@@ -119,7 +119,6 @@ impl ConfigFormatHandler for Json5Format {
             .error_code(error_code::CONFIG_PARSE_JSON5)
     }
     fn serialize(&self, config: &Config) -> Result<String> {
-        // json5 crate has no serializer; valid JSON is valid JSON5
         let value = serde_json::to_value(config)?;
         let camel = to_camel_case_keys(value);
         let mut out = serde_json::to_string_pretty(&camel)?;
@@ -160,7 +159,6 @@ impl ConfigFormatHandler for DotfileFormat {
     }
 }
 
-/// Ordered by priority: json > json5 > toml > .ferrflow
 pub(crate) const CONFIG_FORMATS: &[&dyn ConfigFormatHandler] =
     &[&JsonFormat, &Json5Format, &TomlFormat, &DotfileFormat];
 

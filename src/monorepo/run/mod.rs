@@ -109,10 +109,6 @@ pub(super) fn run_release_logic(
         timing.skip("fetch_tags", "dry-run");
     }
 
-    // Acquire the release lock before any mutating step. Dropped at the
-    // end of run_release_logic via RAII. Skipped on dry-run (no writes).
-    // The lockfile lives at .git/ferrflow.lock; concurrent invocations
-    // get a clear error instead of racing on git refs. See #514.
     let _release_lock = if dry_run {
         None
     } else if force_unlock {
@@ -130,9 +126,6 @@ pub(super) fn run_release_logic(
         {
             tracing::warn!("Warning: could not fetch remote tags: {e}");
         }
-        // A real release walks tags + commits repeatedly; on a fresh clone
-        // with no commit-graph, write one so those walks use it (#690).
-        // Guarded by `!dry_run` so dry-run stays read-only.
         crate::git::write_commit_graph_if_absent(&repo);
     }
 
@@ -161,11 +154,6 @@ pub(super) fn run_release_logic(
         .unwrap_or_default();
 
     let all_tags = collect_all_tags(&repo);
-    // Pre-collect all tags + their commit OIDs in one tag_foreach scan
-    // so the per-package find_*_tag / get_*_since_tag calls below don't
-    // each repeat that scan. Coupled with the ancestor set, the per-pkg
-    // lookups collapse from O(tags) callbacks + O(commits) walk to O(1)
-    // hash hits.
     let tag_index = timing.stage("build TagIndex", || crate::git::TagIndex::build(&repo).ok());
     let fallback_ancestors = match &tag_index {
         Some(_) => None,
@@ -198,11 +186,7 @@ pub(super) fn run_release_logic(
     let mut files_per_package: HashMap<String, Vec<String>> = HashMap::new();
     let mut tags_to_create: Vec<PlannedTag> = Vec::new();
     let mut hook_contexts: Vec<(HookContext, usize)> = Vec::new(); // (ctx, pkg_index)
-    // Name -> bump, so the dependency cascade can propagate the real bump
-    // type instead of assuming a patch.
     let mut bumped: HashMap<String, BumpType> = HashMap::new();
-    // Name -> the version each package landed on, for rewriting the
-    // constraints its dependents declare.
     let mut bumped_versions: HashMap<String, String> = HashMap::new();
 
     let mut pkg_outputs: Vec<(String, Vec<String>)> = Vec::new();
@@ -244,9 +228,6 @@ pub(super) fn run_release_logic(
     let mut plans: Vec<Option<PackagePlan>> = plans.into_iter().map(Some).collect();
     groups::apply_groups(config, root, &mut plans);
 
-    // Snapshot of every package the batch will bump, computed once (after group
-    // resolution settled the final versions) so it can be shared unchanged by
-    // every package's hooks — including the first one to run.
     let all_packages = batch_package_snapshot(&release_order, &plans, &config.packages);
 
     for &pkg_idx in &release_order {
@@ -531,9 +512,6 @@ pub(super) fn run_release_logic(
                 new_tag: Some(tag.clone()),
             };
 
-            // Build the release's changelog section once and hand it to the
-            // hooks (post-bump onward see it via `ctx.changelog` /
-            // FERRFLOW_CHANGELOG); it's reused for the tag body below.
             let body = build_section_with(&new_version, &commits, &changelog_render);
             hook_ctx.changelog = body.clone();
 
@@ -615,9 +593,6 @@ pub(super) fn run_release_logic(
         )?;
     }
 
-    // Runs after the cascade so every package's final version is known — a
-    // dependent's constraint must land on the version its upstream actually
-    // ended up at, not an intermediate one.
     if config.workspace.update_dependents {
         let rewritten = cascade::update_dependent_manifests(
             config,
@@ -668,13 +643,6 @@ pub(super) fn run_release_logic(
             files_to_commit.push(manifest_rel.to_string());
         }
 
-        // Crash-resume checkpoint (#549). On dry-run we record nothing
-        // — the run is read-only by design. Otherwise we either load an
-        // in-progress checkpoint left behind by a previous crash, or
-        // create a new one. HEAD-mismatch is fatal: an existing
-        // checkpoint pinned to a different commit means the repo state
-        // diverged from the in-flight release, and silently retrying
-        // would replay tags onto the wrong graph.
         let head_sha = repo
             .head_id()
             .ok()
@@ -736,9 +704,6 @@ pub(super) fn run_release_logic(
         let ws_hooks = config.workspace.hooks.as_ref();
         match release_result {
             Ok(()) => {
-                // Release finished cleanly — drop the checkpoint so the
-                // next run starts from scratch instead of trying to
-                // resume a finished release.
                 if !dry_run {
                     Checkpoint::delete(root)?;
                 }
@@ -1023,8 +988,6 @@ mod tests {
             Some(bump_plan("1.4.0", BumpType::Minor)),
         ];
 
-        // release_order visits cli (2) before api (0) and includes the skipped
-        // web (1) — proving the snapshot follows release order and drops skips.
         let snapshot = batch_package_snapshot(&[2, 0, 1], &plans, &packages);
 
         assert_eq!(snapshot.len(), 2);
