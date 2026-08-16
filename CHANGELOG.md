@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.0.5] - 2026-08-16
+
+### Bug Fixes
+
+- fix(bot): stop retrying token-exchange errors a retry cannot fix (#854)
+
 ## [7.0.4] - 2026-08-16
 
 ### Refactoring
