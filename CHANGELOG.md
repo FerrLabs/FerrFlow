@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.0.4] - 2026-08-16
+
+### Refactoring
+
+- refactor(release): replace the seven-field tag tuple with a named struct (#850)
+
 ## [7.0.3] - 2026-08-15
 
 ### Bug Fixes
