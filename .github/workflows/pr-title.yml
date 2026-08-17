@@ -18,6 +18,6 @@ permissions:
 jobs:
   title:
     name: PR title
-    uses: FerrLabs/.github/.github/workflows/reusable-pr-title.yml@69be21ac9daf7eed64724fd7ec5eaf6a53e4aea7 # main
+    uses: FerrLabs/.github/.github/workflows/reusable-pr-title.yml@fb1b42e10ae85ecfcfa2a00e4a40cd81e3d4237e # main
     with:
       runner: ubuntu-latest
