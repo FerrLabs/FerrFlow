@@ -16,5 +16,5 @@ permissions:
 jobs:
   scan:
     name: Secrets + CVE
-    uses: FerrLabs/.github/.github/workflows/reusable-security-scan.yml@5cbbf0fc748727ecc99bfa4596d8c59a163c7267 # main
+    uses: FerrLabs/.github/.github/workflows/reusable-security-scan.yml@69be21ac9daf7eed64724fd7ec5eaf6a53e4aea7 # main
     secrets: inherit
