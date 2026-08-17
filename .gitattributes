@@ -1,2 +1,40 @@
+# Every text file is LF, in the repository and on disk.
+#
+# Git already stores LF, so this does not rewrite history: it changes what a
+# checkout puts in the working tree. Without it, `core.autocrlf` hands Windows
+# CRLF while the formatters write LF, and `--check` runs then report nearly
+# every file as unformatted when nothing is actually wrong.
+* text=auto eol=lf
+
+# Declared binary so git never inspects or rewrites their bytes. The `text=auto`
+# heuristic already catches these by their NUL bytes, but a format that happens
+# to carry none in its first 8 KB would be corrupted silently, and images are
+# not worth that risk.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.avif binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.pdf binary
+*.mp3 binary
+*.wav binary
+*.ogg binary
+*.mp4 binary
+*.webm binary
+*.zip binary
+*.gz binary
+
+# The exception to the rule above: cmd.exe needs CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Kept from the previous file: both are already covered by the rule above,
+# and both are load-bearing enough to stay said out loud.
 .githooks/* text eol=lf
 *.sh text eol=lf
