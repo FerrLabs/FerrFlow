@@ -21,6 +21,8 @@ pub struct PackageConfig {
     pub tag_template: Option<String>,
     #[serde(default, alias = "floatingTags")]
     pub floating_tags: Option<Vec<FloatingTagLevel>>,
+    #[serde(default, alias = "latestTag")]
+    pub latest_tag: Option<String>,
     #[serde(default)]
     pub hooks: Option<HooksConfig>,
     #[serde(default)]
@@ -202,6 +204,15 @@ impl PackageConfig {
         }
     }
 
+    pub fn latest_tag_name(&self, workspace: &WorkspaceConfig) -> Option<String> {
+        let template = self
+            .latest_tag
+            .as_deref()
+            .or(workspace.latest_tag.as_deref())?;
+        let rendered = template.replace("{name}", &self.name);
+        (!rendered.trim().is_empty()).then_some(rendered)
+    }
+
     pub fn effective_update_lockfiles(&self, workspace: &WorkspaceConfig) -> bool {
         self.update_lockfiles.unwrap_or(workspace.update_lockfiles)
     }
@@ -243,6 +254,62 @@ pub enum FileFormat {
 
 #[cfg(test)]
 mod tests {
+    fn ws(tag_template: Option<&str>, latest: Option<&str>) -> WorkspaceConfig {
+        WorkspaceConfig {
+            tag_template: tag_template.map(str::to_string),
+            latest_tag: latest.map(str::to_string),
+            ..Default::default()
+        }
+    }
+
+    fn named(name: &str) -> PackageConfig {
+        let mut p = pkg(".", &[]);
+        p.name = name.to_string();
+        p
+    }
+
+    #[test]
+    fn latest_tag_ignores_the_version_template_entirely() {
+        let w = ws(Some("v{version}"), Some("latest"));
+        assert_eq!(named("api").latest_tag_name(&w).as_deref(), Some("latest"));
+    }
+
+    #[test]
+    fn latest_tag_never_inherits_a_v_prefix() {
+        for template in ["v{version}", "{name}@v{version}", "release-{version}"] {
+            let w = ws(Some(template), Some("latest"));
+            let got = named("api").latest_tag_name(&w).unwrap();
+            assert_eq!(got, "latest", "template {template:?} leaked into the alias");
+            assert!(!got.starts_with('v'), "got {got:?}");
+        }
+    }
+
+    #[test]
+    fn latest_tag_namespaces_per_package_via_name() {
+        let w = ws(Some("{name}@v{version}"), Some("{name}@latest"));
+        assert_eq!(
+            named("api").latest_tag_name(&w).as_deref(),
+            Some("api@latest")
+        );
+        assert_eq!(
+            named("web").latest_tag_name(&w).as_deref(),
+            Some("web@latest")
+        );
+    }
+
+    #[test]
+    fn latest_tag_is_off_unless_configured() {
+        assert_eq!(named("api").latest_tag_name(&ws(None, None)), None);
+        assert_eq!(named("api").latest_tag_name(&ws(None, Some("  "))), None);
+    }
+
+    #[test]
+    fn package_latest_tag_overrides_the_workspace_one() {
+        let w = ws(None, Some("{name}@latest"));
+        let mut p = named("api");
+        p.latest_tag = Some("stable".to_string());
+        assert_eq!(p.latest_tag_name(&w).as_deref(), Some("stable"));
+    }
     use super::*;
 
     fn pkg(path: &str, shared: &[&str]) -> PackageConfig {
@@ -256,6 +323,7 @@ mod tests {
             versioning: None,
             tag_template: None,
             floating_tags: None,
+            latest_tag: None,
             hooks: None,
             publishers: Vec::new(),
             update_lockfiles: None,

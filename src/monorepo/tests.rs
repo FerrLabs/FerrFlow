@@ -526,6 +526,7 @@ fn make_pkg(name: &str, path: &str, shared: &[&str]) -> PackageConfig {
         tag_template: None,
         hooks: None,
         floating_tags: None,
+        latest_tag: None,
         publishers: vec![],
         update_lockfiles: None,
     }

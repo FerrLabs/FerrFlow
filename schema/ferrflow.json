@@ -165,6 +165,15 @@
           ],
           "default": "auto"
         },
+        "latestTag": {
+          "type": "string",
+          "description": "Template for a floating alias tag that always points at this package's newest non-prerelease release, e.g. \"latest\" or \"{name}@latest\". Absent (default) means no alias tag. Deliberately separate from tagTemplate: the alias is a name, not a version, so a tagTemplate of \"v{version}\" does not turn it into \"vlatest\". In a monorepo the template must include {name}, or every package will fight over the same ref.",
+          "examples": [
+            "latest",
+            "{name}@latest",
+            "{name}@stable"
+          ]
+        },
         "orphanedTagStrategy": {
           "type": "string",
           "enum": [

@@ -38,6 +38,8 @@ pub struct WorkspaceConfig {
     pub commit_skip_markers: Option<Vec<String>>,
     #[serde(default, alias = "floatingTags")]
     pub floating_tags: Vec<FloatingTagLevel>,
+    #[serde(default, alias = "latestTag")]
+    pub latest_tag: Option<String>,
     #[serde(default, alias = "orphanedTagStrategy")]
     pub orphaned_tag_strategy: OrphanedTagStrategy,
     #[serde(default)]
