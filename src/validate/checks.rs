@@ -74,6 +74,36 @@ pub(super) fn check_tag_templates(config: &Config) -> Vec<ValidationEntry> {
             check_template(tmpl, &format!("{}.tagTemplate", pkg.name));
         }
     }
+
+    let mut check_latest = |template: &str, context: &str| {
+        if template.contains("{version}") {
+            entries.push(ValidationEntry {
+                level: ValidationLevel::Error,
+                path: context.to_string(),
+                message: format!(
+                    "latest tag template \"{template}\" contains {{version}}, which is not substituted: the alias is a name, not a version"
+                ),
+            });
+        }
+        if is_monorepo && !template.contains("{name}") {
+            entries.push(ValidationEntry {
+                level: ValidationLevel::Warning,
+                path: context.to_string(),
+                message: format!(
+                    "latest tag template \"{template}\" does not contain {{name}}: every package would overwrite the same ref"
+                ),
+            });
+        }
+    };
+
+    if let Some(ref tmpl) = config.workspace.latest_tag {
+        check_latest(tmpl, "workspace.latestTag");
+    }
+    for pkg in &config.packages {
+        if let Some(ref tmpl) = pkg.latest_tag {
+            check_latest(tmpl, &format!("{}.latestTag", pkg.name));
+        }
+    }
     entries
 }
 
