@@ -232,6 +232,36 @@ fn pass_tag_template_missing_name_monorepo() {
 }
 
 #[test]
+fn latest_tag_with_version_placeholder_is_an_error() {
+    let mut config = make_config(vec![make_package("app", ".")]);
+    config.workspace.latest_tag = Some("{name}@v{version}-latest".to_string());
+    let entries = check_tag_templates(&config);
+    assert_eq!(entries.len(), 1);
+    assert_eq!(entries[0].level, ValidationLevel::Error);
+    assert!(entries[0].message.contains("{version}"));
+}
+
+#[test]
+fn latest_tag_without_name_in_a_monorepo_warns() {
+    let mut config = make_config(vec![
+        make_package("api", "packages/api"),
+        make_package("web", "packages/web"),
+    ]);
+    config.workspace.latest_tag = Some("latest".to_string());
+    let entries = check_tag_templates(&config);
+    assert_eq!(entries.len(), 1);
+    assert_eq!(entries[0].level, ValidationLevel::Warning);
+    assert!(entries[0].message.contains("overwrite the same ref"));
+}
+
+#[test]
+fn latest_tag_is_fine_bare_in_a_single_package_repo() {
+    let mut config = make_config(vec![make_package("app", ".")]);
+    config.workspace.latest_tag = Some("latest".to_string());
+    assert!(check_tag_templates(&config).is_empty());
+}
+
+#[test]
 fn pass_package_paths_exist() {
     let tmp = TempDir::new().unwrap();
     fs::create_dir_all(tmp.path().join("packages/api")).unwrap();
