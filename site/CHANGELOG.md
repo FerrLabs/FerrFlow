@@ -1,5 +1,15 @@
 # Changelog
 
+## [2026.8.4] - 2026-08-19
+
+### Features
+
+- feat(docs): document workspace.latestTag (#830)
+
+### Bug Fixes
+
+- fix(schema): sync served schema with the FerrFlow CLI source
+
 ## [2026.8.3] - 2026-08-16
 
 ### Bug Fixes
