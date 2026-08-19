@@ -4,6 +4,16 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.1.0] - 2026-08-19
+
+### Features
+
+- feat(tags): add workspace.latestTag for a floating alias tag (#866)
+
+### Bug Fixes
+
+- fix(schema): declare latestTag on packages and validate the template (#868)
+
 ## [7.0.5] - 2026-08-16
 
 ### Bug Fixes
