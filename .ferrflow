@@ -1,6 +1,7 @@
 {
   "$schema": "https://ferrflow.com/schema/ferrflow.json",
   "workspace": {
+    "latestTag": "latest",
     "releaseCommitBody": "full",
     "tagTemplate": "v{version}",
     "floatingTags": ["major"],
