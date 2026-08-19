@@ -153,6 +153,7 @@ fn scaffold_package(name: String, path: String) -> PackageConfig {
         tag_template: None,
         hooks: None,
         floating_tags: None,
+        latest_tag: None,
         publishers: vec![],
         update_lockfiles: None,
     }

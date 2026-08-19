@@ -155,6 +155,7 @@ mod tests {
             versioning: None,
             tag_template: None,
             floating_tags: None,
+            latest_tag: None,
             hooks: None,
             publishers: vec![],
         }

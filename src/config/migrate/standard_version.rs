@@ -149,6 +149,7 @@ pub(super) fn build(raw: &str) -> Result<(Config, MigrationReport)> {
         tag_template: None,
         hooks: None,
         floating_tags: None,
+        latest_tag: None,
         publishers: vec![],
         update_lockfiles: None,
     };

@@ -368,6 +368,20 @@ fn create_and_move_floating_tags(
             .find(|p| p.name == t.package)
             .ok_or_else(|| anyhow::anyhow!("package '{}' not found in config", t.package))
             .error_code(error_code::MONOREPO_PACKAGE_NOT_FOUND)?;
+        if let Some(alias) = pkg.latest_tag_name(&plan.config.workspace) {
+            let msg = format!("Release {}", t.version);
+            let moved = create_or_move_tag(plan.repo, &alias, &msg)?;
+            let verb = if moved { "Moved" } else { "Created" };
+            if let Some((_, lines)) = plan
+                .pkg_outputs
+                .iter_mut()
+                .rev()
+                .find(|(n, _)| n == &t.package)
+            {
+                lines.push(format!("  ✓ {} floating tag {}", verb, alias.cyan()));
+            }
+            floating_tag_names.push(alias);
+        }
         let levels = pkg.effective_floating_tags(&plan.config.workspace);
         for level in levels {
             if let Some(truncated) = truncate_version(&t.version, *level) {
