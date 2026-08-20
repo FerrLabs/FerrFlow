@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::conventional_commits::BumpType;
 
-use super::types::{HooksConfig, PublisherConfig};
+use super::types::{HooksConfig, PublisherConfig, VersionSourcePolicy};
 use super::workspace::WorkspaceConfig;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -29,6 +29,8 @@ pub struct PackageConfig {
     pub publishers: Vec<PublisherConfig>,
     #[serde(default, alias = "updateLockfiles")]
     pub update_lockfiles: Option<bool>,
+    #[serde(default, alias = "versionSource")]
+    pub version_source: Option<VersionSourcePolicy>,
 }
 
 /// An upstream package this one depends on.
@@ -216,6 +218,10 @@ impl PackageConfig {
     pub fn effective_update_lockfiles(&self, workspace: &WorkspaceConfig) -> bool {
         self.update_lockfiles.unwrap_or(workspace.update_lockfiles)
     }
+
+    pub fn effective_version_source(&self, workspace: &WorkspaceConfig) -> VersionSourcePolicy {
+        self.version_source.unwrap_or(workspace.version_source)
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -314,6 +320,7 @@ mod tests {
 
     fn pkg(path: &str, shared: &[&str]) -> PackageConfig {
         PackageConfig {
+            version_source: None,
             name: "api".to_string(),
             path: path.to_string(),
             versioned_files: Vec::new(),

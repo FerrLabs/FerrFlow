@@ -156,6 +156,7 @@ fn scaffold_package(name: String, path: String) -> PackageConfig {
         latest_tag: None,
         publishers: vec![],
         update_lockfiles: None,
+        version_source: None,
     }
 }
 

@@ -259,6 +259,7 @@ mod tests {
 
     fn pkg(name: &str, path: &str) -> PackageConfig {
         PackageConfig {
+            version_source: None,
             name: name.to_string(),
             path: ".".to_string(),
             versioned_files: vec![VersionedFile {

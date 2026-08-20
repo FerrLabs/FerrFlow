@@ -4,7 +4,7 @@ use super::commit_formats::CommitFormats;
 use super::package::{FloatingTagLevel, VersioningStrategy};
 use super::types::{
     BranchChannelConfig, ForgeKind, HooksConfig, OrphanedTagStrategy, RegistryConfig,
-    ReleaseCommitBody, ReleaseCommitMode, ReleaseCommitScope,
+    ReleaseCommitBody, ReleaseCommitMode, ReleaseCommitScope, VersionSourcePolicy,
 };
 use std::collections::BTreeMap;
 
@@ -42,6 +42,8 @@ pub struct WorkspaceConfig {
     pub latest_tag: Option<String>,
     #[serde(default, alias = "orphanedTagStrategy")]
     pub orphaned_tag_strategy: OrphanedTagStrategy,
+    #[serde(default, alias = "versionSource")]
+    pub version_source: VersionSourcePolicy,
     #[serde(default)]
     pub forge: ForgeKind,
     #[serde(default)]

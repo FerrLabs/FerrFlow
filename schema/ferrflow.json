@@ -184,6 +184,16 @@
           "description": "How to handle tags pointing to orphaned commits (after rebase + force-push). 'warn' logs a warning and skips. 'treeHash' attempts recovery by matching the commit's tree hash. 'message' attempts recovery by matching the commit message.",
           "default": "warn"
         },
+        "versionSource": {
+          "type": "string",
+          "enum": [
+            "highest",
+            "tag",
+            "file"
+          ],
+          "description": "Which source wins when a package has both a git tag and a version in a versioned file. 'highest' (default) takes whichever is higher, so a mistake in either source ratchets the version upward and is never walked back. 'tag' treats the tags as the record of what shipped and ignores the file. 'file' treats the file as the source and ignores the tag, which is what a package migrated between repos usually needs. With only one source present the setting has no effect.",
+          "default": "highest"
+        },
         "hooks": {
           "$ref": "#/$defs/hooks"
         },
@@ -410,6 +420,16 @@
           "description": "Snake_case form of `orphanedTagStrategy` — both spellings are accepted. How to handle tags pointing to orphaned commits (after rebase + force-push). 'warn' logs a warning and skips. 'treeHash' attempts recovery by matching the commit's tree hash. 'message' attempts recovery by matching the commit message.",
           "default": "warn"
         },
+        "version_source": {
+          "type": "string",
+          "enum": [
+            "highest",
+            "tag",
+            "file"
+          ],
+          "description": "Snake_case form of `versionSource`, both spellings are accepted. Which source wins when a package has both a git tag and a version in a versioned file. 'highest' (default) takes whichever is higher, so a mistake in either source ratchets the version upward and is never walked back. 'tag' treats the tags as the record of what shipped and ignores the file. 'file' treats the file as the source and ignores the tag, which is what a package migrated between repos usually needs. With only one source present the setting has no effect.",
+          "default": "highest"
+        },
         "defer_publish": {
           "type": "boolean",
           "description": "Snake_case form of `deferPublish` — both spellings are accepted. When true, `ferrflow release` does not run the configured publishers inline — it defers them to a separate `ferrflow publish` invocation (e.g. a CI job that carries the docker/helm/npm build toolchain the release job lacks). `ferrflow publish` always runs the publishers regardless of this flag.",
@@ -602,6 +622,15 @@
             "type": "boolean",
             "description": "Per-package override for workspace.updateLockfiles. Set false to skip lockfile refresh for this package even when the workspace default is on; set true to refresh only this package when the workspace default is off. Omit to inherit the workspace setting."
           },
+          "versionSource": {
+            "type": "string",
+            "enum": [
+              "highest",
+              "tag",
+              "file"
+            ],
+            "description": "Per-package override for workspace.versionSource. Lets one package in a monorepo pick its own tag-vs-file resolution without changing the policy for the others. Omit to inherit the workspace setting."
+          },
           "versioned_files": {
             "type": "array",
             "description": "Snake_case form of `versionedFiles` — both spellings are accepted. Files that contain the package version to update on release.",
@@ -697,6 +726,15 @@
           "update_lockfiles": {
             "type": "boolean",
             "description": "Snake_case form of `updateLockfiles` — both spellings are accepted. Per-package override for workspace.updateLockfiles. Set false to skip lockfile refresh for this package even when the workspace default is on; set true to refresh only this package when the workspace default is off. Omit to inherit the workspace setting."
+          },
+          "version_source": {
+            "type": "string",
+            "enum": [
+              "highest",
+              "tag",
+              "file"
+            ],
+            "description": "Snake_case form of `versionSource`, both spellings are accepted. Per-package override for workspace.versionSource. Lets one package in a monorepo pick its own tag-vs-file resolution without changing the policy for the others. Omit to inherit the workspace setting."
           }
         },
         "additionalProperties": false

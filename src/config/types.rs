@@ -51,6 +51,15 @@ pub enum OnFailure {
     Continue,
 }
 
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum VersionSourcePolicy {
+    #[default]
+    Highest,
+    Tag,
+    File,
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub enum OrphanedTagStrategy {
