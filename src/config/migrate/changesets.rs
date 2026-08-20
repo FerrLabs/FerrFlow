@@ -151,6 +151,7 @@ fn scaffold_package(name: String, path: String) -> PackageConfig {
         depends_on: vec![],
         versioning: None,
         tag_template: None,
+        version_template: None,
         hooks: None,
         floating_tags: None,
         latest_tag: None,

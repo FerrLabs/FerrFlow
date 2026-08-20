@@ -155,6 +155,7 @@ mod tests {
             update_lockfiles: None,
             versioning: None,
             tag_template: None,
+            version_template: None,
             floating_tags: None,
             latest_tag: None,
             hooks: None,

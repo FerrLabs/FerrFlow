@@ -19,6 +19,8 @@ pub struct PackageConfig {
     pub versioning: Option<VersioningStrategy>,
     #[serde(alias = "tagTemplate")]
     pub tag_template: Option<String>,
+    #[serde(alias = "versionTemplate")]
+    pub version_template: Option<String>,
     #[serde(default, alias = "floatingTags")]
     pub floating_tags: Option<Vec<FloatingTagLevel>>,
     #[serde(default, alias = "latestTag")]
@@ -164,6 +166,15 @@ impl PackageConfig {
             .unwrap_or_default()
     }
 
+    pub fn effective_version_template<'a>(
+        &'a self,
+        workspace: &'a WorkspaceConfig,
+    ) -> Option<&'a str> {
+        self.version_template
+            .as_deref()
+            .or(workspace.version_template.as_deref())
+    }
+
     fn effective_template<'a>(
         &'a self,
         workspace: &'a WorkspaceConfig,
@@ -263,6 +274,7 @@ mod tests {
     fn ws(tag_template: Option<&str>, latest: Option<&str>) -> WorkspaceConfig {
         WorkspaceConfig {
             tag_template: tag_template.map(str::to_string),
+            version_template: None,
             latest_tag: latest.map(str::to_string),
             ..Default::default()
         }
@@ -329,6 +341,7 @@ mod tests {
             depends_on: Vec::new(),
             versioning: None,
             tag_template: None,
+            version_template: None,
             floating_tags: None,
             latest_tag: None,
             hooks: None,

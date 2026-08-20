@@ -48,6 +48,16 @@
           ],
           "default": "semver"
         },
+        "versionTemplate": {
+          "type": "string",
+          "description": "Version format built from named variables. Variables: year, short_year, month, padded_month, day, padded_day, week, padded_week, quarter, seq, major, minor, patch. Each must be separated by a literal so the previous version can be read back. Takes precedence over 'versioning'.",
+          "examples": [
+            "{year}.{month}.{day}",
+            "{short_year}.{padded_month}.{seq}",
+            "{year}.Q{quarter}.{seq}",
+            "{year}.{minor}.{patch}"
+          ]
+        },
         "tagTemplate": {
           "type": "string",
           "description": "Tag template. Use {name} for package name and {version} for version. Default: 'v{version}' for single repos, '{name}@v{version}' for monorepos.",
@@ -576,6 +586,16 @@
               "calver-seq",
               "sequential",
               "zerover"
+            ]
+          },
+          "versionTemplate": {
+            "type": "string",
+            "description": "Version format built from named variables. Variables: year, short_year, month, padded_month, day, padded_day, week, padded_week, quarter, seq, major, minor, patch. Each must be separated by a literal so the previous version can be read back. Overrides workspace default. Takes precedence over 'versioning'.",
+            "examples": [
+              "{year}.{month}.{day}",
+              "{short_year}.{padded_month}.{seq}",
+              "{year}.Q{quarter}.{seq}",
+              "{year}.{minor}.{patch}"
             ]
           },
           "tagTemplate": {

@@ -17,7 +17,12 @@ pub fn determine_bump(message: &str, formats_json: Option<String>) -> Result<Str
 }
 
 #[wasm_bindgen]
-pub fn compute_next_version(current: &str, bump: &str, strategy: &str) -> Result<String, JsError> {
+pub fn compute_next_version(
+    current: &str,
+    bump: &str,
+    strategy: &str,
+    version_template: Option<String>,
+) -> Result<String, JsError> {
     let bump_type = match bump {
         "major" => ferrflow::conventional_commits::BumpType::Major,
         "minor" => ferrflow::conventional_commits::BumpType::Minor,
@@ -34,8 +39,13 @@ pub fn compute_next_version(current: &str, bump: &str, strategy: &str) -> Result
         _ => ferrflow::config::VersioningStrategy::Semver,
     };
 
-    versioning::compute_next_version(current, bump_type, strategy_type)
-        .map_err(|e| JsError::new(&e.to_string()))
+    versioning::compute_next_version(
+        current,
+        bump_type,
+        strategy_type,
+        version_template.as_deref(),
+    )
+    .map_err(|e| JsError::new(&e.to_string()))
 }
 
 #[wasm_bindgen]

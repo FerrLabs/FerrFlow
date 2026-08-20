@@ -20,6 +20,8 @@ pub struct WorkspaceConfig {
     pub versioning: Option<VersioningStrategy>,
     #[serde(alias = "tagTemplate")]
     pub tag_template: Option<String>,
+    #[serde(alias = "versionTemplate")]
+    pub version_template: Option<String>,
     #[serde(default, alias = "recoverMissedReleases")]
     pub recover_missed_releases: bool,
     #[serde(default, alias = "releaseCommitMode")]

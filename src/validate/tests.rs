@@ -23,6 +23,7 @@ fn make_package(name: &str, path: &str) -> PackageConfig {
         depends_on: vec![],
         versioning: None,
         tag_template: None,
+        version_template: None,
         floating_tags: None,
         latest_tag: None,
         publishers: vec![],

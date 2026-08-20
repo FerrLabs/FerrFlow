@@ -5,8 +5,10 @@ use crate::conventional_commits::BumpType;
 
 mod detect;
 mod strategies;
+mod template;
 
 pub use detect::detect_strategy_from_tags;
+pub use template::validate as validate_version_template;
 
 use strategies::{bump_semver, bump_sequential, bump_zerover, calver_seq_version, calver_version};
 
@@ -23,7 +25,11 @@ pub fn compute_next_version(
     current: &str,
     bump: BumpType,
     strategy: VersioningStrategy,
+    version_template: Option<&str>,
 ) -> Result<String> {
+    if let Some(tpl) = version_template {
+        return template::render(current, bump, tpl);
+    }
     match strategy {
         VersioningStrategy::Semver => bump_semver(current, bump),
         VersioningStrategy::Calver => calver_version("%Y.%m.%d"),

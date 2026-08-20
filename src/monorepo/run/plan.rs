@@ -292,14 +292,17 @@ pub(super) fn compute_plan(
             .max()
             .unwrap_or(BumpType::None);
 
-        if bump == BumpType::None && !is_date_or_seq(pkg_strategy) {
+        let version_template = pkg.effective_version_template(&config.workspace);
+
+        if bump == BumpType::None && version_template.is_none() && !is_date_or_seq(pkg_strategy) {
             return Ok(PackagePlan::Skipped {
                 reason: SkipReason::NoReleasableCommits,
                 recovered,
             });
         }
 
-        let base_version = compute_next_version(&current_version, bump, pkg_strategy)?;
+        let base_version =
+            compute_next_version(&current_version, bump, pkg_strategy, version_template)?;
 
         let (new_version, is_prerelease) = if prerelease {
             let tag_prefix = pkg.tag_prefix(&config.workspace, is_monorepo);
