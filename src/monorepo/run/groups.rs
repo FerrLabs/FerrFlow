@@ -177,6 +177,13 @@ mod tests {
             b.current_version, "1.0.0",
             "current read from the version file"
         );
+        assert_eq!(
+            b.version_source,
+            Some(VersionSource::File {
+                file: "b/Cargo.toml".to_string()
+            }),
+            "an aligned member names the file it read its current version from"
+        );
         assert!(b.commits.is_empty(), "no commits of its own");
     }
 

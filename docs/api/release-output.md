@@ -55,7 +55,7 @@ repository.
 | `released[].tag` | string | The tag that was (or would be) created. |
 | `released[].commit_count` | number | Number of commits considered for this package's changelog. |
 | `released[].prerelease` | boolean | Whether the new version is a pre-release. |
-| `released[].version_source` | object | Where `previous_version` came from. See below. Omitted when the version was aligned to a `linked`/`fixed` group instead of resolved. |
+| `released[].version_source` | object | Where `previous_version` came from. See below. Omitted only when no source could be read at all. |
 | `released[].forge_release_url` | string \| null | URL of the created forge release. `null` on dry-run, when no forge is configured, or when the release was not created. |
 | `released[].forge_release_id` | number \| null | Numeric id of the created forge release (GitHub). `null` on dry-run, on GitLab, or when not created. |
 | `skipped[]` | array | Packages that were considered but not released. |
@@ -86,7 +86,11 @@ When both carry the same version the tag is credited, matching the
 resolution order. The same object appears in `check --json` under
 `packages[].version_source`, and in `why --json` at the top level.
 `why` reports `file` for a package it skipped, because that is the only
-source it reads in that case.
+source it reads in that case. A member pulled along by a `linked` or `fixed`
+group reports `file` for the same reason: its new version comes from the group,
+but the previous version it is compared against was read from its own versioned
+file. The field is absent only when no source could be read, which for a group
+member means the version was borrowed from the group target.
 
 ## Dry-run behaviour
 
