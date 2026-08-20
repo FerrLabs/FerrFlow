@@ -3,7 +3,7 @@ title: Conventional Commits
 description: How FerrFlow interprets commit messages to determine version bumps.
 ---
 
-FerrFlow follows the [Conventional Commits](https://www.conventionalcommits.org/) specification to determine how much to bump the version.
+FerrFlow follows the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification to determine how much to bump the version.
 
 ## Bump rules
 
@@ -19,6 +19,21 @@ FerrFlow follows the [Conventional Commits](https://www.conventionalcommits.org/
 | `ci:`                         | none         | `ci: add linting step`              |
 | `style:`                      | none         | `style: format code`                |
 | `test:`                       | none         | `test: add unit tests`              |
+
+## Permissive defaults
+
+The table above lists the canonical forms, but FerrFlow does not require them. The defaults also accept capitalised and slash-separated variants, so a repository that never enforced the spec still gets sensible bumps from its existing history:
+
+| Bump  | Also accepted by default                                                                   |
+| ----- | ------------------------------------------------------------------------------------------ |
+| minor | `Feat:`, `feature:`, and the slash forms `feat/`, `Feat/`, `feature/`, `Feature/`          |
+| patch | `Fix:`, `Perf:`, `Refactor:`, and the slash forms `fix/`, `Fix/`, `refactor/`, `Refactor/` |
+
+The colon forms take an optional scope, so `Feat(api):` and `Refactor(db):` are covered too. The slash forms do not: `Feat/add-login` matches, `Feat(api)/add-login` does not. There is no `perf/` slash form, and no bare `Feature:`.
+
+Nothing maps to **major** by default: a major bump comes only from a breaking marker, described below.
+
+If your history uses conventions of its own, remap them with [`commitFormats`](/docs/configuration/config-file/). Breaking markers are detected before any configured pattern is consulted, so a custom pattern can never strip a commit of its breaking status.
 
 ## Breaking changes
 

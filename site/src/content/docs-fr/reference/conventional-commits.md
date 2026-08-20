@@ -3,7 +3,7 @@ title: Conventional Commits
 description: Comment FerrFlow interprète les messages de commit pour déterminer les incréments de version.
 ---
 
-FerrFlow suit la spécification [Conventional Commits](https://www.conventionalcommits.org/) pour déterminer de combien incrémenter la version.
+FerrFlow suit la spécification [Conventional Commits](https://www.conventionalcommits.org/fr/v1.0.0/) pour déterminer de combien incrémenter la version.
 
 ## Règles d'incrément
 
@@ -19,6 +19,21 @@ FerrFlow suit la spécification [Conventional Commits](https://www.conventionalc
 | `ci:`                         | aucun                | `ci: add linting step`              |
 | `style:`                      | aucun                | `style: format code`                |
 | `test:`                       | aucun                | `test: add unit tests`              |
+
+## Défauts permissifs
+
+Le tableau ci-dessus liste les formes canoniques, mais FerrFlow ne les impose pas. Les défauts acceptent aussi les variantes capitalisées et séparées par une barre oblique, pour qu'un dépôt qui n'a jamais appliqué la spec obtienne quand même des incréments corrects depuis son historique existant :
+
+| Incrément | Également acceptés par défaut                                                                        |
+| --------- | ---------------------------------------------------------------------------------------------------- |
+| mineur    | `Feat:`, `feature:`, et les formes à barre oblique `feat/`, `Feat/`, `feature/`, `Feature/`          |
+| patch     | `Fix:`, `Perf:`, `Refactor:`, et les formes à barre oblique `fix/`, `Fix/`, `refactor/`, `Refactor/` |
+
+Les formes à deux-points acceptent un scope optionnel, donc `Feat(api):` et `Refactor(db):` sont couverts aussi. Les formes à barre oblique non : `Feat/add-login` correspond, `Feat(api)/add-login` non. Il n'existe pas de forme `perf/`, ni de `Feature:` sans barre oblique.
+
+Rien ne produit un incrément **majeur** par défaut : un majeur vient uniquement d'un marqueur de breaking change, décrit ci-dessous.
+
+Si votre historique suit ses propres conventions, remappez-les avec [`commitFormats`](/fr/docs/configuration/config-file/). Les marqueurs de breaking change sont détectés avant toute consultation des motifs configurés, donc un motif personnalisé ne peut jamais retirer à un commit son statut de breaking change.
 
 ## Breaking changes
 
