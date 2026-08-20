@@ -33,3 +33,5 @@ That string is display text inside a `console.error` on the unsupported-platform
 There are no `preinstall`, `postinstall` or `prepare` scripts in the wrapper or in any platform package. The platform packages carry no JavaScript at all: the binary is placed into them by the release workflow, and they declare no `bin` and no `scripts`.
 
 Releases ship a `SHA256SUMS`, cosign signatures and build-provenance attestations. See [Verifying releases](https://ferrflow.com/docs/verifying-releases) for how to check them yourself; the GitHub Action verifies the digest before extracting.
+
+The npm packages are published with npm trusted publishing over OIDC. There is no long-lived npm token in the release workflow: publishing rights are bound to this repository and the `publish.yml` workflow, and npm generates a provenance attestation for every published package automatically.
