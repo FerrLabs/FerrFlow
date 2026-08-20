@@ -13,7 +13,7 @@ updates your version files, writes the changelog, and cuts the tagged release. A
 [![Maintainability](https://sonar.ferrlabs.com/api/project_badges/measure?project=ferrflow&metric=sqale_rating&token=sqb_53f0d93466bd01a6c6a94a15125d5aa8390c67fa)](https://sonar.ferrlabs.com/dashboard?id=ferrflow)
 [![Security](https://sonar.ferrlabs.com/api/project_badges/measure?project=ferrflow&metric=security_rating&token=sqb_53f0d93466bd01a6c6a94a15125d5aa8390c67fa)](https://sonar.ferrlabs.com/dashboard?id=ferrflow)
 [![License](https://img.shields.io/github/license/FerrLabs/FerrFlow)](LICENSE)
-[![Socket Badge](https://badge.socket.dev/npm/package/ferrflow/latest)](https://badge.socket.dev/npm/package/ferrflow/latest)
+[![Socket Badge](https://badge.socket.dev/cargo/package/ferrflow/latest)](https://socket.dev/cargo/package/ferrflow)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/FerrLabs/FerrFlow/badge)](https://scorecard.dev/viewer/?uri=github.com/FerrLabs/FerrFlow)
 
 [Documentation](https://ferrflow.com/docs) | [Changelog](https://ferrlabs.com/changelog/) | [GitHub App](https://github.com/apps/ferrflow)
