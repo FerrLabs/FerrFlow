@@ -11,10 +11,12 @@ on:
 
 permissions:
   contents: read
-  security-events: write
 
 jobs:
   scan:
     name: Secrets + CVE
+    permissions:
+      contents: read
+      security-events: write
     uses: FerrLabs/.github/.github/workflows/reusable-security-scan.yml@60b3aea308d6e0d612f3ca4e3f7259dc38626429 # main
     secrets: inherit
