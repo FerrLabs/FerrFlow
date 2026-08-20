@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.4.0] - 2026-08-20
+
+### Features
+
+- feat(versioning): versionTemplate, a version format built from named variables (#886)
+
 ## [7.3.2] - 2026-08-20
 
 ### Bug Fixes
