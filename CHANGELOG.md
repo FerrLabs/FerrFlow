@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.3.2] - 2026-08-20
+
+### Bug Fixes
+
+- fix(ci): drop socket.yml triggerPaths (#879)
+
 ## [7.3.1] - 2026-08-20
 
 ### Bug Fixes
