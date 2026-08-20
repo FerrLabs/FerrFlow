@@ -233,7 +233,7 @@ ferrflow why [PACKAGE] [OPTIONS]
 Package: web
   Path:          web
   Strategy:      semver
-  Version:       1.0.0
+  Version:       1.0.0 (from web/Cargo.toml)
 
 Last tag: web@v1.0.0 (7dcc20b, 3 days ago, reachable from HEAD)
 
@@ -249,6 +249,7 @@ Decision: patch bump from the dependency cascade — 1.0.0 → 1.0.1, tag web@v1
 
 The report reads top to bottom as the decision is made:
 
+- **Version** names where the current version was read from: a tag, the package's versioned file, or both when they disagreed, in which case it says which one won. A package whose tag was never pushed reads its version from the file and looks perfectly normal without this line.
 - **Last tag** — the tag the range starts from, when it was cut, and whether its commit is still reachable from `HEAD`. A tag that is _not_ reachable (rebased away, force pushed) is why a package can look released and still replay its whole history.
 - **Touch check** — the file set that decided whether the package is in scope, with the `path` or `sharedPaths` prefix each file matched. The set is `HEAD`'s changed files, or everything since the last tag when [`recoverMissedReleases`](/docs/configuration/config-file/) pulled the package back in.
 - **Commits considered** — every commit back to the package's last tag with its individual bump. Bump classification is _not_ path-scoped, so a `feat!:` on a sibling package still counts here; this section is usually where an unexpected major comes from.
