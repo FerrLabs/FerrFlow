@@ -175,6 +175,7 @@ fn collect_package(path_default: &str, monorepo: bool) -> PackageConfig {
         latest_tag: None,
         publishers: vec![],
         update_lockfiles: None,
+        version_source: None,
     }
 }
 

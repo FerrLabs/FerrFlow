@@ -36,7 +36,7 @@ pub use package::{
 pub use types::{
     BranchChannelConfig, ChannelValue, DockerSign, ForgeKind, HooksConfig, OnFailure,
     OrphanedTagStrategy, PrereleaseIdentifier, PublisherConfig, RegistryConfig, ReleaseCommitBody,
-    ReleaseCommitMode, ReleaseCommitScope,
+    ReleaseCommitMode, ReleaseCommitScope, VersionSourcePolicy,
 };
 #[allow(unused_imports)]
 pub use workspace::{
@@ -243,6 +243,7 @@ impl Config {
                     latest_tag: None,
                     publishers: vec![],
                     update_lockfiles: None,
+                    version_source: None,
                 }]
             },
         }

@@ -206,6 +206,7 @@ fn build_package(
         latest_tag: None,
         publishers: vec![],
         update_lockfiles: None,
+        version_source: None,
     }
 }
 

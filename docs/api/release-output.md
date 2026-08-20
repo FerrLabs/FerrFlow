@@ -74,16 +74,24 @@ versioned file. `version_source` reports which one it came from, so a
 package whose tag was never pushed is distinguishable from one that
 simply has no tags yet.
 
+The `_over_` and `_by_policy` kinds both mean two sources were present,
+and they answer different questions. `_over_` means the winner was
+higher; `_by_policy` means `versionSource` named it and the comparison
+never ran. A consumer treating `tag_over_file` and `tag_by_policy` as the
+same thing will read a configured choice as evidence the tag was ahead.
+
 | `kind` | Meaning | Extra fields |
 | --- | --- | --- |
 | `tag` | Only a tag was found. | `tag` |
 | `file` | Only the versioned file was found, no tag matched. | `file` |
 | `tag_over_file` | Both were found and the tag was the higher of the two. | `tag`, `file` |
 | `file_over_tag` | Both were found and the file was the higher of the two. | `file`, `tag` |
+| `tag_by_policy` | Both were found and `versionSource: tag` took the tag, whichever was higher. | `tag`, `file` |
+| `file_by_policy` | Both were found and `versionSource: file` took the file, whichever was higher. | `file`, `tag` |
 | `bootstrap` | Neither was found, the version is the strategy's starting point. | none |
 
-When both carry the same version the tag is credited, matching the
-resolution order. The same object appears in `check --json` under
+Under the default `versionSource: highest`, when both carry the same
+version the tag is credited, matching the resolution order. The same object appears in `check --json` under
 `packages[].version_source`, and in `why --json` at the top level.
 `why` reports `file` for a package it skipped, because that is the only
 source it reads in that case. A member pulled along by a `linked` or `fixed`

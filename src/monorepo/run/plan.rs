@@ -15,7 +15,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
-use super::super::util::{is_package_touched, pick_higher_semver, tags_for_package};
+use super::super::util::{is_package_touched, tags_for_package};
 use super::super::version_source::VersionSource;
 use super::forced::{Forced, forced_version_for};
 
@@ -261,17 +261,14 @@ pub(super) fn compute_plan(
         )?
     };
     let last_tag = highest_tag.as_ref().map(|(tag, _version)| tag.clone());
-    let current_version = match (&highest_tag, &file_source) {
-        (Some((_, tag)), Some((_, file))) => pick_higher_semver(file, tag),
-        (Some((_, tag)), None) => tag.clone(),
-        (None, Some((_, file))) => file.clone(),
-        (None, None) => crate::versioning::bootstrap_version(pkg_strategy),
-    };
-    let version_source = Some(VersionSource::resolve(
+    let (resolved, source) = VersionSource::resolve(
         highest_tag,
         file_source,
-        &current_version,
-    ));
+        pkg.effective_version_source(&config.workspace),
+    );
+    let current_version =
+        resolved.unwrap_or_else(|| crate::versioning::bootstrap_version(pkg_strategy));
+    let version_source = Some(source);
 
     let prerelease = inputs.prerelease_ctx.is_prerelease();
 

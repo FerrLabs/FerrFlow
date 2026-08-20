@@ -152,6 +152,7 @@ pub(super) fn build(raw: &str) -> Result<(Config, MigrationReport)> {
         latest_tag: None,
         publishers: vec![],
         update_lockfiles: None,
+        version_source: None,
     };
 
     report.warnings.push(
