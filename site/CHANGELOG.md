@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.8.7] - 2026-08-20
+
+### Features
+
+- feat(site): add the changelog to ferrflow.com (#835)
+
 ## [2026.8.6] - 2026-08-20
 
 ### Features
