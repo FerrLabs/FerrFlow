@@ -16,6 +16,7 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use super::super::util::{is_package_touched, pick_higher_semver, tags_for_package};
+use super::super::version_source::VersionSource;
 use super::forced::{Forced, forced_version_for};
 
 pub(super) enum SkipReason {
@@ -46,6 +47,7 @@ pub(super) struct PackageBump {
     pub bump: BumpType,
     pub strategy_label: String,
     pub tag: String,
+    pub version_source: Option<VersionSource>,
 }
 
 pub(super) enum PackagePlan {
@@ -242,10 +244,11 @@ pub(super) fn compute_plan(
         tags_for_package(inputs.all_tags, &tag_search_prefix)
     });
 
-    let file_version = pkg
-        .versioned_files
-        .first()
-        .and_then(|vf| read_version(vf, inputs.root).ok());
+    let file_source = pkg.versioned_files.first().and_then(|vf| {
+        read_version(vf, inputs.root)
+            .ok()
+            .map(|version| (vf.path.clone(), version))
+    });
     let strategy = config.workspace.orphaned_tag_strategy;
     let highest_tag = if let (Some(idx), OrphanedTagStrategy::Warn) = (inputs.tag_index, strategy) {
         idx.find_highest_semver_tag(&tag_search_prefix, strategy)
@@ -258,13 +261,17 @@ pub(super) fn compute_plan(
         )?
     };
     let last_tag = highest_tag.as_ref().map(|(tag, _version)| tag.clone());
-    let tag_version = highest_tag.map(|(_tag, version)| version);
-    let current_version = match (tag_version, file_version) {
-        (Some(tag), Some(file)) => pick_higher_semver(&file, &tag),
-        (Some(tag), None) => tag,
-        (None, Some(file)) => file,
+    let current_version = match (&highest_tag, &file_source) {
+        (Some((_, tag)), Some((_, file))) => pick_higher_semver(file, tag),
+        (Some((_, tag)), None) => tag.clone(),
+        (None, Some((_, file))) => file.clone(),
         (None, None) => crate::versioning::bootstrap_version(pkg_strategy),
     };
+    let version_source = Some(VersionSource::resolve(
+        highest_tag,
+        file_source,
+        &current_version,
+    ));
 
     let prerelease = inputs.prerelease_ctx.is_prerelease();
 
@@ -345,6 +352,7 @@ pub(super) fn compute_plan(
         bump,
         strategy_label,
         tag,
+        version_source,
     })))
 }
 

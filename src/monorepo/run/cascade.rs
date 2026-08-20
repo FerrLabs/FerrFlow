@@ -11,6 +11,7 @@ use crate::versioning::compute_next_version;
 
 use super::super::types::CheckPackage;
 use super::super::util::tags_for_package;
+use super::super::version_source::VersionSource;
 use super::release_json::ReleasedPackage;
 use super::summary::PlannedTag;
 use crate::changelog::update_changelog;
@@ -100,6 +101,9 @@ pub(super) fn run_dependency_cascade(
                     tag: tag.clone(),
                     commit_count: 0,
                     prerelease: false,
+                    version_source: Some(VersionSource::File {
+                        file: vf.path.clone(),
+                    }),
                     forge_release_url: None,
                     forge_release_id: None,
                 });
@@ -114,6 +118,9 @@ pub(super) fn run_dependency_cascade(
                     tag: tag.clone(),
                     channel: channel.map(str::to_string),
                     prerelease: false,
+                    version_source: Some(VersionSource::File {
+                        file: vf.path.clone(),
+                    }),
                     commits: vec![],
                 });
             } else {

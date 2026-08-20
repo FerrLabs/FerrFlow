@@ -1,5 +1,7 @@
 use serde::Serialize;
 
+use super::super::version_source::VersionSource;
+
 #[derive(Serialize, Default)]
 pub(super) struct ReleaseJson {
     pub released: Vec<ReleasedPackage>,
@@ -17,6 +19,8 @@ pub(super) struct ReleasedPackage {
     pub tag: String,
     pub commit_count: usize,
     pub prerelease: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub version_source: Option<VersionSource>,
     pub forge_release_url: Option<String>,
     pub forge_release_id: Option<u64>,
 }

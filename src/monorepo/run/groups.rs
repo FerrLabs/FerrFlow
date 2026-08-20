@@ -6,6 +6,7 @@ use crate::conventional_commits::BumpType;
 use crate::formats::read_version;
 
 use super::super::util::pick_higher_semver;
+use super::super::version_source::VersionSource;
 use super::plan::{PackageBump, PackagePlan};
 
 pub(super) fn apply_groups(config: &Config, root: &Path, plans: &mut [Option<PackagePlan>]) {
@@ -47,10 +48,14 @@ pub(super) fn apply_groups(config: &Config, root: &Path, plans: &mut [Option<Pac
                     plans[idx] = Some(PackagePlan::Bump(bump));
                 }
                 _ => {
-                    let current = pkg
-                        .versioned_files
-                        .first()
-                        .and_then(|vf| read_version(vf, root).ok())
+                    let file_source = pkg.versioned_files.first().and_then(|vf| {
+                        read_version(vf, root)
+                            .ok()
+                            .map(|version| (vf.path.clone(), version))
+                    });
+                    let current = file_source
+                        .as_ref()
+                        .map(|(_, version)| version.clone())
                         .unwrap_or_else(|| target_version.clone());
                     plans[idx] = Some(PackagePlan::Bump(Box::new(PackageBump {
                         recovered: false,
@@ -61,6 +66,7 @@ pub(super) fn apply_groups(config: &Config, root: &Path, plans: &mut [Option<Pac
                         commits: Vec::new(),
                         bump: BumpType::None,
                         strategy_label: group.kind.label().to_string(),
+                        version_source: file_source.map(|(file, _)| VersionSource::File { file }),
                         tag: target_tag,
                     })));
                 }
@@ -136,6 +142,7 @@ mod tests {
             bump,
             strategy_label: bump.to_string(),
             tag: tag.to_string(),
+            version_source: None,
         })))
     }
 
