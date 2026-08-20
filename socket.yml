@@ -1,0 +1,13 @@
+version: 2
+
+triggerPaths:
+  - "Cargo.toml"
+  - "Cargo.lock"
+  - "npm/package.json"
+
+projectIgnorePaths:
+  - "npm/platforms"
+
+githubApp:
+  enabled: true
+  dependencyOverviewEnabled: true
