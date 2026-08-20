@@ -4,10 +4,11 @@
 
 **Universal semantic versioning for monorepos and classic repos.**
 
-Reads your commit history, works out the right version bump, updates your version files,<br />
-writes the changelog, and cuts the tagged release. Any language, any repo layout.
+Reads your [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/), works out the right version bump,<br />
+updates your version files, writes the changelog, and cuts the tagged release. Any language, any repo layout.
 
 [![Latest release](https://img.shields.io/github/v/release/FerrLabs/FerrFlow)](https://github.com/FerrLabs/FerrFlow/releases/latest)
+[![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-%23FE5196?logo=conventionalcommits&logoColor=white)](https://conventionalcommits.org)
 [![Quality Gate](https://sonar.ferrlabs.com/api/project_badges/measure?project=ferrflow&metric=alert_status&token=sqb_53f0d93466bd01a6c6a94a15125d5aa8390c67fa)](https://sonar.ferrlabs.com/dashboard?id=ferrflow)
 [![Maintainability](https://sonar.ferrlabs.com/api/project_badges/measure?project=ferrflow&metric=sqale_rating&token=sqb_53f0d93466bd01a6c6a94a15125d5aa8390c67fa)](https://sonar.ferrlabs.com/dashboard?id=ferrflow)
 [![Security](https://sonar.ferrlabs.com/api/project_badges/measure?project=ferrflow&metric=security_rating&token=sqb_53f0d93466bd01a6c6a94a15125d5aa8390c67fa)](https://sonar.ferrlabs.com/dashboard?id=ferrflow)
@@ -521,7 +522,7 @@ Hook commands receive environment variables: `FERRFLOW_PACKAGE`, `FERRFLOW_OLD_V
 
 ## Conventional Commits
 
-FerrFlow follows the [Conventional Commits](https://www.conventionalcommits.org/) spec.
+FerrFlow reads [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) to decide how far to bump. The spec is the contract between your history and your version numbers: write the prefix, and the bump, the changelog section and the tag follow from it.
 
 | Prefix | Bump |
 |--------|------|
@@ -529,6 +530,12 @@ FerrFlow follows the [Conventional Commits](https://www.conventionalcommits.org/
 | `feat:` | minor |
 | `feat!:`, `BREAKING CHANGE` | major |
 | `chore:`, `docs:`, `ci:` | none |
+
+The defaults are deliberately permissive, so a repo that never enforced the spec still gets sensible bumps: capitalised and slash-separated variants (`Feat:`, `Feat/`, `feature:`, `Fix/`, `Perf:`, `Refactor/`, and so on) are accepted alongside the canonical forms. If your history uses different conventions, remap them with [`commitFormats`](https://ferrflow.com/docs/configuration/config-file/).
+
+Nothing maps to major by default. A major bump comes only from a structural breaking marker (`feat!:`, `fix(api)!:`, or a `BREAKING CHANGE:` footer), and those are always detected whatever you configure, so a commit cannot lose its breaking status through a custom pattern.
+
+Full reference: [ferrflow.com/docs/reference/conventional-commits](https://ferrflow.com/docs/reference/conventional-commits).
 
 ## CI usage
 
