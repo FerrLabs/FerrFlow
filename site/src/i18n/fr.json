@@ -135,5 +135,18 @@
   "why.flow.f.binary": "Binaire statique unique, sans runtime Node",
   "why.flow.f.native": "Performance native, sans démarrage à froid de Node",
   "why.flow.f.action": "Distribué comme GitHub Action",
-  "why.flow.f.oss": "Gratuit / open source"
+  "why.flow.f.oss": "Gratuit / open source",
+  "changelog.eyebrow": "Changelog",
+  "changelog.titleA": "Ce qu’on a",
+  "changelog.titleB": "livré.",
+  "changelog.intro": "Chaque fonctionnalité, correctif et amélioration de FerrFlow, la CLI de versioning et le site autour.",
+  "changelog.rss": "RSS",
+  "changelog.back": "Retour au changelog",
+  "changelog.readDocs": "Lire la doc",
+  "changelog.seePR": "Voir la PR",
+  "changelog.metaTitle": "Changelog, FerrFlow",
+  "changelog.metaDesc": "Chaque fonctionnalité, correctif et amélioration de FerrFlow, la CLI de versioning et le site autour.",
+  "changelog.titleSuffix": "| Changelog FerrFlow",
+  "nav.changelog": "Changelog",
+  "footer.changelog": "Changelog"
 }

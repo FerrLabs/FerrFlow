@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build && node scripts/gen-sitemap.mjs",
+    "build": "vite build && node scripts/gen-rss.mjs && node scripts/gen-sitemap.mjs",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
     "check:i18n": "node ./scripts/check-i18n.mjs",
     "preview": "vite preview"

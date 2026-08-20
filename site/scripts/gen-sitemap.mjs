@@ -1,6 +1,8 @@
-import { writeFileSync, mkdirSync, readdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import fm from 'front-matter';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
@@ -43,6 +45,24 @@ const DOC_DIRS = [
 
 const docPaths = DOC_DIRS.flatMap(({ dir, prefix }) => docSlugs(dir).map((s) => `${prefix}${s}/`));
 
+function changelogSlugs() {
+  const dir = join(root, 'src/content/changelog');
+  let files;
+  try {
+    files = readdirSync(dir).filter((f) => f.endsWith('.md'));
+  } catch {
+    return [];
+  }
+  return files
+    .filter((file) => {
+      const { attributes } = fm(readFileSync(join(dir, file), 'utf8'));
+      return !attributes.draft && attributes.product === 'ferrflow';
+    })
+    .map((file) => file.replace(/\.md$/, ''));
+}
+
+const changelogPaths = changelogSlugs().flatMap((s) => [`/changelog/${s}/`, `/fr/changelog/${s}/`]);
+
 const paths = [
   '/',
   '/fr/',
@@ -50,6 +70,9 @@ const paths = [
   '/fr/performance/',
   ...LEGAL.map((p) => `/${p}/`),
   ...LEGAL.map((p) => `/fr/${p}/`),
+  '/changelog/',
+  '/fr/changelog/',
+  ...changelogPaths,
   ...docPaths,
 ];
 

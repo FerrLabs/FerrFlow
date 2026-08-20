@@ -1,7 +1,8 @@
 import { defineConfig } from 'vite';
-import { readdirSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import fm from 'front-matter';
 import analog from '@analogjs/platform';
 import tailwindcss from '@tailwindcss/vite';
 import { LOCALES, DEFAULT_LOCALE } from './src/app/i18n/locales';
@@ -28,6 +29,26 @@ function docSlugs(dir: string): string[] {
   walk(base);
   return out;
 }
+
+const changelogDir = join(here, 'src/content/changelog');
+
+function changelogSlugs(): string[] {
+  let files: string[];
+  try {
+    files = readdirSync(changelogDir).filter((f) => f.endsWith('.md'));
+  } catch {
+    return [];
+  }
+  return files
+    .filter((file) => {
+      const raw = readFileSync(join(changelogDir, file), 'utf8');
+      const { attributes } = fm<{ draft?: boolean; product?: string }>(raw);
+      return !attributes.draft && attributes.product === 'ferrflow';
+    })
+    .map((file) => file.replace(/\.md$/, ''));
+}
+
+const changelogRoutes = changelogSlugs().map((s) => `/changelog/${s}/`);
 
 const LEGAL = ['legal', 'privacy', 'security', 'terms', 'cookies'];
 
@@ -64,7 +85,15 @@ const ALL_DOC_DIRS = [
 
 const docSlugsByDir = Object.fromEntries(ALL_DOC_DIRS.map((dir) => [dir, docSlugs(dir)]));
 
-const prerenderRoutes = ['/', '/404', '/performance/', ...LEGAL.map((p) => `/${p}/`), ...docRoutes];
+const prerenderRoutes = [
+  '/',
+  '/404',
+  '/performance/',
+  '/changelog/',
+  ...LEGAL.map((p) => `/${p}/`),
+  ...changelogRoutes,
+  ...docRoutes,
+];
 
 export default defineConfig({
   define: {

@@ -19,6 +19,7 @@ export function ferrflowChrome(): SiteChromeConfig {
       { label: $localize`:@@nav.docs:Docs`, href: '/docs/introduction' },
       { label: $localize`:@@nav.performance:Performance`, href: '/performance' },
       { label: $localize`:@@nav.why:Why FerrFlow`, href: '/why' },
+      { label: $localize`:@@nav.changelog:Changelog`, href: '/changelog/' },
       {
         label: $localize`:@@nav.github:GitHub`,
         href: 'https://github.com/FerrLabs/FerrFlow',
@@ -36,6 +37,7 @@ export function ferrflowChrome(): SiteChromeConfig {
           links: [
             { label: $localize`:@@footer.documentation:Documentation`, href: '/docs/introduction' },
             { label: $localize`:@@footer.performance:Performance`, href: '/performance' },
+            { label: $localize`:@@footer.changelog:Changelog`, href: '/changelog/' },
             {
               label: $localize`:@@footer.releases:Releases`,
               href: 'https://github.com/FerrLabs/FerrFlow/releases',
