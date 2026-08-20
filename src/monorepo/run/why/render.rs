@@ -15,7 +15,11 @@ pub(super) fn lines(x: &Explanation) -> Vec<String> {
         ));
     }
     out.push(format!("  {:<14} {}", "Strategy:", x.strategy));
-    out.push(format!("  {:<14} {}", "Version:", x.current_version));
+    let version = match &x.version_source {
+        Some(source) => format!("{} ({source})", x.current_version),
+        None => x.current_version.clone(),
+    };
+    out.push(format!("  {:<14} {}", "Version:", version));
     if let Some(channel) = &x.channel {
         out.push(format!("  {:<14} {}", "Channel:", channel));
     }

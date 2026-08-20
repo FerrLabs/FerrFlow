@@ -84,7 +84,9 @@ simply has no tags yet.
 
 When both carry the same version the tag is credited, matching the
 resolution order. The same object appears in `check --json` under
-`packages[].version_source`.
+`packages[].version_source`, and in `why --json` at the top level.
+`why` reports `file` for a package it skipped, because that is the only
+source it reads in that case.
 
 ## Dry-run behaviour
 
