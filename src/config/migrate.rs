@@ -313,6 +313,7 @@ pub fn build_config_from_releaserc(raw: &str) -> Result<(Config, MigrationReport
         depends_on: vec![],
         versioning: None,
         tag_template: None,
+        version_template: None,
         hooks: None,
         floating_tags: None,
         latest_tag: None,

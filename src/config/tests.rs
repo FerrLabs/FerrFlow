@@ -203,6 +203,7 @@ fn effective_versioning_inherits_workspace() {
         depends_on: vec![],
         versioning: None,
         tag_template: None,
+        version_template: None,
         hooks: None,
         floating_tags: None,
         latest_tag: None,
@@ -231,6 +232,7 @@ fn effective_versioning_package_overrides() {
         depends_on: vec![],
         versioning: Some(VersioningStrategy::Zerover),
         tag_template: None,
+        version_template: None,
         hooks: None,
         latest_tag: None,
         floating_tags: None,
@@ -259,6 +261,7 @@ fn effective_versioning_does_not_read_tags_when_strategy_is_configured() {
         depends_on: vec![],
         versioning: None,
         tag_template: None,
+        version_template: None,
         latest_tag: None,
         hooks: None,
         floating_tags: None,
@@ -284,6 +287,7 @@ fn effective_versioning_autodetects_from_tags_when_unset() {
         versioning: None,
         latest_tag: None,
         tag_template: None,
+        version_template: None,
         hooks: None,
         floating_tags: None,
         publishers: vec![],
@@ -310,6 +314,7 @@ fn effective_versioning_falls_back_to_semver_without_tags() {
         latest_tag: None,
         versioning: None,
         tag_template: None,
+        version_template: None,
         hooks: None,
         floating_tags: None,
         publishers: vec![],
@@ -333,6 +338,7 @@ fn make_pkg(name: &str, tag_template: Option<&str>) -> PackageConfig {
         depends_on: vec![],
         versioning: None,
         tag_template: tag_template.map(String::from),
+        version_template: None,
         hooks: None,
         floating_tags: None,
         publishers: vec![],
@@ -360,6 +366,7 @@ fn tag_default_monorepo() {
 fn tag_custom_workspace_template() {
     let ws = WorkspaceConfig {
         tag_template: Some("release-{version}".into()),
+        version_template: None,
         ..WorkspaceConfig::default()
     };
     let pkg = make_pkg("myapp", None);
@@ -371,6 +378,7 @@ fn tag_custom_workspace_template() {
 fn tag_package_overrides_workspace() {
     let ws = WorkspaceConfig {
         tag_template: Some("v{version}".into()),
+        version_template: None,
         ..WorkspaceConfig::default()
     };
     let pkg = make_pkg("api", Some("{name}/v{version}"));
@@ -557,6 +565,7 @@ fn json_serializes_camel_case() {
     let config = Config {
         workspace: WorkspaceConfig {
             tag_template: Some("v{version}".into()),
+            version_template: None,
             recover_missed_releases: true,
             ..WorkspaceConfig::default()
         },
@@ -575,6 +584,7 @@ fn json_serializes_camel_case() {
             depends_on: vec![],
             versioning: None,
             tag_template: Some("{name}@v{version}".into()),
+            version_template: None,
             hooks: None,
             floating_tags: None,
             publishers: vec![],
@@ -607,6 +617,7 @@ fn toml_keeps_snake_case() {
     let config = Config {
         workspace: WorkspaceConfig {
             tag_template: Some("v{version}".into()),
+            version_template: None,
             recover_missed_releases: true,
             ..WorkspaceConfig::default()
         },
@@ -625,6 +636,7 @@ fn toml_keeps_snake_case() {
             depends_on: vec![],
             versioning: None,
             tag_template: Some("{name}@v{version}".into()),
+            version_template: None,
             hooks: None,
             floating_tags: None,
             publishers: vec![],
@@ -1184,6 +1196,7 @@ fn tag_prefix_no_version_placeholder() {
         depends_on: vec![],
         versioning: None,
         tag_template: Some("release-latest".to_string()),
+        version_template: None,
         hooks: None,
         floating_tags: None,
         publishers: vec![],
@@ -1206,6 +1219,7 @@ fn tag_for_version_replaces_placeholders() {
         depends_on: vec![],
         versioning: None,
         tag_template: Some("{name}/v{version}".to_string()),
+        version_template: None,
         hooks: None,
         floating_tags: None,
         publishers: vec![],

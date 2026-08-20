@@ -170,6 +170,7 @@ fn collect_package(path_default: &str, monorepo: bool) -> PackageConfig {
         depends_on: vec![],
         versioning: None,
         tag_template: None,
+        version_template: None,
         hooks: None,
         floating_tags: None,
         latest_tag: None,

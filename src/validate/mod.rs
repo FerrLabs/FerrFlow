@@ -25,7 +25,8 @@ pub use source::{GitHubSource, GitLabSource, RemoteProvider, parse_repo_spec};
 use checks::{
     check_changelog_paths, check_duplicate_names, check_duplicate_paths, check_groups,
     check_package_paths, check_shared_paths, check_suggestions, check_tag_templates,
-    check_version_consistency, check_versioned_files, check_versioned_files_exist,
+    check_version_consistency, check_version_templates, check_versioned_files,
+    check_versioned_files_exist,
 };
 #[cfg(feature = "cli")]
 use output::output_result;
@@ -100,6 +101,7 @@ fn collect_entries(
     entries.extend(check_duplicate_names(config));
     entries.extend(check_duplicate_paths(config));
     entries.extend(check_tag_templates(config));
+    entries.extend(check_version_templates(config));
     entries.extend(check_package_paths(config, source));
     entries.extend(check_versioned_files_exist(config, source));
     let (file_entries, versions) = check_versioned_files(config, source);

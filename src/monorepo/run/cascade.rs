@@ -78,7 +78,8 @@ pub(super) fn run_dependency_cascade(
             let strategy = pkg.effective_versioning(&config.workspace, || {
                 tags_for_package(all_tags, &pkg_tag_prefix)
             });
-            let Ok(new_version) = compute_next_version(&current_version, bump, strategy) else {
+            let Ok(new_version) = compute_next_version(&current_version, bump, strategy, None)
+            else {
                 continue;
             };
             if current_version == new_version {

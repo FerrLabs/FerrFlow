@@ -43,6 +43,31 @@ pub(super) fn check_duplicate_paths(config: &Config) -> Vec<ValidationEntry> {
     entries
 }
 
+pub(super) fn check_version_templates(config: &Config) -> Vec<ValidationEntry> {
+    let mut entries = Vec::new();
+
+    let mut check = |template: &str, context: &str| {
+        if let Err(err) = crate::versioning::validate_version_template(template) {
+            entries.push(ValidationEntry {
+                level: ValidationLevel::Error,
+                path: context.to_string(),
+                message: err.to_string(),
+            });
+        }
+    };
+
+    if let Some(ref tmpl) = config.workspace.version_template {
+        check(tmpl, "workspace.versionTemplate");
+    }
+    for pkg in &config.packages {
+        if let Some(ref tmpl) = pkg.version_template {
+            check(tmpl, &format!("{}.versionTemplate", pkg.name));
+        }
+    }
+
+    entries
+}
+
 pub(super) fn check_tag_templates(config: &Config) -> Vec<ValidationEntry> {
     let mut entries = Vec::new();
     let is_monorepo = config.packages.len() > 1;

@@ -35,7 +35,7 @@ fn bootstrap_values_survive_first_bump_for_every_strategy() {
     ] {
         let baseline = bootstrap_version(strategy);
         for bump in [BumpType::Patch, BumpType::Minor, BumpType::Major] {
-            let result = compute_next_version(&baseline, bump, strategy);
+            let result = compute_next_version(&baseline, bump, strategy, None);
             assert!(
                 result.is_ok(),
                 "bootstrap {baseline:?} with {bump:?} on {strategy:?} failed: {result:?}"
@@ -127,7 +127,7 @@ fn test_calver_seq_same_month() {
 #[test]
 fn test_compute_next_version_semver() {
     assert_eq!(
-        compute_next_version("1.2.3", BumpType::Minor, VersioningStrategy::Semver).unwrap(),
+        compute_next_version("1.2.3", BumpType::Minor, VersioningStrategy::Semver, None).unwrap(),
         "1.3.0"
     );
 }
@@ -135,7 +135,7 @@ fn test_compute_next_version_semver() {
 #[test]
 fn test_compute_next_version_zerover() {
     assert_eq!(
-        compute_next_version("0.5.2", BumpType::Major, VersioningStrategy::Zerover).unwrap(),
+        compute_next_version("0.5.2", BumpType::Major, VersioningStrategy::Zerover, None).unwrap(),
         "0.6.0"
     );
 }
@@ -143,7 +143,7 @@ fn test_compute_next_version_zerover() {
 #[test]
 fn test_compute_next_version_sequential() {
     assert_eq!(
-        compute_next_version("10", BumpType::Patch, VersioningStrategy::Sequential).unwrap(),
+        compute_next_version("10", BumpType::Patch, VersioningStrategy::Sequential, None).unwrap(),
         "11"
     );
 }
@@ -224,7 +224,8 @@ fn test_sequential_with_v_prefix() {
 
 #[test]
 fn test_compute_next_version_calver() {
-    let v = compute_next_version("0.0.0", BumpType::Minor, VersioningStrategy::Calver).unwrap();
+    let v =
+        compute_next_version("0.0.0", BumpType::Minor, VersioningStrategy::Calver, None).unwrap();
     assert_eq!(v.split('.').count(), 3);
     let year: u32 = v.split('.').next().unwrap().parse().unwrap();
     assert!(year >= 2026);
@@ -232,16 +233,26 @@ fn test_compute_next_version_calver() {
 
 #[test]
 fn test_compute_next_version_calver_short() {
-    let v =
-        compute_next_version("0.0.0", BumpType::Minor, VersioningStrategy::CalverShort).unwrap();
+    let v = compute_next_version(
+        "0.0.0",
+        BumpType::Minor,
+        VersioningStrategy::CalverShort,
+        None,
+    )
+    .unwrap();
     let year: u32 = v.split('.').next().unwrap().parse().unwrap();
     assert!(year < 100);
 }
 
 #[test]
 fn test_compute_next_version_calver_seq() {
-    let v =
-        compute_next_version("2020.1.5", BumpType::Minor, VersioningStrategy::CalverSeq).unwrap();
+    let v = compute_next_version(
+        "2020.1.5",
+        BumpType::Minor,
+        VersioningStrategy::CalverSeq,
+        None,
+    )
+    .unwrap();
     let parts: Vec<&str> = v.split('.').collect();
     assert_eq!(parts.len(), 3);
     assert_eq!(parts[2], "1");
@@ -526,14 +537,40 @@ fn detect_calver_seq_mixed_with_calver_shape_prefers_seq() {
 
 #[test]
 fn compute_next_version_all_strategies() {
-    assert!(compute_next_version("1.0.0", BumpType::Patch, VersioningStrategy::Semver).is_ok());
-    assert!(compute_next_version("0.1.0", BumpType::Patch, VersioningStrategy::Zerover).is_ok());
-    assert!(compute_next_version("5", BumpType::Patch, VersioningStrategy::Sequential).is_ok());
-    assert!(compute_next_version("2020.1.1", BumpType::Patch, VersioningStrategy::Calver).is_ok());
     assert!(
-        compute_next_version("2020.1.1", BumpType::Patch, VersioningStrategy::CalverShort).is_ok()
+        compute_next_version("1.0.0", BumpType::Patch, VersioningStrategy::Semver, None).is_ok()
     );
     assert!(
-        compute_next_version("2020.1.1", BumpType::Patch, VersioningStrategy::CalverSeq).is_ok()
+        compute_next_version("0.1.0", BumpType::Patch, VersioningStrategy::Zerover, None).is_ok()
+    );
+    assert!(
+        compute_next_version("5", BumpType::Patch, VersioningStrategy::Sequential, None).is_ok()
+    );
+    assert!(
+        compute_next_version(
+            "2020.1.1",
+            BumpType::Patch,
+            VersioningStrategy::Calver,
+            None
+        )
+        .is_ok()
+    );
+    assert!(
+        compute_next_version(
+            "2020.1.1",
+            BumpType::Patch,
+            VersioningStrategy::CalverShort,
+            None
+        )
+        .is_ok()
+    );
+    assert!(
+        compute_next_version(
+            "2020.1.1",
+            BumpType::Patch,
+            VersioningStrategy::CalverSeq,
+            None
+        )
+        .is_ok()
     );
 }

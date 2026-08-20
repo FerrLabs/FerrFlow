@@ -316,7 +316,8 @@ fn cascade_bumps(
                             &other.tag_prefix(&config.workspace, true),
                         )
                     });
-                    compute_next_version(&current, bump, strategy).is_ok_and(|next| next == current)
+                    compute_next_version(&current, bump, strategy, None)
+                        .is_ok_and(|next| next == current)
                 });
             if unchanged {
                 continue;
@@ -407,7 +408,7 @@ fn decide(
     if let Some(bump) = cascade.get(&pkg.name).copied()
         && bump != BumpType::None
         && let Some(next) = read_version_for_cascade(pkg, root)
-            .and_then(|current| compute_next_version(&current, bump, strategy).ok())
+            .and_then(|current| compute_next_version(&current, bump, strategy, None).ok())
         && next != current_version
     {
         return Ok(Decision::Bump {
