@@ -1,3 +1,5 @@
+use super::version_source::VersionSource;
+
 #[derive(serde::Serialize, serde::Deserialize)]
 pub(super) struct CheckCommit {
     pub hash: String,
@@ -14,6 +16,8 @@ pub(super) struct CheckPackage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub channel: Option<String>,
     pub prerelease: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version_source: Option<VersionSource>,
     pub commits: Vec<CheckCommit>,
 }
 

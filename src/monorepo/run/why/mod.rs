@@ -10,6 +10,7 @@ use crate::prerelease::PrereleaseContext;
 use crate::versioning::compute_next_version;
 
 use super::super::util::tags_for_package;
+use super::super::version_source::VersionSource;
 use super::plan::{
     ChangedFilesCache, PackagePlan, PlanInputs, commits_for_package, compute_plan, evaluate_touch,
 };
@@ -25,6 +26,8 @@ pub(super) struct Explanation {
     shared_paths: Vec<String>,
     strategy: String,
     current_version: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    version_source: Option<VersionSource>,
     monorepo: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     channel: Option<String>,
@@ -217,7 +220,7 @@ fn explain(
     let cascade = cascade_bumps(repo, root, config, &inputs)?;
     let dependencies = dependency_reports(pkg, &cascade);
 
-    let current_version = current_version(pkg, root, &plan);
+    let (current_version, version_source) = current_version(pkg, root, &plan);
     let decision = decide(
         config,
         pkg,
@@ -234,6 +237,7 @@ fn explain(
         shared_paths: pkg.shared_paths.clone(),
         strategy: format!("{strategy:?}").to_lowercase(),
         current_version,
+        version_source,
         monorepo: is_monorepo,
         channel: prerelease_ctx.channel.clone(),
         touch: TouchReport {
@@ -352,14 +356,23 @@ fn dependency_reports(
         .collect()
 }
 
-fn current_version(pkg: &PackageConfig, root: &Path, plan: &PackagePlan) -> String {
+fn current_version(
+    pkg: &PackageConfig,
+    root: &Path,
+    plan: &PackagePlan,
+) -> (String, Option<VersionSource>) {
     match plan {
-        PackagePlan::Bump(bump) => bump.current_version.clone(),
+        PackagePlan::Bump(bump) => (bump.current_version.clone(), bump.version_source.clone()),
         PackagePlan::Skipped { .. } => pkg
             .versioned_files
             .first()
-            .and_then(|vf| read_version(vf, root).ok())
-            .unwrap_or_else(|| "unknown".to_string()),
+            .and_then(|vf| {
+                read_version(vf, root).ok().map(|version| {
+                    let file = vf.path.clone();
+                    (version, Some(VersionSource::File { file }))
+                })
+            })
+            .unwrap_or_else(|| ("unknown".to_string(), None)),
     }
 }
 

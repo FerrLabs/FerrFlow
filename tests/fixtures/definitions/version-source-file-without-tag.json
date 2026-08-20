@@ -1,0 +1,26 @@
+{
+  "meta": {
+    "name": "version-source-file-without-tag",
+    "description": "A package with no tag reports that its current version came from the versioned file"
+  },
+  "config": {
+    "content": "{\n  \"package\": [\n    {\n      \"name\": \"discord\",\n      \"path\": \".\",\n      \"versioned_files\": [{\"path\": \"version.toml\", \"format\": \"toml\"}]\n    }\n  ]\n}\n"
+  },
+  "packages": [
+    {
+      "name": "discord",
+      "path": ".",
+      "initial_version": "1.4.0"
+    }
+  ],
+  "commits": [
+    {
+      "message": "feat: fold the bot into the repo",
+      "files": ["src/main.rs"]
+    }
+  ],
+  "expect": {
+    "check_contains": ["discord", "1.5.0", "from version.toml"],
+    "check_not_contains": ["bootstrapped"]
+  }
+}

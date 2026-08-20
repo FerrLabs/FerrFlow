@@ -305,6 +305,7 @@ pub(super) fn run_release_logic(
         let commits = bump_plan.commits;
         let bump = bump_plan.bump;
         let strategy_label = bump_plan.strategy_label;
+        let version_source = bump_plan.version_source;
         let tag = bump_plan.tag;
 
         if release_json {
@@ -316,6 +317,7 @@ pub(super) fn run_release_logic(
                 tag: tag.clone(),
                 commit_count: commits.len(),
                 prerelease: is_prerelease,
+                version_source: version_source.clone(),
                 forge_release_url: None,
                 forge_release_id: None,
             });
@@ -350,6 +352,7 @@ pub(super) fn run_release_logic(
                 tag: tag.clone(),
                 channel: prerelease_ctx.channel.clone(),
                 prerelease: is_prerelease,
+                version_source: version_source.clone(),
                 commits: check_commits,
             });
         } else {
@@ -358,13 +361,18 @@ pub(super) fn run_release_logic(
             } else {
                 String::new()
             };
+            let source_label = version_source
+                .as_ref()
+                .map(|source| format!(", {source}"))
+                .unwrap_or_default();
             let mut lines = vec![format!(
-                "{} {}  {} → {}  ({}{})",
+                "{} {}  {} → {}  ({}{}{})",
                 "●".green().bold(),
                 pkg.name.bold(),
                 current_version.dimmed(),
                 new_version.green().bold(),
                 strategy_label.cyan(),
+                source_label.dimmed(),
                 channel_label.yellow()
             )];
 
@@ -973,6 +981,7 @@ mod tests {
             bump,
             strategy_label: bump.to_string(),
             tag: format!("v{new_version}"),
+            version_source: None,
         }))
     }
 
