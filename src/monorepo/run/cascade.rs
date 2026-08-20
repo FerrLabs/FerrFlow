@@ -78,7 +78,9 @@ pub(super) fn run_dependency_cascade(
             let strategy = pkg.effective_versioning(&config.workspace, || {
                 tags_for_package(all_tags, &pkg_tag_prefix)
             });
-            let Ok(new_version) = compute_next_version(&current_version, bump, strategy, None)
+            let version_template = pkg.effective_version_template(&config.workspace);
+            let Ok(new_version) =
+                compute_next_version(&current_version, bump, strategy, version_template)
             else {
                 continue;
             };
@@ -301,6 +303,96 @@ mod tests {
         )
         .unwrap();
         (lines, files_to_commit)
+    }
+
+    fn templated_workspace() -> tempfile::TempDir {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        for name in ["core", "cli"] {
+            std::fs::create_dir(root.join(name)).unwrap();
+        }
+        std::fs::write(
+            root.join("core/package.json"),
+            "{
+  \"name\": \"core\",
+  \"version\": \"1.0.0\"
+}
+",
+        )
+        .unwrap();
+        std::fs::write(
+            root.join("cli/package.json"),
+            "{
+  \"name\": \"cli\",
+  \"version\": \"1.0.0\",
+  \"dependencies\": {
+    \"core\": \"^1.0.0\"
+  }
+}
+",
+        )
+        .unwrap();
+        std::fs::write(
+            root.join("ferrflow.json"),
+            r#"{
+  "package": [
+    { "name": "core", "path": "core",
+      "versionedFiles": [{ "path": "core/package.json", "format": "json" }] },
+    { "name": "cli", "path": "cli", "dependsOn": [{ "name": "core" }],
+      "versionTemplate": "{year}.{month}.{seq}",
+      "versionedFiles": [{ "path": "cli/package.json", "format": "json" }] }
+  ]
+}
+"#,
+        )
+        .unwrap();
+        dir
+    }
+
+    #[test]
+    fn a_cascaded_package_uses_its_version_template() {
+        let dir = templated_workspace();
+        let config = Config::load(dir.path(), None).unwrap();
+
+        let mut any_bumped = false;
+        let mut json_packages = Vec::new();
+        let mut released = Vec::new();
+        let mut files_to_commit = Vec::new();
+        let mut files_per_package = HashMap::new();
+        let mut tags_to_create = Vec::new();
+        let mut pkg_outputs = Vec::new();
+        let mut bumped = HashMap::from([("core".to_string(), BumpType::Minor)]);
+        let mut bumped_versions = HashMap::from([("core".to_string(), "1.1.0".to_string())]);
+        let mut sink = CascadeSink {
+            any_bumped: &mut any_bumped,
+            json_packages: &mut json_packages,
+            released: &mut released,
+            files_to_commit: &mut files_to_commit,
+            files_per_package: &mut files_per_package,
+            tags_to_create: &mut tags_to_create,
+            pkg_outputs: &mut pkg_outputs,
+            bumped: &mut bumped,
+            bumped_versions: &mut bumped_versions,
+        };
+
+        run_dependency_cascade(
+            &config,
+            dir.path(),
+            &[],
+            None,
+            false,
+            false,
+            true,
+            &mut sink,
+        )
+        .unwrap();
+
+        let cli = bumped_versions.get("cli").expect("cli should be cascaded");
+        let year = chrono::Utc::now().format("%Y").to_string();
+        assert!(
+            cli.starts_with(&format!("{year}.")),
+            "cascaded package ignored its versionTemplate: got {cli}"
+        );
     }
 
     #[test]
