@@ -1,5 +1,16 @@
 # Changelog
 
+## [2026.8.6] - 2026-08-20
+
+### Features
+
+- feat(docs): document the permissive commit-format defaults (#832)
+- feat(docs): why names the source of the current version (#831)
+
+### Bug Fixes
+
+- fix(site): refresh FerrFlow v7.3.1 release data and JSON schema
+
 ## [2026.8.5] - 2026-08-20
 
 ### Bug Fixes
