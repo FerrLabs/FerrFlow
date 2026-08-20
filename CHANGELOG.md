@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.3.0] - 2026-08-20
+
+### Features
+
+- feat(config): let a repo choose which version source wins (#873)
+
 ## [7.2.0] - 2026-08-20
 
 ### Features
