@@ -45,6 +45,12 @@ deny = [
     # ~5 MB to ~9 MB and we inherit OpenSSL's CVE cadence. Use rustls.
     { crate = "openssl-sys", reason = "Use rustls (via gix / ureq) instead." },
     { crate = "openssl-src", reason = "Vendoring OpenSSL bloats the binary." },
+    { crate = "proc-macro1", reason = "Malicious crate from the 2026-08-20 arrayref supply-chain attack." },
+    { crate = "proc-macro-en", reason = "Malicious crate from the 2026-08-20 arrayref supply-chain attack." },
+    { crate = "aovine", reason = "Malicious crate from the 2026-08-20 arrayref supply-chain attack." },
+    { crate = "arone", reason = "Malicious crate from the 2026-08-20 arrayref supply-chain attack." },
+    { crate = "aronenao", reason = "Malicious crate from the 2026-08-20 arrayref supply-chain attack." },
+    { crate = "tinymember", reason = "Malicious crate from the 2026-08-20 arrayref supply-chain attack." },
 ]
 skip = []
 skip-tree = []
