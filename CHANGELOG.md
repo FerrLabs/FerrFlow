@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.4.1] - 2026-08-21
+
+### Bug Fixes
+
+- perf(bench): add an end-to-end monorepo flow benchmark (#893)
+
 ## [7.4.0] - 2026-08-20
 
 ### Features
