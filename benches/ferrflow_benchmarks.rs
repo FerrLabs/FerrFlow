@@ -1,7 +1,7 @@
 use std::hint::black_box;
 use std::io::Write;
 
-use criterion::{Criterion, criterion_group, criterion_main};
+use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use ferrflow::changelog::{ChangelogRender, build_section_with, update_changelog};
 use ferrflow::config::{Config, FileFormat, OrphanedTagStrategy};
 use ferrflow::conventional_commits::{BumpType, determine_bump};
@@ -10,6 +10,7 @@ use ferrflow::git::{
     GitLog, collect_all_tags, find_last_tag_name, get_changed_files, get_changed_files_since_tag,
     get_commits_since_last_tag,
 };
+use ferrflow::validate::local_entries;
 use ferrflow::versioning::compute_next_version;
 use tempfile::{NamedTempFile, TempDir};
 
@@ -74,21 +75,33 @@ fn bench_changelog(c: &mut Criterion) {
         });
 
         c.bench_function(&format!("changelog/update_{size}"), |b| {
-            b.iter(|| {
-                let mut f = NamedTempFile::new().unwrap();
-                f.write_all(b"# Changelog\n\n## v0.9.0\n\n- old entry\n")
+            b.iter_batched(
+                || {
+                    let mut f = NamedTempFile::new().unwrap();
+                    f.write_all(
+                        b"# Changelog
+
+## v0.9.0
+
+- old entry
+",
+                    )
                     .unwrap();
-                let path = f.path().to_path_buf();
-                update_changelog(
-                    black_box(&path),
-                    "myapp",
-                    "1.0.0",
-                    &commits,
-                    BumpType::Minor,
-                    false,
-                )
-                .unwrap();
-            });
+                    f
+                },
+                |f| {
+                    update_changelog(
+                        black_box(f.path()),
+                        "myapp",
+                        "1.0.0",
+                        &commits,
+                        BumpType::Minor,
+                        false,
+                    )
+                    .unwrap();
+                },
+                BatchSize::SmallInput,
+            );
         });
     }
 }
@@ -376,14 +389,9 @@ fn bench_validate(c: &mut Criterion) {
                 .output()
                 .unwrap();
 
+            let config = Config::load(dir.path(), None).unwrap();
             b.iter(|| {
-                let config = Config::load(dir.path(), None).unwrap();
-                for pkg in &config.packages {
-                    for vf in &pkg.versioned_files {
-                        let handler = get_handler(&vf.format);
-                        black_box(handler.read_version(&dir.path().join(&vf.path)).unwrap());
-                    }
-                }
+                black_box(local_entries(black_box(&config), black_box(dir.path())));
             });
         });
     }
