@@ -10,6 +10,7 @@ use ferrflow::git::{
     GitLog, collect_all_tags, find_last_tag_name, get_changed_files, get_changed_files_since_tag,
     get_commits_since_last_tag,
 };
+use ferrflow::versioning::compute_next_version;
 use tempfile::{NamedTempFile, TempDir};
 
 fn generate_commit_messages(count: usize) -> Vec<String> {
@@ -428,6 +429,122 @@ fn bench_full_check_flow(c: &mut Criterion) {
     }
 }
 
+fn create_monorepo_bench_repo(
+    num_packages: usize,
+    num_commits: usize,
+) -> (TempDir, gix::Repository) {
+    let dir = TempDir::new().unwrap();
+    let path = dir.path();
+    run_git(path, &["init", "-b", "main"]);
+    run_git(path, &["config", "user.name", "bench"]);
+    run_git(path, &["config", "user.email", "bench@test.com"]);
+    run_git(path, &["config", "commit.gpgsign", "false"]);
+
+    let types = ["feat", "fix", "refactor", "perf", "chore"];
+    let mut parent: Option<String> = None;
+
+    for i in 0..num_commits {
+        let pkg = (i % num_packages) + 1;
+        let t = types[i % types.len()];
+        let breaking = if i % 50 == 0 && i > 0 { "!" } else { "" };
+        let msg = format!("{t}(pkg-{pkg:03}){breaking}: change {i}");
+
+        let file_name = format!("packages/pkg-{pkg:03}/src/file_{i}.rs");
+        let content = format!(
+            "// commit {i}
+"
+        );
+        let blob_sha = run_git_with_stdin(
+            path,
+            &["hash-object", "-w", "--stdin"],
+            Some(content.as_bytes()),
+        )
+        .trim()
+        .to_string();
+        run_git(
+            path,
+            &[
+                "update-index",
+                "--add",
+                "--cacheinfo",
+                &format!("100644,{blob_sha},{file_name}"),
+            ],
+        );
+        let tree_sha = run_git(path, &["write-tree"]).trim().to_string();
+        let mut commit_args: Vec<String> = vec!["commit-tree".into(), tree_sha, "-m".into(), msg];
+        if let Some(p) = &parent {
+            commit_args.push("-p".into());
+            commit_args.push(p.clone());
+        }
+        let arg_refs: Vec<&str> = commit_args.iter().map(String::as_str).collect();
+        let commit_sha = run_git(path, &arg_refs).trim().to_string();
+        run_git(path, &["update-ref", "refs/heads/main", &commit_sha]);
+        parent = Some(commit_sha.clone());
+
+        if i == 0 {
+            run_git(path, &["tag", "v1.0.0", &commit_sha]);
+        }
+    }
+
+    std::fs::write(path.join(".ferrflow"), generate_config_json(num_packages)).unwrap();
+    for i in 1..=num_packages {
+        let pkg_dir = path.join(format!("packages/pkg-{i:03}"));
+        std::fs::create_dir_all(&pkg_dir).unwrap();
+        std::fs::write(
+            pkg_dir.join("package.json"),
+            format!(r#"{{"name":"pkg-{i:03}","version":"1.0.0"}}"#),
+        )
+        .unwrap();
+    }
+
+    let repo = gix::discover(path).unwrap();
+    (dir, repo)
+}
+
+fn bench_full_monorepo_flow(c: &mut Criterion) {
+    for (label, num_packages, num_commits) in [
+        ("full_monorepo_flow/10_packages", 10, 500),
+        ("full_monorepo_flow/50_packages", 50, 500),
+    ] {
+        let (dir, repo) = create_monorepo_bench_repo(num_packages, num_commits);
+
+        c.bench_function(label, |b| {
+            b.iter(|| {
+                let config = Config::load(dir.path(), None).unwrap();
+                let changed =
+                    get_changed_files_since_tag(&repo, "v", OrphanedTagStrategy::Warn, None)
+                        .unwrap();
+                let commits = get_commits_since_last_tag(
+                    &repo,
+                    "v",
+                    OrphanedTagStrategy::Warn,
+                    &ferrflow::config::default_commit_skip_markers(),
+                    None,
+                )
+                .unwrap();
+
+                let bump = commits
+                    .iter()
+                    .map(|commit| determine_bump(&commit.message, &config.workspace.commit_formats))
+                    .max()
+                    .unwrap_or(BumpType::None);
+
+                let mut planned = 0usize;
+                for pkg in &config.packages {
+                    if !pkg.is_touched_by(&changed, true) {
+                        continue;
+                    }
+                    let strategy = pkg.effective_versioning(&config.workspace, Vec::new);
+                    let next = compute_next_version("1.0.0", bump, strategy, None).unwrap();
+                    black_box(&next);
+                    planned += 1;
+                }
+                black_box(planned);
+            });
+        });
+    }
+}
+
 criterion_group!(
     benches,
     bench_commit_parsing,
@@ -436,6 +553,7 @@ criterion_group!(
     bench_config_loading,
     bench_git_operations,
     bench_validate,
-    bench_full_check_flow
+    bench_full_check_flow,
+    bench_full_monorepo_flow
 );
 criterion_main!(benches);
