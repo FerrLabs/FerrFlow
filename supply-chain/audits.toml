@@ -51,6 +51,12 @@ user-id = 539 # Josh Stone (cuviper)
 start = "2019-05-22"
 end = "2027-07-17"
 
+[[trusted.base64]]
+criteria = "safe-to-deploy"
+user-id = 5563
+start = "2019-10-25"
+end = "2027-08-22"
+
 [[trusted.bstr]]
 criteria = "safe-to-deploy"
 user-id = 189 # Andrew Gallant (BurntSushi)
@@ -662,6 +668,18 @@ criteria = "safe-to-deploy"
 user-id = 3618 # David Tolnay (dtolnay)
 start = "2021-10-02"
 end = "2027-07-17"
+
+[[trusted.ureq]]
+criteria = "safe-to-deploy"
+user-id = 5441 # Martin Algesten (algesten)
+start = "2019-03-30"
+end = "2027-08-22"
+
+[[trusted.ureq-proto]]
+criteria = "safe-to-deploy"
+user-id = 5441 # Martin Algesten (algesten)
+start = "2024-11-06"
+end = "2027-08-22"
 
 [[trusted.walkdir]]
 criteria = "safe-to-deploy"
