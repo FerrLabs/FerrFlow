@@ -218,27 +218,9 @@ pub fn web_base_url(remote_url: &str) -> Option<String> {
 }
 
 pub fn resolve_token(kind: ForgeKind) -> Option<String> {
-    if let Ok(token) = std::env::var("FERRFLOW_TOKEN")
-        && !token.is_empty()
-    {
-        return Some(token);
-    }
-    match kind {
-        ForgeKind::Github => std::env::var("GITHUB_TOKEN").ok().filter(|t| !t.is_empty()),
-        ForgeKind::Gitlab => std::env::var("GITLAB_TOKEN").ok().filter(|t| !t.is_empty()),
-        ForgeKind::Gitea => std::env::var("GITEA_TOKEN")
-            .ok()
-            .filter(|t| !t.is_empty())
-            .or_else(|| {
-                std::env::var("FORGEJO_TOKEN")
-                    .ok()
-                    .filter(|t| !t.is_empty())
-            }),
-        ForgeKind::Bitbucket => std::env::var("BITBUCKET_TOKEN")
-            .ok()
-            .filter(|t| !t.is_empty()),
-        ForgeKind::Auto => None,
-    }
+    std::iter::once(crate::config::GENERIC_TOKEN_ENV_VAR)
+        .chain(kind.token_env_vars().iter().copied())
+        .find_map(|var| std::env::var(var).ok().filter(|t| !t.is_empty()))
 }
 
 pub fn build_forge(kind: ForgeKind, token: String, slug: String, host: String) -> Box<dyn Forge> {

