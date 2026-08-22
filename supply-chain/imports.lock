@@ -770,6 +770,20 @@ user-id = 1139
 user-login = "Manishearth"
 user-name = "Manish Goregaokar"
 
+[[publisher.ureq]]
+version = "3.3.0"
+when = "2026-03-21"
+user-id = 5441
+user-login = "algesten"
+user-name = "Martin Algesten"
+
+[[publisher.ureq-proto]]
+version = "0.6.0"
+when = "2026-03-21"
+user-id = 5441
+user-login = "algesten"
+user-name = "Martin Algesten"
+
 [[publisher.utf8_iter]]
 version = "1.0.4"
 when = "2023-12-01"
