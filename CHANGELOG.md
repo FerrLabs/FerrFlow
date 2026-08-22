@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.4.3] - 2026-08-22
+
+### Bug Fixes
+
+- fix(hooks): strip every forge token from the hook environment (#900)
+
 ## [7.4.2] - 2026-08-21
 
 ### Bug Fixes
