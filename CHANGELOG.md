@@ -4,6 +4,13 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.6.0] - 2026-08-24
+
+### Features
+
+- feat(cli): ferrflow api-check compares the public API against the last tag (#915)
+- feat(publishers): add a pypi publisher (#914)
+
 ## [7.5.0] - 2026-08-24
 
 ### Features
