@@ -39,6 +39,8 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
+    /// Preview the release plan. Also available as `ferrflow plan`.
+    #[command(alias = "plan")]
     Check {
         #[arg(long)]
         json: bool,
@@ -46,6 +48,9 @@ pub enum Commands {
         channel: Option<String>,
         #[arg(long)]
         comment: bool,
+        /// Adjust bumps and exclusions, then print the command that reproduces the result.
+        #[arg(long, conflicts_with_all = ["json", "comment"])]
+        interactive: bool,
     },
     Release {
         #[arg(long)]
@@ -219,9 +224,18 @@ impl Cli {
     fn dispatch(self, timing: &mut Timing) -> Result<()> {
         match self.command {
             Commands::Check {
+                json: _,
+                channel,
+                comment: _,
+                interactive,
+            } if interactive => {
+                crate::monorepo::plan_interactive(self.config.as_deref(), channel.as_deref())
+            }
+            Commands::Check {
                 json,
                 channel,
                 comment,
+                interactive: _,
             } => crate::monorepo::check(
                 self.config.as_deref(),
                 self.verbose,
@@ -371,6 +385,7 @@ mod tests {
                 json: false,
                 channel: None,
                 comment: false,
+                interactive: false,
             }
         ));
     }

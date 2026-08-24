@@ -82,6 +82,9 @@ Download from [Releases](https://github.com/FerrLabs/FerrFlow/releases).
 # Preview what would be bumped
 ferrflow check
 
+# Adjust the plan, then get the command that reproduces it
+ferrflow plan --interactive
+
 # Run a release
 ferrflow release
 
