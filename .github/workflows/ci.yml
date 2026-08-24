@@ -33,6 +33,11 @@ jobs:
         run: cargo fmt --check
       - name: Clippy
         run: cargo clippy -- -D warnings
+      # The wasm package builds the library with default-features off, a
+      # configuration nothing else in CI compiles. Without this, a module
+      # that reaches for a cli-gated dependency only fails at publish time.
+      - name: Check the no-cli build surface
+        run: cargo check -p ferrflow-wasm
       - name: Tests (nextest)
         run: cargo nextest run --no-fail-fast
 

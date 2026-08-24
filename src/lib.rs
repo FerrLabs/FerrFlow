@@ -1,6 +1,5 @@
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-pub mod api_check;
 pub mod changelog;
 pub mod config;
 pub mod conventional_commits;
@@ -11,6 +10,8 @@ pub mod schema;
 pub mod validate;
 pub mod versioning;
 
+#[cfg(feature = "cli")]
+pub mod api_check;
 #[cfg(feature = "cli")]
 pub mod cache;
 #[cfg(feature = "cli")]
