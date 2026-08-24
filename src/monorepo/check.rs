@@ -94,3 +94,33 @@ fn print_cached(hit: &CachedRun) {
         tracing::info!("{line}");
     }
 }
+
+/// Run the same computation `check --json` does and hand back the JSON
+/// instead of printing it. Used by the interactive planner so it reads
+/// the published contract rather than the internal plan types.
+pub(super) fn plan_json(config_path: Option<&Path>, channel: Option<&str>) -> Result<String> {
+    let repo = open_repo(&std::env::current_dir()?)?;
+    let root = get_repo_root(&repo)?;
+    let config = Config::load(&root, config_path)?;
+    let mut timing = Timing::new(false);
+
+    let out = run_release_logic(
+        &root,
+        &config,
+        true,
+        false,
+        true,
+        false,
+        false,
+        &[],
+        &[],
+        channel,
+        false,
+        false,
+        &mut timing,
+    )?;
+
+    Ok(out
+        .and_then(|o| o.json)
+        .unwrap_or_else(|| r#"{"packages":[]}"#.to_string()))
+}
