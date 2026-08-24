@@ -1584,3 +1584,29 @@ fn changed_files_for_the_root_commit_is_its_whole_tree() {
 
     assert_eq!(files, vec!["packages/api/main.rs".to_string()]);
 }
+
+#[test]
+fn signing_is_off_when_the_repo_does_not_ask_for_it() {
+    let dir = tempfile::tempdir().unwrap();
+    init_repo_at(dir.path());
+
+    assert!(
+        !crate::git::commits::commit_signing_enabled(dir.path()),
+        "a repo with commit.gpgsign=false must not be treated as signing"
+    );
+}
+
+#[test]
+fn signing_follows_commit_gpgsign_so_both_commit_paths_agree() {
+    let dir = tempfile::tempdir().unwrap();
+    init_repo_at(dir.path());
+
+    git(dir.path(), &["config", "commit.gpgsign", "true"]);
+    assert!(
+        crate::git::commits::commit_signing_enabled(dir.path()),
+        "commit.gpgsign=true must reach the commit-tree path, which ignores it on its own"
+    );
+
+    git(dir.path(), &["config", "commit.gpgsign", "false"]);
+    assert!(!crate::git::commits::commit_signing_enabled(dir.path()));
+}
