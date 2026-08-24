@@ -92,6 +92,10 @@ ferrflow release --dry-run
 ferrflow release --force-version 2.0.0          # single repo
 ferrflow release --force-version api@3.0.0      # monorepo
 
+# Repeatable in a monorepo, and packages can be left out entirely
+ferrflow release --force-version core@3.0.0 --force-version api@2.5.0
+ferrflow release --exclude web --exclude docs
+
 # Pre-release
 ferrflow release --channel beta
 

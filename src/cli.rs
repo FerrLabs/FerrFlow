@@ -52,8 +52,12 @@ pub enum Commands {
         json: bool,
         #[arg(long)]
         force: bool,
+        /// Pin a package's next version. Repeatable in a monorepo: NAME@VERSION.
         #[arg(long, value_name = "VERSION")]
-        force_version: Option<String>,
+        force_version: Vec<String>,
+        /// Leave a package out of this release. Repeatable.
+        #[arg(long, value_name = "NAME")]
+        exclude: Vec<String>,
         #[arg(long)]
         channel: Option<String>,
         #[arg(long)]
@@ -230,6 +234,7 @@ impl Cli {
                 json,
                 force,
                 force_version,
+                exclude,
                 channel,
                 draft,
                 force_unlock,
@@ -239,7 +244,8 @@ impl Cli {
                 self.verbose,
                 json,
                 force,
-                force_version.as_deref(),
+                &force_version,
+                &exclude,
                 channel.as_deref(),
                 draft,
                 force_unlock,
@@ -392,11 +398,12 @@ mod tests {
             Commands::Release {
                 json: false,
                 force: false,
-                force_version: None,
+                force_version: v,
+                exclude: e,
                 channel: None,
                 draft: false,
                 force_unlock: false,
-            }
+            } if v.is_empty() && e.is_empty()
         ));
     }
 
@@ -448,7 +455,7 @@ mod tests {
         let cli = parse(&["ferrflow", "release", "--force-version", "api@2.0.0"]);
         match cli.command {
             Commands::Release { force_version, .. } => {
-                assert_eq!(force_version.as_deref(), Some("api@2.0.0"));
+                assert_eq!(force_version, vec!["api@2.0.0".to_string()]);
             }
             _ => panic!("expected Release"),
         }
