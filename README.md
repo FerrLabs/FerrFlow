@@ -119,6 +119,10 @@ ferrflow tag api
 ferrflow graph
 ferrflow graph --json
 
+# Compare each package's public API against its last tag (Rust: needs cargo-semver-checks)
+ferrflow api-check
+ferrflow api-check --json
+
 # JSON output (for scripting)
 ferrflow version --json
 ferrflow tag --json

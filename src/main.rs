@@ -1,3 +1,4 @@
+mod api_check;
 mod bot_token;
 mod cache;
 mod changelog;
