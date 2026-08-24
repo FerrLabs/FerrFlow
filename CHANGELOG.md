@@ -4,6 +4,13 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.7.0] - 2026-08-24
+
+### Features
+
+- feat(cli): ferrflow plan --interactive (#917)
+- feat(cli): repeatable --force-version and a new --exclude (#916)
+
 ## [7.6.0] - 2026-08-24
 
 ### Features
