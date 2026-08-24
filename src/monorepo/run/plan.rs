@@ -24,6 +24,7 @@ pub(super) enum SkipReason {
     NoNewCommits,
     NoReleasableCommits,
     VersionUnchanged,
+    Excluded,
 }
 
 impl SkipReason {
@@ -33,6 +34,7 @@ impl SkipReason {
             SkipReason::NoNewCommits => "no new commits",
             SkipReason::NoReleasableCommits => "no releasable commits",
             SkipReason::VersionUnchanged => "version unchanged",
+            SkipReason::Excluded => "excluded",
         }
     }
 }
@@ -103,7 +105,8 @@ pub(super) struct PlanInputs<'a> {
     pub head_ancestors: Option<&'a HashSet<ObjectId>>,
     pub all_tags: &'a [String],
     pub prerelease_ctx: &'a PrereleaseContext,
-    pub forced: &'a Option<Forced<'a>>,
+    pub forced: &'a [Forced<'a>],
+    pub excluded: &'a [String],
     pub changed_files: &'a [String],
     pub short_hash: &'a str,
     pub changed_files_cache: &'a ChangedFilesCache,
@@ -229,6 +232,13 @@ pub(super) fn compute_plan(
     let is_monorepo = config.is_monorepo();
     let tag_search_prefix = pkg.tag_prefix(&config.workspace, is_monorepo);
     let forced_ver_for_pkg = forced_version_for(inputs.forced, &pkg.name);
+
+    if inputs.excluded.iter().any(|name| name == &pkg.name) {
+        return Ok(PackagePlan::Skipped {
+            reason: SkipReason::Excluded,
+            recovered: false,
+        });
+    }
 
     let touch = evaluate_touch(repo, pkg, inputs)?;
     let recovered = touch.recovered;
@@ -415,7 +425,7 @@ mod tests {
         head_ancestors: &'a Option<std::collections::HashSet<ObjectId>>,
         all_tags: &'a [String],
         prerelease_ctx: &'a PrereleaseContext,
-        forced: &'a Option<Forced<'a>>,
+        forced: &'a [Forced<'a>],
         changed_files: &'a [String],
     ) -> PlanInputs<'a> {
         PlanInputs {
@@ -426,6 +436,7 @@ mod tests {
             all_tags,
             prerelease_ctx,
             forced,
+            excluded: &[],
             changed_files,
             short_hash: "deadbee",
             commit_walk: &fx.commit_walk,
@@ -502,7 +513,7 @@ mod tests {
         let head_ancestors = build_head_ancestors(&fx.repo).ok();
         let tag_index = TagIndex::build(&fx.repo).ok();
         let prerelease_ctx = PrereleaseContext::resolve(None, "main", None).unwrap();
-        let forced: Option<Forced<'_>> = None;
+        let forced: Vec<Forced<'_>> = Vec::new();
         let changed_files = get_changed_files(&fx.repo).unwrap();
         let inputs = build_inputs(
             &fx,
@@ -558,7 +569,7 @@ mod tests {
         let head_ancestors = build_head_ancestors(&fx.repo).ok();
         let tag_index = TagIndex::build(&fx.repo).ok();
         let prerelease_ctx = PrereleaseContext::resolve(None, "main", None).unwrap();
-        let forced: Option<Forced<'_>> = None;
+        let forced: Vec<Forced<'_>> = Vec::new();
         let changed_files = get_changed_files(&fx.repo).unwrap();
         let inputs = build_inputs(
             &fx,

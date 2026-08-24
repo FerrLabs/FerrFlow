@@ -46,7 +46,19 @@ pub fn check(
     }
 
     let out = run_release_logic(
-        &root, &config, true, verbose, json, false, false, None, channel, false, false, timing,
+        &root,
+        &config,
+        true,
+        verbose,
+        json,
+        false,
+        false,
+        &[],
+        &[],
+        channel,
+        false,
+        false,
+        timing,
     )?;
 
     crate::git::write_commit_graph_if_absent(&repo);

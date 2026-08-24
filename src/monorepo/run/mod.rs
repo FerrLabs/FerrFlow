@@ -40,7 +40,7 @@ mod why;
 use checkpoint::Checkpoint;
 use drafts::publish_pending_drafts;
 use execute::{ReleasePlan, execute_release, print_dry_run_hooks};
-use forced::{Forced, parse_forced_version};
+use forced::{Forced, parse_forced_versions};
 use plan::{PackagePlan, PlanInputs, SkipReason, compute_plan};
 use rayon::prelude::*;
 use release_json::{GitInfo, ReleaseJson, ReleasedPackage, SkippedPackage};
@@ -56,7 +56,8 @@ pub(super) fn run_release_logic(
     json: bool,
     release_json: bool,
     force: bool,
-    force_version: Option<&str>,
+    force_versions: &[String],
+    excluded: &[String],
     channel: Option<&str>,
     draft: bool,
     force_unlock: bool,
@@ -192,7 +193,7 @@ pub(super) fn run_release_logic(
     let mut pkg_outputs: Vec<(String, Vec<String>)> = Vec::new();
     let mut shared_outputs: Vec<String> = Vec::new();
 
-    let forced: Option<Forced<'_>> = parse_forced_version(force_version, config.is_monorepo())?;
+    let forced: Vec<Forced<'_>> = parse_forced_versions(force_versions, config.is_monorepo())?;
 
     let compute_start = std::time::Instant::now();
 
@@ -211,6 +212,7 @@ pub(super) fn run_release_logic(
         all_tags: &all_tags,
         prerelease_ctx: &prerelease_ctx,
         forced: &forced,
+        excluded,
         changed_files: &changed_files,
         short_hash: &short_hash,
         changed_files_cache: &changed_files_cache,
@@ -250,6 +252,15 @@ pub(super) fn run_release_logic(
         let bump_plan = match plan {
             PackagePlan::Skipped { reason, .. } => {
                 match reason {
+                    SkipReason::Excluded => {
+                        if !quiet {
+                            tracing::info!(
+                                "{} {} — excluded by --exclude",
+                                "○".dimmed(),
+                                pkg.name.dimmed()
+                            );
+                        }
+                    }
                     SkipReason::NotTouched => {
                         if !quiet {
                             tracing::debug!(
