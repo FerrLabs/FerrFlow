@@ -1,5 +1,28 @@
 # Changelog
 
+## [2026.8.1] - 2026-08-24
+
+### Features
+
+- feat(docs): document versionSource and sync the schema (#833)
+- feat(site): add the changelog to ferrflow.com (#835)
+- feat(docs): document the permissive commit-format defaults (#832)
+- feat(docs): why names the source of the current version (#831)
+- feat(docs): document workspace.latestTag (#830)
+- feat(docs): document workspace.commitFormats (#798)
+
+### Bug Fixes
+
+- fix(site): refresh FerrFlow v7.4.3 release data
+- fix(site): refresh FerrFlow v7.4.2 release data
+- fix(site): refresh FerrFlow v7.4.0 release data and JSON schema
+- fix(site): refresh FerrFlow v7.3.1 release data and JSON schema
+- fix(site): refresh FerrFlow v7.1.0 release data
+- fix(schema): sync served schema with the FerrFlow CLI source
+- fix(site): refresh FerrFlow v7.0.5 release data
+- fix(site): refresh FerrFlow v7.0.3 release data
+- fix(site): refresh FerrFlow v7.0.2 release data
+
 ## [6.1.0] - 2026-08-12
 
 ### Features

@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.8.11] - 2026-08-24
+
+### Features
+
+- feat(docs): document versionSource and sync the schema (#833)
+
 ## [2026.8.10] - 2026-08-23
 
 ### Bug Fixes
