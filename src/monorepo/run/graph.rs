@@ -4,12 +4,16 @@ use crate::config::PackageConfig;
 use crate::error_code;
 
 #[derive(Debug)]
-pub(super) struct Cycle {
+pub(crate) struct Cycle {
     path: Vec<String>,
 }
 
 impl Cycle {
-    pub(super) fn into_error(self) -> anyhow::Error {
+    pub(crate) fn path(&self) -> &[String] {
+        &self.path
+    }
+
+    pub(crate) fn into_error(self) -> anyhow::Error {
         let mut rendered = self.path;
         if let Some(first) = rendered.first().cloned() {
             rendered.push(first);
@@ -19,7 +23,7 @@ impl Cycle {
     }
 }
 
-pub(super) fn release_order(packages: &[PackageConfig]) -> Result<Vec<usize>, Cycle> {
+pub(crate) fn release_order(packages: &[PackageConfig]) -> Result<Vec<usize>, Cycle> {
     let index_of: HashMap<&str, usize> = packages
         .iter()
         .enumerate()

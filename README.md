@@ -115,6 +115,10 @@ ferrflow version api          # monorepo, specific package
 ferrflow tag
 ferrflow tag api
 
+# Print the dependency graph, the release order, and any cycle
+ferrflow graph
+ferrflow graph --json
+
 # JSON output (for scripting)
 ferrflow version --json
 ferrflow tag --json
