@@ -179,6 +179,10 @@ pub struct RegistryConfig {
 /// The kind is the externally-tagged discriminator (`{"kind":
 /// "cargo", ...}`) — keeps the JSON Schema readable and lets us add
 /// kinds without overloading existing fields.
+fn default_true() -> bool {
+    true
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 #[serde(tag = "kind", rename_all = "kebab-case")]
 pub enum PublisherConfig {
@@ -231,6 +235,14 @@ pub enum PublisherConfig {
         #[serde(default)]
         args: Vec<String>,
     },
+    Pypi {
+        #[serde(default)]
+        registry: Option<String>,
+        #[serde(default = "default_true")]
+        build: bool,
+        #[serde(default)]
+        args: Vec<String>,
+    },
     Webhook {
         url: String,
         #[serde(default)]
@@ -275,6 +287,7 @@ impl PublisherConfig {
             PublisherConfig::Docker { .. } => "docker",
             PublisherConfig::Helm { .. } => "helm",
             PublisherConfig::GithubReleaseAsset { .. } => "github-release-asset",
+            PublisherConfig::Pypi { .. } => "pypi",
             PublisherConfig::Webhook { .. } => "webhook",
         }
     }
@@ -288,6 +301,10 @@ impl PublisherConfig {
             PublisherConfig::Cargo { registry, .. } => {
                 let reg = registry.as_deref().unwrap_or("crates-io");
                 format!("cargo publish {package_name}@{new_version} → {reg}")
+            }
+            PublisherConfig::Pypi { registry, .. } => {
+                let reg = registry.as_deref().unwrap_or("pypi.org");
+                format!("twine upload {package_name}@{new_version} → {reg}")
             }
             PublisherConfig::Npm { registry, tag, .. } => {
                 let reg = registry.as_deref().unwrap_or("npmjs.org");

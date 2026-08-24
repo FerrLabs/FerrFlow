@@ -951,6 +951,35 @@
         },
         {
           "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "const": "pypi"
+            },
+            "registry": {
+              "type": "string",
+              "description": "Name of an entry under workspace.registries. Its url becomes twine --repository-url and its tokenEnv supplies TWINE_PASSWORD with username __token__. Omit to publish to pypi.org."
+            },
+            "build": {
+              "type": "boolean",
+              "default": true,
+              "description": "Run python -m build in the package directory before uploading. Set false when the distributions in dist/ are produced earlier in the pipeline."
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Extra flags appended verbatim to the underlying twine upload invocation.",
+              "default": []
+            }
+          }
+        },
+        {
+          "type": "object",
           "required": [
             "kind",
             "url"
