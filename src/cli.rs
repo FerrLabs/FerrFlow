@@ -84,6 +84,11 @@ pub enum Commands {
         #[arg(long)]
         json: bool,
     },
+    /// Print the dependency graph, the release order it implies, and any cycle.
+    Graph {
+        #[arg(long)]
+        json: bool,
+    },
     Diff {
         #[arg(value_name = "SPEC", required = true, num_args = 1..=2)]
         spec: Vec<String>,
@@ -177,6 +182,7 @@ impl Commands {
             Commands::Init { .. } => "init",
             Commands::Status { .. } => "status",
             Commands::Why { .. } => "why",
+            Commands::Graph { .. } => "graph",
             Commands::Diff { .. } => "diff",
             Commands::Version { .. } => "version",
             Commands::Tag { .. } => "tag",
@@ -259,6 +265,7 @@ impl Cli {
                 channel.as_deref(),
                 json,
             ),
+            Commands::Graph { json } => crate::monorepo::graph(self.config.as_deref(), json),
             Commands::Version { package, json } => {
                 crate::query::version(self.config.as_deref(), package.as_deref(), json)
             }

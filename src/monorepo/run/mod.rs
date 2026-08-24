@@ -30,7 +30,7 @@ mod execute;
 #[cfg(test)]
 mod execute_tests;
 mod forced;
-mod graph;
+pub(crate) mod graph;
 mod groups;
 mod lock;
 mod plan;
