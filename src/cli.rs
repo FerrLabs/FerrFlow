@@ -89,6 +89,12 @@ pub enum Commands {
         #[arg(long)]
         json: bool,
     },
+    /// Compare each package's public API against its last tag and flag a bump the commits understate.
+    ApiCheck {
+        package: Option<String>,
+        #[arg(long)]
+        json: bool,
+    },
     Diff {
         #[arg(value_name = "SPEC", required = true, num_args = 1..=2)]
         spec: Vec<String>,
@@ -183,6 +189,7 @@ impl Commands {
             Commands::Status { .. } => "status",
             Commands::Why { .. } => "why",
             Commands::Graph { .. } => "graph",
+            Commands::ApiCheck { .. } => "api-check",
             Commands::Diff { .. } => "diff",
             Commands::Version { .. } => "version",
             Commands::Tag { .. } => "tag",
@@ -266,6 +273,9 @@ impl Cli {
                 json,
             ),
             Commands::Graph { json } => crate::monorepo::graph(self.config.as_deref(), json),
+            Commands::ApiCheck { package, json } => {
+                crate::api_check::run(self.config.as_deref(), package.as_deref(), json)
+            }
             Commands::Version { package, json } => {
                 crate::query::version(self.config.as_deref(), package.as_deref(), json)
             }
