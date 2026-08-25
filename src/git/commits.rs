@@ -178,6 +178,11 @@ pub fn create_branch_and_commits(
     run_git(workdir, &["branch", "-f", branch_name])
         .with_context(|| format!("git branch -f {branch_name} failed"))?;
 
+    // `git commit` reads commit.gpgsign; `commit-tree` does not, and signs
+    // only when passed -S. Without this the PR path silently produces
+    // unsigned commits for a repo that asked for signing.
+    let signing_enabled = commit_signing_enabled(workdir);
+
     for (files, message) in commits {
         let mut add_args: Vec<&str> = vec!["add", "--"];
         add_args.extend_from_slice(files);
@@ -194,13 +199,15 @@ pub fn create_branch_and_commits(
         .with_context(|| format!("rev-parse {branch_name} failed"))?
         .trim()
         .to_string();
-        let commit_sha = run_git(
-            workdir,
-            &["commit-tree", &tree_sha, "-p", &parent_sha, "-m", message],
-        )
-        .with_context(|| "git commit-tree failed")?
-        .trim()
-        .to_string();
+        let mut commit_args: Vec<&str> =
+            vec!["commit-tree", &tree_sha, "-p", &parent_sha, "-m", message];
+        if signing_enabled {
+            commit_args.push("-S");
+        }
+        let commit_sha = run_git(workdir, &commit_args)
+            .with_context(|| "git commit-tree failed")?
+            .trim()
+            .to_string();
         run_git(
             workdir,
             &[
@@ -222,4 +229,19 @@ pub fn create_branch_and_commits(
 
     let _ = repo;
     Ok(())
+}
+
+/// Whether this repository is configured to sign commits. Mirrors what
+/// `git commit` consults, so the two commit paths agree.
+///
+/// `--type=bool` is what makes that true: git accepts `yes`, `on` and `1`
+/// as well as `true`, and normalises all of them here rather than leaving
+/// us to match spellings.
+pub(crate) fn commit_signing_enabled(workdir: &std::path::Path) -> bool {
+    run_git(
+        workdir,
+        &["config", "--get", "--type=bool", "commit.gpgsign"],
+    )
+    .map(|v| v.trim() == "true")
+    .unwrap_or(false)
 }
