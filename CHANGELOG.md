@@ -4,6 +4,16 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.8.0] - 2026-08-25
+
+### Features
+
+- feat(config): support per-package config files via an include key (#932)
+
+### Bug Fixes
+
+- fix(release): make pr mode tag on merge instead of on the pre-bump commit (#936)
+
 ## [7.7.2] - 2026-08-25
 
 ### Bug Fixes
