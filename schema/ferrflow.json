@@ -9,6 +9,13 @@
       "type": "string",
       "description": "JSON Schema reference for editor autocompletion."
     },
+    "include": {
+      "type": "array",
+      "description": "Files that each declare one package, merged into `package`. Paths and globs are relative to this config file. A package path inside an included file is relative to that file, and defaults to its directory.",
+      "items": {
+        "type": "string"
+      }
+    },
     "workspace": {
       "type": "object",
       "description": "Workspace-level settings.",

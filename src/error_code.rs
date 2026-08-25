@@ -72,6 +72,16 @@ pub const CONFIG_MULTIPLE_FILES: ErrorCode = ErrorCode(1016);
 pub const CONFIG_ALREADY_EXISTS: ErrorCode = ErrorCode(1017);
 #[allow(dead_code)]
 pub const CONFIG_INVALID_PATH: ErrorCode = ErrorCode(1018);
+#[allow(dead_code)]
+pub const CONFIG_INCLUDE_NOT_FOUND: ErrorCode = ErrorCode(1019);
+#[allow(dead_code)]
+pub const CONFIG_INCLUDE_INVALID: ErrorCode = ErrorCode(1020);
+#[allow(dead_code)]
+pub const CONFIG_INCLUDE_OUTSIDE_ROOT: ErrorCode = ErrorCode(1021);
+#[allow(dead_code)]
+pub const CONFIG_DUPLICATE_PACKAGE: ErrorCode = ErrorCode(1022);
+#[allow(dead_code)]
+pub const CONFIG_MISSING_PACKAGE_PATH: ErrorCode = ErrorCode(1023);
 
 #[allow(dead_code)]
 pub const VALIDATE_INVALID_REPO_SPEC: ErrorCode = ErrorCode(1100);

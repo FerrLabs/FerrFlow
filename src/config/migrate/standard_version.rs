@@ -163,6 +163,7 @@ pub(super) fn build(raw: &str) -> Result<(Config, MigrationReport)> {
 
     Ok((
         Config {
+            include: Vec::new(),
             workspace,
             packages: vec![package],
         },

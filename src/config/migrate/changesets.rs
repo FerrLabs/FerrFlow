@@ -120,6 +120,7 @@ pub(super) fn build(raw: &str, root: &Path) -> Result<(Config, MigrationReport)>
 
     Ok((
         Config {
+            include: Vec::new(),
             workspace,
             packages,
         },

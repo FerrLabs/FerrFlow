@@ -8,6 +8,7 @@ use super::workspace::WorkspaceConfig;
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct PackageConfig {
     pub name: String,
+    #[serde(default)]
     pub path: String,
     #[serde(default, alias = "versionedFiles")]
     pub versioned_files: Vec<VersionedFile>,

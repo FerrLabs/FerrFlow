@@ -7,6 +7,7 @@ use crate::error_code::{self, ErrorCodeExt};
 mod commit_formats;
 mod format;
 mod groups;
+mod include;
 #[cfg(feature = "cli")]
 mod init;
 #[cfg(feature = "cli")]
@@ -52,6 +53,8 @@ use loader_js::{JS_CONFIG_FILENAME, TS_CONFIG_FILENAME, load_js_ts_config};
 pub struct Config {
     #[serde(default)]
     pub workspace: WorkspaceConfig,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub include: Vec<String>,
     #[serde(default, rename = "package")]
     pub packages: Vec<PackageConfig>,
 }
@@ -64,7 +67,9 @@ impl Config {
             } else {
                 path.to_path_buf()
             };
-            return Self::load_explicit(&resolved_path);
+            let mut config = Self::load_explicit(&resolved_path)?;
+            config.finish(&resolved_path, repo_root)?;
+            return Ok(config);
         }
 
         let found = Self::discover(repo_root);
@@ -85,7 +90,24 @@ impl Config {
             .error_code(error_code::CONFIG_MULTIPLE_FILES)?;
         }
 
-        Self::load_from_path(&found[0])
+        let mut config = Self::load_from_path(&found[0])?;
+        config.finish(&found[0], repo_root)?;
+        Ok(config)
+    }
+
+    fn finish(&mut self, config_path: &Path, repo_root: &Path) -> Result<()> {
+        include::resolve(self, config_path, repo_root)?;
+
+        if let Some(package) = self.packages.iter().find(|p| p.path.is_empty()) {
+            Err(anyhow::anyhow!(
+                "package `{}` has no `path`.
+                 Set it relative to the repository root, or move the package into its own                  file listed under `include`, where `path` defaults to that file's directory.",
+                package.name
+            ))
+            .error_code(error_code::CONFIG_MISSING_PACKAGE_PATH)?;
+        }
+
+        include::reject_duplicate_names(&self.packages)
     }
 
     fn discover(repo_root: &Path) -> Vec<PathBuf> {
@@ -226,6 +248,7 @@ impl Config {
             .to_string();
 
         Config {
+            include: Vec::new(),
             workspace: WorkspaceConfig::default(),
             packages: if versioned_files.is_empty() {
                 vec![]
