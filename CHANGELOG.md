@@ -4,6 +4,13 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.7.2] - 2026-08-25
+
+### Bug Fixes
+
+- fix(publish): name cosign bundles .sigstore.json so they are recognised as signatures (#929)
+- fix(ci): send the coverage report to SonarQube (#926)
+
 ## [7.7.1] - 2026-08-25
 
 ### Bug Fixes
