@@ -30,6 +30,7 @@ pub(super) struct ReleasePlan<'a> {
     pub force: bool,
     pub draft: bool,
     pub tags_to_create: &'a [PlannedTag],
+    pub finalizing: bool,
     pub hook_contexts: &'a [(HookContext, usize)],
     pub files_to_commit: &'a mut Vec<String>,
     pub files_per_package: &'a mut HashMap<String, Vec<String>>,
@@ -44,7 +45,11 @@ pub(super) fn execute_release(plan: &mut ReleasePlan<'_>) -> Result<()> {
     run_pre_commit_hooks(plan)?;
 
     let files_snapshot: Vec<String> = plan.files_to_commit.clone();
-    let mode = plan.config.workspace.release_commit_mode;
+    let mode = if plan.finalizing {
+        ReleaseCommitMode::None
+    } else {
+        plan.config.workspace.release_commit_mode
+    };
     let scope = plan.config.workspace.release_commit_scope;
 
     let release_parts: Vec<String> = plan
@@ -85,7 +90,13 @@ pub(super) fn execute_release(plan: &mut ReleasePlan<'_>) -> Result<()> {
         }
         run_package_hooks(plan, HookPoint::PostCommit)?;
         run_package_hooks(plan, HookPoint::PreTag)?;
-        if !checkpoint_is_done(plan, Phase::TagsCreated) {
+        if mode == ReleaseCommitMode::Pr {
+            // The release is only proposed at this point. Tagging here would
+            // label the pre-bump commit and make later runs report "nothing to
+            // release", which is what froze the PR before #934. Tags and
+            // releases are produced by the finalising run, once the release
+            // commit has landed on the target branch.
+        } else if !checkpoint_is_done(plan, Phase::TagsCreated) {
             create_release_tags(plan)?;
             create_and_move_floating_tags(plan, &mut floating_tag_names)?;
             checkpoint_advance(plan, Phase::TagsCreated)?;
@@ -104,7 +115,9 @@ pub(super) fn execute_release(plan: &mut ReleasePlan<'_>) -> Result<()> {
         } else if plan.verbose {
             tracing::info!("  ↻ Resumed: skipping push (already done)");
         }
-        if !checkpoint_is_done(plan, Phase::ReleasesCreated) {
+        if mode == ReleaseCommitMode::Pr {
+            // Same reason as the tags above.
+        } else if !checkpoint_is_done(plan, Phase::ReleasesCreated) {
             publish_releases(plan)?;
             checkpoint_advance(plan, Phase::ReleasesCreated)?;
         } else if plan.verbose {
@@ -493,7 +506,7 @@ fn push_refs(
         ));
     }
 
-    if !tag_refs.is_empty() {
+    if !tag_refs.is_empty() && mode != ReleaseCommitMode::Pr {
         push_tags(plan.repo, &plan.config.workspace.remote, &tag_refs)?;
         plan.shared_outputs.push("✓ Pushed tags".to_string());
     }

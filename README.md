@@ -482,6 +482,23 @@ skip_ci = false  # force CI to run on release commits
 
 In `pr` mode, `skip_ci` defaults to `false` since the PR merge triggers CI naturally.
 
+### How `pr` mode releases
+
+`pr` mode runs in two phases, so nothing is published for a release that has not been accepted.
+
+The **proposing** run computes the bump, writes the version files and changelog onto the release
+branch, and opens or updates the pull request. No tags are created and no releases are published.
+Every later commit on the target branch regenerates the branch, so the open PR keeps tracking the
+version that would ship now.
+
+The **finalising** run happens after the PR merges. FerrFlow sees a `chore(release):` commit on the
+target branch whose versions carry no tag, and tags exactly those versions before publishing the
+releases. The versions are read from the version files, never recomputed, so merging a release PR
+cannot cascade into a further bump. Squash merges and merge commits both work.
+
+A package declared without `versionedFiles` has no version to read, so it is not finalised this way.
+Use `commit` mode for tag-only packages.
+
 ## Floating Tags
 
 Move abbreviated tags (e.g. `v1`, `v1.2`) to always point at the latest matching release:
