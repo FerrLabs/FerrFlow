@@ -72,7 +72,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
-    uses: FerrLabs/.github/.github/workflows/reusable-sonarqube-scan.yml@5ddbb2ce26b1a82936d91eaaab64d4de1942af7f # main
+    uses: FerrLabs/.github/.github/workflows/reusable-sonarqube-scan.yml@489ab0fc5e69a7db0c5b3f8b1e1659ac19e1d268 # main
     with:
       runner: ubuntu-latest
       project-key: ferrflow
