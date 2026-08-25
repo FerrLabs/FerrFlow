@@ -233,8 +233,15 @@ pub fn create_branch_and_commits(
 
 /// Whether this repository is configured to sign commits. Mirrors what
 /// `git commit` consults, so the two commit paths agree.
+///
+/// `--type=bool` is what makes that true: git accepts `yes`, `on` and `1`
+/// as well as `true`, and normalises all of them here rather than leaving
+/// us to match spellings.
 pub(crate) fn commit_signing_enabled(workdir: &std::path::Path) -> bool {
-    run_git(workdir, &["config", "--get", "commit.gpgsign"])
-        .map(|v| v.trim().eq_ignore_ascii_case("true"))
-        .unwrap_or(false)
+    run_git(
+        workdir,
+        &["config", "--get", "--type=bool", "commit.gpgsign"],
+    )
+    .map(|v| v.trim() == "true")
+    .unwrap_or(false)
 }
