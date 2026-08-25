@@ -10,12 +10,12 @@ log.
 
 | Artifact | Sidecar |
 |---|---|
-| `ferrflow-linux-x64.tar.gz` | `.bundle` |
-| `ferrflow-linux-arm64.tar.gz` | `.bundle` |
-| `ferrflow-darwin-x64.tar.gz` | `.bundle` |
-| `ferrflow-darwin-arm64.tar.gz` | `.bundle` |
-| `ferrflow-windows-x64.zip` | `.bundle` |
-| `sbom.cdx.json` | `.bundle` |
+| `ferrflow-linux-x64.tar.gz` | `.sigstore.json` |
+| `ferrflow-linux-arm64.tar.gz` | `.sigstore.json` |
+| `ferrflow-darwin-x64.tar.gz` | `.sigstore.json` |
+| `ferrflow-darwin-arm64.tar.gz` | `.sigstore.json` |
+| `ferrflow-windows-x64.zip` | `.sigstore.json` |
+| `sbom.cdx.json` | `.sigstore.json` |
 | `ghcr.io/ferrlabs/ferrflow:vX.Y.Z` | Cosign signature recorded in
 GHCR + Rekor |
 
@@ -23,7 +23,7 @@ All sidecars are downloadable from the GitHub Release page next to the
 binary.
 
 > **Releases up to v5.47.4** ship a `.sig` + `.crt` pair instead of a single
-> `.bundle`. Verify those with `--certificate <file>.crt --signature <file>.sig`
+> `.sigstore.json`. Verify those with `--certificate <file>.crt --signature <file>.sig`
 > in place of `--bundle`. The switch came with cosign v3, which deprecated the
 > separate signature and certificate outputs in favour of one bundle.
 
@@ -41,7 +41,7 @@ gh release download "$TAG" --repo FerrLabs/FerrFlow \
 
 # verify
 cosign verify-blob \
-  --bundle ferrflow-linux-x64.tar.gz.bundle \
+  --bundle ferrflow-linux-x64.tar.gz.sigstore.json \
   --certificate-identity-regexp "https://github.com/FerrLabs/FerrFlow/.*" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   ferrflow-linux-x64.tar.gz
