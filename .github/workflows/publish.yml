@@ -202,15 +202,20 @@ jobs:
         # is the workflow's OIDC token, recorded in the Rekor transparency
         # log. Verify with:
         #   cosign verify-blob \
-        #     --bundle ferrflow-linux-x64.tar.gz.bundle \
+        #     --bundle ferrflow-linux-x64.tar.gz.sigstore.json \
         #     --certificate-identity-regexp "https://github.com/FerrLabs/FerrFlow/.*" \
         #     --certificate-oidc-issuer https://token.actions.githubusercontent.com \
         #     ferrflow-linux-x64.tar.gz
         #
-        # One `.bundle` per artifact replaces the `.sig` + `.crt` pair as of
+        # One `.sigstore.json` per artifact replaces the `.sig` + `.crt` pair as of
         # cosign v3: `--use-signing-config` now defaults to true and requires
         # `--bundle`, and `--output-signature` / `--output-certificate` are
         # deprecated. Releases up to v5.47.4 carry the old pair.
+        #
+        # The extension is `.sigstore.json`, the canonical name for the
+        # Sigstore bundle format, not `.bundle`. Do not shorten it: OpenSSF
+        # Scorecard matches signatures by extension and does not know
+        # `.bundle`, which scored these releases as unsigned for months.
         env:
           COSIGN_EXPERIMENTAL: "1"
         run: |
@@ -223,7 +228,7 @@ jobs:
             local artifact="$1" attempt
             for attempt in 1 2 3; do
               if cosign sign-blob --yes \
-                  --bundle "${artifact}.bundle" \
+                  --bundle "${artifact}.sigstore.json" \
                   "$artifact"; then
                 return 0
               fi
@@ -268,7 +273,7 @@ jobs:
           set -euo pipefail
           for attempt in 1 2 3; do
             if cosign sign-blob --yes \
-                --bundle artifacts/sbom.cdx.json.bundle \
+                --bundle artifacts/sbom.cdx.json.sigstore.json \
                 artifacts/sbom.cdx.json; then
               exit 0
             fi
