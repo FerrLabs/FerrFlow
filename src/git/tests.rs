@@ -1543,6 +1543,89 @@ fn is_push_rejected_error_recognises_known_signatures() {
     assert!(!is_push_rejected_error(&e));
 }
 
+fn push_branch_failure(detail: &str) -> anyhow::Error {
+    anyhow::anyhow!("Failed to push branch 'main': {detail}").context(error_code::GIT_PUSH_BRANCH)
+}
+
+#[test]
+fn a_github_side_push_failure_is_transient_not_a_stale_branch() {
+    let err = push_branch_failure(
+        "remote: fatal error in commit_refs\n\
+         To https://github.com/FerrLabs/FerrFlow\n \
+         ! [remote rejected] main -> main (failure)\n\
+         error: failed to push some refs",
+    );
+
+    assert!(
+        is_transient_git_error(&err),
+        "a server-side failure must be retried by the push layer"
+    );
+    assert!(
+        !is_push_rejected_error(&err),
+        "it is not a race, so it must not be reported as a stale branch \
+         nor burn the regenerate attempts"
+    );
+}
+
+#[test]
+fn a_remote_that_advanced_before_we_fetched_is_a_race() {
+    // This is the wording git actually produces in CI, where the release job
+    // pushes without having fetched the branch first.
+    let err = push_branch_failure(
+        " ! [rejected]        HEAD -> main (fetch first)\n\
+         error: failed to push some refs",
+    );
+
+    assert!(is_push_rejected_error(&err));
+    assert!(!is_transient_git_error(&err));
+}
+
+#[test]
+fn a_non_fast_forward_is_a_race() {
+    let err = push_branch_failure(" ! [rejected]        HEAD -> main (non-fast-forward)");
+
+    assert!(is_push_rejected_error(&err));
+}
+
+#[test]
+fn a_stale_force_with_lease_expectation_is_a_race() {
+    let err = push_branch_failure(" ! [rejected]        main -> main (stale info)");
+
+    assert!(is_push_rejected_error(&err));
+}
+
+#[test]
+fn a_permanent_push_failure_is_neither_retried_nor_regenerated() {
+    for detail in [
+        "remote: Permission to FerrLabs/FerrFlow.git denied to ferrflow[bot].\n\
+         fatal: unable to access ...: The requested URL returned error: 403",
+        "remote: Repository not found.\nfatal: repository not found",
+        "fatal: Authentication failed for 'https://github.com/FerrLabs/FerrFlow'",
+    ] {
+        let err = push_branch_failure(detail);
+        assert!(
+            !is_push_rejected_error(&err),
+            "must fail fast with the real cause instead of three misleading \
+             stale-branch attempts: {detail}"
+        );
+        assert!(!is_transient_git_error(&err), "{detail}");
+    }
+}
+
+#[test]
+fn a_divergent_remote_tag_still_routes_to_the_regenerate_path() {
+    let err = anyhow::anyhow!(
+        "Tag(s) already exist on remote pointing to a different commit: \
+         api@v3.13.3 (local 1e3ed96 != remote c3ae651)."
+    )
+    .context(error_code::GIT_PUSH_TAGS);
+
+    assert!(
+        is_push_rejected_error(&err),
+        "matched by its own wording now that the generic code no longer counts"
+    );
+}
+
 fn commit_file_at(dir: &Path, rel: &str, message: &str) -> String {
     let path = dir.join(rel);
     std::fs::create_dir_all(path.parent().unwrap()).unwrap();
