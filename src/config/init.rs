@@ -228,6 +228,7 @@ pub fn init(format: Option<ConfigFileFormat>, manifest: bool) -> Result<()> {
     }
 
     let config = Config {
+        include: Vec::new(),
         workspace,
         packages,
     };

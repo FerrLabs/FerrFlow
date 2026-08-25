@@ -305,6 +305,38 @@ format = "json"
 
 </details>
 
+#### One file per package
+
+A large monorepo does not have to keep every package in the root config. List the per-package files
+under `include`, and each project owns its own settings:
+
+```json
+{
+  "workspace": { "versioning": "semver" },
+  "include": ["services/*/ferrflow.json", "frontend/ferrflow.json"]
+}
+```
+
+```json
+{
+  "name": "api",
+  "changelog": "CHANGELOG.md",
+  "sharedPaths": ["../shared/"],
+  "versionedFiles": [{ "path": "Cargo.toml", "format": "toml" }]
+}
+```
+
+Paths inside an included file are relative to that file, and `path` defaults to its directory. The
+example above needs no `path`: `services/api/ferrflow.json` describes the package in
+`services/api`, and moving the directory does not require editing anything.
+
+Included files use the same keys as a `package` entry, so `dependsOn` still refers to packages by
+name and works across files. They may use a different format than the root config, and they can be
+mixed with an inline `package` array while you migrate.
+
+The following are rejected rather than silently ignored: an `include` pattern matching no file, two
+packages sharing a name, and an included file declaring `workspace`, `include`, or `package`.
+
 ## Versioning Strategies
 
 Each package can use its own versioning strategy. Set a default at the workspace level and override per package:

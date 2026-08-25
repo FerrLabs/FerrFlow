@@ -7,6 +7,7 @@ use tempfile::TempDir;
 
 fn make_config(packages: Vec<PackageConfig>) -> Config {
     Config {
+        include: Vec::new(),
         workspace: WorkspaceConfig::default(),
         packages,
     }

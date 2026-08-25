@@ -330,6 +330,7 @@ pub fn build_config_from_releaserc(raw: &str) -> Result<(Config, MigrationReport
 
     Ok((
         Config {
+            include: Vec::new(),
             workspace,
             packages: vec![package],
         },

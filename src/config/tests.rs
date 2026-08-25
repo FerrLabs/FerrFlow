@@ -436,6 +436,7 @@ fn tag_template_name_placeholder() {
 #[test]
 fn is_monorepo_single() {
     let config = Config {
+        include: Vec::new(),
         workspace: WorkspaceConfig::default(),
         packages: vec![make_pkg("a", None)],
     };
@@ -445,6 +446,7 @@ fn is_monorepo_single() {
 #[test]
 fn is_monorepo_multi() {
     let config = Config {
+        include: Vec::new(),
         workspace: WorkspaceConfig::default(),
         packages: vec![make_pkg("a", None), make_pkg("b", None)],
     };
@@ -551,6 +553,7 @@ fn load_explicit_not_found() {
 fn json_roundtrip() {
     let handler = JsonFormat;
     let config = Config {
+        include: Vec::new(),
         workspace: WorkspaceConfig::default(),
         packages: vec![make_pkg("test", None)],
     };
@@ -563,6 +566,7 @@ fn json_roundtrip() {
 fn json_serializes_camel_case() {
     let handler = JsonFormat;
     let config = Config {
+        include: Vec::new(),
         workspace: WorkspaceConfig {
             tag_template: Some("v{version}".into()),
             version_template: None,
@@ -615,6 +619,7 @@ fn json_serializes_camel_case() {
 fn toml_keeps_snake_case() {
     let handler = TomlFormat;
     let config = Config {
+        include: Vec::new(),
         workspace: WorkspaceConfig {
             tag_template: Some("v{version}".into()),
             version_template: None,
@@ -662,6 +667,7 @@ fn toml_keeps_snake_case() {
 fn toml_roundtrip() {
     let handler = TomlFormat;
     let config = Config {
+        include: Vec::new(),
         workspace: WorkspaceConfig::default(),
         packages: vec![make_pkg("test", None)],
     };
@@ -959,6 +965,7 @@ fn to_camel_case_keys_nested() {
 fn json5_roundtrip() {
     let handler = Json5Format;
     let config = Config {
+        include: Vec::new(),
         workspace: WorkspaceConfig::default(),
         packages: vec![make_pkg("test", None)],
     };
@@ -971,6 +978,7 @@ fn json5_roundtrip() {
 fn dotfile_roundtrip() {
     let handler = DotfileFormat;
     let config = Config {
+        include: Vec::new(),
         workspace: WorkspaceConfig::default(),
         packages: vec![make_pkg("test", None)],
     };
@@ -1077,6 +1085,7 @@ fn format_handler_returns_correct_filenames() {
 #[test]
 fn is_monorepo_empty() {
     let config = Config {
+        include: Vec::new(),
         workspace: WorkspaceConfig::default(),
         packages: vec![],
     };

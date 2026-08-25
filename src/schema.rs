@@ -37,6 +37,27 @@ mod tests {
         assert_eq!(value["$id"], "https://ferrflow.com/schema/ferrflow.json");
         assert!(value["properties"]["workspace"].is_object());
         assert!(value["properties"]["package"].is_object());
+        assert!(value["properties"]["include"].is_object());
+    }
+
+    #[test]
+    fn schema_covers_every_key_the_root_config_accepts() {
+        let value: serde_json::Value =
+            serde_json::from_str(BUNDLED_SCHEMA).expect("bundled schema must parse");
+        let documented = value["properties"]
+            .as_object()
+            .expect("properties must be an object");
+
+        assert!(
+            value["additionalProperties"] == serde_json::Value::Bool(false),
+            "the schema must stay strict, otherwise this test proves nothing"
+        );
+        for key in ["workspace", "include", "package"] {
+            assert!(
+                documented.contains_key(key),
+                "`{key}` is accepted by Config but absent from the schema, so editors reject it"
+            );
+        }
     }
 
     #[test]

@@ -16,6 +16,7 @@ pub enum ConfigFileFormat {
 pub trait ConfigFormatHandler {
     fn filename(&self) -> &str;
     fn parse(&self, content: &str) -> Result<Config>;
+    fn parse_value(&self, content: &str) -> Result<serde_json::Value>;
     fn serialize(&self, config: &Config) -> Result<String>;
 }
 
@@ -100,6 +101,11 @@ impl ConfigFormatHandler for JsonFormat {
             .with_context(|| "Failed to parse ferrflow.json")
             .error_code(error_code::CONFIG_PARSE_JSON)
     }
+    fn parse_value(&self, content: &str) -> Result<serde_json::Value> {
+        serde_json::from_str(content)
+            .with_context(|| "Failed to parse ferrflow.json")
+            .error_code(error_code::CONFIG_PARSE_JSON)
+    }
     fn serialize(&self, config: &Config) -> Result<String> {
         let value = serde_json::to_value(config)?;
         let camel = to_camel_case_keys(value);
@@ -114,6 +120,11 @@ impl ConfigFormatHandler for Json5Format {
         "ferrflow.json5"
     }
     fn parse(&self, content: &str) -> Result<Config> {
+        json5::from_str(content)
+            .with_context(|| "Failed to parse ferrflow.json5")
+            .error_code(error_code::CONFIG_PARSE_JSON5)
+    }
+    fn parse_value(&self, content: &str) -> Result<serde_json::Value> {
         json5::from_str(content)
             .with_context(|| "Failed to parse ferrflow.json5")
             .error_code(error_code::CONFIG_PARSE_JSON5)
@@ -136,6 +147,11 @@ impl ConfigFormatHandler for TomlFormat {
             .with_context(|| "Failed to parse ferrflow.toml")
             .error_code(error_code::CONFIG_PARSE_TOML)
     }
+    fn parse_value(&self, content: &str) -> Result<serde_json::Value> {
+        toml_edit::de::from_str(content)
+            .with_context(|| "Failed to parse ferrflow.toml")
+            .error_code(error_code::CONFIG_PARSE_TOML)
+    }
     fn serialize(&self, config: &Config) -> Result<String> {
         toml_edit::ser::to_string_pretty(config)
             .with_context(|| "Failed to serialize to TOML")
@@ -149,6 +165,11 @@ impl ConfigFormatHandler for DotfileFormat {
     }
     fn parse(&self, content: &str) -> Result<Config> {
         ConfigFormatHandler::parse(&JsonFormat, content)
+            .with_context(|| "Failed to parse .ferrflow")
+            .error_code(error_code::CONFIG_PARSE_DOTFILE)
+    }
+    fn parse_value(&self, content: &str) -> Result<serde_json::Value> {
+        ConfigFormatHandler::parse_value(&JsonFormat, content)
             .with_context(|| "Failed to parse .ferrflow")
             .error_code(error_code::CONFIG_PARSE_DOTFILE)
     }
