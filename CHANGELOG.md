@@ -4,6 +4,14 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.7.1] - 2026-08-25
+
+### Bug Fixes
+
+- fix(docker): run as a non-root user in both images (#924)
+- fix(git): honour commit.gpgsign on the commit-tree path (#922)
+- fix(wasm): put api_check behind the cli feature and build the no-cli surface in CI (#919)
+
 ## [7.7.0] - 2026-08-24
 
 ### Features
