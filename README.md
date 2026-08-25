@@ -337,6 +337,17 @@ mixed with an inline `package` array while you migrate.
 The following are rejected rather than silently ignored: an `include` pattern matching no file, two
 packages sharing a name, and an included file declaring `workspace`, `include`, or `package`.
 
+Included files have their own schema, so editors autocomplete and validate them:
+
+```json
+{
+  "$schema": "https://ferrflow.com/schema/ferrflow-package.json",
+  "name": "api"
+}
+```
+
+`ferrflow schema --package` writes the same schema locally, for repos that would rather not fetch it.
+
 ## Versioning Strategies
 
 Each package can use its own versioning strategy. Set a default at the workspace level and override per package:
