@@ -37,8 +37,35 @@ jobs:
           echo "version=${VERSION:-0.0.0}" >> "$GITHUB_OUTPUT"
           echo "Latest release tag: ${TAG:-<none>} -> projectVersion=${VERSION:-0.0.0}"
 
+  # Coverage lives here rather than in ci.yml because the reusable scan
+  # downloads the report from an artifact in the same run, and artifacts do
+  # not cross workflow runs. Tarpaulin is slow, so it runs once and feeds
+  # both Sonar and Codecov instead of once per workflow.
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - uses: taiki-e/install-action@67729d5c413db75907f0ad1e39bb04b9c868ff60 # v2
+        with:
+          tool: cargo-tarpaulin
+      - name: Generate coverage
+        run: cargo tarpaulin --out xml --skip-clean
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: coverage-cobertura
+          path: cobertura.xml
+          retention-days: 1
+      - uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7
+        with:
+          files: cobertura.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+
   scan:
-    needs: version
+    needs: [version, coverage]
     # The reusable workflow declares `pull-requests: write` (it posts the diff
     # against the base project). The job would otherwise inherit the read-only
     # workflow-level block above, and GitHub rejects the run before it starts.
@@ -49,5 +76,8 @@ jobs:
     with:
       runner: ubuntu-latest
       project-key: ferrflow
-      args: -Dsonar.projectVersion=${{ needs.version.outputs.version }}
+      coverage-artifact: coverage-cobertura
+      args: >-
+        -Dsonar.projectVersion=${{ needs.version.outputs.version }}
+        -Dsonar.rust.cobertura.reportPaths=.sonarcov/cobertura.xml
     secrets: inherit
