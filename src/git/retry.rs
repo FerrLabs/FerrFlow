@@ -86,6 +86,12 @@ pub(super) fn is_transient_git_error(err: &anyhow::Error) -> bool {
     {
         return true;
     }
+    if chain.contains("fatal error in commit_refs")
+        || chain.contains("internal server error")
+        || chain.contains("remote end hung up")
+    {
+        return true;
+    }
     if chain.contains("non-fast-forward")
         || chain.contains("branch protection")
         || chain.contains("rejected by remote")
@@ -98,15 +104,19 @@ pub(super) fn is_transient_git_error(err: &anyhow::Error) -> bool {
     false
 }
 
+/// Whether the push failed because the remote moved under us, which the release
+/// flow answers by regenerating the release commit against the new tip.
+///
+/// This deliberately does not match `GIT_PUSH_BRANCH` or `GIT_PUSH_TAGS`. Those
+/// are the generic "push failed" codes carried by every push error, transient
+/// and permanent alike, so matching them reported a stale branch for causes that
+/// were nothing of the sort and burned the regenerate attempts on errors no
+/// amount of regenerating could fix.
 pub fn is_push_rejected_error(err: &anyhow::Error) -> bool {
-    let push_codes: &[String] = &[
-        error_code::GIT_PUSH_REJECTED.to_string(),
-        error_code::GIT_PUSH_BRANCH.to_string(),
-        error_code::GIT_PUSH_TAGS.to_string(),
-    ];
+    let rejected_code = error_code::GIT_PUSH_REJECTED.to_string();
     err.chain().any(|cause| {
         let raw = cause.to_string();
-        if push_codes.iter().any(|c| raw == c.as_str()) {
+        if raw == rejected_code {
             return true;
         }
         let msg = raw.to_lowercase();
@@ -115,5 +125,11 @@ pub fn is_push_rejected_error(err: &anyhow::Error) -> bool {
             || msg.contains("non-fast-forward")
             || msg.contains("non-fastforward")
             || msg.contains("not fast forward")
+            // git says "fetch first" when the remote advanced and we have not
+            // fetched since, which is the usual shape in CI, and "stale info"
+            // when a --force-with-lease expectation is out of date.
+            || msg.contains("fetch first")
+            || msg.contains("stale info")
+            || msg.contains("already exist on remote pointing to a different commit")
     })
 }
