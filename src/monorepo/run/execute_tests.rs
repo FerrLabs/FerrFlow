@@ -220,6 +220,7 @@ fn run_publish_phase(
 
     let result = {
         let mut plan = ReleasePlan {
+            finalizing: false,
             repo: &harness.repo,
             config: &harness.config,
             root: &harness.root,
@@ -314,4 +315,139 @@ fn the_pushed_tag_keeps_its_annotation() {
         message.contains("release notes"),
         "the annotation must survive the push, got: {message}"
     );
+}
+
+fn with_package(harness: &mut Harness, name: &str) {
+    let config: Config = serde_json::from_str(&format!(
+        r#"{{"package":[{{"name":"{name}","path":"."}}]}}"#
+    ))
+    .unwrap();
+    harness.config.packages = config.packages;
+}
+
+fn run_phase(
+    harness: &Harness,
+    tags: &[PlannedTag],
+    forge: &dyn Forge,
+    finalizing: bool,
+) -> (Result<()>, Vec<(String, ReleaseResult)>) {
+    let hook_contexts: Vec<(HookContext, usize)> = Vec::new();
+    let mut files_to_commit: Vec<String> = vec!["README.md".to_string()];
+    let mut files_per_package: HashMap<String, Vec<String>> = HashMap::new();
+    let mut pkg_outputs: Vec<(String, Vec<String>)> = Vec::new();
+    let mut shared_outputs: Vec<String> = Vec::new();
+    let mut forge_results: Vec<(String, ReleaseResult)> = Vec::new();
+
+    let result = {
+        let mut plan = ReleasePlan {
+            finalizing,
+            repo: &harness.repo,
+            config: &harness.config,
+            root: &harness.root,
+            target_branch: "main",
+            dry_run: false,
+            verbose: false,
+            force: false,
+            draft: false,
+            tags_to_create: tags,
+            hook_contexts: &hook_contexts,
+            files_to_commit: &mut files_to_commit,
+            files_per_package: &mut files_per_package,
+            pkg_outputs: &mut pkg_outputs,
+            shared_outputs: &mut shared_outputs,
+            forge_results: &mut forge_results,
+            checkpoint: None,
+            forge: Some(forge),
+        };
+        execute_release(&mut plan)
+    };
+
+    (result, forge_results)
+}
+
+#[test]
+fn pr_mode_proposes_without_tagging_or_publishing() {
+    let mut harness = Harness::new();
+    harness.config.workspace.release_commit_mode = crate::config::ReleaseCommitMode::Pr;
+    commit_file(&harness.root, "a.txt", "a", "feat: a feature");
+
+    let forge = RecordingForge::default();
+    let tags = vec![tag_to_create("v1.1.0", "app", "1.1.0")];
+    let (result, releases) = run_phase(&harness, &tags, &forge, false);
+
+    assert!(result.is_ok(), "{:?}", result.err());
+    assert!(
+        harness.git(&["tag", "-l"]).trim().is_empty(),
+        "pr mode must not create tags while the release is only proposed"
+    );
+    assert!(
+        harness.remote_tags().is_empty(),
+        "pr mode must not push tags while the release is only proposed"
+    );
+    assert!(
+        releases.is_empty(),
+        "pr mode must not publish releases before the PR merges"
+    );
+}
+
+#[test]
+fn finalizing_tags_and_publishes_the_merged_release() {
+    let mut harness = Harness::new();
+    with_package(&mut harness, "app");
+    harness.config.workspace.release_commit_mode = crate::config::ReleaseCommitMode::Pr;
+    commit_file(&harness.root, "a.txt", "a", "chore(release): app v1.1.0");
+    harness.git(&["push", "origin", "main:main"]);
+
+    let forge = RecordingForge::default();
+    let tags = vec![tag_to_create("v1.1.0", "app", "1.1.0")];
+    let (result, releases) = run_phase(&harness, &tags, &forge, true);
+
+    assert!(result.is_ok(), "{:?}", result.err());
+    assert_eq!(harness.remote_tags(), vec!["v1.1.0".to_string()]);
+    assert_eq!(
+        releases.iter().map(|(t, _)| t.as_str()).collect::<Vec<_>>(),
+        vec!["v1.1.0"]
+    );
+}
+
+#[test]
+fn finalizing_tags_the_commit_that_carries_the_bump() {
+    let mut harness = Harness::new();
+    with_package(&mut harness, "app");
+    harness.config.workspace.release_commit_mode = crate::config::ReleaseCommitMode::Pr;
+    commit_file(&harness.root, "a.txt", "a", "feat: a feature");
+    commit_file(&harness.root, "b.txt", "b", "chore(release): app v1.1.0");
+    harness.git(&["push", "origin", "main:main"]);
+    let head = harness.git(&["rev-parse", "HEAD"]).trim().to_string();
+
+    let forge = RecordingForge::default();
+    let tags = vec![tag_to_create("v1.1.0", "app", "1.1.0")];
+    let (result, _) = run_phase(&harness, &tags, &forge, true);
+
+    assert!(result.is_ok(), "{:?}", result.err());
+    let tagged = harness
+        .git(&["rev-list", "-n1", "v1.1.0"])
+        .trim()
+        .to_string();
+    assert_eq!(
+        tagged, head,
+        "the tag must land on the release commit, not one behind it"
+    );
+}
+
+#[test]
+fn commit_mode_still_tags_and_publishes_in_one_pass() {
+    let mut harness = Harness::new();
+    with_package(&mut harness, "app");
+    harness.config.workspace.release_commit_mode = crate::config::ReleaseCommitMode::Commit;
+    commit_file(&harness.root, "a.txt", "a", "feat: a feature");
+    std::fs::write(harness.root.join("README.md"), "bumped").unwrap();
+
+    let forge = RecordingForge::default();
+    let tags = vec![tag_to_create("v1.1.0", "app", "1.1.0")];
+    let (result, releases) = run_phase(&harness, &tags, &forge, false);
+
+    assert!(result.is_ok(), "{:?}", result.err());
+    assert_eq!(harness.remote_tags(), vec!["v1.1.0".to_string()]);
+    assert_eq!(releases.len(), 1);
 }

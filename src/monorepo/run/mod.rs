@@ -29,6 +29,7 @@ mod drafts;
 mod execute;
 #[cfg(test)]
 mod execute_tests;
+mod finalize;
 mod forced;
 pub(crate) mod graph;
 mod groups;
@@ -179,6 +180,15 @@ pub(super) fn run_release_logic(
         tracing::debug!("");
     }
 
+    let finalize_tags = if dry_run
+        || config.workspace.release_commit_mode != crate::config::ReleaseCommitMode::Pr
+    {
+        Vec::new()
+    } else {
+        finalize::merged_release_tags(&repo, config, root, &all_tags, forge_base.clone())
+    };
+    let finalizing = !finalize_tags.is_empty();
+
     let mut any_bumped = false;
     let mut json_packages: Vec<CheckPackage> = Vec::new();
     let mut released: Vec<ReleasedPackage> = Vec::new();
@@ -232,7 +242,37 @@ pub(super) fn run_release_logic(
 
     let all_packages = batch_package_snapshot(&release_order, &plans, &config.packages);
 
-    for &pkg_idx in &release_order {
+    if finalizing {
+        for tag in &finalize_tags {
+            pkg_outputs.push((
+                tag.package.clone(),
+                vec![format!(
+                    "{} {}  {}  ({})",
+                    "●".green().bold(),
+                    tag.package.bold(),
+                    tag.version.green().bold(),
+                    "release merged, tagging now".cyan()
+                )],
+            ));
+            released.push(ReleasedPackage {
+                package: tag.package.clone(),
+                previous_version: String::new(),
+                new_version: tag.version.clone(),
+                bump_type: "finalize".to_string(),
+                tag: tag.tag.clone(),
+                commit_count: tag.commit_count as usize,
+                prerelease: tag.is_prerelease,
+                version_source: None,
+                forge_release_url: None,
+                forge_release_id: None,
+            });
+        }
+        tags_to_create = finalize_tags;
+        any_bumped = true;
+    }
+    let bump_order: &[usize] = if finalizing { &[] } else { &release_order };
+
+    for &pkg_idx in bump_order {
         let pkg = &config.packages[pkg_idx];
         let plan = plans[pkg_idx]
             .take()
@@ -706,6 +746,7 @@ pub(super) fn run_release_logic(
             force,
             draft,
             tags_to_create: &tags_to_create,
+            finalizing,
             hook_contexts: &hook_contexts,
             files_to_commit: &mut files_to_commit,
             files_per_package: &mut files_per_package,
@@ -780,6 +821,7 @@ pub(super) fn run_release_logic(
             force,
             draft,
             tags_to_create: &tags_to_create,
+            finalizing,
             hook_contexts: &hook_contexts,
             files_to_commit: &mut files_to_commit,
             files_per_package: &mut files_per_package,
