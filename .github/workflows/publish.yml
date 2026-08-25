@@ -211,6 +211,11 @@ jobs:
         # cosign v3: `--use-signing-config` now defaults to true and requires
         # `--bundle`, and `--output-signature` / `--output-certificate` are
         # deprecated. Releases up to v5.47.4 carry the old pair.
+        #
+        # The extension is `.sigstore.json`, the canonical name for the
+        # Sigstore bundle format, not `.bundle`. Do not shorten it: OpenSSF
+        # Scorecard matches signatures by extension and does not know
+        # `.bundle`, which scored these releases as unsigned for months.
         env:
           COSIGN_EXPERIMENTAL: "1"
         run: |
