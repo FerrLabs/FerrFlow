@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.8.1] - 2026-08-25
+
+### Bug Fixes
+
+- fix(git): classify push failures by cause instead of the generic push error code (#937)
+
 ## [7.8.0] - 2026-08-25
 
 ### Features
