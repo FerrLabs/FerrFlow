@@ -69,7 +69,14 @@ npm install -D ferrflow
 **Docker**
 
 ```bash
-docker run ghcr.io/ferrlabs/ferrflow:latest check
+docker run --rm -v "$PWD:/repo" ghcr.io/ferrlabs/ferrflow:latest check
+```
+
+The image runs as a non-root user (`ferrflow`, uid 1000) and works on `/repo`.
+If your checkout is owned by a different uid, pass your own:
+
+```bash
+docker run --rm -u "$(id -u):$(id -g)" -v "$PWD:/repo" ghcr.io/ferrlabs/ferrflow:latest check
 ```
 
 **Pre-built binaries**

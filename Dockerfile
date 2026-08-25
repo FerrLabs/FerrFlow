@@ -26,6 +26,9 @@ RUN mkdir -p benches && echo 'fn main() {}' > benches/ferrflow_benchmarks.rs \
 # Runtime stage
 FROM alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
 RUN apk add --no-cache ca-certificates
+RUN adduser -D -u 1000 ferrflow
 COPY --from=builder /app/target/release/ferrflow /usr/local/bin/ferrflow
+USER ferrflow
+WORKDIR /repo
 ENTRYPOINT ["ferrflow"]
 CMD ["--help"]
