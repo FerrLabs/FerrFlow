@@ -51,7 +51,7 @@ glob-match = "0.2"
 clap = { version = "4", features = ["derive", "env"], optional = true }
 clap_complete = { version = "4", optional = true }
 colored = { version = "3", optional = true }
-gix = { version = "0.86", default-features = false, features = ["sha1", "max-performance-safe", "revision"], optional = true }
+gix = { version = "0.87", default-features = false, features = ["sha1", "max-performance-safe", "revision"], optional = true }
 gix-traverse = { version = "0.60", optional = true }
 gix-diff = { version = "0.66", default-features = false, features = ["sha1"], optional = true }
 ureq = { version = "3", features = ["json"], optional = true }
