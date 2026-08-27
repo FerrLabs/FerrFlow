@@ -126,6 +126,10 @@ pub const GIT_LOCKED: ErrorCode = ErrorCode(2011);
 pub const GIT_FORCE_PUSH_BRANCH: ErrorCode = ErrorCode(2012);
 #[allow(dead_code)]
 pub const GIT_INSPECT_RELEASE_BRANCH: ErrorCode = ErrorCode(2013);
+#[allow(dead_code)]
+pub const GIT_DELETE_TAG: ErrorCode = ErrorCode(2014);
+#[allow(dead_code)]
+pub const GIT_REVERT: ErrorCode = ErrorCode(2015);
 
 #[allow(dead_code)]
 pub const GITHUB_CREATE_RELEASE: ErrorCode = ErrorCode(3001);
@@ -157,6 +161,8 @@ pub const GITHUB_GRAPHQL_REQUEST: ErrorCode = ErrorCode(3013);
 pub const GITHUB_GRAPHQL_ERROR: ErrorCode = ErrorCode(3014);
 #[allow(dead_code)]
 pub const GITHUB_SET_BRANCH: ErrorCode = ErrorCode(3015);
+#[allow(dead_code)]
+pub const GITHUB_DELETE_RELEASE: ErrorCode = ErrorCode(3016);
 
 #[allow(dead_code)]
 pub const GITLAB_CREATE_RELEASE: ErrorCode = ErrorCode(3101);
@@ -398,3 +404,6 @@ mod tests {
         assert!(code_from_error(&err).is_none());
     }
 }
+
+#[allow(dead_code)]
+pub const ROLLBACK_BLOCKED: ErrorCode = ErrorCode(10000);

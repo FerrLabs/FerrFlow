@@ -1715,3 +1715,121 @@ fn signing_follows_every_spelling_git_accepts_for_a_boolean() {
         );
     }
 }
+
+#[test]
+fn a_tag_moved_since_the_failed_run_is_left_alone() {
+    let dir = tempfile::tempdir().unwrap();
+    let remote = dir.path().join("remote.git");
+    std::fs::create_dir_all(&remote).unwrap();
+    git(&remote, &["init", "--bare", "-b", "main"]);
+
+    let local = dir.path().join("local");
+    std::fs::create_dir_all(&local).unwrap();
+    init_repo_at(&local);
+    git(
+        &local,
+        &["remote", "add", "origin", remote.to_str().unwrap()],
+    );
+    commit_file_at(&local, "a.txt", "feat: first");
+    git(&local, &["tag", "v1.0.0"]);
+    git(&local, &["push", "origin", "main:main", "--tags"]);
+
+    let repo = open_repo(&local).unwrap();
+
+    // Someone moved the tag after the failed run recorded it.
+    delete_tag_if_unchanged(
+        &repo,
+        "origin",
+        "v1.0.0",
+        "0000000000000000000000000000000000000000",
+    )
+    .unwrap();
+
+    assert!(
+        tag_exists(&repo, "v1.0.0"),
+        "a tag that no longer matches the recorded sha must survive"
+    );
+}
+
+#[test]
+fn a_tag_still_at_the_recorded_sha_is_deleted() {
+    let dir = tempfile::tempdir().unwrap();
+    let remote = dir.path().join("remote.git");
+    std::fs::create_dir_all(&remote).unwrap();
+    git(&remote, &["init", "--bare", "-b", "main"]);
+
+    let local = dir.path().join("local");
+    std::fs::create_dir_all(&local).unwrap();
+    init_repo_at(&local);
+    git(
+        &local,
+        &["remote", "add", "origin", remote.to_str().unwrap()],
+    );
+    commit_file_at(&local, "a.txt", "feat: first");
+    git(&local, &["tag", "v1.0.0"]);
+    git(&local, &["push", "origin", "main:main", "--tags"]);
+
+    let repo = open_repo(&local).unwrap();
+    let sha = local_tag_target_sha(&repo, "v1.0.0").unwrap();
+
+    delete_tag_if_unchanged(&repo, "origin", "v1.0.0", &sha).unwrap();
+
+    assert!(!tag_exists(&repo, "v1.0.0"));
+    let remote_tags = git(&remote, &["tag", "-l"]);
+    assert!(
+        remote_tags.trim().is_empty(),
+        "the remote tag must go too, got {remote_tags:?}"
+    );
+}
+
+#[test]
+fn deleting_a_tag_that_is_already_gone_from_the_remote_succeeds() {
+    let dir = tempfile::tempdir().unwrap();
+    let remote = dir.path().join("remote.git");
+    std::fs::create_dir_all(&remote).unwrap();
+    git(&remote, &["init", "--bare", "-b", "main"]);
+
+    let local = dir.path().join("local");
+    std::fs::create_dir_all(&local).unwrap();
+    init_repo_at(&local);
+    git(
+        &local,
+        &["remote", "add", "origin", remote.to_str().unwrap()],
+    );
+    commit_file_at(&local, "a.txt", "feat: first");
+    git(&local, &["tag", "v1.0.0"]);
+    git(&local, &["push", "origin", "main:main"]);
+
+    let repo = open_repo(&local).unwrap();
+    let sha = local_tag_target_sha(&repo, "v1.0.0").unwrap();
+
+    // Never pushed, so the remote has no such ref. Rollback should still reach
+    // the desired end state rather than failing on it.
+    delete_tag_if_unchanged(&repo, "origin", "v1.0.0", &sha).unwrap();
+
+    assert!(!tag_exists(&repo, "v1.0.0"));
+}
+
+#[test]
+fn reverting_the_release_commit_undoes_its_changes() {
+    let dir = tempfile::tempdir().unwrap();
+    let local = dir.path().join("local");
+    std::fs::create_dir_all(&local).unwrap();
+    init_repo_at(&local);
+    commit_file_at(&local, "Cargo.toml", "chore: initial");
+    std::fs::write(local.join("Cargo.toml"), "version = \"1.1.0\"").unwrap();
+    git(&local, &["add", "-A"]);
+    git(&local, &["commit", "-m", "chore(release): v1.1.0"]);
+    let release_sha = git(&local, &["rev-parse", "HEAD"]).trim().to_string();
+
+    let repo = open_repo(&local).unwrap();
+    revert_commit(&repo, &release_sha).unwrap();
+
+    let content = std::fs::read_to_string(local.join("Cargo.toml")).unwrap();
+    assert!(
+        !content.contains("1.1.0"),
+        "the bump must be undone, got {content:?}"
+    );
+    let head_subject = git(&local, &["log", "-1", "--format=%s"]);
+    assert!(head_subject.starts_with("Revert"), "{head_subject}");
+}

@@ -280,6 +280,22 @@ impl PublisherConfig {
     /// Short human-friendly name (`"cargo"`, `"docker"`, …) for log
     /// lines, dry-run output, and step summaries. Stable enough to be
     /// pattern-matched in CI scripts.
+    /// Whether a successful publish through this publisher cannot be undone.
+    ///
+    /// crates.io never removes a version (yanking hides it, the artefact stays),
+    /// PyPI is the same, and npm refuses to republish an unpublished version.
+    /// Rolling a release back past one of these would delete the tag for a
+    /// version anyone can still install, so `ferrflow rollback` stops instead.
+    /// Docker tags, Helm charts, release assets and webhooks are all replaceable.
+    pub fn is_immutable_publish(&self) -> bool {
+        matches!(
+            self,
+            PublisherConfig::Cargo { .. }
+                | PublisherConfig::Npm { .. }
+                | PublisherConfig::Pypi { .. }
+        )
+    }
+
     pub fn kind_name(&self) -> &'static str {
         match self {
             PublisherConfig::Cargo { .. } => "cargo",

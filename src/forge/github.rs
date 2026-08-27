@@ -219,6 +219,18 @@ impl Forge for GitHubForge {
         })
     }
 
+    fn delete_release(&self, id: u64) -> Result<()> {
+        let url = format!("{}/repos/{}/releases/{id}", self.api_base, self.slug);
+        self.agent
+            .delete(&url)
+            .header("Authorization", &format!("Bearer {}", self.token))
+            .header("User-Agent", "ferrflow")
+            .call()
+            .map(|_| ())
+            .with_context(|| format!("Failed to delete release #{id}"))
+            .error_code(error_code::GITHUB_DELETE_RELEASE)
+    }
+
     fn find_draft_release(&self, tag: &str) -> Result<Option<u64>> {
         let base_url = format!("{}/repos/{}/releases", self.api_base, self.slug);
         let releases = self

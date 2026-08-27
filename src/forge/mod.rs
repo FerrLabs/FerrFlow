@@ -71,6 +71,16 @@ pub trait Forge: Send + Sync {
         draft: bool,
     ) -> Result<ReleaseResult>;
     fn find_draft_release(&self, tag: &str) -> Result<Option<u64>>;
+
+    /// Deletes a release by id, for `ferrflow rollback`.
+    ///
+    /// Defaulted so a forge that cannot do it says so rather than silently
+    /// reporting a rollback it did not perform.
+    fn delete_release(&self, _id: u64) -> Result<()> {
+        Err(anyhow::anyhow!(
+            "this forge cannot delete releases; remove it by hand"
+        ))
+    }
     fn publish_release(&self, release_id: u64) -> Result<()>;
     fn create_merge_request(
         &self,

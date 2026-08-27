@@ -400,6 +400,17 @@ fn run_commit_or_pr(
 fn create_release_tags(plan: &mut ReleasePlan<'_>) -> Result<()> {
     for t in plan.tags_to_create {
         create_tag(plan.repo, &t.tag, &t.message)?;
+        // Pin the tag to the commit it points at, so `ferrflow rollback` can
+        // tell a tag this run created from one someone else has since moved.
+        if let Some(sha) = crate::git::resolve_tag_name_to_commit(plan.repo, &t.tag)
+            && let Some(cp) = plan.checkpoint.as_mut()
+        {
+            cp.created_tags
+                .push(crate::monorepo::run::checkpoint::RecordedTag {
+                    name: t.tag.clone(),
+                    sha: sha.to_string(),
+                });
+        }
         if let Some((_, lines)) = plan
             .pkg_outputs
             .iter_mut()
@@ -608,6 +619,13 @@ fn publish_releases_with(plan: &mut ReleasePlan<'_>, forge: &dyn Forge) -> Resul
             }
         }
         if let Some(result) = outcome.result {
+            if let (Some(id), Some(cp)) = (result.id, plan.checkpoint.as_mut()) {
+                cp.forge_releases
+                    .push(crate::monorepo::run::checkpoint::RecordedRelease {
+                        tag: tag_name.clone(),
+                        id,
+                    });
+            }
             plan.forge_results.push((tag_name, result));
         }
         if let Some(line) = outcome.success_line
@@ -737,7 +755,7 @@ fn run_post_publish_hooks(plan: &mut ReleasePlan<'_>) -> Result<()> {
 }
 
 fn run_publishers_for_package(
-    plan: &ReleasePlan<'_>,
+    plan: &mut ReleasePlan<'_>,
     pkg: &crate::config::PackageConfig,
     package_name: &str,
     new_version: &str,
@@ -756,10 +774,31 @@ fn run_publishers_for_package(
         dry_run: plan.dry_run,
         verbose: plan.verbose,
     };
-    crate::publishers::run_all(&pkg.publishers, &pub_ctx)
+
+    let mut published: Vec<(&'static str, bool)> = Vec::new();
+    let outcome = crate::publishers::run_all(&pkg.publishers, &pub_ctx, &mut published);
+
+    // Recorded whether or not the batch succeeded: a publisher that already
+    // pushed to crates.io is a fact rollback has to respect even when a later
+    // one in the same package failed.
+    if !plan.dry_run
+        && let Some(cp) = plan.checkpoint.as_mut()
+    {
+        for (kind, immutable) in published {
+            cp.published
+                .push(crate::monorepo::run::checkpoint::RecordedPublish {
+                    package: package_name.to_string(),
+                    kind: kind.to_string(),
+                    immutable,
+                });
+        }
+        cp.save(plan.root)?;
+    }
+
+    outcome
 }
 
-pub(super) fn print_dry_run_hooks(plan: &ReleasePlan<'_>) -> Result<()> {
+pub(super) fn print_dry_run_hooks(plan: &mut ReleasePlan<'_>) -> Result<()> {
     for (ctx, pkg_idx) in plan.hook_contexts {
         let pkg = &plan.config.packages[*pkg_idx];
         let ws_hooks = plan.config.workspace.hooks.as_ref();

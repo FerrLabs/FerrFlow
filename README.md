@@ -109,6 +109,11 @@ ferrflow release --exclude web --exclude docs
 # Pre-release
 ferrflow release --channel beta
 
+# Undo a release that failed partway
+ferrflow rollback                    # prints the plan, changes nothing
+ferrflow rollback --yes              # applies it
+ferrflow rollback --yes api web      # only these packages
+
 # Scaffold a config file
 ferrflow init
 
@@ -498,6 +503,38 @@ cannot cascade into a further bump. Squash merges and merge commits both work.
 
 A package declared without `versionedFiles` has no version to read, so it is not finalised this way.
 Use `commit` mode for tag-only packages.
+
+## Rollback
+
+A release that fails partway leaves tags pushed, forge releases created and a release commit on the
+branch. `ferrflow rollback` undoes exactly what that run did, reading the checkpoint it left behind
+rather than guessing from the log.
+
+```bash
+ferrflow rollback
+```
+
+It prints the plan and changes nothing. Add `--yes` to apply it. Name packages to narrow it to a
+subset; with none, it rolls back everything the run touched.
+
+Three things it deliberately refuses to do.
+
+It never deletes a tag that has moved. Each tag is recorded with the commit it pointed at, and one
+that no longer matches is reported and skipped, because a tag someone else recreated in the meantime
+is not this run's to remove.
+
+It stops on a package already published to a registry that cannot be unpublished. crates.io and PyPI
+keep every version forever, and npm refuses to republish an unpublished one, so deleting the tag
+would leave a version anyone can install with nothing pointing at it. The right answer there is a new
+patch version, and rollback says so instead of doing half the job. Docker tags, Helm charts, release
+assets and webhooks are replaceable, so they do not block anything.
+
+It reverts the release commit only on a whole-run rollback with nothing blocked. That commit carries
+every package's version bump, so reverting it while one package stays released would silently undo
+that package's version too.
+
+The revert is left uncommitted to the remote on purpose. Rollback has just deleted remote refs, and
+forcing a branch update on top of that is a decision worth taking with the branch in front of you.
 
 ## Floating Tags
 
