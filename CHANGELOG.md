@@ -4,6 +4,16 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.9.0] - 2026-08-27
+
+### Features
+
+- feat(bot): author release commits through createCommitOnBranch so they are verified (#941)
+
+### Bug Fixes
+
+- fix(deps): upgrade gix to 0.87 to drop the yanked bisync crate (#943)
+
 ## [7.8.1] - 2026-08-25
 
 ### Bug Fixes
