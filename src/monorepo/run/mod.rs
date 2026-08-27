@@ -22,6 +22,7 @@ use crate::versioning::truncate_version;
 use super::types::{CheckCommit, CheckPackage, CheckResult, RunOutput};
 use super::util::{auto_stage_new_files, collect_dirty_files};
 
+mod authored_commit;
 mod cascade;
 pub(super) mod checkpoint;
 mod commit_body;

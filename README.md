@@ -652,6 +652,12 @@ That is the whole job. No `setup-node`, no extra dependencies. FerrFlow's Rust b
 
 Three auth modes are supported: `bot: true` uses the hosted FerrFlow App (recommended); `token: <PAT>` uses a personal access token or your own GitHub App token (DIY); omitting both falls back to the workflow's `GITHUB_TOKEN` (simplest, but release events won't trigger downstream workflows).
 
+On GitHub, the release commit is authored through the forge rather than by local git when `bot: true` is set, which is what makes it show as **verified**. A GitHub App cannot register a signing key, so letting GitHub author the commit is the only way its commits are signed. GitHub does that only when the request carries no custom author, committer or signature, so the commit is attributed to `ferrflow[bot]` and nothing else.
+
+Everywhere else, and without `bot: true`, the commit is built by local git exactly as before. If you want verified commits under your own identity, set `commit.gpgsign` and FerrFlow will honour it, on every forge.
+
+Annotated tags are still created and pushed by git, so they are not covered by this. Only the commit is.
+
 ## License
 
 [MIT](LICENSE)
