@@ -1788,3 +1788,56 @@ fn publishers_unknown_kind_is_rejected() {
         "an unknown publisher kind must not silently parse"
     );
 }
+
+#[test]
+fn omitting_the_workspace_block_keeps_every_default() {
+    // `Config` carries #[serde(default)] on `workspace`, so an absent block goes
+    // through WorkspaceConfig::default() while an empty one goes through the
+    // per-field serde defaults. The two must not disagree: when they did, a
+    // config with no workspace block got remote: "" and failed every push.
+    let present: Config = serde_json::from_str(r#"{"workspace":{}}"#).unwrap();
+    let absent: Config = serde_json::from_str("{}").unwrap();
+
+    assert_eq!(absent.workspace.remote, present.workspace.remote);
+    assert_eq!(absent.workspace.branch, present.workspace.branch);
+    assert_eq!(
+        absent.workspace.anonymous_telemetry,
+        present.workspace.anonymous_telemetry
+    );
+    assert_eq!(
+        absent.workspace.auto_merge_releases,
+        present.workspace.auto_merge_releases
+    );
+}
+
+#[test]
+fn a_config_without_a_workspace_block_can_still_push() {
+    let config: Config =
+        serde_json::from_str(r#"{"package":[{"name":"app","path":".","versionedFiles":[]}]}"#)
+            .unwrap();
+
+    assert_eq!(
+        config.workspace.remote, "origin",
+        "an empty remote makes every push fail with `Remote '' has no URL`"
+    );
+    assert!(
+        !config.workspace.branch.is_empty(),
+        "an empty target branch silently feeds tag lookup and the release branch name"
+    );
+    assert!(
+        config.workspace.auto_merge_releases,
+        "auto-merge is documented as on by default"
+    );
+}
+
+#[test]
+fn the_derived_and_deserialized_workspace_defaults_agree_field_by_field() {
+    // Serialising both sides catches a new field whose custom serde default was
+    // added without updating the hand-written Default, which is the drift this
+    // whole impl exists to prevent.
+    let from_default = serde_json::to_value(WorkspaceConfig::default()).unwrap();
+    let from_empty: WorkspaceConfig = serde_json::from_str("{}").unwrap();
+    let from_empty = serde_json::to_value(from_empty).unwrap();
+
+    assert_eq!(from_default, from_empty);
+}
