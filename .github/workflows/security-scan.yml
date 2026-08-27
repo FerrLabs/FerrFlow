@@ -18,5 +18,5 @@ jobs:
     permissions:
       contents: read
       security-events: write
-    uses: FerrLabs/.github/.github/workflows/reusable-security-scan.yml@d06239c934c020bc27425ee16b778a22561be235 # main
+    uses: FerrLabs/.github/.github/workflows/reusable-security-scan.yml@13912c8aedebd517d05c07d641224be1d58f9360 # main
     secrets: inherit
