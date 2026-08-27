@@ -8,7 +8,7 @@ use super::types::{
 };
 use std::collections::BTreeMap;
 
-#[derive(Debug, Deserialize, Serialize, Default)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct WorkspaceConfig {
     #[serde(default = "default_remote")]
     pub remote: String,
@@ -68,6 +68,47 @@ pub struct WorkspaceConfig {
     pub linked: Vec<Vec<String>>,
     #[serde(default)]
     pub fixed: Vec<Vec<String>>,
+}
+
+/// Written by hand rather than derived, because `Config` carries
+/// `#[serde(default)]` on its `workspace` field: an absent `workspace` block
+/// takes this path instead of the per-field serde defaults. Deriving it gave
+/// `remote: ""` and `branch: ""`, so a config with no workspace block failed
+/// every push. Same shape as `CommitFormats` below.
+impl Default for WorkspaceConfig {
+    fn default() -> Self {
+        Self {
+            remote: default_remote(),
+            branch: default_branch(),
+            anonymous_telemetry: default_telemetry(),
+            versioning: Default::default(),
+            tag_template: Default::default(),
+            version_template: Default::default(),
+            recover_missed_releases: Default::default(),
+            release_commit_mode: Default::default(),
+            release_commit_scope: Default::default(),
+            release_commit_body: Default::default(),
+            commit_formats: Default::default(),
+            auto_merge_releases: default_auto_merge(),
+            skip_ci: Default::default(),
+            commit_skip_markers: Default::default(),
+            floating_tags: Default::default(),
+            latest_tag: Default::default(),
+            orphaned_tag_strategy: Default::default(),
+            version_source: Default::default(),
+            forge: Default::default(),
+            hooks: Default::default(),
+            branches: Default::default(),
+            registries: Default::default(),
+            defer_publish: Default::default(),
+            changelog: Default::default(),
+            manifest_file: Default::default(),
+            update_lockfiles: Default::default(),
+            update_dependents: Default::default(),
+            linked: Default::default(),
+            fixed: Default::default(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
