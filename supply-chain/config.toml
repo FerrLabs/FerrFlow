@@ -199,18 +199,6 @@ criteria = "safe-to-deploy"
 version = "0.4.3"
 criteria = "safe-to-deploy"
 
-[[exemptions.gix-ignore]]
-version = "0.22.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.gix-pathspec]]
-version = "0.19.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.gix-worktree]]
-version = "0.55.0"
-criteria = "safe-to-deploy"
-
 [[exemptions.gix-zlib]]
 version = "0.1.0"
 criteria = "safe-to-deploy"
