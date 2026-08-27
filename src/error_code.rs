@@ -151,6 +151,12 @@ pub const GITHUB_AUTO_MERGE_FAILED: ErrorCode = ErrorCode(3010);
 pub const GITHUB_FIND_PR: ErrorCode = ErrorCode(3011);
 #[allow(dead_code)]
 pub const GITHUB_UPDATE_PR: ErrorCode = ErrorCode(3012);
+#[allow(dead_code)]
+pub const GITHUB_GRAPHQL_REQUEST: ErrorCode = ErrorCode(3013);
+#[allow(dead_code)]
+pub const GITHUB_GRAPHQL_ERROR: ErrorCode = ErrorCode(3014);
+#[allow(dead_code)]
+pub const GITHUB_SET_BRANCH: ErrorCode = ErrorCode(3015);
 
 #[allow(dead_code)]
 pub const GITLAB_CREATE_RELEASE: ErrorCode = ErrorCode(3101);

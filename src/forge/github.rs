@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 
-use super::{Forge, MergeRequestResult, ReleaseResult};
+use super::{AuthoredCommit, Forge, MergeRequestResult, ReleaseResult};
 use crate::error_code::{self, ErrorCodeExt};
 
 const PER_PAGE: u32 = 100;
@@ -45,7 +45,144 @@ impl GitHubForge {
     }
 }
 
+const CREATE_COMMIT_MUTATION: &str = "\
+mutation($input: CreateCommitOnBranchInput!) { \
+  createCommitOnBranch(input: $input) { commit { oid } } \
+}";
+
+impl GitHubForge {
+    fn graphql(&self, body: serde_json::Value, what: &str) -> Result<serde_json::Value> {
+        let url = format!("{}/graphql", self.api_base);
+        let response: serde_json::Value = self
+            .agent
+            .post(&url)
+            .header("Authorization", &format!("Bearer {}", self.token))
+            .header("User-Agent", "ferrflow")
+            .send_json(body)
+            .with_context(|| format!("{what} failed"))
+            .error_code(error_code::GITHUB_GRAPHQL_REQUEST)?
+            .body_mut()
+            .read_json()
+            .with_context(|| "Failed to parse GraphQL response")
+            .error_code(error_code::GITHUB_GRAPHQL_PARSE)?;
+
+        if let Some(message) = graphql_error_message(&response) {
+            return Err(anyhow::anyhow!("{what} failed: {message}"))
+                .error_code(error_code::GITHUB_GRAPHQL_ERROR);
+        }
+        Ok(response)
+    }
+}
+
+pub(super) fn graphql_error_message(response: &serde_json::Value) -> Option<String> {
+    let errors = response.get("errors")?.as_array()?;
+    let first = errors.first()?;
+    Some(
+        first["message"]
+            .as_str()
+            .unwrap_or("unknown GraphQL error")
+            .to_string(),
+    )
+}
+
+pub(super) fn build_commit_input(
+    slug: &str,
+    commit: &crate::forge::AuthoredCommit<'_>,
+) -> serde_json::Value {
+    let additions: Vec<serde_json::Value> = commit
+        .additions
+        .iter()
+        .map(|a| serde_json::json!({ "path": a.path, "contents": a.base64_contents }))
+        .collect();
+    let deletions: Vec<serde_json::Value> = commit
+        .deletions
+        .iter()
+        .map(|path| serde_json::json!({ "path": path }))
+        .collect();
+
+    let (headline, body) = split_commit_message(commit.message);
+    let mut message = serde_json::json!({ "headline": headline });
+    if let Some(body) = body {
+        message["body"] = serde_json::Value::String(body);
+    }
+
+    serde_json::json!({
+        "branch": {
+            "repositoryNameWithOwner": slug,
+            "branchName": commit.branch,
+        },
+        "expectedHeadOid": commit.expected_head_oid,
+        "message": message,
+        "fileChanges": {
+            "additions": additions,
+            "deletions": deletions,
+        },
+    })
+}
+
+fn split_commit_message(message: &str) -> (String, Option<String>) {
+    match message.split_once('\n') {
+        Some((headline, rest)) => {
+            let body = rest.trim_start_matches('\n').trim_end();
+            let body = (!body.is_empty()).then(|| body.to_string());
+            (headline.trim_end().to_string(), body)
+        }
+        None => (message.trim_end().to_string(), None),
+    }
+}
+
 impl Forge for GitHubForge {
+    fn authors_verified_commits(&self) -> bool {
+        true
+    }
+
+    fn create_commit_on_branch(&self, commit: &AuthoredCommit<'_>) -> Result<String> {
+        let input = build_commit_input(&self.slug, commit);
+        let response = self.graphql(
+            serde_json::json!({
+                "query": CREATE_COMMIT_MUTATION,
+                "variables": { "input": input },
+            }),
+            "createCommitOnBranch",
+        )?;
+
+        response["data"]["createCommitOnBranch"]["commit"]["oid"]
+            .as_str()
+            .map(str::to_string)
+            .ok_or_else(|| anyhow::anyhow!("createCommitOnBranch returned no commit oid"))
+            .error_code(error_code::GITHUB_GRAPHQL_ERROR)
+    }
+
+    fn set_branch(&self, branch: &str, oid: &str) -> Result<()> {
+        let url = format!(
+            "{}/repos/{}/git/refs/heads/{branch}",
+            self.api_base, self.slug
+        );
+        let patched = self
+            .agent
+            .patch(&url)
+            .header("Authorization", &format!("Bearer {}", self.token))
+            .header("User-Agent", "ferrflow")
+            .send_json(serde_json::json!({ "sha": oid, "force": true }));
+
+        match patched {
+            Ok(_) => Ok(()),
+            Err(_) => {
+                let create_url = format!("{}/repos/{}/git/refs", self.api_base, self.slug);
+                self.agent
+                    .post(&create_url)
+                    .header("Authorization", &format!("Bearer {}", self.token))
+                    .header("User-Agent", "ferrflow")
+                    .send_json(serde_json::json!({
+                        "ref": format!("refs/heads/{branch}"),
+                        "sha": oid,
+                    }))
+                    .map(|_| ())
+                    .with_context(|| format!("Failed to point branch '{branch}' at {oid}"))
+                    .error_code(error_code::GITHUB_SET_BRANCH)
+            }
+        }
+    }
     fn create_release(
         &self,
         tag: &str,
@@ -431,6 +568,118 @@ mod tests {
         });
         assert_eq!(payload["head"], "release/v1.0.0");
         assert_eq!(payload["base"], "main");
+    }
+
+    fn authored<'a>(
+        branch: &'a str,
+        message: &'a str,
+        additions: Vec<(&str, &str)>,
+        deletions: Vec<&str>,
+    ) -> AuthoredCommit<'a> {
+        AuthoredCommit {
+            branch,
+            expected_head_oid: "deadbeef",
+            message,
+            additions: additions
+                .into_iter()
+                .map(|(path, contents)| crate::forge::FileAddition {
+                    path: path.to_string(),
+                    base64_contents: contents.to_string(),
+                })
+                .collect(),
+            deletions: deletions.into_iter().map(str::to_string).collect(),
+        }
+    }
+
+    #[test]
+    fn the_commit_input_carries_no_author_committer_or_signature() {
+        // GitHub only signs a bot's commit when the request has none of these,
+        // so their absence is the whole point rather than an omission.
+        let commit = authored("main", "chore(release): v1.1.0", vec![], vec![]);
+        let input = build_commit_input("owner/repo", &commit);
+
+        let rendered = input.to_string();
+        for forbidden in ["author", "committer", "signature"] {
+            assert!(
+                !rendered.contains(forbidden),
+                "`{forbidden}` in the input would cost us the verified mark: {rendered}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_commit_input_targets_the_branch_and_pins_the_head() {
+        let commit = authored(
+            "ferrflow/release-main",
+            "chore(release): v1.1.0",
+            vec![],
+            vec![],
+        );
+        let input = build_commit_input("FerrLabs/FerrFlow", &commit);
+
+        assert_eq!(
+            input["branch"]["repositoryNameWithOwner"],
+            "FerrLabs/FerrFlow"
+        );
+        assert_eq!(input["branch"]["branchName"], "ferrflow/release-main");
+        assert_eq!(input["expectedHeadOid"], "deadbeef");
+    }
+
+    #[test]
+    fn additions_and_deletions_both_reach_the_payload() {
+        let commit = authored(
+            "main",
+            "chore(release): v1.1.0",
+            vec![("Cargo.toml", "dmVyc2lvbg==")],
+            vec!["old.txt"],
+        );
+        let input = build_commit_input("owner/repo", &commit);
+
+        assert_eq!(input["fileChanges"]["additions"][0]["path"], "Cargo.toml");
+        assert_eq!(
+            input["fileChanges"]["additions"][0]["contents"],
+            "dmVyc2lvbg=="
+        );
+        assert_eq!(input["fileChanges"]["deletions"][0]["path"], "old.txt");
+    }
+
+    #[test]
+    fn a_single_line_message_has_no_body() {
+        let commit = authored("main", "chore(release): v1.1.0", vec![], vec![]);
+        let input = build_commit_input("owner/repo", &commit);
+
+        assert_eq!(input["message"]["headline"], "chore(release): v1.1.0");
+        assert!(input["message"].get("body").is_none());
+    }
+
+    #[test]
+    fn a_message_body_is_split_off_the_headline() {
+        let commit = authored(
+            "main",
+            "chore(release): v1.1.0\n\n- app 1.1.0 (3 commits)\n- lib 2.0.0 (1 commit)",
+            vec![],
+            vec![],
+        );
+        let input = build_commit_input("owner/repo", &commit);
+
+        assert_eq!(input["message"]["headline"], "chore(release): v1.1.0");
+        assert_eq!(
+            input["message"]["body"],
+            "- app 1.1.0 (3 commits)\n- lib 2.0.0 (1 commit)"
+        );
+    }
+
+    #[test]
+    fn a_graphql_error_is_surfaced_rather_than_swallowed() {
+        let response = serde_json::json!({
+            "errors": [{ "message": "Expected branch head to be deadbeef" }]
+        });
+
+        assert_eq!(
+            graphql_error_message(&response).as_deref(),
+            Some("Expected branch head to be deadbeef")
+        );
+        assert!(graphql_error_message(&serde_json::json!({ "data": {} })).is_none());
     }
 
     #[test]

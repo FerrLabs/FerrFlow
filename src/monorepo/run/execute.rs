@@ -184,6 +184,14 @@ fn release_branch_name(target_branch: &str) -> String {
     format!("ferrflow/release-{}", target_branch.replace('/', "-"))
 }
 
+fn authoring_forge(plan: &ReleasePlan<'_>) -> Option<Box<dyn crate::forge::Forge>> {
+    if !crate::bot_token::bot_mode_enabled() {
+        return None;
+    }
+    let forge = build_forge_instance(plan.repo, plan.config)?;
+    forge.authors_verified_commits().then_some(forge)
+}
+
 fn run_commit_or_pr(
     plan: &mut ReleasePlan<'_>,
     mode: ReleaseCommitMode,
@@ -209,6 +217,20 @@ fn run_commit_or_pr(
                 }
                 plan.shared_outputs
                     .push("✓ Committed release changes (per-package)".to_string());
+            } else if let Some(forge) = authoring_forge(plan) {
+                let head = plan.repo.head_id()?.to_string();
+                super::authored_commit::author_on_branch(
+                    forge.as_ref(),
+                    plan.repo,
+                    plan.root,
+                    &plan.config.workspace.remote,
+                    plan.target_branch,
+                    &head,
+                    file_refs,
+                    commit_msg,
+                )?;
+                plan.shared_outputs
+                    .push("✓ Committed release changes as ferrflow[bot] (verified)".to_string());
             } else {
                 create_commit(plan.repo, file_refs, commit_msg)?;
                 plan.shared_outputs
@@ -240,6 +262,7 @@ fn run_commit_or_pr(
                 ),
             }
 
+            let authored;
             if scope == ReleaseCommitScope::PerPackage && plan.tags_to_create.len() > 1 {
                 let commit_list: Vec<(Vec<&str>, String)> = plan
                     .tags_to_create
@@ -264,10 +287,33 @@ fn run_commit_or_pr(
                     .map(|(f, m)| (f.as_slice(), m.as_str()))
                     .collect();
                 create_branch_and_commits(plan.repo, &branch_name, &commit_refs)?;
+                authored = false;
+            } else if let Some(forge) = authoring_forge(plan) {
+                // The branch has to exist before the mutation can commit onto
+                // it, and it is recreated from the target branch on every run.
+                let head = plan.repo.head_id()?.to_string();
+                forge.set_branch(&branch_name, &head)?;
+                super::authored_commit::author_on_branch(
+                    forge.as_ref(),
+                    plan.repo,
+                    plan.root,
+                    remote,
+                    &branch_name,
+                    &head,
+                    file_refs,
+                    commit_msg,
+                )?;
+                // author_on_branch leaves the checkout on the release branch;
+                // the rest of the run expects the target branch.
+                crate::git::reset_branch_to_remote(plan.repo, remote, plan.target_branch)?;
+                authored = true;
             } else {
                 create_branch_and_commit(plan.repo, &branch_name, file_refs, commit_msg)?;
+                authored = false;
             }
-            force_push_branch(plan.repo, remote, &branch_name)?;
+            if !authored {
+                force_push_branch(plan.repo, remote, &branch_name)?;
+            }
             plan.shared_outputs
                 .push(format!("✓ Pushed branch {}", branch_name.cyan()));
 

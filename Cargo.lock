@@ -644,6 +644,7 @@ name = "ferrflow"
 version = "7.8.1"
 dependencies = [
  "anyhow",
+ "base64",
  "cargo-husky",
  "chrono",
  "clap",

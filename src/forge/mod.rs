@@ -22,7 +22,47 @@ pub struct ReleaseResult {
     pub url: Option<String>,
 }
 
+/// A commit to be authored by the forge itself rather than by local git.
+///
+/// GitHub signs such a commit and marks it verified, but only when the request
+/// carries no custom author, committer or signature, so there is deliberately
+/// nowhere here to set one.
+pub struct AuthoredCommit<'a> {
+    pub branch: &'a str,
+    pub expected_head_oid: &'a str,
+    pub message: &'a str,
+    pub additions: Vec<FileAddition>,
+    pub deletions: Vec<String>,
+}
+
+pub struct FileAddition {
+    pub path: String,
+    pub base64_contents: String,
+}
+
 pub trait Forge: Send + Sync {
+    /// Whether this forge can author a commit itself and sign it.
+    ///
+    /// Only GitHub can, through `createCommitOnBranch`. Everywhere else the
+    /// release commit is built by local git, as it always has been.
+    fn authors_verified_commits(&self) -> bool {
+        false
+    }
+
+    /// Author `commit` on the forge, returning the new commit SHA.
+    fn create_commit_on_branch(&self, _commit: &AuthoredCommit<'_>) -> Result<String> {
+        Err(anyhow::anyhow!(
+            "this forge cannot author commits; use the git commit path"
+        ))
+    }
+
+    /// Point `branch` at `oid`, creating the branch when it does not exist.
+    fn set_branch(&self, _branch: &str, _oid: &str) -> Result<()> {
+        Err(anyhow::anyhow!(
+            "this forge cannot move branches; use the git push path"
+        ))
+    }
+
     fn create_release(
         &self,
         tag: &str,
