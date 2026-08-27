@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.9.1] - 2026-08-27
+
+### Bug Fixes
+
+- fix(config): keep workspace defaults when the workspace block is omitted (#945)
+
 ## [7.9.0] - 2026-08-27
 
 ### Features
