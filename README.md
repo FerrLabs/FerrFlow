@@ -519,9 +519,10 @@ subset; with none, it rolls back everything the run touched.
 
 Three things it deliberately refuses to do.
 
-It never deletes a tag that has moved. Each tag is recorded with the commit it pointed at, and one
-that no longer matches is reported and skipped, because a tag someone else recreated in the meantime
-is not this run's to remove.
+It never deletes a tag that has moved. Each tag is recorded with the commit it pointed at, and the
+remote is queried at rollback time to check it still points there. One that no longer matches, or
+that this checkout cannot resolve on the remote at all, is reported and skipped: a tag someone else
+recreated in the meantime is not this run's to remove.
 
 It stops on a package already published to a registry that cannot be unpublished. crates.io and PyPI
 keep every version forever, and npm refuses to republish an unpublished one, so deleting the tag

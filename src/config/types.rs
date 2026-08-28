@@ -277,9 +277,6 @@ fn default_helm_chart_path() -> String {
 }
 
 impl PublisherConfig {
-    /// Short human-friendly name (`"cargo"`, `"docker"`, …) for log
-    /// lines, dry-run output, and step summaries. Stable enough to be
-    /// pattern-matched in CI scripts.
     /// Whether a successful publish through this publisher cannot be undone.
     ///
     /// crates.io never removes a version (yanking hides it, the artefact stays),
@@ -296,6 +293,9 @@ impl PublisherConfig {
         )
     }
 
+    /// Short human-friendly name (`"cargo"`, `"docker"`, …) for log
+    /// lines, dry-run output, and step summaries. Stable enough to be
+    /// pattern-matched in CI scripts.
     pub fn kind_name(&self) -> &'static str {
         match self {
             PublisherConfig::Cargo { .. } => "cargo",

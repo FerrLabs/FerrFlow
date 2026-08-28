@@ -7,7 +7,7 @@ use super::*;
 use crate::config::OrphanedTagStrategy;
 use crate::error_code;
 use crate::test_utils::{git, git_with_env, init_repo_at};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[test]
 fn is_transient_classifies_network_errors_as_retryable() {
@@ -1716,14 +1716,14 @@ fn signing_follows_every_spelling_git_accepts_for_a_boolean() {
     }
 }
 
-#[test]
-fn a_tag_moved_since_the_failed_run_is_left_alone() {
-    let dir = tempfile::tempdir().unwrap();
-    let remote = dir.path().join("remote.git");
+/// Local clone plus a bare remote it can push to, which is the only shape that
+/// can tell a local-ref check from a remote one.
+fn repo_with_remote(dir: &Path) -> (PathBuf, PathBuf) {
+    let remote = dir.join("remote.git");
     std::fs::create_dir_all(&remote).unwrap();
     git(&remote, &["init", "--bare", "-b", "main"]);
 
-    let local = dir.path().join("local");
+    let local = dir.join("local");
     std::fs::create_dir_all(&local).unwrap();
     init_repo_at(&local);
     git(
@@ -1731,83 +1731,142 @@ fn a_tag_moved_since_the_failed_run_is_left_alone() {
         &["remote", "add", "origin", remote.to_str().unwrap()],
     );
     commit_file_at(&local, "a.txt", "feat: first");
+    git(&local, &["push", "origin", "main:main"]);
+    (local, remote)
+}
+
+#[test]
+fn a_tag_the_remote_has_moved_is_left_alone_even_when_the_local_ref_still_matches() {
+    let dir = tempfile::tempdir().unwrap();
+    let (local, remote) = repo_with_remote(dir.path());
+
     git(&local, &["tag", "v1.0.0"]);
-    git(&local, &["push", "origin", "main:main", "--tags"]);
+    git(&local, &["push", "origin", "v1.0.0"]);
+    let repo = open_repo(&local).unwrap();
+    let recorded = local_tag_target_sha(&repo, "v1.0.0").unwrap();
+
+    // Someone else recreates the tag on a different commit. Our local ref is
+    // untouched and still equals `recorded`, so a local-only check would pass.
+    let other = dir.path().join("other");
+    std::fs::create_dir_all(&other).unwrap();
+    init_repo_at(&other);
+    git(
+        &other,
+        &["remote", "add", "origin", remote.to_str().unwrap()],
+    );
+    commit_file_at(&other, "b.txt", "feat: theirs");
+    git(&other, &["push", "--force", "origin", "HEAD:main"]);
+    git(&other, &["tag", "-f", "v1.0.0"]);
+    git(&other, &["push", "--force", "origin", "v1.0.0"]);
+
+    assert_eq!(
+        local_tag_target_sha(&repo, "v1.0.0").unwrap(),
+        recorded,
+        "precondition: the local ref must still look unchanged"
+    );
+
+    delete_tag_if_unchanged(&repo, "origin", "v1.0.0", &recorded).unwrap();
+
+    let remote_tags = git(&remote, &["tag", "-l"]);
+    assert!(
+        remote_tags.contains("v1.0.0"),
+        "the remote tag someone else recreated must survive, got {remote_tags:?}"
+    );
+}
+
+#[test]
+fn a_tag_absent_from_this_checkout_is_not_deleted_from_the_remote() {
+    let dir = tempfile::tempdir().unwrap();
+    let (local, remote) = repo_with_remote(dir.path());
+
+    // Tag pushed by someone else, never fetched here.
+    let other = dir.path().join("other");
+    std::fs::create_dir_all(&other).unwrap();
+    init_repo_at(&other);
+    git(
+        &other,
+        &["remote", "add", "origin", remote.to_str().unwrap()],
+    );
+    git(&other, &["fetch", "origin", "main"]);
+    git(&other, &["checkout", "-f", "FETCH_HEAD"]);
+    git(&other, &["tag", "theirs-v9.9.9"]);
+    git(&other, &["push", "origin", "theirs-v9.9.9"]);
 
     let repo = open_repo(&local).unwrap();
+    assert!(!tag_exists(&repo, "theirs-v9.9.9"), "precondition");
 
-    // Someone moved the tag after the failed run recorded it.
     delete_tag_if_unchanged(
         &repo,
         "origin",
-        "v1.0.0",
-        "0000000000000000000000000000000000000000",
+        "theirs-v9.9.9",
+        "deadbeefdeadbeefdeadbeefdeadbeef",
     )
     .unwrap();
 
-    assert!(
-        tag_exists(&repo, "v1.0.0"),
-        "a tag that no longer matches the recorded sha must survive"
-    );
-}
-
-#[test]
-fn a_tag_still_at_the_recorded_sha_is_deleted() {
-    let dir = tempfile::tempdir().unwrap();
-    let remote = dir.path().join("remote.git");
-    std::fs::create_dir_all(&remote).unwrap();
-    git(&remote, &["init", "--bare", "-b", "main"]);
-
-    let local = dir.path().join("local");
-    std::fs::create_dir_all(&local).unwrap();
-    init_repo_at(&local);
-    git(
-        &local,
-        &["remote", "add", "origin", remote.to_str().unwrap()],
-    );
-    commit_file_at(&local, "a.txt", "feat: first");
-    git(&local, &["tag", "v1.0.0"]);
-    git(&local, &["push", "origin", "main:main", "--tags"]);
-
-    let repo = open_repo(&local).unwrap();
-    let sha = local_tag_target_sha(&repo, "v1.0.0").unwrap();
-
-    delete_tag_if_unchanged(&repo, "origin", "v1.0.0", &sha).unwrap();
-
-    assert!(!tag_exists(&repo, "v1.0.0"));
     let remote_tags = git(&remote, &["tag", "-l"]);
     assert!(
-        remote_tags.trim().is_empty(),
-        "the remote tag must go too, got {remote_tags:?}"
+        remote_tags.contains("theirs-v9.9.9"),
+        "a tag this checkout never saw must not be deleted, got {remote_tags:?}"
     );
 }
 
 #[test]
-fn deleting_a_tag_that_is_already_gone_from_the_remote_succeeds() {
+fn an_annotated_tag_still_at_its_recorded_commit_is_deleted() {
+    // FerrFlow creates annotated tags, so `refs/tags/x` is the tag object while
+    // the checkpoint records the commit. Getting this wrong makes every real
+    // rollback refuse itself.
     let dir = tempfile::tempdir().unwrap();
-    let remote = dir.path().join("remote.git");
-    std::fs::create_dir_all(&remote).unwrap();
-    git(&remote, &["init", "--bare", "-b", "main"]);
+    let (local, remote) = repo_with_remote(dir.path());
 
-    let local = dir.path().join("local");
-    std::fs::create_dir_all(&local).unwrap();
-    init_repo_at(&local);
-    git(
-        &local,
-        &["remote", "add", "origin", remote.to_str().unwrap()],
+    git(&local, &["tag", "-a", "v1.0.0", "-m", "Release v1.0.0"]);
+    git(&local, &["push", "origin", "v1.0.0"]);
+    let repo = open_repo(&local).unwrap();
+    let commit = local_tag_target_sha(&repo, "v1.0.0").unwrap();
+
+    delete_tag_if_unchanged(&repo, "origin", "v1.0.0", &commit).unwrap();
+
+    let remote_tags = git(&remote, &["tag", "-l"]);
+    assert!(
+        !remote_tags.contains("v1.0.0"),
+        "an annotated tag at its recorded commit must be deleted, got {remote_tags:?}"
     );
-    commit_file_at(&local, "a.txt", "feat: first");
-    git(&local, &["tag", "v1.0.0"]);
-    git(&local, &["push", "origin", "main:main"]);
+}
 
+#[test]
+fn a_tag_still_at_the_recorded_sha_on_the_remote_is_deleted() {
+    let dir = tempfile::tempdir().unwrap();
+    let (local, remote) = repo_with_remote(dir.path());
+
+    git(&local, &["tag", "v1.0.0"]);
+    git(&local, &["push", "origin", "v1.0.0"]);
     let repo = open_repo(&local).unwrap();
     let sha = local_tag_target_sha(&repo, "v1.0.0").unwrap();
 
-    // Never pushed, so the remote has no such ref. Rollback should still reach
-    // the desired end state rather than failing on it.
     delete_tag_if_unchanged(&repo, "origin", "v1.0.0", &sha).unwrap();
 
-    assert!(!tag_exists(&repo, "v1.0.0"));
+    assert!(!tag_exists(&repo, "v1.0.0"), "the local tag should go");
+    let remote_tags = git(&remote, &["tag", "-l"]);
+    assert!(
+        !remote_tags.contains("v1.0.0"),
+        "the remote tag should go too, got {remote_tags:?}"
+    );
+}
+
+#[test]
+fn a_tag_that_never_reached_the_remote_is_cleaned_up_locally() {
+    let dir = tempfile::tempdir().unwrap();
+    let (local, _remote) = repo_with_remote(dir.path());
+
+    git(&local, &["tag", "v1.0.0"]);
+    let repo = open_repo(&local).unwrap();
+    let sha = local_tag_target_sha(&repo, "v1.0.0").unwrap();
+
+    delete_tag_if_unchanged(&repo, "origin", "v1.0.0", &sha).unwrap();
+
+    assert!(
+        !tag_exists(&repo, "v1.0.0"),
+        "a tag the failed run created but never pushed should still be cleaned up"
+    );
 }
 
 #[test]
