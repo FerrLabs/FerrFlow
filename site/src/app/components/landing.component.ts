@@ -140,7 +140,6 @@ const FORMATS = [
 
     <section id="features" class="features-section">
       <div class="container">
-        <p class="mono section-eyebrow" i18n="@@features.eyebrow">№ 02 — Features</p>
         <div class="features-header">
           <h2 class="section-title" i18n="@@features.title">Everything you need to release.</h2>
           <p class="features-sub" i18n="@@features.sub">
@@ -162,7 +161,6 @@ const FORMATS = [
 
     <section id="install" class="install-section">
       <div class="container">
-        <p class="mono section-eyebrow" i18n="@@install.eyebrow">№ 03 — Install</p>
         <h2 class="section-title" i18n="@@install.title">Install in seconds.</h2>
         <p class="install-sub" i18n="@@install.sub">
           Works on Linux, macOS, and Windows. Available as a GitHub Action and a GitLab CI template.
@@ -341,13 +339,6 @@ const FORMATS = [
 
     .features-section {
       padding: 96px 0;
-    }
-    .section-eyebrow {
-      font-size: 11px;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: var(--fg-3);
-      margin: 0 0 28px;
     }
     .section-title {
       font-family: var(--font-display);
