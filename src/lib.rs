@@ -14,6 +14,7 @@ pub mod versioning;
 pub mod api_check;
 #[cfg(feature = "cli")]
 pub mod cache;
+pub mod cleanup;
 #[cfg(feature = "cli")]
 pub mod diff;
 #[cfg(feature = "cli")]
