@@ -67,7 +67,7 @@ pub fn run(
 
         if output.status.success() {
             return Ok(PublishOutcome::Published {
-                url: derive_crate_url(ctx.package_name, ctx.new_version, registry),
+                url: derive_crate_url(&published_name(ctx), ctx.new_version, registry),
             });
         }
 
@@ -75,7 +75,9 @@ pub fn run(
             return Ok(PublishOutcome::Skipped {
                 reason: format!(
                     "{}@{} already exists on {}",
-                    ctx.package_name, ctx.new_version, registry_label
+                    published_name(ctx),
+                    ctx.new_version,
+                    registry_label
                 ),
             });
         }
@@ -156,6 +158,30 @@ fn first_meaningful_line(stderr: &str, stdout: &str) -> String {
         .rfind(|l| !l.trim().is_empty())
         .unwrap_or("(no output)")
         .to_string()
+}
+
+/// The crate name cargo publishes under, which is `[package].name` in the
+/// manifest and not the FerrFlow package name.
+///
+/// A workspace routinely uses short FerrFlow names against prefixed crate names
+/// (`bridge` for `idlewarden-bridge`), and short crate names are long since
+/// taken on crates.io, so the wrong one links a stranger's crate rather than
+/// 404ing. Falls back to the FerrFlow name when the manifest cannot be read or
+/// carries no `[package]` table, which is no worse than what it replaces.
+fn published_name(ctx: &PublishContext<'_>) -> String {
+    std::fs::read_to_string(ctx.package_path.join("Cargo.toml"))
+        .ok()
+        .and_then(|raw| raw.parse::<toml_edit::DocumentMut>().ok())
+        .and_then(|doc| {
+            // `doc["package"]` panics with "index not found" when the manifest
+            // has no [package] table, which is exactly what a workspace root
+            // looks like. Index by get() so that falls back instead.
+            doc.get("package")?
+                .get("name")?
+                .as_str()
+                .map(str::to_string)
+        })
+        .unwrap_or_else(|| ctx.package_name.to_string())
 }
 
 fn derive_crate_url(name: &str, version: &str, registry: Option<&str>) -> Option<String> {
@@ -288,5 +314,102 @@ mod tests {
             Some("https://crates.io/crates/foo/1.0.0")
         );
         assert_eq!(derive_crate_url("foo", "1.0.0", Some("kellnr")), None);
+    }
+
+    fn ctx_at<'a>(
+        registries: &'a BTreeMap<String, RegistryConfig>,
+        package_path: &'a std::path::Path,
+        ferrflow_name: &'a str,
+    ) -> PublishContext<'a> {
+        PublishContext {
+            package_name: ferrflow_name,
+            package_path,
+            new_version: "26.8.27",
+            tag: "v26.8.27",
+            registries,
+            dry_run: false,
+            verbose: false,
+        }
+    }
+
+    #[test]
+    fn the_published_name_comes_from_the_manifest_not_the_ferrflow_name() {
+        // The shape from #948: short FerrFlow names against prefixed crates.
+        // `crates.io/crates/bridge` is a real, unrelated crate, so the wrong
+        // name links somebody else's project rather than 404ing.
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("Cargo.toml"),
+            "[package]\nname = \"idlewarden-bridge\"\nversion = \"26.8.27\"\n",
+        )
+        .unwrap();
+        let registries = BTreeMap::new();
+
+        let name = published_name(&ctx_at(&registries, dir.path(), "bridge"));
+
+        assert_eq!(name, "idlewarden-bridge");
+    }
+
+    #[test]
+    fn a_manifest_with_no_package_table_falls_back_instead_of_panicking() {
+        // A workspace root manifest has [workspace] and no [package]. toml_edit
+        // indexing a missing key must not bring the publish down.
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("Cargo.toml"),
+            "[workspace]\nmembers = [\"crates/*\"]\n",
+        )
+        .unwrap();
+        let registries = BTreeMap::new();
+
+        let name = published_name(&ctx_at(&registries, dir.path(), "bridge"));
+
+        assert_eq!(name, "bridge");
+    }
+
+    #[test]
+    fn an_absent_manifest_falls_back_to_the_ferrflow_name() {
+        let dir = tempfile::tempdir().unwrap();
+        let registries = BTreeMap::new();
+
+        let name = published_name(&ctx_at(&registries, dir.path(), "bridge"));
+
+        assert_eq!(
+            name, "bridge",
+            "no manifest is no worse than before, so it must not fail the publish"
+        );
+    }
+
+    #[test]
+    fn an_unparseable_manifest_falls_back_too() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("Cargo.toml"), "[package\nname = broken").unwrap();
+        let registries = BTreeMap::new();
+
+        let name = published_name(&ctx_at(&registries, dir.path(), "bridge"));
+
+        assert_eq!(name, "bridge");
+    }
+
+    #[test]
+    fn a_matching_name_is_unchanged() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("Cargo.toml"),
+            "[package]\nname = \"ferrflow\"\nversion = \"1.0.0\"\n",
+        )
+        .unwrap();
+        let registries = BTreeMap::new();
+
+        let name = published_name(&ctx_at(&registries, dir.path(), "ferrflow"));
+
+        assert_eq!(name, "ferrflow");
+    }
+
+    #[test]
+    fn the_crate_url_uses_the_manifest_name() {
+        let url = derive_crate_url("idlewarden-bridge", "26.8.27", None).unwrap();
+
+        assert_eq!(url, "https://crates.io/crates/idlewarden-bridge/26.8.27");
     }
 }
