@@ -31,7 +31,7 @@ pub fn check(
     let variant = if json { "json" } else { "text" };
     let cache_eligible = !verbose && channel.is_none() && !config.has_release_side_effects();
     let cache_key = cache_eligible
-        .then(|| cache::compute_key(&repo, &root, config_path, variant))
+        .then(|| cache::compute_key(&repo, &root, &config, config_path, variant))
         .flatten();
     let cache_dir = cache::cache_dir(&repo);
 

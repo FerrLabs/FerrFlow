@@ -12,6 +12,9 @@ const CACHE_DIR_NAME: &str = "ferrflow-cache";
 const MAX_AGE: Duration = Duration::from_secs(5 * 60);
 const PRUNE_MAX_AGE: Duration = Duration::from_secs(7 * 24 * 60 * 60);
 const PRUNE_MAX_ENTRIES: usize = 50;
+/// A staged write is renamed within milliseconds. One that is still sitting
+/// there an hour later is the residue of a killed process, not work in flight.
+const TMP_MAX_AGE: Duration = Duration::from_secs(60 * 60);
 
 #[derive(Serialize, Deserialize)]
 pub struct CachedRun {
@@ -23,14 +26,15 @@ pub struct CacheKey {
     head: String,
     tags_hash: String,
     config_hash: String,
+    files_hash: String,
     variant: &'static str,
 }
 
 impl CacheKey {
     fn filename(&self) -> String {
         format!(
-            "{}-{}-{}-{}.json",
-            self.head, self.tags_hash, self.config_hash, self.variant
+            "{}-{}-{}-{}-{}.json",
+            self.head, self.tags_hash, self.config_hash, self.files_hash, self.variant
         )
     }
 }
@@ -42,18 +46,51 @@ pub fn cache_dir(repo: &Repository) -> PathBuf {
 pub fn compute_key(
     repo: &Repository,
     root: &Path,
+    config: &Config,
     explicit_config: Option<&Path>,
     variant: &'static str,
 ) -> Option<CacheKey> {
     let head = repo.head_id().ok()?.to_string();
     let tags_hash = hash_tag_refs(repo);
     let config_hash = hash_config(root, explicit_config);
+    let files_hash = hash_versioned_files(config, root);
     Some(CacheKey {
         head,
         tags_hash,
         config_hash,
+        files_hash,
         variant,
     })
+}
+
+/// Hashes the contents of every configured versioned file.
+///
+/// `check` reports the current version by reading these files, not by reading
+/// git, so a key built only from HEAD, tags and the config serves a stale plan
+/// after a hand-edited version or a release that wrote files without
+/// committing. That is a wrong answer delivered confidently, which is worse
+/// than a slow one.
+///
+/// Contents rather than mtime and size: `1.0.0` and `1.1.0` are the same
+/// length, so size alone misses the realistic edit, and mtime granularity is
+/// coarse on some filesystems, which would make both the check and its test
+/// depend on timing. Reading a handful of small manifests is still far cheaper
+/// than the history walk this cache exists to avoid.
+fn hash_versioned_files(config: &Config, root: &Path) -> String {
+    let mut hasher = Sha256::new();
+    for pkg in &config.packages {
+        for file in &pkg.versioned_files {
+            let path = root.join(&file.path);
+            hasher.update(file.path.as_bytes());
+            match std::fs::read(&path) {
+                Ok(bytes) => hasher.update(&bytes),
+                // A missing file is itself part of the state: it must hash
+                // differently from the same file present.
+                Err(_) => hasher.update(b"<missing>"),
+            }
+        }
+    }
+    hex::encode(hasher.finalize())
 }
 
 fn hash_tag_refs(repo: &Repository) -> String {
@@ -151,18 +188,27 @@ fn prune_at(dir: &Path, now: SystemTime) {
     let mut entries: Vec<(PathBuf, SystemTime)> = Vec::new();
     for entry in read_dir.flatten() {
         let path = entry.path();
-        if path.extension().and_then(|e| e.to_str()) != Some("json") {
+        let extension = path.extension().and_then(|e| e.to_str());
+        if extension != Some("json") && extension != Some("tmp") {
             continue;
         }
         let Ok(metadata) = entry.metadata() else {
             continue;
         };
         let modified = metadata.modified().unwrap_or(SystemTime::UNIX_EPOCH);
-        let too_old = now
-            .duration_since(modified)
-            .map(|age| age > PRUNE_MAX_AGE)
-            .unwrap_or(false);
-        if too_old {
+        let age = now.duration_since(modified).ok();
+
+        // Orphaned staging files from a run that died between the write and the
+        // rename. They carry no extension the cache reads, so nothing else ever
+        // removed them and the directory grew without bound.
+        if extension == Some("tmp") {
+            if age.map(|age| age > TMP_MAX_AGE).unwrap_or(false) {
+                let _ = std::fs::remove_file(&path);
+            }
+            continue;
+        }
+
+        if age.map(|age| age > PRUNE_MAX_AGE).unwrap_or(false) {
             let _ = std::fs::remove_file(&path);
             continue;
         }
@@ -187,6 +233,7 @@ mod tests {
             head: head.to_string(),
             tags_hash: tags.to_string(),
             config_hash: config.to_string(),
+            files_hash: "f".to_string(),
             variant: "text",
         }
     }
@@ -252,6 +299,7 @@ mod tests {
             head: "h".into(),
             tags_hash: "t".into(),
             config_hash: "c".into(),
+            files_hash: "f".into(),
             variant: "json",
         };
         assert_ne!(base, json_variant.filename());
@@ -289,7 +337,8 @@ mod tests {
         }
 
         fn filename(repo: &Repository, root: &std::path::Path) -> String {
-            compute_key(repo, root, None, "text")
+            let config = Config::load(root, None).expect("config");
+            compute_key(repo, root, &config, None, "text")
                 .expect("key")
                 .filename()
         }
@@ -334,17 +383,141 @@ mod tests {
             );
             assert_ne!(before, filename(&repo, dir.path()));
         }
+
+        /// A config with one package whose version lives in `package.json`,
+        /// which is what `check` reads to render the current version.
+        fn write_versioned_config(dir: &std::path::Path) {
+            write_config(
+                dir,
+                r#"{"package":[{"name":"a","path":".","versionedFiles":[{"path":"package.json","format":"json"}]}]}"#,
+            );
+        }
+
+        #[test]
+        fn key_busts_on_an_uncommitted_version_edit() {
+            // `check` reads the current version off disk, so a hand edit or a
+            // release that wrote files without committing changes the answer
+            // while HEAD, the tags and the config all stay put.
+            let (dir, repo) = init_repo();
+            write_versioned_config(dir.path());
+            commit_file(
+                dir.path(),
+                "package.json",
+                r#"{"name":"a","version":"1.0.0"}"#,
+                "feat: a",
+                1_900_000_000,
+            );
+            let before = filename(&repo, dir.path());
+
+            std::fs::write(
+                dir.path().join("package.json"),
+                r#"{"name":"a","version":"1.1.0"}"#,
+            )
+            .unwrap();
+
+            assert_ne!(
+                before,
+                filename(&repo, dir.path()),
+                "a stale plan served for five minutes is a wrong answer, not a slow one"
+            );
+        }
+
+        #[test]
+        fn key_is_stable_when_the_versioned_file_is_untouched() {
+            let (dir, repo) = init_repo();
+            write_versioned_config(dir.path());
+            commit_file(
+                dir.path(),
+                "package.json",
+                r#"{"name":"a","version":"1.0.0"}"#,
+                "feat: a",
+                1_900_000_000,
+            );
+
+            assert_eq!(
+                filename(&repo, dir.path()),
+                filename(&repo, dir.path()),
+                "hashing contents must not make the key depend on when it was computed"
+            );
+        }
+
+        #[test]
+        fn key_busts_when_a_versioned_file_disappears() {
+            let (dir, repo) = init_repo();
+            write_versioned_config(dir.path());
+            commit_file(
+                dir.path(),
+                "package.json",
+                r#"{"name":"a","version":"1.0.0"}"#,
+                "feat: a",
+                1_900_000_000,
+            );
+            let before = filename(&repo, dir.path());
+
+            std::fs::remove_file(dir.path().join("package.json")).unwrap();
+
+            assert_ne!(
+                before,
+                filename(&repo, dir.path()),
+                "an absent file is state too, and must not hash like the file being present"
+            );
+        }
     }
 
     #[test]
-    fn prune_keeps_only_json_and_ignores_temp() {
+    fn prune_removes_temp_files_left_by_a_killed_run() {
+        // A staged write that never got renamed. It carries no extension the
+        // cache reads, so before this nothing removed it and the directory grew
+        // without bound on a repo with interrupted runs.
         let dir = tempfile::tempdir().unwrap();
-        std::fs::create_dir_all(dir.path()).unwrap();
+        std::fs::write(dir.path().join("scratch.1234.tmp"), b"{}").unwrap();
+
+        prune_at(
+            dir.path(),
+            SystemTime::now() + TMP_MAX_AGE + Duration::from_secs(60),
+        );
+
+        assert!(!dir.path().join("scratch.1234.tmp").exists());
+    }
+
+    #[test]
+    fn prune_leaves_a_temp_file_a_write_may_still_be_using() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("scratch.1234.tmp"), b"{}").unwrap();
+
+        prune_at(dir.path(), SystemTime::now());
+
+        assert!(
+            dir.path().join("scratch.1234.tmp").exists(),
+            "a rename in flight must not have its staging file pulled out from under it"
+        );
+    }
+
+    #[test]
+    fn prune_still_ignores_files_that_are_neither_json_nor_temp() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("README.md"), b"not ours").unwrap();
+
+        prune_at(
+            dir.path(),
+            SystemTime::now() + PRUNE_MAX_AGE + Duration::from_secs(60),
+        );
+
+        assert!(dir.path().join("README.md").exists());
+    }
+
+    #[test]
+    fn prune_drops_an_old_json_entry_and_an_old_temp_file_together() {
+        let dir = tempfile::tempdir().unwrap();
         std::fs::write(dir.path().join("keep.json"), b"{}").unwrap();
         std::fs::write(dir.path().join("scratch.tmp"), b"{}").unwrap();
-        let far_future = SystemTime::now() + PRUNE_MAX_AGE + Duration::from_secs(60);
-        prune_at(dir.path(), far_future);
+
+        prune_at(
+            dir.path(),
+            SystemTime::now() + PRUNE_MAX_AGE + Duration::from_secs(60),
+        );
+
         assert!(!dir.path().join("keep.json").exists());
-        assert!(dir.path().join("scratch.tmp").exists());
+        assert!(!dir.path().join("scratch.tmp").exists());
     }
 }
