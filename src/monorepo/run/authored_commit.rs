@@ -11,8 +11,18 @@ pub(super) fn file_changes(
 ) -> Result<(Vec<FileAddition>, Vec<String>)> {
     let mut additions = Vec::new();
     let mut deletions = Vec::new();
+    let mut seen = std::collections::HashSet::new();
 
+    // The bump loop pushes a path once per versionedFiles entry, and a file
+    // carrying several selectors is a supported shape, so the same path
+    // arrives here more than once. `git add` never minded; the API refuses
+    // the whole commit over it. The contents are read from disk per path, so
+    // the copies are identical and the first one is the file.
     for file in files {
+        if !seen.insert(*file) {
+            continue;
+        }
+
         let path = root.join(file);
         if path.exists() {
             let bytes = std::fs::read(&path).with_context(|| {
@@ -101,6 +111,32 @@ mod tests {
             .unwrap();
 
         assert_eq!(decoded, bytes);
+    }
+
+    // Three selectors on one Chart.yaml is how a Helm chart bumps its
+    // version, appVersion and image line, and the API refuses a commit whose
+    // fileChanges name a path twice. This is the shape that failed LFSX's
+    // v1.5.1 release under v7.9.0.
+    #[test]
+    fn a_path_named_by_several_entries_is_sent_once() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("Chart.yaml"), "version: 1.2.3").unwrap();
+
+        let (additions, deletions) = file_changes(
+            dir.path(),
+            &[
+                "Chart.yaml",
+                "Chart.yaml",
+                "Chart.yaml",
+                "gone.txt",
+                "gone.txt",
+            ],
+        )
+        .unwrap();
+
+        assert_eq!(additions.len(), 1);
+        assert_eq!(additions[0].path, "Chart.yaml");
+        assert_eq!(deletions, vec!["gone.txt".to_string()]);
     }
 
     #[test]
