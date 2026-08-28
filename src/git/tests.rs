@@ -1,5 +1,5 @@
 use super::auth::{configure_git_command, extract_url_password, server_config_url, token_for_url};
-use super::push::{local_tag_target_sha, parse_ls_remote_tags};
+use super::push::{local_tag_target_sha, parse_ls_remote_tags, remote_tag_target_shas};
 use super::repo::Repository;
 use super::retry::{is_transient_git_error, retry_transient};
 use super::tags::{find_highest_semver_tag, find_last_tag, is_floating_tag, is_prerelease_tag};
@@ -1891,4 +1891,109 @@ fn reverting_the_release_commit_undoes_its_changes() {
     );
     let head_subject = git(&local, &["log", "-1", "--format=%s"]);
     assert!(head_subject.starts_with("Revert"), "{head_subject}");
+}
+
+/// Local clone plus a bare remote, the only shape where a peeled sha can differ
+/// from an unpeeled one.
+fn repo_and_remote(dir: &Path) -> (PathBuf, PathBuf) {
+    let remote = dir.join("remote.git");
+    std::fs::create_dir_all(&remote).unwrap();
+    git(&remote, &["init", "--bare", "-b", "main"]);
+
+    let local = dir.join("local");
+    std::fs::create_dir_all(&local).unwrap();
+    init_repo_at(&local);
+    git(
+        &local,
+        &["remote", "add", "origin", remote.to_str().unwrap()],
+    );
+    commit_file_at(&local, "a.txt", "feat: first");
+    git(&local, &["push", "origin", "main:main"]);
+    (local, remote)
+}
+
+#[test]
+fn remote_tag_shas_peel_an_annotated_tag_to_its_commit() {
+    let dir = tempfile::tempdir().unwrap();
+    let (local, remote) = repo_and_remote(dir.path());
+    git(&local, &["tag", "-a", "v1.0.0", "-m", "Release v1.0.0"]);
+    git(&local, &["push", "origin", "v1.0.0"]);
+
+    let repo = open_repo(&local).unwrap();
+    let commit = local_tag_target_sha(&repo, "v1.0.0").unwrap();
+    let tag_object = git(&local, &["rev-parse", "refs/tags/v1.0.0"])
+        .trim()
+        .to_string();
+    assert_ne!(
+        commit, tag_object,
+        "precondition: an annotated tag's object is not its commit"
+    );
+
+    let shas = remote_tag_target_shas(&local, remote.to_str().unwrap(), &["v1.0.0"]).unwrap();
+
+    assert_eq!(
+        shas.get("v1.0.0").map(String::as_str),
+        Some(commit.as_str()),
+        "the remote sha must be the commit, not the tag object"
+    );
+}
+
+#[test]
+fn pushing_an_annotated_tag_already_on_the_remote_is_a_no_op() {
+    // FerrFlow creates annotated tags, so this is the ordinary case. Comparing
+    // a peeled local sha against an unpeeled remote one made it look diverged
+    // and failed the push with a message about a commit difference that was not
+    // there. See #949.
+    let dir = tempfile::tempdir().unwrap();
+    let (local, _remote) = repo_and_remote(dir.path());
+    git(&local, &["tag", "-a", "v1.0.0", "-m", "Release v1.0.0"]);
+    git(&local, &["push", "origin", "v1.0.0"]);
+
+    let repo = open_repo(&local).unwrap();
+
+    push_tags(&repo, "origin", &["v1.0.0"])
+        .expect("re-pushing the same annotated tag must succeed");
+}
+
+#[test]
+fn a_lightweight_tag_already_on_the_remote_is_still_a_no_op() {
+    let dir = tempfile::tempdir().unwrap();
+    let (local, _remote) = repo_and_remote(dir.path());
+    git(&local, &["tag", "v1.0.0"]);
+    git(&local, &["push", "origin", "v1.0.0"]);
+
+    let repo = open_repo(&local).unwrap();
+
+    push_tags(&repo, "origin", &["v1.0.0"])
+        .expect("the case that already worked must keep working");
+}
+
+#[test]
+fn an_annotated_tag_the_remote_holds_at_another_commit_is_still_rejected() {
+    // The fix must not turn the divergence check off: a tag the remote really
+    // does hold elsewhere has to keep failing the push.
+    let dir = tempfile::tempdir().unwrap();
+    let (local, remote) = repo_and_remote(dir.path());
+
+    let other = dir.path().join("other");
+    std::fs::create_dir_all(&other).unwrap();
+    init_repo_at(&other);
+    git(
+        &other,
+        &["remote", "add", "origin", remote.to_str().unwrap()],
+    );
+    commit_file_at(&other, "b.txt", "feat: theirs");
+    git(&other, &["tag", "-a", "v1.0.0", "-m", "Theirs"]);
+    git(&other, &["push", "origin", "v1.0.0"]);
+
+    git(&local, &["tag", "-a", "v1.0.0", "-m", "Ours"]);
+    let repo = open_repo(&local).unwrap();
+
+    let err = push_tags(&repo, "origin", &["v1.0.0"])
+        .expect_err("a genuinely divergent tag must still be refused");
+    let rendered = format!("{err:#}");
+    assert!(
+        rendered.contains("already exist on remote"),
+        "expected the divergence error, got {rendered}"
+    );
 }

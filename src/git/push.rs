@@ -57,6 +57,11 @@ pub(super) fn remote_tag_target_shas(
     cmd.arg("ls-remote").arg("--tags").arg(push_url);
     for tag in tags {
         cmd.arg(format!("refs/tags/{tag}"));
+        // Without this second refspec, `refs/tags/<tag>^{}` never comes back and
+        // an annotated tag resolves to its tag object instead of the commit it
+        // points at. Callers compare against peeled local shas, so every
+        // annotated tag would look like it moved. See #949.
+        cmd.arg(format!("refs/tags/{tag}^{{}}"));
     }
     let output = cmd
         .output()
