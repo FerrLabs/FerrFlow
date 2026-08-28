@@ -1,5 +1,12 @@
 # Changelog
 
+## [2026.8.19] - 2026-08-28
+
+### Bug Fixes
+
+- fix(deps): pin esbuild to the version that verifies its binary (#861)
+- fix(site): refresh FerrFlow v7.10.2 release data
+
 ## [2026.8.18] - 2026-08-28
 
 ### Bug Fixes
