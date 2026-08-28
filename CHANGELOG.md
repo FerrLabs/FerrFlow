@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.10.4] - 2026-08-28
+
+### Bug Fixes
+
+- fix(publishers): report the crate name from Cargo.toml, not the ferrflow name (#962)
+
 ## [7.10.3] - 2026-08-28
 
 ### Bug Fixes
