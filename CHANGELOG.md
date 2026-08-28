@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.10.5] - 2026-08-28
+
+### Bug Fixes
+
+- fix(cache): prune orphaned temp files and key on the versioned files (#963)
+
 ## [7.10.4] - 2026-08-28
 
 ### Bug Fixes
