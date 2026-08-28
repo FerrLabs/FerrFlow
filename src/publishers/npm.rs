@@ -67,7 +67,7 @@ pub fn run(
 
     if output.status.success() {
         return Ok(PublishOutcome::Published {
-            url: derive_npm_url(ctx.package_name, ctx.new_version, registry),
+            url: derive_npm_url(&published_name(ctx), ctx.new_version, registry),
         });
     }
 
@@ -75,7 +75,9 @@ pub fn run(
         return Ok(PublishOutcome::Skipped {
             reason: format!(
                 "{}@{} already exists on {}",
-                ctx.package_name, ctx.new_version, registry_label
+                published_name(ctx),
+                ctx.new_version,
+                registry_label
             ),
         });
     }
@@ -213,6 +215,22 @@ fn first_meaningful_line(stderr: &str, stdout: &str) -> String {
         .rfind(|l| !l.trim().is_empty())
         .unwrap_or("(no output)")
         .to_string()
+}
+
+/// The name npm publishes under, which is the one in `package.json` and not the
+/// FerrFlow package name.
+///
+/// They differ by default in a monorepo: the FerrFlow name is short (`site`,
+/// `api`, `core`) while the npm name is scoped (`@acme/site`). Those short names
+/// are all taken on npm, so using the wrong one links a stranger's package
+/// rather than 404ing. Falls back to the FerrFlow name when the manifest cannot
+/// be read, which is no worse than what it replaces.
+fn published_name(ctx: &PublishContext<'_>) -> String {
+    std::fs::read_to_string(ctx.package_path.join("package.json"))
+        .ok()
+        .and_then(|raw| serde_json::from_str::<serde_json::Value>(&raw).ok())
+        .and_then(|manifest| manifest.get("name")?.as_str().map(str::to_string))
+        .unwrap_or_else(|| ctx.package_name.to_string())
 }
 
 fn derive_npm_url(name: &str, version: &str, registry: Option<&str>) -> Option<String> {
@@ -442,5 +460,86 @@ mod tests {
             Some("https://www.npmjs.com/package/foo/v/1.0.0")
         );
         assert_eq!(derive_npm_url("foo", "1.0.0", Some("gh-packages")), None);
+    }
+
+    fn ctx_at<'a>(
+        registries: &'a BTreeMap<String, RegistryConfig>,
+        package_path: &'a std::path::Path,
+        ferrflow_name: &'a str,
+    ) -> PublishContext<'a> {
+        PublishContext {
+            package_name: ferrflow_name,
+            package_path,
+            new_version: "1.0.0",
+            tag: "v1.0.0",
+            registries,
+            dry_run: false,
+            verbose: false,
+        }
+    }
+
+    #[test]
+    fn the_published_name_comes_from_package_json_not_the_ferrflow_name() {
+        // The default monorepo shape: a short FerrFlow name against a scoped npm
+        // name. Using the FerrFlow one links `npmjs.com/package/site`, which is
+        // a stranger's package rather than a 404.
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("package.json"),
+            r#"{ "name": "@acme/site", "version": "1.0.0" }"#,
+        )
+        .unwrap();
+        let registries = BTreeMap::new();
+
+        let name = published_name(&ctx_at(&registries, dir.path(), "site"));
+
+        assert_eq!(name, "@acme/site");
+    }
+
+    #[test]
+    fn a_scoped_name_stays_literal_in_the_url() {
+        // npmjs.com wants `@acme/site`, not `%40acme%2Fsite`.
+        let url = derive_npm_url("@acme/site", "1.0.0", None).unwrap();
+
+        assert_eq!(url, "https://www.npmjs.com/package/@acme/site/v/1.0.0");
+    }
+
+    #[test]
+    fn an_unreadable_manifest_falls_back_to_the_ferrflow_name() {
+        let dir = tempfile::tempdir().unwrap();
+        let registries = BTreeMap::new();
+
+        let name = published_name(&ctx_at(&registries, dir.path(), "site"));
+
+        assert_eq!(
+            name, "site",
+            "no manifest is no worse than before, so it must not fail the publish"
+        );
+    }
+
+    #[test]
+    fn a_manifest_without_a_name_falls_back_too() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("package.json"), r#"{ "version": "1.0.0" }"#).unwrap();
+        let registries = BTreeMap::new();
+
+        let name = published_name(&ctx_at(&registries, dir.path(), "site"));
+
+        assert_eq!(name, "site");
+    }
+
+    #[test]
+    fn a_matching_name_is_unchanged() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("package.json"),
+            r#"{ "name": "ferrflow", "version": "1.0.0" }"#,
+        )
+        .unwrap();
+        let registries = BTreeMap::new();
+
+        let name = published_name(&ctx_at(&registries, dir.path(), "ferrflow"));
+
+        assert_eq!(name, "ferrflow");
     }
 }
