@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.10.1] - 2026-08-28
+
+### Bug Fixes
+
+- fix(release): send a path named by several versionedFiles entries once (#951)
+
 ## [7.10.0] - 2026-08-28
 
 ### Features
