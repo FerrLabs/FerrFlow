@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.8.18] - 2026-08-28
+
+### Bug Fixes
+
+- fix(site): drop the numbered section chapôs (#857)
+
 ## [2026.8.17] - 2026-08-28
 
 ### Bug Fixes
