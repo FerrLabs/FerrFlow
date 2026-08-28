@@ -24,7 +24,7 @@ use super::util::{auto_stage_new_files, collect_dirty_files};
 
 mod authored_commit;
 mod cascade;
-pub(super) mod checkpoint;
+pub(crate) mod checkpoint;
 mod commit_body;
 mod drafts;
 mod execute;
@@ -812,7 +812,7 @@ pub(super) fn run_release_logic(
             }
         }
     } else if dry_run && any_bumped {
-        let plan = ReleasePlan {
+        let mut plan = ReleasePlan {
             repo: &repo,
             config,
             root,
@@ -832,7 +832,7 @@ pub(super) fn run_release_logic(
             checkpoint: None,
             forge: None,
         };
-        print_dry_run_hooks(&plan)?;
+        print_dry_run_hooks(&mut plan)?;
         timing.skip("release commit phase", "dry-run");
     }
 

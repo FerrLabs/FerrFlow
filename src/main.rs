@@ -22,6 +22,7 @@ mod prerelease;
 mod publish;
 mod publishers;
 mod query;
+mod rollback;
 mod schema;
 mod status;
 mod timing;

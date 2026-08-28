@@ -6,7 +6,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use crate::error_code::{self, ErrorCodeExt};
 
 const CHECKPOINT_FILENAME: &str = "ferrflow.checkpoint.json";
-const CHECKPOINT_SCHEMA: u32 = 1;
+const CHECKPOINT_SCHEMA: u32 = 2;
 
 /// Coarse-grained sequence of release phases, ordered by the side
 /// effects they produce. The checkpoint records the highest phase that
@@ -46,6 +46,35 @@ pub enum Phase {
 /// the checkpoint manually or rerun against the recorded commit. This
 /// avoids the worst failure mode (replaying old tags onto a new commit
 /// graph). See #549.
+/// A tag this run created, pinned to the commit it pointed at.
+///
+/// `rollback` deletes a tag only when the remote still points at this sha, so a
+/// tag someone else moved or recreated in the meantime is left alone.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RecordedTag {
+    pub name: String,
+    pub sha: String,
+}
+
+/// A forge release this run created, kept by id so rollback deletes the exact
+/// release rather than whatever currently answers to that tag name.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RecordedRelease {
+    pub tag: String,
+    pub id: u64,
+}
+
+/// A package whose publishers ran to completion.
+///
+/// `immutable` marks a registry that refuses to unpublish. Rollback stops on
+/// those rather than deleting the tag for a version the world can download.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RecordedPublish {
+    pub package: String,
+    pub kind: String,
+    pub immutable: bool,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Checkpoint {
     pub schema_version: u32,
@@ -54,6 +83,14 @@ pub struct Checkpoint {
     pub phase: Phase,
     pub commit_sha: Option<String>,
     pub tag_names: Vec<String>,
+    /// Tags actually created, as opposed to `tag_names` which is only what the
+    /// run planned. Only these are candidates for deletion.
+    #[serde(default)]
+    pub created_tags: Vec<RecordedTag>,
+    #[serde(default)]
+    pub forge_releases: Vec<RecordedRelease>,
+    #[serde(default)]
+    pub published: Vec<RecordedPublish>,
 }
 
 impl Checkpoint {
@@ -68,6 +105,9 @@ impl Checkpoint {
             phase: Phase::Pending,
             commit_sha: None,
             tag_names,
+            created_tags: Vec::new(),
+            forge_releases: Vec::new(),
+            published: Vec::new(),
         }
     }
 

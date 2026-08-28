@@ -135,6 +135,14 @@ pub enum Commands {
         #[command(subcommand)]
         command: CacheCommand,
     },
+    /// Undo a partially-failed release, using the checkpoint that run left behind.
+    Rollback {
+        /// Packages to roll back. Defaults to everything the failed run touched.
+        packages: Vec<String>,
+        /// Apply the plan. Without it, the plan is printed and nothing changes.
+        #[arg(long)]
+        yes: bool,
+    },
     SyncManifest,
     Migrate {
         #[arg(long, value_enum)]
@@ -205,6 +213,7 @@ impl Commands {
             Commands::Validate { .. } => "validate",
             Commands::Completions { .. } => "completions",
             Commands::Cache { .. } => "cache",
+            Commands::Rollback { .. } => "rollback",
             Commands::SyncManifest => "sync-manifest",
             Commands::Migrate { .. } => "migrate",
             Commands::Doctor { .. } => "doctor",
@@ -324,6 +333,9 @@ impl Cli {
             Commands::Cache { command } => match command {
                 CacheCommand::Clear => crate::cache::clear_cwd(),
             },
+            Commands::Rollback { packages, yes } => {
+                crate::rollback::run(&packages, yes, self.config.as_deref())
+            }
             Commands::SyncManifest => crate::manifest::sync_cwd(self.config.as_deref()),
             Commands::Migrate { from } => crate::config::migrate(from.map(Into::into)),
             Commands::Doctor { format, online } => {

@@ -6,7 +6,7 @@ use crate::git::{Repository, get_remote_url};
 
 use super::types::{CheckPackage, CheckResult};
 
-pub(super) fn build_forge_instance(
+pub(crate) fn build_forge_instance(
     repo: &Repository,
     config: &Config,
 ) -> Option<Box<dyn forge::Forge>> {

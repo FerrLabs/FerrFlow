@@ -1,7 +1,7 @@
 mod check;
-mod preview;
+pub(crate) mod preview;
 mod release;
-mod run;
+pub(crate) mod run;
 mod types;
 mod util;
 mod version_source;

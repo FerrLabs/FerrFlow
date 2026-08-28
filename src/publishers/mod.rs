@@ -41,7 +41,17 @@ pub enum PublishOutcome {
 /// `ferrflow release` post-publish phase and the standalone `ferrflow
 /// publish` command so both surface publishers identically. Returns the
 /// first executor error, after which remaining publishers are skipped.
-pub fn run_all(publishers: &[PublisherConfig], ctx: &PublishContext<'_>) -> Result<()> {
+/// Runs every publisher for one package, reporting each success into
+/// `published` as it happens.
+///
+/// The reporting is incremental on purpose: when publisher 3 of 5 fails, the
+/// two that already succeeded are facts on a registry somewhere, and
+/// `ferrflow rollback` has to know about them even though this returns `Err`.
+pub fn run_all(
+    publishers: &[PublisherConfig],
+    ctx: &PublishContext<'_>,
+    published: &mut Vec<(&'static str, bool)>,
+) -> Result<()> {
     if publishers.is_empty() {
         return Ok(());
     }
@@ -57,6 +67,7 @@ pub fn run_all(publishers: &[PublisherConfig], ctx: &PublishContext<'_>) -> Resu
             Ok(PublishOutcome::Published { url }) => {
                 let suffix = url.as_deref().unwrap_or("");
                 tracing::info!("    [{kind}] {preview} → {} {suffix}", "published".green());
+                published.push((kind, p.is_immutable_publish()));
             }
             Ok(PublishOutcome::Skipped { reason }) => {
                 tracing::info!("    [{kind}] {preview} → {} ({reason})", "skipped".yellow());

@@ -460,3 +460,104 @@ pub fn push(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
 
     Ok(())
 }
+
+/// Deletes `tag` locally and on the remote, but only while the **remote** still
+/// points at `expected_sha`.
+///
+/// The check has to hit the remote, not the local ref. A rollback runs after a
+/// failure, possibly from a fresh checkout that never fetched the tag, or from
+/// one whose copy is older than whatever the remote holds now. Trusting the
+/// local ref would delete a tag someone else recreated in the meantime, which
+/// is the one thing this function exists to prevent.
+///
+/// Anything that leaves the remote state unknown skips the tag rather than
+/// guessing: the cost of skipping is a leftover tag, the cost of guessing wrong
+/// is deleting someone else's.
+pub fn delete_tag_if_unchanged(
+    repo: &Repository,
+    remote_name: &str,
+    tag: &str,
+    expected_sha: &str,
+) -> Result<()> {
+    super::validate::ensure_safe_refname_fragment(remote_name, "remote name")?;
+    super::validate::ensure_safe_refname_fragment(tag, "tag name")?;
+    let workdir = repo
+        .workdir()
+        .ok_or_else(|| anyhow!("bare repos are not supported"))?;
+    let url = get_remote_url(repo, remote_name)
+        .ok_or_else(|| anyhow!("Remote '{remote_name}' has no URL"))?;
+
+    // The glob matters: `refs/tags/<tag>` alone filters out the `^{}` line, so
+    // an annotated tag would come back as its tag object rather than the commit
+    // the checkpoint recorded, and every annotated tag would look moved.
+    let pattern = format!("{tag}*");
+    let remote_shas = match remote_tag_target_shas(workdir, &url, &[&pattern]) {
+        Ok(shas) => shas,
+        Err(err) => {
+            tracing::warn!(
+                "{}",
+                format!("  skipped tag {tag}: could not read it from the remote ({err:#})")
+            );
+            return Ok(());
+        }
+    };
+
+    match remote_shas.get(tag) {
+        Some(actual) if actual != expected_sha => {
+            tracing::warn!(
+                "{}",
+                format!(
+                    "  skipped tag {tag}: the remote has it at {} now, not the {} this run created",
+                    &actual[..actual.len().min(7)],
+                    &expected_sha[..expected_sha.len().min(7)]
+                )
+            );
+            return Ok(());
+        }
+        // Absent from the remote: nothing to delete there, but a local ref from
+        // the failed run may still be lying around, so fall through to clean it.
+        None => {
+            run_git(workdir, &["tag", "-d", tag]).ok();
+            return Ok(());
+        }
+        Some(_) => {}
+    }
+
+    let mut cmd = std::process::Command::new("git");
+    cmd.current_dir(workdir);
+    configure_git_command(&mut cmd, &url);
+    cmd.args(["push", "--delete", &url, &format!("refs/tags/{tag}")]);
+    let out = cmd
+        .output()
+        .with_context(|| format!("spawn `git push --delete` for tag '{tag}' failed"))
+        .error_code(error_code::GIT_DELETE_TAG)?;
+    if !out.status.success() {
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        // Raced with someone else deleting it; the end state is what we wanted.
+        if !stderr.contains("remote ref does not exist") {
+            return Err(anyhow!(
+                "Failed to delete remote tag '{tag}': {}",
+                stderr.trim()
+            ))
+            .error_code(error_code::GIT_DELETE_TAG);
+        }
+    }
+
+    run_git(workdir, &["tag", "-d", tag]).ok();
+    Ok(())
+}
+
+/// Reverts `sha` on the current branch without pushing.
+///
+/// Deliberately leaves the push to the operator: a rollback already deleted
+/// remote refs, and forcing a branch update on top of that is a decision that
+/// should be taken with the branch in front of you.
+pub fn revert_commit(repo: &Repository, sha: &str) -> Result<()> {
+    let workdir = repo
+        .workdir()
+        .ok_or_else(|| anyhow!("bare repos are not supported"))?;
+    run_git(workdir, &["revert", "--no-edit", sha])
+        .with_context(|| format!("Failed to revert {sha}"))
+        .error_code(error_code::GIT_REVERT)?;
+    Ok(())
+}

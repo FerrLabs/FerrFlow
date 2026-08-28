@@ -52,7 +52,7 @@ pub fn run(
             dry_run,
             verbose,
         };
-        publishers::run_all(&pkg.publishers, &ctx)?;
+        publishers::run_all(&pkg.publishers, &ctx, &mut Vec::new())?;
         ran += 1;
     }
 
