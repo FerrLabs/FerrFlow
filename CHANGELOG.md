@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.10.2] - 2026-08-28
+
+### Bug Fixes
+
+- fix(git): ask ls-remote for the peeled ref so annotated tags resolve to their commit (#955)
+
 ## [7.10.1] - 2026-08-28
 
 ### Bug Fixes
