@@ -48,7 +48,8 @@ mod cache_flow {
         let key = cache::compute_key(
             &repo,
             dir.path(),
-            Some(&dir.path().join(".ferrflow")),
+            &crate::config::Config::load(dir.path(), Some(&dir.path().join(".ferrflow"))).unwrap(),
+            dir.path().join(".ferrflow").as_path().into(),
             "text",
         )
         .expect("key");
@@ -72,7 +73,8 @@ mod cache_flow {
         let old_key = cache::compute_key(
             &repo,
             dir.path(),
-            Some(&dir.path().join(".ferrflow")),
+            &crate::config::Config::load(dir.path(), Some(&dir.path().join(".ferrflow"))).unwrap(),
+            dir.path().join(".ferrflow").as_path().into(),
             "text",
         )
         .unwrap();
@@ -82,7 +84,8 @@ mod cache_flow {
         let new_key = cache::compute_key(
             &repo2,
             dir.path(),
-            Some(&dir.path().join(".ferrflow")),
+            &crate::config::Config::load(dir.path(), Some(&dir.path().join(".ferrflow"))).unwrap(),
+            dir.path().join(".ferrflow").as_path().into(),
             "text",
         )
         .unwrap();
