@@ -609,8 +609,6 @@ fn calver_short_seq_can_publish_more_than_once_a_day() {
 
 #[test]
 fn migrating_from_calver_short_continues_from_the_day_number() {
-    // The point of the short variant: a repo on YY.M.D whose last release was
-    // the 28th gets 29 next, so the switch costs no version discontinuity.
     let now = chrono::Utc::now();
     let last_short = format!("{}.{}.28", now.format("%y"), now.format("%-m"));
 
