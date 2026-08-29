@@ -54,6 +54,7 @@ impl ReleaseLock {
                     host = hostname_or_unknown()
                 );
                 let _ = file.flush();
+                crate::cleanup::register(path.clone());
                 Ok(Self {
                     path,
                     _handle: file,
@@ -101,6 +102,7 @@ impl ReleaseLock {
 
 impl Drop for ReleaseLock {
     fn drop(&mut self) {
+        crate::cleanup::unregister(&self.path);
         let _ = std::fs::remove_file(&self.path);
     }
 }

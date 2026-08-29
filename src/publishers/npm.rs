@@ -131,6 +131,12 @@ impl NpmrcGuard {
     }
 }
 
+impl Drop for NpmrcGuard {
+    fn drop(&mut self) {
+        crate::cleanup::unregister(&self.path);
+    }
+}
+
 fn write_scoped_npmrc(
     registry: &crate::config::RegistryConfig,
     registry_name: &str,
@@ -152,6 +158,7 @@ fn write_scoped_npmrc(
     let path = dir.path().join(".npmrc");
     let line = format!("//{host}/:_authToken={token}\n");
     write_private(&path, &line).with_context(|| format!("write {}", path.display()))?;
+    crate::cleanup::register(path.clone());
     Ok(NpmrcGuard { _dir: dir, path })
 }
 

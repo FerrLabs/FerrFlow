@@ -2,6 +2,7 @@ mod api_check;
 mod bot_token;
 mod cache;
 mod changelog;
+mod cleanup;
 mod cli;
 mod concurrency;
 mod config;
@@ -40,6 +41,8 @@ fn main() {
     let cli = Cli::parse();
 
     logging::init_logging(cli.verbose, cli.log_format);
+
+    cleanup::install_panic_hook();
 
     if cli.command.needs_bot_token()
         && let Err(err) = bot_token::ensure_bot_token()
