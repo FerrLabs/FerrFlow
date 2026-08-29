@@ -367,6 +367,7 @@ versioning = "calver"  # override: date-based
 | `calver` | `YYYY.M.D` | `2025.3.28` | Date-based, ignores commit types |
 | `calver-short` | `YY.M.D` | `25.3.28` | Compact date-based |
 | `calver-seq` | `YYYY.M.SEQ` | `2025.3.3` | Date + daily sequence counter |
+| `calver-short-seq` | `YY.M.SEQ` | `25.3.3` | Compact date + sequence counter |
 | `sequential` | `N` | `42` | Simple incrementing build number |
 | `zerover` | `0.MINOR.PATCH` | `0.15.2` | Permanently unstable, never hits 1.0 |
 

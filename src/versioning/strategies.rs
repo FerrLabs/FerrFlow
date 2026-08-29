@@ -46,9 +46,9 @@ pub(super) fn calver_version(format: &str) -> Result<String> {
     }
 }
 
-pub(super) fn calver_seq_version(current: &str) -> Result<String> {
+pub(super) fn calver_seq_version(current: &str, year_format: &str) -> Result<String> {
     let now = Utc::now();
-    let year_month = format!("{}.{}", now.format("%Y"), now.format("%-m"));
+    let year_month = format!("{}.{}", now.format(year_format), now.format("%-m"));
 
     let seq = if current.starts_with(&year_month) {
         let parts: Vec<&str> = current.splitn(3, '.').collect();

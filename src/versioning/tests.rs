@@ -110,7 +110,7 @@ fn test_calver_short_format() {
 
 #[test]
 fn test_calver_seq_new_month() {
-    let v = calver_seq_version("2024.1.5").unwrap();
+    let v = calver_seq_version("2024.1.5", "%Y").unwrap();
     let parts: Vec<&str> = v.split('.').collect();
     assert_eq!(parts.len(), 3);
     assert_eq!(parts[2], "1");
@@ -120,7 +120,7 @@ fn test_calver_seq_new_month() {
 fn test_calver_seq_same_month() {
     let now = chrono::Utc::now();
     let current = format!("{}.{}.3", now.format("%Y"), now.format("%-m"));
-    let v = calver_seq_version(&current).unwrap();
+    let v = calver_seq_version(&current, "%Y").unwrap();
     assert!(v.ends_with(".4"));
 }
 
@@ -356,7 +356,7 @@ fn sequential_with_v_prefix_semver() {
 
 #[test]
 fn calver_seq_empty_string() {
-    let v = calver_seq_version("").unwrap();
+    let v = calver_seq_version("", "%Y").unwrap();
     let parts: Vec<&str> = v.split('.').collect();
     assert_eq!(parts.len(), 3);
     assert_eq!(parts[2], "1");
@@ -364,7 +364,7 @@ fn calver_seq_empty_string() {
 
 #[test]
 fn calver_seq_malformed_input() {
-    let v = calver_seq_version("garbage").unwrap();
+    let v = calver_seq_version("garbage", "%Y").unwrap();
     assert!(v.ends_with(".1"));
 }
 
@@ -372,7 +372,7 @@ fn calver_seq_malformed_input() {
 fn calver_seq_two_parts_only() {
     let now = chrono::Utc::now();
     let current = format!("{}.{}", now.format("%Y"), now.format("%-m"));
-    let v = calver_seq_version(&current).unwrap();
+    let v = calver_seq_version(&current, "%Y").unwrap();
     assert!(v.ends_with(".1"));
 }
 
@@ -380,7 +380,7 @@ fn calver_seq_two_parts_only() {
 fn calver_seq_non_numeric_seq() {
     let now = chrono::Utc::now();
     let current = format!("{}.{}.abc", now.format("%Y"), now.format("%-m"));
-    let v = calver_seq_version(&current).unwrap();
+    let v = calver_seq_version(&current, "%Y").unwrap();
     assert!(v.ends_with(".1"));
 }
 
@@ -573,4 +573,96 @@ fn compute_next_version_all_strategies() {
         )
         .is_ok()
     );
+}
+
+#[test]
+fn calver_short_seq_bootstraps_at_one() {
+    let v = calver_seq_version("0.0", "%y").unwrap();
+    let now = chrono::Utc::now();
+    assert_eq!(v, format!("{}.{}.1", now.format("%y"), now.format("%-m")));
+}
+
+#[test]
+fn calver_short_seq_increments_within_the_same_month() {
+    let now = chrono::Utc::now();
+    let current = format!("{}.{}.7", now.format("%y"), now.format("%-m"));
+
+    let v = calver_seq_version(&current, "%y").unwrap();
+
+    assert_eq!(v, format!("{}.{}.8", now.format("%y"), now.format("%-m")));
+}
+
+#[test]
+fn calver_short_seq_can_publish_more_than_once_a_day() {
+    let now = chrono::Utc::now();
+    let first = calver_seq_version("0.0", "%y").unwrap();
+    let second = calver_seq_version(&first, "%y").unwrap();
+    let third = calver_seq_version(&second, "%y").unwrap();
+
+    assert_ne!(first, second);
+    assert_ne!(second, third);
+    assert_eq!(
+        third,
+        format!("{}.{}.3", now.format("%y"), now.format("%-m"))
+    );
+}
+
+#[test]
+fn migrating_from_calver_short_continues_from_the_day_number() {
+    // The point of the short variant: a repo on YY.M.D whose last release was
+    // the 28th gets 29 next, so the switch costs no version discontinuity.
+    let now = chrono::Utc::now();
+    let last_short = format!("{}.{}.28", now.format("%y"), now.format("%-m"));
+
+    let v = calver_seq_version(&last_short, "%y").unwrap();
+
+    assert_eq!(v, format!("{}.{}.29", now.format("%y"), now.format("%-m")));
+}
+
+#[test]
+fn calver_short_seq_keeps_the_two_digit_year_where_calver_seq_widens_it() {
+    let now = chrono::Utc::now();
+    let short = calver_seq_version("0.0", "%y").unwrap();
+    let long = calver_seq_version("0.0", "%Y").unwrap();
+
+    assert!(short.starts_with(&now.format("%y").to_string()));
+    assert!(long.starts_with(&now.format("%Y").to_string()));
+    assert_ne!(
+        short, long,
+        "switching to calver-seq is what jumps the major from 26 to 2026"
+    );
+}
+
+#[test]
+fn calver_short_seq_restarts_when_the_month_rolls_over() {
+    let v = calver_seq_version("01.1.9", "%y").unwrap();
+    let now = chrono::Utc::now();
+
+    assert_eq!(
+        v,
+        format!("{}.{}.1", now.format("%y"), now.format("%-m")),
+        "a version from another month must not carry its counter forward"
+    );
+}
+
+#[test]
+fn calver_short_seq_bootstraps_like_calver_seq() {
+    assert_eq!(
+        bootstrap_version(VersioningStrategy::CalverShortSeq),
+        bootstrap_version(VersioningStrategy::CalverSeq)
+    );
+}
+
+#[test]
+fn calver_short_seq_is_reachable_through_compute_next_version() {
+    let now = chrono::Utc::now();
+    let v = compute_next_version(
+        "0.0",
+        BumpType::Minor,
+        VersioningStrategy::CalverShortSeq,
+        None,
+    )
+    .unwrap();
+
+    assert_eq!(v, format!("{}.{}.1", now.format("%y"), now.format("%-m")));
 }
