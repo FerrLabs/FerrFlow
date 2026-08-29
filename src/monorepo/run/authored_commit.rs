@@ -19,7 +19,7 @@ pub(super) fn file_changes(
     // the whole commit over it. The contents are read from disk per path, so
     // the copies are identical and the first one is the file.
     for file in files {
-        if !seen.insert(*file) {
+        if !seen.insert(to_forge_path(file)) {
             continue;
         }
 
@@ -137,6 +137,27 @@ mod tests {
         assert_eq!(additions.len(), 1);
         assert_eq!(additions[0].path, "Chart.yaml");
         assert_eq!(deletions, vec!["gone.txt".to_string()]);
+    }
+
+    // The API judges uniqueness on the normalised path, so the guard has to
+    // as well: a backslashed lockfile path next to a forward-slashed config
+    // path is one file to GitHub and was two to a dedupe keyed on the raw
+    // string.
+    #[test]
+    fn separator_variants_of_one_file_are_sent_once() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("crates/api")).unwrap();
+        std::fs::write(dir.path().join("crates/api/Cargo.toml"), "x").unwrap();
+
+        let (additions, deletions) = file_changes(
+            dir.path(),
+            &["crates/api/Cargo.toml", r"crates\api\Cargo.toml"],
+        )
+        .unwrap();
+
+        assert_eq!(additions.len(), 1);
+        assert_eq!(additions[0].path, "crates/api/Cargo.toml");
+        assert!(deletions.is_empty(), "{deletions:?}");
     }
 
     #[test]
