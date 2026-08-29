@@ -1,28 +1,45 @@
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-static PENDING: Mutex<Vec<PathBuf>> = Mutex::new(Vec::new());
+#[derive(Default)]
+struct Registry {
+    paths: Vec<PathBuf>,
+}
+
+impl Registry {
+    fn register(&mut self, path: PathBuf) {
+        self.paths.push(path);
+    }
+
+    fn unregister(&mut self, path: &Path) {
+        self.paths.retain(|p| p != path);
+    }
+
+    fn drain_and_delete(&mut self) {
+        for path in std::mem::take(&mut self.paths) {
+            let _ = std::fs::remove_file(&path);
+        }
+    }
+}
+
+static PENDING: Mutex<Registry> = Mutex::new(Registry { paths: Vec::new() });
+
+fn pending() -> std::sync::MutexGuard<'static, Registry> {
+    PENDING
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
 
 pub fn register(path: PathBuf) {
-    if let Ok(mut pending) = PENDING.lock() {
-        pending.push(path);
-    }
+    pending().register(path);
 }
 
 pub fn unregister(path: &Path) {
-    if let Ok(mut pending) = PENDING.lock() {
-        pending.retain(|p| p != path);
-    }
+    pending().unregister(path);
 }
 
 pub fn run_now() {
-    let paths = match PENDING.lock() {
-        Ok(mut pending) => std::mem::take(&mut *pending),
-        Err(poisoned) => std::mem::take(&mut *poisoned.into_inner()),
-    };
-    for path in paths {
-        let _ = std::fs::remove_file(&path);
-    }
+    pending().drain_and_delete();
 }
 
 pub fn install_panic_hook() {
@@ -37,35 +54,29 @@ pub fn install_panic_hook() {
 mod tests {
     use super::*;
 
-    static SERIAL: Mutex<()> = Mutex::new(());
-
-    fn serial() -> std::sync::MutexGuard<'static, ()> {
-        SERIAL.lock().unwrap_or_else(|e| e.into_inner())
-    }
-
     #[test]
-    fn a_registered_path_is_deleted_by_run_now() {
-        let _serial = serial();
+    fn a_registered_path_is_deleted() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("secret");
         std::fs::write(&path, "token").unwrap();
 
-        register(path.clone());
-        run_now();
+        let mut registry = Registry::default();
+        registry.register(path.clone());
+        registry.drain_and_delete();
 
         assert!(!path.exists());
     }
 
     #[test]
     fn an_unregistered_path_survives() {
-        let _serial = serial();
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("keep");
         std::fs::write(&path, "x").unwrap();
 
-        register(path.clone());
-        unregister(&path);
-        run_now();
+        let mut registry = Registry::default();
+        registry.register(path.clone());
+        registry.unregister(&path);
+        registry.drain_and_delete();
 
         assert!(
             path.exists(),
@@ -75,27 +86,56 @@ mod tests {
     }
 
     #[test]
-    fn run_now_empties_the_list_so_a_second_call_does_nothing() {
-        let _serial = serial();
+    fn draining_empties_the_list_so_a_second_pass_does_nothing() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("once");
         std::fs::write(&path, "x").unwrap();
 
-        register(path.clone());
-        run_now();
+        let mut registry = Registry::default();
+        registry.register(path.clone());
+        registry.drain_and_delete();
         std::fs::write(&path, "recreated by something else").unwrap();
-        run_now();
+        registry.drain_and_delete();
 
         assert!(
             path.exists(),
-            "draining the list is what stops a stale entry deleting a later file"
+            "draining is what stops a stale entry deleting a later file"
         );
     }
 
     #[test]
+    fn unregister_removes_only_the_named_path() {
+        let dir = tempfile::tempdir().unwrap();
+        let kept = dir.path().join("kept");
+        let dropped = dir.path().join("dropped");
+        std::fs::write(&kept, "x").unwrap();
+        std::fs::write(&dropped, "x").unwrap();
+
+        let mut registry = Registry::default();
+        registry.register(kept.clone());
+        registry.register(dropped.clone());
+        registry.unregister(&kept);
+        registry.drain_and_delete();
+
+        assert!(kept.exists());
+        assert!(!dropped.exists());
+    }
+
+    #[test]
     fn a_missing_path_is_not_an_error() {
-        let _serial = serial();
-        register(PathBuf::from("definitely/not/here"));
-        run_now();
+        let mut registry = Registry::default();
+        registry.register(PathBuf::from("definitely/not/here"));
+        registry.drain_and_delete();
+    }
+
+    #[test]
+    fn a_poisoned_lock_still_yields_the_registry() {
+        let _ = std::panic::catch_unwind(|| {
+            let _guard = pending();
+            panic!("poison the global registry");
+        });
+
+        pending().register(PathBuf::from("still/reachable"));
+        pending().unregister(Path::new("still/reachable"));
     }
 }
