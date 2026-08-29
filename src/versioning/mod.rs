@@ -16,7 +16,7 @@ pub fn bootstrap_version(strategy: VersioningStrategy) -> String {
     match strategy {
         VersioningStrategy::Semver | VersioningStrategy::Zerover => "0.0.0".to_string(),
         VersioningStrategy::Sequential => "0".to_string(),
-        VersioningStrategy::CalverSeq => "0.0".to_string(),
+        VersioningStrategy::CalverSeq | VersioningStrategy::CalverShortSeq => "0.0".to_string(),
         VersioningStrategy::Calver | VersioningStrategy::CalverShort => "0.0.0".to_string(),
     }
 }
@@ -34,7 +34,8 @@ pub fn compute_next_version(
         VersioningStrategy::Semver => bump_semver(current, bump),
         VersioningStrategy::Calver => calver_version("%Y.%m.%d"),
         VersioningStrategy::CalverShort => calver_version("short"),
-        VersioningStrategy::CalverSeq => calver_seq_version(current),
+        VersioningStrategy::CalverSeq => calver_seq_version(current, "%Y"),
+        VersioningStrategy::CalverShortSeq => calver_seq_version(current, "%y"),
         VersioningStrategy::Sequential => bump_sequential(current),
         VersioningStrategy::Zerover => bump_zerover(current, bump),
     }

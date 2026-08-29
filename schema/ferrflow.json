@@ -50,6 +50,7 @@
             "calver",
             "calver-short",
             "calver-seq",
+            "calver-short-seq",
             "sequential",
             "zerover"
           ],
@@ -591,6 +592,7 @@
               "calver",
               "calver-short",
               "calver-seq",
+              "calver-short-seq",
               "sequential",
               "zerover"
             ]

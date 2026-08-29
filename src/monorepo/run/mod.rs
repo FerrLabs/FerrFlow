@@ -329,12 +329,16 @@ pub(super) fn run_release_logic(
                             ));
                         }
                     }
-                    SkipReason::VersionUnchanged => {
+                    SkipReason::VersionUnchanged { ref version } => {
                         if !quiet {
-                            tracing::debug!(
-                                "{} {} — version unchanged",
-                                "○".dimmed(),
-                                pkg.name.dimmed()
+                            shared_outputs.push(
+                                format!(
+                                    "{} {} has releasable commits but stays at {version}, so nothing was published",
+                                    "!".yellow().bold(),
+                                    pkg.name.bold()
+                                )
+                                .yellow()
+                                .to_string(),
                             );
                         }
                     }

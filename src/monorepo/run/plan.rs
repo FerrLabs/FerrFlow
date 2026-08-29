@@ -23,7 +23,7 @@ pub(super) enum SkipReason {
     NotTouched,
     NoNewCommits,
     NoReleasableCommits,
-    VersionUnchanged,
+    VersionUnchanged { version: String },
     Excluded,
 }
 
@@ -33,7 +33,7 @@ impl SkipReason {
             SkipReason::NotTouched => "not touched",
             SkipReason::NoNewCommits => "no new commits",
             SkipReason::NoReleasableCommits => "no releasable commits",
-            SkipReason::VersionUnchanged => "version unchanged",
+            SkipReason::VersionUnchanged { .. } => "version unchanged",
             SkipReason::Excluded => "excluded",
         }
     }
@@ -335,7 +335,9 @@ pub(super) fn compute_plan(
 
     if current_version == new_version {
         return Ok(PackagePlan::Skipped {
-            reason: SkipReason::VersionUnchanged,
+            reason: SkipReason::VersionUnchanged {
+                version: new_version,
+            },
             recovered,
         });
     }
@@ -372,6 +374,7 @@ fn is_date_or_seq(strategy: VersioningStrategy) -> bool {
         VersioningStrategy::Calver
             | VersioningStrategy::CalverShort
             | VersioningStrategy::CalverSeq
+            | VersioningStrategy::CalverShortSeq
             | VersioningStrategy::Sequential
     )
 }
@@ -384,6 +387,49 @@ mod tests {
     use crate::test_utils::{commit_file, git, init_repo};
     use rayon::prelude::*;
     use std::path::Path;
+
+    #[test]
+    fn every_date_or_sequence_strategy_reports_itself_rather_than_a_bump_type() {
+        for strategy in [
+            VersioningStrategy::Calver,
+            VersioningStrategy::CalverShort,
+            VersioningStrategy::CalverSeq,
+            VersioningStrategy::CalverShortSeq,
+            VersioningStrategy::Sequential,
+        ] {
+            assert!(
+                is_date_or_seq(strategy),
+                "{strategy:?} computes its version from the date or a counter, so the                  output must name the strategy, not a bump type it never used"
+            );
+        }
+        assert!(!is_date_or_seq(VersioningStrategy::Semver));
+        assert!(!is_date_or_seq(VersioningStrategy::Zerover));
+    }
+
+    #[test]
+    fn version_unchanged_carries_the_version_it_recomputed() {
+        let reason = SkipReason::VersionUnchanged {
+            version: "26.8.28".to_string(),
+        };
+
+        assert_eq!(reason.json_label(), "version unchanged");
+        match reason {
+            SkipReason::VersionUnchanged { version } => assert_eq!(version, "26.8.28"),
+            _ => panic!("wrong variant"),
+        }
+    }
+
+    #[test]
+    fn version_unchanged_is_distinct_from_having_nothing_to_release() {
+        assert_ne!(
+            SkipReason::VersionUnchanged {
+                version: "26.8.28".to_string()
+            }
+            .json_label(),
+            SkipReason::NoReleasableCommits.json_label(),
+            "the two must stay tellable apart: one is idle, the other is work held back"
+        );
+    }
 
     fn write_pkg(dir: &Path, name: &str, version: &str) {
         std::fs::create_dir_all(dir.join(name)).unwrap();

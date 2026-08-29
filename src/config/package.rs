@@ -106,6 +106,7 @@ pub enum VersioningStrategy {
     Calver,
     CalverShort,
     CalverSeq,
+    CalverShortSeq,
     Sequential,
     Zerover,
 }
