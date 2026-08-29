@@ -175,7 +175,7 @@ Global settings that apply to all packages.
 | `autoMergeReleases`     | boolean | `true`                                  | Enable auto-merge on release PRs (only applies when mode is `"pr"`)                                                                                                 |
 | `recoverMissedReleases` | boolean | `false`                                 | When enabled, if FerrFlow finds unreleased commits spanning multiple version bumps, it creates all intermediate releases instead of jumping to the latest version   |
 | `floatingTags`          | array   | `[]`                                    | Floating tag levels to create on each release: `"major"`, `"minor"`. For example, `["major"]` creates a `v1` tag that always points to the latest `v1.x.y` release. |
-| `telemetry`             | boolean | `true`                                  | Send anonymous usage telemetry ([details](/docs/legal/telemetry))                                                                                                   |
+| `telemetry`             | boolean | `true`                                  | Send anonymous usage telemetry ([details](/v2/docs/legal/telemetry))                                                                                                |
 
 ### Tag template
 
