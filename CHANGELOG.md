@@ -4,6 +4,17 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.11.0] - 2026-08-29
+
+### Features
+
+- feat(versioning): add calver-short-seq and surface a refused release (#967)
+
+### Bug Fixes
+
+- fix(release): key the commit path dedupe on the normalised path (#969)
+- fix(cleanup): remove the lock and scoped npmrc on panic, which Drop cannot do under abort (#964)
+
 ## [7.10.5] - 2026-08-28
 
 ### Bug Fixes
