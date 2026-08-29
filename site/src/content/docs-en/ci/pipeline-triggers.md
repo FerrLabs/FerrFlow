@@ -254,20 +254,20 @@ jobs:
 
 ## Concurrency safety
 
-Since v5.2, `ferrflow release` acquires `.git/ferrflow.lock` atomically (`O_CREAT|O_EXCL`) at the start of every mutating run. A second concurrent invocation on the same repo fails fast with a clear error rather than racing on git refs — the classic failure mode is a manually-triggered release firing at the same time as a cron-driven `auto-release`, producing half-pushed tag sets, non-fast-forward rejects, or duplicate draft releases.
+Since v5.2, `ferrflow release` acquires `.git/ferrflow.lock` atomically (`O_CREAT|O_EXCL`) at the start of every mutating run. A second concurrent invocation on the same repo fails fast with a clear error rather than racing on git refs: the classic failure mode is a manually-triggered release firing at the same time as a cron-driven `auto-release`, producing half-pushed tag sets, non-fast-forward rejects, or duplicate draft releases.
 
-You don't need to wire anything up — the lock is automatic on every `release` invocation. Read-only commands (`check`, `status`, `version`, `tag`) skip it.
+You don't need to wire anything up. The lock is automatic on every `release` invocation. Read-only commands (`check`, `status`, `version`, `tag`) skip it.
 
 If a previous run crashed without releasing the lock, the next invocation takes it over automatically after 30 minutes (the host + PID stamped inside the lockfile lets FerrFlow detect stale locks). To take it over sooner, delete `.git/ferrflow.lock` manually.
 
-<aside class="ferr-aside ferr-aside--note"><div class="ferr-aside__body"><p>The lock is per-repo, scoped to <code>.git/</code>. It does not protect across separate clones of the same repo — if you run releases concurrently from two different runners against two different checkouts of the same remote, the lock won&#39;t see the other side. Use a single release runner, or serialize at the CI level (<code>concurrency:</code> in GitHub Actions, <code>interruptible: false</code> in GitLab).</p>
+<aside class="ferr-aside ferr-aside--note"><div class="ferr-aside__body"><p>The lock is per-repo, scoped to <code>.git/</code>. It does not protect across separate clones of the same repo: if you run releases concurrently from two different runners against two different checkouts of the same remote, the lock won&#39;t see the other side. Use a single release runner, or serialize at the CI level (<code>concurrency:</code> in GitHub Actions, <code>interruptible: false</code> in GitLab).</p>
 </div></aside>
 
 ## Crash-resume
 
 A release does several side-effecting steps in sequence: write versioned files → commit → tag → push commit → push tags → create GitHub Releases → run `post_publish` hooks. If the process dies between any of those (network blip, runner termination, SIGKILL), the repo is in a half-released state.
 
-Since v5.3, FerrFlow writes a `.git/ferrflow.checkpoint.json` after each phase succeeds. The next `ferrflow release` invocation on the same commit resumes from the recorded phase and skips the work that already happened — useful at CI scale where transient failures are routine. The checkpoint is deleted automatically when a release finishes cleanly.
+Since v5.3, FerrFlow writes a `.git/ferrflow.checkpoint.json` after each phase succeeds. The next `ferrflow release` invocation on the same commit resumes from the recorded phase and skips the work that already happened: useful at CI scale where transient failures are routine. The checkpoint is deleted automatically when a release finishes cleanly.
 
 Two safety rails:
 

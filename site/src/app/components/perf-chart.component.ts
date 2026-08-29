@@ -62,16 +62,16 @@ const STARTUP_FILL = '#e2e8f0';
     </div>
     @if (isSplit()) {
       <p class="perf-chart-note" i18n="@@perf.chart.noteSplit">
-        Median of {{ config().runs }} hyperfine runs · linear scale · cold cache · FerrFlow pinned
-        to <code>--jobs 1</code> · lower is better. The pale segment at the foot of each bar is that
-        tool's startup — process spawn, runtime boot, module loading — measured against a
-        one-package one-commit floor fixture; the coloured segment above it is the work. The total
-        is what you wait for; the split is where it goes.
+        Median of {{ config().runs }} hyperfine runs, linear scale, cold cache, FerrFlow pinned to
+        <code>--jobs 1</code>, lower is better. The pale segment at the foot of each bar is that
+        tool's startup (process spawn, runtime boot, module loading) measured against a one-package
+        one-commit floor fixture; the coloured segment above it is the work. The total is what you
+        wait for; the split is where it goes.
       </p>
     } @else {
       <p class="perf-chart-note" i18n="@@perf.chart.note">
-        Median of {{ config().runs }} hyperfine runs · linear scale · cold cache · FerrFlow pinned
-        to <code>--jobs 1</code> · lower is better
+        Median of {{ config().runs }} hyperfine runs, linear scale, cold cache, FerrFlow pinned to
+        <code>--jobs 1</code>, lower is better
       </p>
     }
   `,
@@ -206,7 +206,7 @@ export class PerfChartComponent {
     // per tool split in two, rather than stacking every tool into one column.
     return cfg.tools.flatMap((tool) => [
       {
-        label: `${tool} · startup`,
+        label: `${tool}, startup`,
         data: cfg.fixtures.map((f) => this.startupOf(f, tool)),
         backgroundColor: STARTUP_FILL,
         stack: tool,

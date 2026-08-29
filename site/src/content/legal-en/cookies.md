@@ -1,5 +1,5 @@
 ---
-title: Cookies — FerrFlow
+title: 'Cookies: FerrFlow'
 description: ferrflow.com sets no cookie of its own. Period.
 lastUpdated: 2026-05-01
 ---
@@ -10,7 +10,7 @@ lastUpdated: 2026-05-01
 </p>
 <p>No analytics cookie. No marketing tracker. No third-party script.</p>
 <p>
-  The CLI itself is offline software — no cookies, no network calls beyond what you explicitly
+  The CLI itself is offline software. No cookies, no network calls beyond what you explicitly
   invoke.
 </p>
 <p>

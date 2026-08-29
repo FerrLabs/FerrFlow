@@ -1,5 +1,5 @@
 ---
-title: Politique de confidentialité — FerrFlow
+title: 'Politique de confidentialité : FerrFlow'
 description: Quelles données personnelles ferrflow.com collecte, pourquoi, combien de temps, et comment exercer vos droits RGPD.
 lastUpdated: 2026-05-06
 ---
@@ -13,7 +13,7 @@ lastUpdated: 2026-05-06
 <h2>Périmètre</h2>
 <p>
   Cette politique couvre uniquement ferrflow.com. Le binaire CLI FerrFlow s'exécute entièrement
-  sur votre machine et ne contacte aucun serveur FerrLabs — pas de télémétrie, pas de reporting
+  sur votre machine et ne contacte aucun serveur FerrLabs : pas de télémétrie, pas de reporting
   d'erreur, pas de stats d'usage. La gestion de compte, de facturation et d'équipe sur
   <code>app.ferrlabs.com</code> est régie par la
   <a href="https://ferrlabs.com/fr/privacy">politique de confidentialité FerrLabs canonique</a>.
@@ -50,7 +50,7 @@ lastUpdated: 2026-05-06
 
 <h2>Sous-traitants</h2>
 <ul>
-  <li><strong>OVH SAS</strong> — hébergement (France).</li>
+  <li><strong>OVH SAS</strong> : hébergement (France).</li>
 </ul>
 
 <h2>Durée de conservation</h2>

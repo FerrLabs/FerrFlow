@@ -3,7 +3,7 @@ title: Vérifier les releases
 description: Chaque release FerrFlow embarque des signatures Sigstore, un SBOM CycloneDX et une attestation de provenance SLSA. Voici comment les vérifier.
 ---
 
-Chaque tarball de release, l'image Docker, l'archive de complétions binaires et le SBOM qui les accompagne sont signés via [Sigstore](https://www.sigstore.dev/) en signature sans clé. Il n'y a aucune clé publique à suivre — l'identité de signature est celle du workload GitHub Actions qui tourne dans `FerrLabs/FerrFlow`, ancrée dans le journal public de transparence [Rekor](https://docs.sigstore.dev/logging/overview/).
+Chaque tarball de release, l'image Docker, l'archive de complétions binaires et le SBOM qui les accompagne sont signés via [Sigstore](https://www.sigstore.dev/) en signature sans clé. Il n'y a aucune clé publique à suivre : l'identité de signature est celle du workload GitHub Actions qui tourne dans `FerrLabs/FerrFlow`, ancrée dans le journal public de transparence [Rekor](https://docs.sigstore.dev/logging/overview/).
 
 Disponible depuis la v5.2.
 
@@ -51,7 +51,7 @@ Une vérification qui passe signifie :
 
 - Les octets du tarball n'ont pas été modifiés depuis que le workflow de release les a signés.
 - L'identité de signature était un workflow exécuté dans `FerrLabs/FerrFlow` déclenché par l'issuer OIDC de GitHub Actions.
-- La signature est inscrite dans le journal public Rekor — cherchez la valeur du `.sig` sur [search.sigstore.dev](https://search.sigstore.dev/).
+- La signature est inscrite dans le journal public Rekor : cherchez la valeur du `.sig` sur [search.sigstore.dev](https://search.sigstore.dev/).
 
 ## Vérifier l'image Docker
 
@@ -73,7 +73,7 @@ cosign verify-blob \
   sbom.cdx.json
 ```
 
-Injectez le SBOM vérifié dans votre scanner — Grype, Trivy, Snyk, JFrog Xray, Anchore, n'importe quoi qui parle CycloneDX.
+Injectez le SBOM vérifié dans votre scanner : Grype, Trivy, Snyk, JFrog Xray, Anchore, n'importe quoi qui parle CycloneDX.
 
 ## Attestation de provenance SLSA
 
@@ -89,7 +89,7 @@ Les tarballs sources de `git archive` (les actifs « Source code (zip) » / « S
 
 ## Pourquoi c'est important
 
-- **Attaques de chaîne d'approvisionnement.** Un attaquant qui compromet un CDN, un miroir ou pousse un package typosquat ne peut pas forger la signature — l'identité de signature est ancrée au flow OIDC de GitHub Actions.
+- **Attaques de chaîne d'approvisionnement.** Un attaquant qui compromet un CDN, un miroir ou pousse un package typosquat ne peut pas forger la signature : l'identité de signature est ancrée au flow OIDC de GitHub Actions.
 - **Conformité.** Les clients SOC 2 / ISO 27001 peuvent attester que le binaire qu'ils ont récupéré est celui que leur auditeur a approuvé.
 - **Aucune gestion de clé.** Personne chez FerrLabs n'a de clé privée de signature à perdre ou faire tourner. Le workflow prouve son identité au moment de la signature.
 

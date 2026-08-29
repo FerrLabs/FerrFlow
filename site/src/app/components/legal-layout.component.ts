@@ -17,7 +17,8 @@ import { SiteShellComponent } from '@ferrlabs/ui-ng';
       <div class="legal-main">
         @if (draft()) {
           <div class="legal-draft">
-            <strong>{{ draftLabel }}</strong> — {{ draftNotice() }}
+            <strong>{{ draftLabel }}</strong
+            >: {{ draftNotice() }}
           </div>
         }
         <header class="legal-header">

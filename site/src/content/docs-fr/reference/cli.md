@@ -17,7 +17,7 @@ ferrflow release [OPTIONS]
 | `--force-version <VERSION>` | Forcer une version spécifique, sans analyser les commits. Format : `VERSION` (repo simple) ou `NAME@VERSION` (monorepo)                                                                     |
 | `--channel <NAME>`          | Canal de pré-release à utiliser (ex. `beta`, `rc`, `dev`)                                                                                                                                   |
 | `--draft`                   | Créer les releases en brouillon (GitHub uniquement). Un `ferrflow release` ultérieur sans `--draft` détecte et publie automatiquement les brouillons existants                              |
-| `--force-unlock`            | Forcer la levée d'un verrou `.git/ferrflow.lock` existant. À n'utiliser que si aucun autre `ferrflow release` n'est en cours — par exemple après un crash ayant laissé le fichier de verrou |
+| `--force-unlock`            | Forcer la levée d'un verrou `.git/ferrflow.lock` existant. À n'utiliser que si aucun autre `ferrflow release` n'est en cours : par exemple après un crash ayant laissé le fichier de verrou |
 
 **Ce que ça fait :**
 
@@ -49,7 +49,7 @@ ferrflow check [OPTIONS]
 
 ## `ferrflow publish`
 
-Exécuter les [publishers](/fr/docs/configuration/config-file/#publishers) configurés pour la version actuellement publiée de chaque package — sans bumper, committer ni tagger. `ferrflow release` exécute déjà vos publishers à la fin d'une release ; `ferrflow publish` sert lorsque vous préférez les exécuter dans un **job CI séparé** disposant de la toolchain de build et de l'authentification registre dont les publishers ont besoin (docker buildx, helm, un `dist/` compilé, …) — ce que votre job de release n'a pas forcément.
+Exécuter les [publishers](/fr/docs/configuration/config-file/#publishers) configurés pour la version actuellement publiée de chaque package, sans bumper, committer ni tagger. `ferrflow release` exécute déjà vos publishers à la fin d'une release ; `ferrflow publish` sert lorsque vous préférez les exécuter dans un **job CI séparé** disposant de la toolchain de build et de l'authentification registre dont les publishers ont besoin (docker buildx, helm, un `dist/` compilé, …), ce que votre job de release n'a pas forcément.
 
 ```bash
 ferrflow publish [PACKAGES...]
@@ -62,9 +62,9 @@ ferrflow publish [PACKAGES...]
 
 Il lit la version actuelle de chaque package depuis ses `versionedFiles` (ou le dernier tag correspondant pour les packages tag-only), donc à exécuter **après** que `ferrflow release` a coupé la version. Les publishers sont idempotents : tout ce qui est déjà sur le registre est ignoré, donc une ré-exécution est sûre. Utilisez l'option globale `--dry-run` pour prévisualiser sans publier.
 
-**Résolution du scope.** Sans argument, si le run a été déclenché par un tag de package (ex. `api@v2.2.1`), seul ce package est publié — un seul workflow déclenché par tag publie ainsi chaque package sur son propre tag, sans câblage par package. Sans tag correspondant (par exemple la ref de branche du job de release), tous les packages sont publiés, comme avant. Passez des noms de packages pour cibler un sous-ensemble, ou `--all` pour forcer tous les packages même sous un tag.
+**Résolution du scope.** Sans argument, si le run a été déclenché par un tag de package (ex. `api@v2.2.1`), seul ce package est publié. Un seul workflow déclenché par tag publie ainsi chaque package sur son propre tag, sans câblage par package. Sans tag correspondant (par exemple la ref de branche du job de release), tous les packages sont publiés, comme avant. Passez des noms de packages pour cibler un sous-ensemble, ou `--all` pour forcer tous les packages même sous un tag.
 
-L'Action GitHub l'expose via `mode: publish` — elle installe le binaire et exécute `ferrflow publish` pour vous, en se scopant automatiquement au tag déclencheur (ou passez l'input `package` pour forcer). Un job déclenché par le tag n'a plus qu'à mettre en place la toolchain dont ses publishers ont besoin :
+L'Action GitHub l'expose via `mode: publish`. Elle installe le binaire et exécute `ferrflow publish` pour vous, en se scopant automatiquement au tag déclencheur (ou passez l'input `package` pour forcer). Un job déclenché par le tag n'a plus qu'à mettre en place la toolchain dont ses publishers ont besoin :
 
 ```yaml title=".github/workflows/publish.yml"
 on:
@@ -144,14 +144,14 @@ Mapping des plugins semantic-release :
 | semantic-release                      | FerrFlow                                                                                                                                                  |
 | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `tagFormat: "v${version}"`            | `tagTemplate: "v{{version}}"`                                                                                                                             |
-| `branches`                            | `branches` — `main`/`master` deviennent la ligne stable, une branche `prerelease: true` (ou nommée) devient un canal                                      |
+| `branches`                            | `branches` : `main`/`master` deviennent la ligne stable, une branche `prerelease: true` (ou nommée) devient un canal                                      |
 | `@semantic-release/changelog`         | le chemin `changelog` du package                                                                                                                          |
 | `@semantic-release/exec`              | `hooks` (`prepareCmd` → `preBump`, `publishCmd` → `postPublish`, `successCmd` → `onSuccess`, `failCmd` → `onError`, `verifyConditionsCmd` → `preRelease`) |
 | `@semantic-release/github` / `gitlab` | `forge`                                                                                                                                                   |
 
-Tout ce qui n'a pas d'équivalent FerrFlow est **signalé, jamais deviné**. Chaque exécution affiche ce qui a été converti, ignoré, et ce qui demande une revue manuelle — par exemple `@semantic-release/npm` (configurez `publishers` à la main), des règles `commit-analyzer` personnalisées (les règles de bump de FerrFlow sont fixes), et `repositoryUrl` (FerrFlow déduit le remote depuis git). Elle n'écrase pas une configuration FerrFlow existante.
+Tout ce qui n'a pas d'équivalent FerrFlow est **signalé, jamais deviné**. Chaque exécution affiche ce qui a été converti, ignoré, et ce qui demande une revue manuelle : par exemple `@semantic-release/npm` (configurez `publishers` à la main), des règles `commit-analyzer` personnalisées (les règles de bump de FerrFlow sont fixes), et `repositoryUrl` (FerrFlow déduit le remote depuis git). Elle n'écrase pas une configuration FerrFlow existante.
 
-<aside class="ferr-aside ferr-aside--note"><div class="ferr-aside__body"><p><strong>changesets.</strong> changesets versionne à partir de fichiers <code>.changeset/*.md</code> écrits à la main, alors que FerrFlow versionne depuis les commits conventionnels — après migration, adoptez les Conventional Commits, vos fichiers changeset existants ne sont pas lus. FerrFlow lit votre déclaration de workspace (<code>workspaces</code> dans <code>package.json</code>, ou <code>pnpm-workspace.yaml</code>) et génère une entrée <code>package</code> par package découvert : vos groupes <code>linked</code>/<code>fixed</code> référencent donc déjà de vrais packages et la config migrée valide telle quelle. Un dépôt sans déclaration de workspace obtient un seul package racine.</p>
+<aside class="ferr-aside ferr-aside--note"><div class="ferr-aside__body"><p><strong>changesets.</strong> changesets versionne à partir de fichiers <code>.changeset/*.md</code> écrits à la main, alors que FerrFlow versionne depuis les commits conventionnels : après migration, adoptez les Conventional Commits, vos fichiers changeset existants ne sont pas lus. FerrFlow lit votre déclaration de workspace (<code>workspaces</code> dans <code>package.json</code>, ou <code>pnpm-workspace.yaml</code>) et génère une entrée <code>package</code> par package découvert : vos groupes <code>linked</code>/<code>fixed</code> référencent donc déjà de vrais packages et la config migrée valide telle quelle. Un dépôt sans déclaration de workspace obtient un seul package racine.</p>
 </div></aside>
 
 ```bash
@@ -159,7 +159,7 @@ ferrflow migrate                        # auto-détection
 ferrflow migrate --from release-please
 ```
 
-Les configurations source JSON, YAML et JavaScript fonctionnent toutes — une configuration JavaScript (`.releaserc.js`, `release.config.js`, `.versionrc.js`) est évaluée avec `node` (Node.js doit donc être dans le PATH), et une configuration YAML (`.releaserc.yaml`, `.versionrc.yaml`) est parsée directement. Après migration, relisez la configuration générée, puis lancez `ferrflow validate` et `ferrflow check`.
+Les configurations source JSON, YAML et JavaScript fonctionnent toutes. Une configuration JavaScript (`.releaserc.js`, `release.config.js`, `.versionrc.js`) est évaluée avec `node` (Node.js doit donc être dans le PATH), et une configuration YAML (`.releaserc.yaml`, `.versionrc.yaml`) est parsée directement. Après migration, relisez la configuration générée, puis lancez `ferrflow validate` et `ferrflow check`.
 
 ---
 
@@ -194,15 +194,15 @@ ferrflow diff [PACKAGE] <FROM>..<TO> [--json]
 
 | Argument / option | Description                                                                                                  |
 | ----------------- | ------------------------------------------------------------------------------------------------------------ |
-| `<FROM>..<TO>`    | L'intervalle de versions. Chaque borne est un tag ou une version — `v1.4.0`, ou un tag complet `api@v1.6.0`. |
-| `[PACKAGE]`       | Nom du package — requis en monorepo, optionnel (et déduit) dans un repo mono-package.                        |
+| `<FROM>..<TO>`    | L'intervalle de versions. Chaque borne est un tag ou une version : `v1.4.0`, ou un tag complet `api@v1.6.0`. |
+| `[PACKAGE]`       | Nom du package : requis en monorepo, optionnel (et déduit) dans un repo mono-package.                        |
 | `--json`          | Émettre la comparaison en objet JSON structuré au lieu de la vue humaine.                                    |
 
 Chaque borne est résolue en essayant d'abord la chaîne comme tag (un vrai tag, ou `v1.4.0` en mono-package), puis comme le tag du package pour cette version (`api@v1.4.0`).
 
 ```bash
 ferrflow diff v1.4.0..v1.6.0            # repo mono-package
-ferrflow diff api v1.4.0..v1.6.0        # monorepo — nommez le package
+ferrflow diff api v1.4.0..v1.6.0        # monorepo : nommez le package
 ```
 
 La sortie liste chaque commit de l'intervalle avec son incrément (`major` / `minor` / `patch` / `none`), met en évidence les breaking changes, résume les fichiers modifiés, et rend la section de changelog pour l'intervalle. En monorepo, l'intervalle couvre pour l'instant tous les commits entre les deux tags (pas encore restreint aux chemins du package nommé).
@@ -257,7 +257,7 @@ ferrflow validate [OPTIONS]
 
 ## `ferrflow doctor`
 
-Lancer un diagnostic en lecture seule sur le dépôt, la configuration et la forge, puis afficher un rapport par catégories — la commande « est-ce que ma config est saine ? ». Utilisez-la sur un checkout tout neuf pour voir ce qui manque avant la première release, ou quand une exécution se comporte mal et que vous devriez sinon scruter les logs `--verbose`.
+Lancer un diagnostic en lecture seule sur le dépôt, la configuration et la forge, puis afficher un rapport par catégories. La commande « est-ce que ma config est saine ? ». Utilisez-la sur un checkout tout neuf pour voir ce qui manque avant la première release, ou quand une exécution se comporte mal et que vous devriez sinon scruter les logs `--verbose`.
 
 ```bash
 ferrflow doctor [OPTIONS]
@@ -268,9 +268,9 @@ ferrflow doctor [OPTIONS]
 | `--format <FMT>` | `human` (défaut) ou `json`                                                     |
 | `--online`       | Sonder aussi l'API de la forge (rate limit / auth GitHub) ; nécessite un token |
 
-Le rapport groupe les vérifications en cinq sections — **Repo** (dépôt git, historique de commits, arbre de travail propre, remote, tags), **Config** (quel fichier de config l'emporte, s'il parse, plus toute la suite de vérifications de `ferrflow validate`), **Versioning** (stratégie et version sur disque de chaque package), **Forge** (forge détectée et présence d'un token d'auth dans l'environnement) et **CI** (fichiers de workflow, et si un workflow épingle l'action `FerrLabs/FerrFlow`). Chaque vérification est verte, un avertissement, ou une erreur.
+Le rapport groupe les vérifications en cinq sections : **Repo** (dépôt git, historique de commits, arbre de travail propre, remote, tags), **Config** (quel fichier de config l'emporte, s'il parse, plus toute la suite de vérifications de `ferrflow validate`), **Versioning** (stratégie et version sur disque de chaque package), **Forge** (forge détectée et présence d'un token d'auth dans l'environnement) et **CI** (fichiers de workflow, et si un workflow épingle l'action `FerrLabs/FerrFlow`). Chaque vérification est verte, un avertissement, ou une erreur.
 
-Le code de sortie est scriptable : `0` quand tout est vert, `1` s'il n'y a que des avertissements, `2` si une vérification est en erreur. La sortie `--format json` a une forme stable — `{ status, exit_code, sections: [{ title, checks: [{ name, status, detail }] }] }` — pour que la CI puisse s'appuyer dessus.
+Le code de sortie est scriptable : `0` quand tout est vert, `1` s'il n'y a que des avertissements, `2` si une vérification est en erreur. La sortie `--format json` a une forme stable (`{ status, exit_code, sections: [{ title, checks: [{ name, status, detail }] }] }`) pour que la CI puisse s'appuyer dessus.
 
 ```bash
 ferrflow doctor                 # rapport lisible
@@ -333,7 +333,7 @@ Ces options fonctionnent avec toutes les commandes :
 
 FerrFlow sépare les **données** des **logs** sur les deux flux de sortie :
 
-- **stdout** porte les données — la sortie `--json` de `check` / `release` / `status` / `validate`, et la valeur affichée par `version` et `tag`. Capturez-la dans vos scripts : `V=$(ferrflow version)`.
+- **stdout** porte les données. La sortie `--json` de `check` / `release` / `status` / `validate`, et la valeur affichée par `version` et `tag`. Capturez-la dans vos scripts : `V=$(ferrflow version)`.
 - **stderr** porte le rapport humain et chaque événement de diagnostic.
 
 Vous pouvez ainsi capturer le résultat machine et le journal d'exécution indépendamment :

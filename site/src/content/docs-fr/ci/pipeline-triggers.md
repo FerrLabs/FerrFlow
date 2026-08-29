@@ -205,20 +205,20 @@ jobs:
 
 ## Securite de concurrence
 
-Depuis la v5.2, `ferrflow release` acquiert `.git/ferrflow.lock` de maniere atomique (`O_CREAT|O_EXCL`) au debut de chaque execution mutante. Une seconde invocation concurrente sur le meme depot echoue immediatement avec une erreur claire au lieu de courir contre les refs git — le scenario classique est une release declenchee manuellement qui demarre en meme temps qu'un `auto-release` planifie en cron, ce qui produit des jeux de tags poussés à moitié, des refus non fast-forward ou des draft releases dupliquees.
+Depuis la v5.2, `ferrflow release` acquiert `.git/ferrflow.lock` de maniere atomique (`O_CREAT|O_EXCL`) au debut de chaque execution mutante. Une seconde invocation concurrente sur le meme depot echoue immediatement avec une erreur claire au lieu de courir contre les refs git. Le scenario classique est une release declenchee manuellement qui demarre en meme temps qu'un `auto-release` planifie en cron, ce qui produit des jeux de tags poussés à moitié, des refus non fast-forward ou des draft releases dupliquees.
 
-Rien à brancher — le verrou est automatique sur chaque invocation `release`. Les commandes en lecture seule (`check`, `status`, `version`, `tag`) ne le prennent pas.
+Rien à brancher. Le verrou est automatique sur chaque invocation `release`. Les commandes en lecture seule (`check`, `status`, `version`, `tag`) ne le prennent pas.
 
 Si une execution précédente a planté sans relacher le verrou, l'invocation suivante le reprend automatiquement apres 30 minutes (l'hote + le PID inscrits dans le lockfile permettent à FerrFlow de detecter les verrous orphelins). Pour le reprendre plus tot, supprimez `.git/ferrflow.lock` à la main.
 
-<aside class="ferr-aside ferr-aside--note"><div class="ferr-aside__body"><p>Le verrou est par-depot, scope a <code>.git/</code>. Il ne protege pas entre des clones separes du meme depot — si vous lancez des releases simultanees depuis deux runners differents contre deux checkouts du meme remote, le verrou ne voit pas l&#39;autre cote. Utilisez un seul runner de release, ou serialisez au niveau CI (<code>concurrency:</code> dans GitHub Actions, <code>interruptible: false</code> dans GitLab).</p>
+<aside class="ferr-aside ferr-aside--note"><div class="ferr-aside__body"><p>Le verrou est par-depot, scope a <code>.git/</code>. Il ne protege pas entre des clones separes du meme depot : si vous lancez des releases simultanees depuis deux runners differents contre deux checkouts du meme remote, le verrou ne voit pas l&#39;autre cote. Utilisez un seul runner de release, ou serialisez au niveau CI (<code>concurrency:</code> dans GitHub Actions, <code>interruptible: false</code> dans GitLab).</p>
 </div></aside>
 
 ## Reprise apres crash
 
 Une release enchaine plusieurs etapes a effet de bord : ecriture des fichiers de version → commit → tag → push du commit → push des tags → creation des GitHub Releases → execution des hooks `post_publish`. Si le process meurt entre l'une d'elles (coupure reseau, arret du runner, SIGKILL), le depot reste dans un etat de release partiel.
 
-Depuis la v5.3, FerrFlow ecrit `.git/ferrflow.checkpoint.json` apres chaque phase reussie. La prochaine invocation `ferrflow release` sur le meme commit reprend a la phase enregistree et saute le travail deja fait — utile a l'echelle CI ou les pannes transitoires sont la norme. Le checkpoint est efface automatiquement quand la release se termine sans erreur.
+Depuis la v5.3, FerrFlow ecrit `.git/ferrflow.checkpoint.json` apres chaque phase reussie. La prochaine invocation `ferrflow release` sur le meme commit reprend a la phase enregistree et saute le travail deja fait : utile a l'echelle CI ou les pannes transitoires sont la norme. Le checkpoint est efface automatiquement quand la release se termine sans erreur.
 
 Deux garde-fous :
 

@@ -69,6 +69,6 @@ import { SiteShellComponent } from '@ferrlabs/ui-ng';
   `,
 })
 export default class NotFoundPage {
-  protected readonly title = $localize`:@@notfound.metaTitle:404 — FerrFlow`;
+  protected readonly title = $localize`:@@notfound.metaTitle:404: FerrFlow`;
   protected readonly description = $localize`:@@notfound.metaDescription:This page doesn't exist.`;
 }

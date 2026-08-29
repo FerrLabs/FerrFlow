@@ -1,5 +1,5 @@
 ---
-title: Conditions générales d'utilisation — FerrFlow
+title: "Conditions générales d'utilisation : FerrFlow"
 description: CGU du site ferrflow.com et du CLI FerrFlow open source.
 lastUpdated: 2026-05-06
 ---
@@ -7,7 +7,7 @@ lastUpdated: 2026-05-06
 <h2>1. Objet</h2>
 <p>
   Les présentes CGU régissent l'utilisation du site ferrflow.com (le « Site ») et de l'outil en
-  ligne de commande FerrFlow distribué gratuitement par Bryan Ferrando — Entrepreneur
+  ligne de commande FerrFlow distribué gratuitement par Bryan Ferrando : Entrepreneur
   individuel (FerrLabs), SIREN 104 243 951.
 </p>
 
@@ -22,14 +22,14 @@ lastUpdated: 2026-05-06
 
 <h2>3. Absence de garantie</h2>
 <p>
-  Le logiciel FerrFlow est fourni « tel quel » (AS-IS). Bryan Ferrando — FerrLabs ne garantit
+  Le logiciel FerrFlow est fourni « tel quel » (AS-IS). Bryan Ferrando : FerrLabs ne garantit
   ni l'absence de défauts, ni l'adéquation à un usage particulier, ni la continuité de service
   du Site.
 </p>
 
 <h2>4. Limitation de responsabilité</h2>
 <p>
-  Dans la limite autorisée par le droit français, Bryan Ferrando — FerrLabs n'est en aucun cas
+  Dans la limite autorisée par le droit français, Bryan Ferrando : FerrLabs n'est en aucun cas
   responsable des dommages directs ou indirects résultant de l'utilisation, de l'impossibilité
   d'utiliser, ou des bugs de FerrFlow ou du Site, y compris les pertes de données ou de chiffre
   d'affaires.
@@ -39,7 +39,7 @@ lastUpdated: 2026-05-06
 <p>
   Le code source de FerrFlow est distribué selon les termes de la licence MIT. Les marques
   « FerrLabs » et « FerrFlow », ainsi que le contenu éditorial du Site (textes, graphismes,
-  logos), restent la propriété exclusive de Bryan Ferrando — FerrLabs.
+  logos), restent la propriété exclusive de Bryan Ferrando : FerrLabs.
 </p>
 
 <h2>6. Données personnelles</h2>

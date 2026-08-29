@@ -67,15 +67,15 @@ FerrFlow reconnaît les orthographes courantes du footer, pas seulement la forme
 | `breaking-change: …` / `breaking change: …` | oui (insensible à la casse) |
 | `Breaking Change: …`                        | oui (insensible à la casse) |
 
-Il traite aussi un `!` placé **à l'intérieur** du scope — `feat(api!):`, une faute de frappe courante pour `feat(api)!:` — comme un marqueur breaking. Le footer peut se trouver après n'importe quel nombre de paragraphes de corps.
+Il traite aussi un `!` placé **à l'intérieur** du scope (`feat(api!):`, une faute de frappe courante pour `feat(api)!:`) comme un marqueur breaking. Le footer peut se trouver après n'importe quel nombre de paragraphes de corps.
 
 ### Ce qui n'est _pas_ un breaking change
 
 La détection reste stricte, pour qu'une mention de passage ne déclenche jamais un incrément major accidentel :
 
 - Le footer doit débuter une ligne, utiliser une seule espace ou un tiret (`BREAKING CHANGE` / `BREAKING-CHANGE`), et être suivi d'un deux-points **et d'une espace**. `BREAKING CHANGE:sans-espace` et le pluriel `BREAKING CHANGES:` sont ignorés.
-- Une mention en prose au milieu d'une ligne — « ceci corrige un breaking change dans le parseur » — n'est pas un footer.
-- Un `!` qui n'est pas immédiatement avant la parenthèse fermante — `feat(a!b):` — n'est pas un marqueur.
+- Une mention en prose au milieu d'une ligne (« ceci corrige un breaking change dans le parseur ») n'est pas un footer.
+- Un `!` qui n'est pas immédiatement avant la parenthèse fermante (`feat(a!b):`) n'est pas un marqueur.
 
 ## Scope
 

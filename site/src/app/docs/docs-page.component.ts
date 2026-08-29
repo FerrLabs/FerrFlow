@@ -43,6 +43,6 @@ export class DocsPageComponent {
 
   protected readonly metaTitle = computed(() => {
     const title = this.title();
-    return title ? `${title} — FerrFlow Docs` : 'FerrFlow Docs';
+    return title ? `${title}: FerrFlow Docs` : 'FerrFlow Docs';
   });
 }

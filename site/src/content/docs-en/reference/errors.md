@@ -408,11 +408,11 @@ Could not merge the release MR via the GitLab API.
 
 ### Go mod (E4601 to E4603)
 
-| Code      | Error                                              |
-| --------- | -------------------------------------------------- |
-| **E4601** | Failed to run `git describe`                       |
-| **E4602** | No version tag found — handled internally since v3 |
-| **E4603** | Go modules do not support write                    |
+| Code      | Error                                             |
+| --------- | ------------------------------------------------- |
+| **E4601** | Failed to run `git describe`                      |
+| **E4602** | No version tag found: handled internally since v3 |
+| **E4603** | Go modules do not support write                   |
 
 **On `E4602`**: starting with FerrFlow v3 the release flow catches this case and falls back to the strategy's bootstrap baseline (`0.0.0` / `0` / …), so the first release on a brand-new repo succeeds without a pre-seeded tag. The error code still exists for programs that import `GoModVersionFile` directly, but end users running `ferrflow release` should not see it anymore.
 

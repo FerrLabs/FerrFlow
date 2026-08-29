@@ -1,12 +1,12 @@
 ---
-title: Legal notice — FerrFlow
+title: 'Legal notice: FerrFlow'
 description: Publisher identity, hosting and director of publication for ferrflow.com.
 lastUpdated: 2026-05-06
 ---
 
 <h2>Publisher</h2>
 <p>
-  Bryan Ferrando — Sole proprietor (<em>Entrepreneur individuel</em>)<br />
+  Bryan Ferrando: Sole proprietor (<em>Entrepreneur individuel</em>)<br />
   Trading as <strong>FerrLabs</strong>.
 </p>
 <p>

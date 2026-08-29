@@ -13,7 +13,7 @@ const SLUGS_BY_DIR: Readonly<Record<string, readonly string[]>> =
 /**
  * Mirrors what the page components pass to `injectContent`: a locale-specific
  * directory when one exists, otherwise the English one for that version. That
- * fallback is why `fr` + `v3` resolves to `docs-v3` — only `docs-fr-v4` was
+ * fallback is why `fr` + `v3` resolves to `docs-v3`: only `docs-fr-v4` was
  * ever translated.
  */
 function contentDirs(version: string, lang: string): readonly string[] {
@@ -35,7 +35,7 @@ export function availableSlugs(version: string, lang: string): ReadonlySet<strin
 /**
  * Drops nav entries with no page in this version, and sections left empty by
  * that. Archived versions are frozen snapshots, so they legitimately lack
- * pages documented later — advertising those links produced 404s (three dead
+ * pages documented later: advertising those links produced 404s (three dead
  * links on v2–v4, five on v0–v1).
  *
  * An empty availability set means the constant was not injected, so the nav is

@@ -59,5 +59,5 @@ Tag v0.2.0
 - Configurez [GitHub Actions](/fr/docs/ci/github-actions) pour lancer les releases automatiquement sur push vers `main`
 - Configurez un [monorepo](/fr/docs/configuration/monorepo) si vous avez plusieurs packages
 - Ajoutez des [hooks pre/post-release](/fr/docs/configuration/config-file#hooks) pour des scripts personnalisés pendant le cycle de release
-- Utilisez `ferrflow version` et `ferrflow tag` dans vos scripts CI — voir la [référence CLI](/fr/docs/reference/cli)
+- Utilisez `ferrflow version` et `ferrflow tag` dans vos scripts CI : voir la [référence CLI](/fr/docs/reference/cli)
 - Consultez la [référence de configuration](/fr/docs/configuration/config-file) complète

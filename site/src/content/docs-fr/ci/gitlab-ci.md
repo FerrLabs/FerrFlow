@@ -29,7 +29,7 @@ release:
 release:
   image: ghcr.io/ferrlabs/ferrflow:latest
   variables:
-    GIT_DEPTH: 0 # historique complet — requis pour le scan des tags
+    GIT_DEPTH: 0 # historique complet : requis pour le scan des tags
     GITLAB_TOKEN: $CI_JOB_TOKEN
   script:
     - ferrflow release

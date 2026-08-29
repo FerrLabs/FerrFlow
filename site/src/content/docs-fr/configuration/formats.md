@@ -66,7 +66,7 @@ FerrFlow remplace l'intégralité du contenu du fichier par le numéro de versio
 
 Utilisé par les projets Go (`go.mod`).
 
-Les modules Go utilisent directement les tags git — FerrFlow ne modifie **pas** `go.mod`. La version est dérivée entièrement du tag git (`v1.2.3` ou `{name}@v1.2.3`).
+Les modules Go utilisent directement les tags git : FerrFlow ne modifie **pas** `go.mod`. La version est dérivée entièrement du tag git (`v1.2.3` ou `{name}@v1.2.3`).
 
 ## Helm
 
@@ -85,7 +85,7 @@ appVersion: '1.2.3' # ← mis à jour si présent
 
 Utilisé par les packages Haskell (`*.cabal`).
 
-FerrFlow met à jour le champ `version` de premier niveau. Le champ `cabal-version`, qui déclare le format du fichier et non la version du package, n'est jamais modifié — pas plus qu'un `version:` indenté à l'intérieur d'une stanza.
+FerrFlow met à jour le champ `version` de premier niveau. Le champ `cabal-version`, qui déclare le format du fichier et non la version du package, n'est jamais modifié : pas plus qu'un `version:` indenté à l'intérieur d'une stanza.
 
 ```
 cabal-version:      2.4   # ← laissé tel quel
@@ -97,7 +97,7 @@ version:            1.2.3 # ← mis à jour
 
 Utilisé par les projets C / C++ (`CMakeLists.txt`).
 
-FerrFlow met à jour l'argument `VERSION` de l'appel `project()`, y compris lorsqu'il est réparti sur plusieurs lignes. `cmake_minimum_required(VERSION …)` — la version minimale de l'outil CMake — n'est pas touché.
+FerrFlow met à jour l'argument `VERSION` de l'appel `project()`, y compris lorsqu'il est réparti sur plusieurs lignes. `cmake_minimum_required(VERSION …)` (la version minimale de l'outil CMake) n'est pas touché.
 
 ```cmake
 cmake_minimum_required(VERSION 3.20)   # ← laissé tel quel

@@ -1,5 +1,5 @@
 ---
-title: Privacy policy — FerrFlow
+title: 'Privacy policy: FerrFlow'
 description: What personal data ferrflow.com collects, why, how long we keep it, and how to exercise your GDPR rights.
 lastUpdated: 2026-05-06
 ---
@@ -13,7 +13,7 @@ lastUpdated: 2026-05-06
 <h2>Scope</h2>
 <p>
   This policy covers ferrflow.com only. The FerrFlow CLI binary runs entirely on your machine
-  and does not contact FerrLabs servers — no telemetry, no error reporting, no usage stats.
+  and does not contact FerrLabs servers. No telemetry, no error reporting, no usage stats.
   Account, billing and team management on <code>app.ferrlabs.com</code> are governed by the
   <a href="https://ferrlabs.com/privacy">canonical FerrLabs privacy policy</a>.
 </p>
@@ -48,7 +48,7 @@ lastUpdated: 2026-05-06
 
 <h2>Subprocessors</h2>
 <ul>
-  <li><strong>OVH SAS</strong> — hosting (France).</li>
+  <li><strong>OVH SAS</strong>: hosting (France).</li>
 </ul>
 
 <h2>Retention period</h2>

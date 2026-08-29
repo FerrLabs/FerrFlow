@@ -1,13 +1,13 @@
 ---
 title: FerrFlow API
-description: Hosted HTTP endpoints for FerrFlow — validate configs, preview version bumps, resolve the latest release, and fetch the config schema.
+description: 'Hosted HTTP endpoints for FerrFlow: validate configs, preview version bumps, resolve the latest release, and fetch the config schema.'
 ---
 
-The FerrFlow API exposes a small set of hosted HTTP endpoints under `https://api.ferrflow.com/v1/ferrflow/*`. They are backed by the same FerrFlow core the CLI runs, so `validate` and `preview` return results identical to `ferrflow validate` and `ferrflow check` — no second implementation to drift.
+The FerrFlow API exposes a small set of hosted HTTP endpoints under `https://api.ferrflow.com/v1/ferrflow/*`. They are backed by the same FerrFlow core the CLI runs, so `validate` and `preview` return results identical to `ferrflow validate` and `ferrflow check`. No second implementation to drift.
 
 Every endpoint is public (no authentication) and safe to call from CI, editors, or a browser. The machine-readable contract is served at [`/v1/ferrflow/openapi.json`](https://api.ferrflow.com/v1/ferrflow/openapi.json) (OpenAPI 3.1).
 
-`https://api.ferrlabs.com/v1/ferrflow/*` reaches the same endpoints and keeps working indefinitely — it is where the API was first published, and released CLI versions still call it. Prefer `api.ferrflow.com` in anything new.
+`https://api.ferrlabs.com/v1/ferrflow/*` reaches the same endpoints and keeps working indefinitely. It is where the API was first published, and released CLI versions still call it. Prefer `api.ferrflow.com` in anything new.
 
 ## `GET /v1/ferrflow/health`
 
@@ -19,7 +19,7 @@ Liveness and version probe. Powers status dashboards.
 
 ## `GET /v1/ferrflow/schema`
 
-Returns the config JSON Schema (`Content-Type: application/schema+json`), served from the schema bundled in the FerrFlow release — the same bytes the CLI validates against. Sends a strong `ETag` and `Cache-Control`, so point your editor's `$schema` here:
+Returns the config JSON Schema (`Content-Type: application/schema+json`), served from the schema bundled in the FerrFlow release: the same bytes the CLI validates against. Sends a strong `ETag` and `Cache-Control`, so point your editor's `$schema` here:
 
 ```json
 { "$schema": "https://api.ferrflow.com/v1/ferrflow/schema" }
@@ -46,11 +46,11 @@ curl "https://api.ferrflow.com/v1/ferrflow/latest?platform=linux-x64"
 }
 ```
 
-Releases are signed with [Sigstore](/verifying-releases/) — verify the `.bundle` rather than a checksum (releases up to v5.47.4 carry a `.sig` + `.crt` pair instead). Without `platform`, the response lists `assets` for every platform. Valid platforms: `linux-x64`, `linux-arm64`, `linux-arm`, `darwin-x64`, `darwin-arm64`, `win32-x64`, `win32-arm64`.
+Releases are signed with [Sigstore](/verifying-releases/): verify the `.bundle` rather than a checksum (releases up to v5.47.4 carry a `.sig` + `.crt` pair instead). Without `platform`, the response lists `assets` for every platform. Valid platforms: `linux-x64`, `linux-arm64`, `linux-arm`, `darwin-x64`, `darwin-arm64`, `win32-x64`, `win32-arm64`.
 
 ## `POST /v1/ferrflow/validate`
 
-Validates a config without a repo — you send the config text and, optionally, the contents of the versioned files it references so the file-existence and version-consistency checks run. The result is identical to `ferrflow validate --json`.
+Validates a config without a repo. You send the config text and, optionally, the contents of the versioned files it references so the file-existence and version-consistency checks run. The result is identical to `ferrflow validate --json`.
 
 ```bash
 curl -X POST https://api.ferrflow.com/v1/ferrflow/validate \
@@ -76,7 +76,7 @@ An invalid config is still a successful validation: the response is `200` with `
 
 ## `POST /v1/ferrflow/preview`
 
-Computes the version bumps and changelog for an explicit list of commits — the same logic as `ferrflow check`, as a service. No repo access; you pass the commits.
+Computes the version bumps and changelog for an explicit list of commits: the same logic as `ferrflow check`, as a service. No repo access; you pass the commits.
 
 ```bash
 curl -X POST https://api.ferrflow.com/v1/ferrflow/preview \

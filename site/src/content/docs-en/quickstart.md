@@ -54,7 +54,7 @@ Tag v0.2.0
 </li>
 </ol>
 
-<aside class="ferr-aside ferr-aside--tip"><p class="ferr-aside__title">Starting from scratch</p><div class="ferr-aside__body"><p>No prior tag? FerrFlow v3 bootstraps from the strategy&#39;s zero value automatically — the first <code>feat:</code> lands at <code>0.1.0</code>, the first <code>fix:</code> at <code>0.0.1</code>. You don&#39;t need to create a <code>v0.0.0</code> tag by hand. See <a href="/docs/reference/cli#which-version-is-bumped-from">how the baseline is chosen</a>.</p>
+<aside class="ferr-aside ferr-aside--tip"><p class="ferr-aside__title">Starting from scratch</p><div class="ferr-aside__body"><p>No prior tag? FerrFlow v3 bootstraps from the strategy&#39;s zero value automatically: the first <code>feat:</code> lands at <code>0.1.0</code>, the first <code>fix:</code> at <code>0.0.1</code>. You don&#39;t need to create a <code>v0.0.0</code> tag by hand. See <a href="/docs/reference/cli#which-version-is-bumped-from">how the baseline is chosen</a>.</p>
 </div></aside>
 
 ## Next steps
@@ -62,5 +62,5 @@ Tag v0.2.0
 - Set up [GitHub Actions](/docs/ci/github-actions) to run releases automatically on push to `main`
 - Configure a [monorepo](/docs/configuration/monorepo) if you have multiple packages
 - Add [pre/post-release hooks](/docs/configuration/config-file#hooks) for custom scripts during the release lifecycle
-- Use `ferrflow version` and `ferrflow tag` in CI scripts — see the [CLI reference](/docs/reference/cli)
+- Use `ferrflow version` and `ferrflow tag` in CI scripts: see the [CLI reference](/docs/reference/cli)
 - Review the full [config reference](/docs/configuration/config-file)

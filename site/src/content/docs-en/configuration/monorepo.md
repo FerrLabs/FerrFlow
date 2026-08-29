@@ -121,7 +121,7 @@ shared_paths = [&quot;packages/shared/&quot;]
 
 ## Package dependencies
 
-Use `dependsOn` to declare that a package depends on another. When a dependency is released, the dependent package is bumped too — even if none of its own files changed — with the same bump type by default. This cascades transitively: if `app` depends on `cli` and `cli` depends on `core`, bumping `core` bumps both `cli` and `app`.
+Use `dependsOn` to declare that a package depends on another. When a dependency is released, the dependent package is bumped too (even if none of its own files changed) with the same bump type by default. This cascades transitively: if `app` depends on `cli` and `cli` depends on `core`, bumping `core` bumps both `cli` and `app`.
 
 <div class="ferr-tabs">
   <div class="ferr-tab" data-label="JSON"><p class="ferr-tab__label">JSON</p><div class="ferr-tab__body"><pre><code class="language-json">{
@@ -207,12 +207,12 @@ Write an entry as an object to choose how the upstream bump translates:
 }
 ```
 
-| Policy           | A major in the dependency becomes     | A minor becomes | A patch becomes |
-| ---------------- | ------------------------------------- | --------------- | --------------- |
-| `same` (default) | major                                 | minor           | patch           |
-| `major-on-major` | major                                 | patch           | patch           |
-| `patch`          | patch                                 | patch           | patch           |
-| `none`           | nothing — the dependent is not bumped | nothing         | nothing         |
+| Policy           | A major in the dependency becomes    | A minor becomes | A patch becomes |
+| ---------------- | ------------------------------------ | --------------- | --------------- |
+| `same` (default) | major                                | minor           | patch           |
+| `major-on-major` | major                                | patch           | patch           |
+| `patch`          | patch                                | patch           | patch           |
+| `none`           | nothing. The dependent is not bumped | nothing         | nothing         |
 
 A bare string is shorthand for `same`, so `"dependsOn": ["core"]` and `{ "name": "core", "propagate": "same" }` are identical. When several dependencies move at once under different policies, the strongest resulting bump wins.
 
@@ -226,14 +226,14 @@ Set `workspace.updateDependents` to `true` to rewrite the version constraint eac
   ↳ core → 1.1.0 in cli/package.json
 ```
 
-`cli/package.json` goes from `"core": "^1.0.0"` to `"core": "^1.1.0"`. Only `json` and `toml` manifests are rewritten, and only plain operator + version constraints — the operator is preserved. A `workspace:*`, `file:`/`git:` spec, `1.x` or a multi-part range carries intent a version pin would destroy, so it is left for you to handle.
+`cli/package.json` goes from `"core": "^1.0.0"` to `"core": "^1.1.0"`. Only `json` and `toml` manifests are rewritten, and only plain operator + version constraints. The operator is preserved. A `workspace:*`, `file:`/`git:` spec, `1.x` or a multi-part range carries intent a version pin would destroy, so it is left for you to handle.
 
 <aside class="ferr-aside ferr-aside--note"><div class="ferr-aside__body"><p><code>dependsOn</code> differs from <code>sharedPaths</code>. Shared paths trigger a bump when files in the shared directory change. <code>dependsOn</code> triggers a bump when another <strong>package</strong> is released, regardless of which files changed.</p>
 </div></aside>
 
 ### Dependency cycles
 
-`dependsOn` must describe a directed acyclic graph. If two packages depend on each other — directly or transitively — there is no order in which to release them, so FerrFlow stops with error `E8003` and names the loop:
+`dependsOn` must describe a directed acyclic graph. If two packages depend on each other (directly or transitively) there is no order in which to release them, so FerrFlow stops with error `E8003` and names the loop:
 
 ```
 cycle detected: api → web → api
@@ -251,12 +251,12 @@ linked = [["react", "react-dom"]]
 fixed  = [["@scope/a", "@scope/b", "@scope/c"]]
 ```
 
-When **any** member of a group has a releasable commit, every member is bumped to the same version — the highest version the group would reach. A `feat` on one member and a `fix` on another release the whole group on the minor. Package names stay distinct; only the version is shared, and members with no commits of their own are pulled into the release at the shared version.
+When **any** member of a group has a releasable commit, every member is bumped to the same version: the highest version the group would reach. A `feat` on one member and a `fix` on another release the whole group on the minor. Package names stay distinct; only the version is shared, and members with no commits of their own are pulled into the release at the shared version.
 
-- **`linked`** — packages share a version line when they are released together (e.g. `react` and `react-dom` both go `1.2.3 → 1.2.4`).
-- **`fixed`** — packages are locked to an identical version forever. It behaves like `linked`, and `ferrflow validate` additionally warns when a fixed group's versions have already drifted apart, so you catch a manual edit before the next release realigns them.
+- **`linked`**: packages share a version line when they are released together (e.g. `react` and `react-dom` both go `1.2.3 → 1.2.4`).
+- **`fixed`**: packages are locked to an identical version forever. It behaves like `linked`, and `ferrflow validate` additionally warns when a fixed group's versions have already drifted apart, so you catch a manual edit before the next release realigns them.
 
-Each group must list at least two packages, and a package may appear in only one `linked` or `fixed` group. Naming a package that isn't defined in `package[]`, or listing one in two groups, stops the release with a clear error before anything is written — the same pre-flight guarantee as [dependency cycles](#dependency-cycles).
+Each group must list at least two packages, and a package may appear in only one `linked` or `fixed` group. Naming a package that isn't defined in `package[]`, or listing one in two groups, stops the release with a clear error before anything is written: the same pre-flight guarantee as [dependency cycles](#dependency-cycles).
 
 `linked`/`fixed` and `dependsOn` compose: a package that depends on a grouped package still receives its cascade bump after the group is aligned.
 

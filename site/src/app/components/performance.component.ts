@@ -17,13 +17,13 @@ const KNOWN_TOOLS = [
 ] as const;
 
 const FIXTURE_LABELS: Record<string, string> = {
-  single: 'Single package · 100 commits',
-  'mono-small': 'Monorepo · 10 packages × 100 commits',
-  'mono-medium': 'Monorepo · 50 packages × 500 commits',
-  'mono-100-1k': 'Monorepo · 100 packages × 1k commits',
-  'mono-50-5k': 'Monorepo · 50 packages × 5k commits',
-  'mono-large': 'Monorepo · 200 packages × 10k commits',
-  complex: 'Monorepo · dependency graph · 50 packages × 300 commits',
+  single: 'Single package, 100 commits',
+  'mono-small': 'Monorepo, 10 packages × 100 commits',
+  'mono-medium': 'Monorepo, 50 packages × 500 commits',
+  'mono-100-1k': 'Monorepo, 100 packages × 1k commits',
+  'mono-50-5k': 'Monorepo, 50 packages × 5k commits',
+  'mono-large': 'Monorepo, 200 packages × 10k commits',
+  complex: 'Monorepo, dependency graph, 50 packages × 300 commits',
 };
 
 const FIXTURE_SHORT: Record<string, string> = {
@@ -33,7 +33,7 @@ const FIXTURE_SHORT: Record<string, string> = {
   'mono-100-1k': '100 × 1k',
   'mono-50-5k': '50 × 5k',
   'mono-large': '200 × 10k',
-  complex: '50 × 300 · graph',
+  complex: '50 × 300, graph',
 };
 
 const COMMAND_LABELS: Record<string, string> = {
@@ -164,8 +164,8 @@ interface SrTableRow {
           same commits, and the same fixtures. Numbers refresh on every FerrFlow release.
         </p>
         <p class="updated" i18n="@@perf.updated">
-          Last update: <strong>{{ updated }}</strong> · ferrflow <code>{{ versionLabel }}</code> ·
-          binary size <code>{{ binarySize }} MB</code>
+          Last update: <strong>{{ updated }}</strong
+          >, ferrflow <code>{{ versionLabel }}</code> · binary size <code>{{ binarySize }} MB</code>
         </p>
       </header>
 
@@ -220,7 +220,7 @@ interface SrTableRow {
           <li i18n="@@perf.method.coldCache">
             <strong>Cold cache.</strong> FerrFlow memoises its analysis under
             <code>.git/ferrflow-cache</code>. That cache is dropped before every timed run, so the
-            comparison measures the work itself — none of the other tools has an equivalent to hide
+            comparison measures the work itself. None of the other tools has an equivalent to hide
             behind. The warm numbers are reported separately below.
           </li>
           <li i18n="@@perf.method.rss">
@@ -230,12 +230,12 @@ interface SrTableRow {
             <strong>Fixtures</strong> are generated from
             <a href="https://github.com/FerrLabs/Fixtures">FerrLabs/Fixtures</a> with deterministic
             conventional-commit history (no flaky inputs). The commit count in each fixture label is
-            the number of commits <em>since the last release tag</em> — the exact window FerrFlow
+            the number of commits <em>since the last release tag</em>: the exact window FerrFlow
             walks to compute a bump, not the repository's total history.
           </li>
           <li i18n="@@perf.method.commands">
-            <strong>All commands</strong> are dry-run release planning — every tool computes the
-            next version and release notes without writing anything:
+            <strong>All commands</strong> are dry-run release planning. Every tool computes the next
+            version and release notes without writing anything:
             <code>ferrflow release --dry-run</code>,
             <code>semantic-release --dry-run --no-ci</code>,
             <code>standard-version --dry-run</code>, <code>commit-and-tag-version --dry-run</code>,
@@ -251,21 +251,21 @@ interface SrTableRow {
             <strong
               >Two cells are not like-for-like, and we'd rather say so than quietly win.</strong
             >
-            On <code>200 × 10k</code>, <code>changesets status</code> is faster than FerrFlow — but
+            On <code>200 × 10k</code>, <code>changesets status</code> is faster than FerrFlow, but
             changesets plans releases from <code>.changeset/*.md</code> files you write by hand, and
             never from commits. Six of our seven fixtures give it none, so it reports
             <em>no packages to be bumped</em> and stops. Its time tracks package count, not history:
             it barely moves across a 100× range of commits, because it isn't reading them. That cuts
-            the other way too — most of every row where we beat it is <code>npx</code> and Node
+            the other way too. Most of every row where we beat it is <code>npx</code> and Node
             startup, not release planning. On <code>50 × 300 · graph</code>, FerrFlow is slower than
-            <code>commit-and-tag-version</code> because it's the only tool doing the job — resolving
+            <code>commit-and-tag-version</code> because it's the only tool doing the job: resolving
             a 50-package dependency cascade and recovering missed releases across the history. The
             others emit one bump and have no notion of a dependency graph. We're fixing the fixtures
             (<a href="https://github.com/FerrLabs/Fixtures/issues/141">Fixtures#141</a>); until
             then, read those two cells as a measurement gap, not a verdict.
           </li>
           <li i18n="@@perf.method.reproducible">
-            <strong>Reproducible</strong> — the full pipeline is in
+            <strong>Reproducible</strong>: the full pipeline is in
             <a href="https://github.com/FerrLabs/Benchmarks">FerrLabs/Benchmarks</a>; results land
             as artifacts on every <code>main</code> push and in each release notes.
           </li>
@@ -277,8 +277,8 @@ interface SrTableRow {
           <h2 i18n="@@perf.parallel.title">Parallel mode</h2>
           <p class="lead" i18n="@@perf.parallel.lead">
             The comparison pins FerrFlow to a single thread (<code>--jobs 1</code>) so it's
-            apples-to-apples with the single-threaded JS tools. In real CI it uses every core —
-            here's the same <code>release --dry-run</code> on all {{ runnerCores() }} cores of the
+            apples-to-apples with the single-threaded JS tools. In real CI it uses every core.
+            Here's the same <code>release --dry-run</code> on all {{ runnerCores() }} cores of the
             benchmark runner.
           </p>
           <div class="perf-table-wrap">
@@ -313,9 +313,9 @@ interface SrTableRow {
             Every number above is measured cold. In practice a repository rarely moves between two
             <code>ferrflow check</code> calls, so FerrFlow keeps the result of its last analysis in
             <code>.git/ferrflow-cache</code> and reuses it while <code>HEAD</code>, the tags and the
-            config are unchanged. This is what a second call costs on an unchanged repo — it's a
-            real property of the tool, but it isn't a like-for-like comparison, so it stays out of
-            the chart.
+            config are unchanged. This is what a second call costs on an unchanged repo. It's a real
+            property of the tool, but it isn't a like-for-like comparison, so it stays out of the
+            chart.
           </p>
           <div class="perf-table-wrap">
             <table>
@@ -346,7 +346,7 @@ interface SrTableRow {
         <section class="perf-section">
           <h2 i18n="@@perf.install.title">Install footprint</h2>
           <p class="perf-footprint-lead" i18n="@@perf.install.lead">
-            Disk size after install. <code>release-please</code> appears here only — its runtime
+            Disk size after install. <code>release-please</code> appears here only: its runtime
             can't be benched offline (it needs the GitHub API to resolve the latest release), so
             footprint is the fair comparison we can publish.
           </p>
@@ -392,7 +392,7 @@ interface SrTableRow {
           </li>
           <li i18n="@@perf.footnote.singleTool">
             <strong>Single tool, not a plugin tree.</strong> semantic-release pulls a chain of
-            analyzers, notes generators, npm publishers and changelog writers — each with its own
+            analyzers, notes generators, npm publishers and changelog writers, each with its own
             require() cost. FerrFlow's pipeline is one Rust crate.
           </li>
         </ul>

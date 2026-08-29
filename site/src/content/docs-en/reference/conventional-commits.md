@@ -67,15 +67,15 @@ FerrFlow recognises the common real-world spellings of the footer, not just the 
 | `breaking-change: …` / `breaking change: …` | yes (case-insensitive) |
 | `Breaking Change: …`                        | yes (case-insensitive) |
 
-It also treats a `!` placed **inside** the scope — `feat(api!):`, a common typo for `feat(api)!:` — as a breaking marker. The footer may sit after any number of body paragraphs.
+It also treats a `!` placed **inside** the scope (`feat(api!):`, a common typo for `feat(api)!:`) as a breaking marker. The footer may sit after any number of body paragraphs.
 
 ### What is _not_ a breaking change
 
 Detection stays strict, so a stray mention never triggers an accidental major bump:
 
 - The footer must start a line, use a single space or hyphen (`BREAKING CHANGE` / `BREAKING-CHANGE`), and be followed by a colon **and a space**. `BREAKING CHANGE:no-space` and the plural `BREAKING CHANGES:` are ignored.
-- A prose mention mid-line — "this fixes a breaking change in the parser" — is not a footer.
-- A `!` that is not immediately before the closing paren — `feat(a!b):` — is not a marker.
+- A prose mention mid-line ("this fixes a breaking change in the parser") is not a footer.
+- A `!` that is not immediately before the closing paren (`feat(a!b):`) is not a marker.
 
 ## Scope
 

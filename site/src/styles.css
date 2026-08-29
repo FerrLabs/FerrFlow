@@ -1,4 +1,4 @@
-/* Foundation imports Tailwind v4 internally — do NOT @import 'tailwindcss'
+/* Foundation imports Tailwind v4 internally: do NOT @import 'tailwindcss'
    here, or the utility set gets generated twice and the shipped CSS
    doubles in size. */
 @import '@ferrlabs/ui-foundation/styles/global.css';

@@ -1,12 +1,12 @@
 ---
-title: Sécurité — FerrFlow
+title: 'Sécurité : FerrFlow'
 description: Comment signaler une vulnérabilité dans FerrFlow, le modèle de menace de la CLI, et la posture sécurité de FerrFlow en tant qu'outil open source.
 lastUpdated: 2026-05-14
 ---
 
 <p>
   FerrFlow est une CLI open source. Elle s'exécute entièrement sur votre machine ou dans votre
-  runner CI — votre code source, vos commits, vos tags. Rien ne quitte votre infrastructure,
+  runner CI : votre code source, vos commits, vos tags. Rien ne quitte votre infrastructure,
   rien ne téléphone à la maison. Cette page indique comment la chaîne d'approvisionnement du
   binaire est protégée, où signaler une vulnérabilité, et ce qui est dans le périmètre.
 </p>
@@ -17,14 +17,14 @@ lastUpdated: 2026-05-14
   d'endpoint API manipulant des données utilisateur. La CLI lit votre historique git, modifie
   les chaînes de version dans des fichiers que vous contrôlez, pousse des tags via vos
   identifiants git existants, puis sort. Le site compagnon <strong>ferrflow.com</strong> est
-  une surface de documentation statique — voir la
+  une surface de documentation statique : voir la
   <a href="/fr/privacy">politique de confidentialité</a> pour le peu qu'il journalise.
 </p>
 <p>
   Pour la posture sécurité plus large de la plateforme FerrLabs (chiffrement, identité,
   isolation réseau, journalisation d'audit, gestion des sous-traitants), voir
   <a href="https://ferrlabs.com/fr/security">ferrlabs.com/fr/security</a>. FerrFlow hérite très
-  peu de cette posture en pratique — c'est une CLI, pas un SaaS — mais la page canonique reste
+  peu de cette posture en pratique (c'est une CLI, pas un SaaS) mais la page canonique reste
   la source de vérité pour les contrôles FerrLabs.
 </p>
 
@@ -57,7 +57,7 @@ lastUpdated: 2026-05-14
 </ul>
 
 <h2>Signaler une vulnérabilité</h2>
-<p>Deux canaux — choisissez celui qui correspond à votre workflow. Les deux sont surveillés.</p>
+<p>Deux canaux : choisissez celui qui correspond à votre workflow. Les deux sont surveillés.</p>
 <ul>
   <li>
     <strong>E-mail</strong> : <a href="mailto:security@ferrlabs.com">security&#64;ferrlabs.com</a>.
@@ -94,7 +94,7 @@ lastUpdated: 2026-05-14
   <li>
     Les formats de fichiers tiers que FerrFlow lit ou met à jour (<code>Cargo.toml</code>,
     <code>package.json</code>, <code>pyproject.toml</code>, <code>Chart.yaml</code>,
-    <code>mix.exs</code>, <code>pubspec.yaml</code>, gemspecs, etc.) — les vulnérabilités de ces
+    <code>mix.exs</code>, <code>pubspec.yaml</code>, gemspecs, etc.). Les vulnérabilités de ces
     écosystèmes relèvent de l'amont.
   </li>
   <li>

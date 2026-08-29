@@ -43,7 +43,7 @@ FerrFlow needs `contents: write` to:
 
 If your repository has branch protection rules, create a dedicated token with the necessary permissions and pass it as `FERRFLOW_TOKEN` or configure the action's `token` input.
 
-<aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>Prefer not to manage a token? Set <code>bot: true</code> to author releases as <code>ferrflow[bot]</code> with zero secrets — see the <a href="/docs/ci/hosted-bot">Hosted bot</a> guide.</p>
+<aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>Prefer not to manage a token? Set <code>bot: true</code> to author releases as <code>ferrflow[bot]</code> with zero secrets: see the <a href="/docs/ci/hosted-bot">Hosted bot</a> guide.</p>
 </div></aside>
 
 ## Accessing the release output

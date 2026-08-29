@@ -1,5 +1,5 @@
 ---
-title: Terms of use — FerrFlow
+title: 'Terms of use: FerrFlow'
 description: Terms of use for ferrflow.com and the open-source FerrFlow CLI.
 lastUpdated: 2026-05-06
 ---
@@ -7,7 +7,7 @@ lastUpdated: 2026-05-06
 <h2>1. Purpose</h2>
 <p>
   These terms of use govern the use of the ferrflow.com website (the "Site") and the FerrFlow
-  command-line tool distributed free of charge by Bryan Ferrando — sole proprietor
+  command-line tool distributed free of charge by Bryan Ferrando: sole proprietor
   (<em>Entrepreneur individuel</em>) trading as FerrLabs, SIREN 104 243 951.
 </p>
 
@@ -22,14 +22,14 @@ lastUpdated: 2026-05-06
 
 <h2>3. No warranty</h2>
 <p>
-  The FerrFlow software is provided "as is" (AS-IS). Bryan Ferrando — FerrLabs warrants neither
+  The FerrFlow software is provided "as is" (AS-IS). Bryan Ferrando, FerrLabs warrants neither
   the absence of defects, nor fitness for a particular purpose, nor continuity of service of
   the Site.
 </p>
 
 <h2>4. Limitation of liability</h2>
 <p>
-  To the extent permitted by French law, Bryan Ferrando — FerrLabs shall under no circumstances
+  To the extent permitted by French law, Bryan Ferrando, FerrLabs shall under no circumstances
   be liable for direct or indirect damages resulting from the use of, the inability to use, or
   bugs in FerrFlow or the Site, including loss of data or revenue.
 </p>
@@ -38,7 +38,7 @@ lastUpdated: 2026-05-06
 <p>
   The FerrFlow source code is distributed under the terms of the MIT licence. The
   "FerrLabs" and "FerrFlow" trademarks, as well as the editorial content of the Site (texts,
-  graphics, logos), remain the exclusive property of Bryan Ferrando — FerrLabs.
+  graphics, logos), remain the exclusive property of Bryan Ferrando, FerrLabs.
 </p>
 
 <h2>6. Personal data</h2>

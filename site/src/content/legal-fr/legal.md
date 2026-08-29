@@ -1,12 +1,12 @@
 ---
-title: Mentions légales — FerrFlow
+title: 'Mentions légales : FerrFlow'
 description: Identité de l'éditeur, hébergement et directeur de publication de ferrflow.com.
 lastUpdated: 2026-05-06
 ---
 
 <h2>Éditeur</h2>
 <p>
-  Bryan Ferrando — Entrepreneur individuel<br />
+  Bryan Ferrando : Entrepreneur individuel<br />
   Nom commercial : <strong>FerrLabs</strong>.
 </p>
 <p>
