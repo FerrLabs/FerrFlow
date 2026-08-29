@@ -1581,6 +1581,20 @@ fn a_remote_that_advanced_before_we_fetched_is_a_race() {
 }
 
 #[test]
+fn a_createcommitonbranch_expectation_failure_is_a_race() {
+    let err = anyhow::anyhow!(
+        "createCommitOnBranch failed: Expected branch to point to          \"ca3a40a79075b70904f4f2bfa14cbdc7a888ed85\" but it did not.  Pull and try again."
+    )
+    .context(error_code::GITHUB_GRAPHQL_ERROR);
+
+    assert!(
+        is_push_rejected_error(&err),
+        "the authored-commit path detects the same race the git path retries, so it has to          reach the same regenerate loop instead of failing the release outright"
+    );
+    assert!(!is_transient_git_error(&err));
+}
+
+#[test]
 fn a_non_fast_forward_is_a_race() {
     let err = push_branch_failure(" ! [rejected]        HEAD -> main (non-fast-forward)");
 

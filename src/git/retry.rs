@@ -131,5 +131,6 @@ pub fn is_push_rejected_error(err: &anyhow::Error) -> bool {
             || msg.contains("fetch first")
             || msg.contains("stale info")
             || msg.contains("already exist on remote pointing to a different commit")
+            || msg.contains("expected branch to point to")
     })
 }
