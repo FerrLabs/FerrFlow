@@ -1,5 +1,16 @@
 # Changelog
 
+## [2026.8.21] - 2026-08-31
+
+### Bug Fixes
+
+- fix(release): sync api/Cargo.lock and enable updateLockfiles (#875)
+- fix(site): sync the served schema with the CLI source (#873)
+- fix(ci): repin the .github reusables to current main and resync api/Cargo.lock (#880)
+- fix(site): refresh FerrFlow v7.11.1 release data
+- fix(site): refresh FerrFlow v7.11.0 release data and JSON schema
+- fix(site): drop the telemetry page from v6 and v7 and repoint its links (#866)
+
 ## [2026.8.20] - 2026-08-29
 
 ### Bug Fixes

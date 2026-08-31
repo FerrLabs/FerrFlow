@@ -1,5 +1,26 @@
 # Changelog
 
+## [2026.8.2] - 2026-08-31
+
+### Bug Fixes
+
+- fix(release): sync api/Cargo.lock and enable updateLockfiles (#875)
+- fix(site): sync the served schema with the CLI source (#873)
+- fix(ci): repin the .github reusables to current main and resync api/Cargo.lock (#880)
+- fix(site): refresh FerrFlow v7.11.1 release data
+- fix(site): refresh FerrFlow v7.11.0 release data and JSON schema
+- fix(site): drop the telemetry page from v6 and v7 and repoint its links (#866)
+- fix(site): refresh FerrFlow v7.10.5 release data
+- fix(deps): pin esbuild to the version that verifies its binary (#861)
+- fix(site): refresh FerrFlow v7.10.2 release data
+- fix(site): drop the numbered section chapôs (#857)
+- fix(site): refresh FerrFlow v7.9.1 release data
+- fix(site): refresh FerrFlow v7.9.0 release data
+- fix(site): refresh FerrFlow v7.8.1 release data
+- fix(site): refresh FerrFlow v7.7.2 release data and JSON schema
+- fix(site): refresh FerrFlow v7.7.1 release data
+- fix(site): refresh FerrFlow v7.6.0 release data and JSON schema
+
 ## [2026.8.1] - 2026-08-24
 
 ### Features
