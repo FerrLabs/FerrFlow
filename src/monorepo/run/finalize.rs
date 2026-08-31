@@ -89,6 +89,7 @@ mod tests {
 
     fn log(message: &str) -> GitLog {
         GitLog {
+            id: String::new(),
             hash: String::new(),
             message: message.to_string(),
         }

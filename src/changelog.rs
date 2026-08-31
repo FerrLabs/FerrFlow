@@ -12,6 +12,7 @@ use std::path::Path;
 
 #[derive(Clone)]
 pub struct GitLog {
+    pub id: String,
     pub hash: String,
     pub message: String,
 }
@@ -505,6 +506,7 @@ mod tests {
         messages
             .iter()
             .map(|m| GitLog {
+                id: String::new(),
                 hash: "abc1234".to_string(),
                 message: m.to_string(),
             })
@@ -625,6 +627,7 @@ mod tests {
     #[test]
     fn build_section_breaking_change_in_body() {
         let commits = vec![GitLog {
+            id: String::new(),
             hash: "abc".to_string(),
             message: "feat: add endpoint\n\nBREAKING CHANGE: removed old endpoint".to_string(),
         }];
@@ -947,6 +950,7 @@ mod tests {
     fn rich_render_breaking_uses_footer_body() {
         let cfg = ChangelogConfig::default();
         let commits = vec![GitLog {
+            id: String::new(),
             hash: "abc1234".to_string(),
             message: "feat!: change api\n\nBREAKING CHANGE: the v1 endpoint was removed"
                 .to_string(),
@@ -1010,6 +1014,7 @@ mod tests {
             ..Default::default()
         };
         let commits = vec![GitLog {
+            id: String::new(),
             hash: "abc1234".to_string(),
             message: "feat: add endpoint".to_string(),
         }];

@@ -115,6 +115,7 @@ fn build(repo: &Repository, skip_markers: &[String]) -> Result<BuiltWalk> {
         pos.insert(info.id, commits.len());
         commits.push(DecodedCommit {
             log: GitLog {
+                id: info.id.to_string(),
                 hash: info.id.to_string()[..8].to_string(),
                 message,
             },

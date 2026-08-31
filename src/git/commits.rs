@@ -64,6 +64,7 @@ pub fn get_commits_since_oid(
             continue;
         }
         commits.push(GitLog {
+            id: info.id.to_string(),
             hash: info.id.to_string()[..8].to_string(),
             message,
         });
@@ -113,6 +114,7 @@ pub fn get_commits_between(
             continue;
         }
         commits.push(GitLog {
+            id: info.id.to_string(),
             hash: info.id.to_string()[..8].to_string(),
             message,
         });
