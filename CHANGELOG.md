@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.11.2] - 2026-08-31
+
+### Bug Fixes
+
+- fix(monorepo): scope a package's commits to its own paths (#974)
+
 ## [7.11.1] - 2026-08-29
 
 ### Bug Fixes
