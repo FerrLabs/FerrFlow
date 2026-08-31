@@ -418,7 +418,10 @@ mod release_json_diff {
         assert_eq!(api["new_version"], "1.3.0");
         assert_eq!(api["bump_type"], "minor");
         assert_eq!(api["tag"], "api@v1.3.0");
-        assert_eq!(api["commit_count"], 2);
+        assert_eq!(
+            api["commit_count"], 1,
+            "the seed commit adds seed.txt only, so it is not part of the api release"
+        );
         assert_eq!(api["prerelease"], false);
         assert!(api["forge_release_url"].is_null());
         assert!(api["forge_release_id"].is_null());
@@ -460,6 +463,7 @@ mod release_json_diff {
         let config = Config::load(dir.path(), Some(&config_path)).unwrap();
         let pkg = config.packages.iter().find(|p| p.name == "api").unwrap();
         let commits = vec![GitLog {
+            id: String::new(),
             hash: "abc1234".to_string(),
             message: "feat: api change".to_string(),
         }];

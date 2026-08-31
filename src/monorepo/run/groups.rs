@@ -136,6 +136,7 @@ mod tests {
             is_prerelease: false,
             last_tag: None,
             commits: vec![GitLog {
+                id: String::new(),
                 hash: "abc1234".to_string(),
                 message: "feat: x".to_string(),
             }],

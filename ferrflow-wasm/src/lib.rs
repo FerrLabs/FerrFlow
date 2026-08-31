@@ -56,6 +56,7 @@ pub fn build_changelog_section(version: &str, commits_json: &str) -> Result<Stri
     let commits: Vec<GitLog> = raw
         .into_iter()
         .map(|c| GitLog {
+            id: String::new(),
             hash: c.hash.unwrap_or_else(|| "0000000".to_string()),
             message: c.message,
         })

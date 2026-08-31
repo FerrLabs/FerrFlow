@@ -53,6 +53,7 @@ fn generate_commits(count: usize) -> Vec<GitLog> {
         let s = scopes[i % scopes.len()];
         let breaking = if i % 20 == 0 { "!" } else { "" };
         commits.push(GitLog {
+            id: String::new(),
             hash: format!("{i:08x}"),
             message: format!("{t}({s}){breaking}: change number {i}"),
         });

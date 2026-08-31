@@ -5,8 +5,9 @@ use crate::config::{Config, OrphanedTagStrategy, PackageConfig, VersioningStrate
 use crate::conventional_commits::{BumpType, determine_bump};
 use crate::formats::read_version;
 use crate::git::{
-    Repository, TagIndex, find_highest_semver_tag_with_cache, get_changed_files_since_oid,
-    get_changed_files_since_tag, get_commits_since_last_stable_tag, get_commits_since_last_tag,
+    Repository, TagIndex, find_highest_semver_tag_with_cache, get_changed_files_for_commit,
+    get_changed_files_since_oid, get_changed_files_since_tag, get_commits_since_last_stable_tag,
+    get_commits_since_last_tag,
 };
 use crate::prerelease::PrereleaseContext;
 use crate::versioning::compute_next_version;
@@ -97,6 +98,7 @@ impl PackagePlan {
 }
 
 pub(super) type ChangedFilesCache = Mutex<HashMap<Option<ObjectId>, Arc<Vec<String>>>>;
+pub(super) type CommitFilesCache = Mutex<HashMap<ObjectId, Arc<Vec<String>>>>;
 
 pub(super) struct PlanInputs<'a> {
     pub config: &'a Config,
@@ -110,6 +112,7 @@ pub(super) struct PlanInputs<'a> {
     pub changed_files: &'a [String],
     pub short_hash: &'a str,
     pub changed_files_cache: &'a ChangedFilesCache,
+    pub commit_files_cache: &'a CommitFilesCache,
     pub commit_walk: &'a crate::git::CommitWalkCache,
 }
 
@@ -131,6 +134,47 @@ fn changed_files_since_oid_cached(
         .expect("changed-files cache poisoned")
         .insert(last_tag_oid, Arc::clone(&files));
     Ok(files)
+}
+
+fn files_for_commit_cached(
+    repo: &Repository,
+    commit: ObjectId,
+    cache: &CommitFilesCache,
+) -> Arc<Vec<String>> {
+    if let Some(hit) = cache
+        .lock()
+        .expect("commit-files cache poisoned")
+        .get(&commit)
+    {
+        return Arc::clone(hit);
+    }
+    let files = Arc::new(get_changed_files_for_commit(repo, commit).unwrap_or_default());
+    cache
+        .lock()
+        .expect("commit-files cache poisoned")
+        .insert(commit, Arc::clone(&files));
+    files
+}
+
+fn scope_commits_to_package(
+    repo: &Repository,
+    pkg: &PackageConfig,
+    inputs: &PlanInputs<'_>,
+    commits: Vec<GitLog>,
+) -> Vec<GitLog> {
+    if !inputs.config.is_monorepo() {
+        return commits;
+    }
+    commits
+        .into_iter()
+        .filter(|c| {
+            let Ok(id) = ObjectId::from_hex(c.id.as_bytes()) else {
+                return true;
+            };
+            let files = files_for_commit_cached(repo, id, inputs.commit_files_cache);
+            files.is_empty() || pkg.is_touched_by(&files, true)
+        })
+        .collect()
 }
 
 pub(super) struct TouchOutcome {
@@ -196,7 +240,7 @@ pub(super) fn commits_for_package(
     let strategy = config.workspace.orphaned_tag_strategy;
     let skip_markers = config.workspace.effective_commit_skip_markers();
 
-    if inputs.prerelease_ctx.is_prerelease() {
+    let commits = if inputs.prerelease_ctx.is_prerelease() {
         if let (Some(idx), OrphanedTagStrategy::Warn) = (inputs.tag_index, strategy) {
             let stop = idx.find_last_tag_commit(&tag_search_prefix, strategy);
             inputs.commit_walk.commits_since(repo, stop)
@@ -220,7 +264,9 @@ pub(super) fn commits_for_package(
             &skip_markers,
             inputs.head_ancestors,
         )
-    }
+    }?;
+
+    Ok(scope_commits_to_package(repo, pkg, inputs, commits))
 }
 
 pub(super) fn compute_plan(
@@ -462,6 +508,7 @@ mod tests {
         config: Config,
         root: std::path::PathBuf,
         cache: ChangedFilesCache,
+        commit_files: CommitFilesCache,
         commit_walk: crate::git::CommitWalkCache,
     }
 
@@ -487,6 +534,7 @@ mod tests {
             short_hash: "deadbee",
             commit_walk: &fx.commit_walk,
             changed_files_cache: &fx.cache,
+            commit_files_cache: &fx.commit_files,
         }
     }
 
@@ -537,9 +585,9 @@ mod tests {
         commit_file(&root, "beta/fix.rs", "x", "fix: beta fix", 1_950_000_200);
         commit_file(
             &root,
-            "gamma/docs.rs",
+            "gamma/feat.rs",
             "x",
-            "docs: gamma note",
+            "feat: gamma feature",
             1_950_000_300,
         );
 
@@ -552,6 +600,7 @@ mod tests {
             config,
             root: root.clone(),
             cache: ChangedFilesCache::default(),
+            commit_files: CommitFilesCache::default(),
             commit_walk,
         };
 
@@ -586,6 +635,300 @@ mod tests {
         );
     }
 
+    fn plan_for(fx: &Fixture, inputs: &PlanInputs<'_>, name: &str) -> PackagePlan {
+        let pkg = fx
+            .config
+            .packages
+            .iter()
+            .find(|p| p.name == name)
+            .expect("package in fixture");
+        compute_plan(&fx.repo, pkg, inputs).unwrap()
+    }
+
+    fn subjects(plan: &PackagePlan) -> Vec<String> {
+        match plan {
+            PackagePlan::Bump(bump) => bump
+                .commits
+                .iter()
+                .map(|c| c.message.lines().next().unwrap_or_default().to_string())
+                .collect(),
+            PackagePlan::Skipped { .. } => Vec::new(),
+        }
+    }
+
+    fn two_package_fixture(extra: impl FnOnce(&Path)) -> (Fixture, Vec<String>) {
+        let (dir, repo) = init_repo();
+        let root = dir.path().to_path_buf();
+        let names = ["site", "server"];
+        for n in names {
+            write_pkg(&root, n, "1.0.0");
+        }
+        write_config(&root, &names);
+        git(&root, &["add", "-A"]);
+        commit_file(&root, "seed.txt", "x", "chore: seed", 1_950_000_000);
+        for n in names {
+            git(&root, &["tag", &format!("{n}-v1.0.0")]);
+        }
+
+        commit_file(
+            &root,
+            "server/oid.rs",
+            "x",
+            "refactor(server): make the object id a type",
+            1_950_000_100,
+        );
+        extra(&root);
+
+        let config = Config::load(&root, Some(&root.join(".ferrflow"))).unwrap();
+        let commit_walk =
+            crate::git::CommitWalkCache::new(config.workspace.effective_commit_skip_markers());
+        let fx = Fixture {
+            _dir: dir,
+            repo,
+            config,
+            root,
+            cache: ChangedFilesCache::default(),
+            commit_files: CommitFilesCache::default(),
+            commit_walk,
+        };
+        let changed_files = get_changed_files(&fx.repo).unwrap();
+        (fx, changed_files)
+    }
+
+    #[test]
+    fn a_release_does_not_list_another_packages_commits() {
+        let (fx, changed_files) = two_package_fixture(|root| {
+            commit_file(
+                root,
+                "site/hero.rs",
+                "x",
+                "feat(site): dress the site",
+                1_950_000_200,
+            );
+        });
+
+        let all_tags = collect_all_tags(&fx.repo);
+        let head_ancestors = build_head_ancestors(&fx.repo).ok();
+        let tag_index = TagIndex::build(&fx.repo).ok();
+        let prerelease_ctx = PrereleaseContext::resolve(None, "main", None).unwrap();
+        let forced: Vec<Forced<'_>> = Vec::new();
+        let inputs = build_inputs(
+            &fx,
+            &tag_index,
+            &head_ancestors,
+            &all_tags,
+            &prerelease_ctx,
+            &forced,
+            &changed_files,
+        );
+
+        let site = subjects(&plan_for(&fx, &inputs, "site"));
+
+        assert!(
+            site.iter().any(|s| s.contains("dress the site")),
+            "site release must carry its own commit, got {site:?}"
+        );
+        assert!(
+            !site.iter().any(|s| s.contains("object id")),
+            "a server-only commit must not appear in the site changelog, got {site:?}"
+        );
+    }
+
+    fn write_config_raw(dir: &Path, workspace: &str, packages: &str) {
+        std::fs::write(
+            dir.join(".ferrflow"),
+            format!(r#"{{"workspace":{{{workspace}}},"package":[{packages}]}}"#),
+        )
+        .unwrap();
+    }
+
+    fn build_fixture(
+        root: std::path::PathBuf,
+        dir: tempfile::TempDir,
+        repo: crate::git::Repository,
+    ) -> Fixture {
+        let config = Config::load(&root, Some(&root.join(".ferrflow"))).unwrap();
+        let commit_walk =
+            crate::git::CommitWalkCache::new(config.workspace.effective_commit_skip_markers());
+        Fixture {
+            _dir: dir,
+            repo,
+            config,
+            root,
+            cache: ChangedFilesCache::default(),
+            commit_files: CommitFilesCache::default(),
+            commit_walk,
+        }
+    }
+
+    #[test]
+    fn a_release_bump_ignores_another_packages_commit_type() {
+        let (fx, changed_files) = two_package_fixture(|root| {
+            commit_file(
+                root,
+                "server/api.rs",
+                "x",
+                "feat(server): add an endpoint",
+                1_950_000_150,
+            );
+            commit_file(
+                root,
+                "site/typo.rs",
+                "x",
+                "fix(site): correct a label",
+                1_950_000_200,
+            );
+        });
+
+        let all_tags = collect_all_tags(&fx.repo);
+        let head_ancestors = build_head_ancestors(&fx.repo).ok();
+        let tag_index = TagIndex::build(&fx.repo).ok();
+        let prerelease_ctx = PrereleaseContext::resolve(None, "main", None).unwrap();
+        let forced: Vec<Forced<'_>> = Vec::new();
+        let inputs = build_inputs(
+            &fx,
+            &tag_index,
+            &head_ancestors,
+            &all_tags,
+            &prerelease_ctx,
+            &forced,
+            &changed_files,
+        );
+
+        let PackagePlan::Bump(site) = plan_for(&fx, &inputs, "site") else {
+            panic!("site should release");
+        };
+
+        assert_eq!(
+            site.new_version, "1.0.1",
+            "a feat in another package must not turn the site's fix into a minor"
+        );
+    }
+
+    #[test]
+    fn a_shared_path_commit_stays_in_the_package_changelog() {
+        let (dir, repo) = init_repo();
+        let root = dir.path().to_path_buf();
+        write_pkg(&root, "site", "1.0.0");
+        write_pkg(&root, "server", "1.0.0");
+        write_config_raw(
+            &root,
+            r#""recoverMissedReleases":false"#,
+            r#"{"name":"site","path":"site","sharedPaths":["docs"],"versionedFiles":[{"path":"site/Cargo.toml","format":"toml"}]},{"name":"server","path":"server","versionedFiles":[{"path":"server/Cargo.toml","format":"toml"}]}"#,
+        );
+        git(&root, &["add", "-A"]);
+        commit_file(&root, "seed.txt", "x", "chore: seed", 1_950_000_000);
+        git(&root, &["tag", "site-v1.0.0"]);
+        git(&root, &["tag", "server-v1.0.0"]);
+        std::fs::create_dir_all(root.join("docs")).unwrap();
+        commit_file(
+            &root,
+            "docs/guide.md",
+            "x",
+            "feat(docs): document the flow",
+            1_950_000_100,
+        );
+
+        let fx = build_fixture(root, dir, repo);
+        let changed_files = get_changed_files(&fx.repo).unwrap();
+        let all_tags = collect_all_tags(&fx.repo);
+        let head_ancestors = build_head_ancestors(&fx.repo).ok();
+        let tag_index = TagIndex::build(&fx.repo).ok();
+        let prerelease_ctx = PrereleaseContext::resolve(None, "main", None).unwrap();
+        let forced: Vec<Forced<'_>> = Vec::new();
+        let inputs = build_inputs(
+            &fx,
+            &tag_index,
+            &head_ancestors,
+            &all_tags,
+            &prerelease_ctx,
+            &forced,
+            &changed_files,
+        );
+
+        let site = subjects(&plan_for(&fx, &inputs, "site"));
+
+        assert!(
+            site.iter().any(|s| s.contains("document the flow")),
+            "a sharedPaths commit belongs to the package, got {site:?}"
+        );
+        let server = subjects(&plan_for(&fx, &inputs, "server"));
+        assert!(
+            !server.iter().any(|s| s.contains("document the flow")),
+            "a sharedPaths commit belongs only to the packages that declare it, got {server:?}"
+        );
+    }
+
+    #[test]
+    fn a_recovered_release_does_not_list_another_packages_commits() {
+        let (dir, repo) = init_repo();
+        let root = dir.path().to_path_buf();
+        write_pkg(&root, "site", "1.0.0");
+        write_pkg(&root, "server", "1.0.0");
+        write_config_raw(
+            &root,
+            r#""recoverMissedReleases":true"#,
+            r#"{"name":"site","path":"site","versionedFiles":[{"path":"site/Cargo.toml","format":"toml"}]},{"name":"server","path":"server","versionedFiles":[{"path":"server/Cargo.toml","format":"toml"}]}"#,
+        );
+        git(&root, &["add", "-A"]);
+        commit_file(&root, "seed.txt", "x", "chore: seed", 1_950_000_000);
+        git(&root, &["tag", "site-v1.0.0"]);
+        git(&root, &["tag", "server-v1.0.0"]);
+
+        commit_file(
+            &root,
+            "site/hero.rs",
+            "x",
+            "feat(site): dress the site",
+            1_950_000_100,
+        );
+        commit_file(
+            &root,
+            "server/oid.rs",
+            "x",
+            "refactor(server): make the object id a type",
+            1_950_000_200,
+        );
+
+        let fx = build_fixture(root, dir, repo);
+        let changed_files = get_changed_files(&fx.repo).unwrap();
+        assert!(
+            !changed_files.iter().any(|f| f.starts_with("site/")),
+            "the head commit must not touch site, or there is nothing to recover"
+        );
+
+        let all_tags = collect_all_tags(&fx.repo);
+        let head_ancestors = build_head_ancestors(&fx.repo).ok();
+        let tag_index = TagIndex::build(&fx.repo).ok();
+        let prerelease_ctx = PrereleaseContext::resolve(None, "main", None).unwrap();
+        let forced: Vec<Forced<'_>> = Vec::new();
+        let inputs = build_inputs(
+            &fx,
+            &tag_index,
+            &head_ancestors,
+            &all_tags,
+            &prerelease_ctx,
+            &forced,
+            &changed_files,
+        );
+
+        let plan = plan_for(&fx, &inputs, "site");
+        let PackagePlan::Bump(bump) = &plan else {
+            panic!("site should be recovered, got a skip");
+        };
+        assert!(bump.recovered, "site should come back through recovery");
+
+        let site = subjects(&plan);
+        assert!(
+            site.iter().any(|s| s.contains("dress the site")),
+            "the recovered release must carry the commit it missed, got {site:?}"
+        );
+        assert!(
+            !site.iter().any(|s| s.contains("object id")),
+            "a server-only commit must not ride along in a recovered release, got {site:?}"
+        );
+    }
+
     #[test]
     fn one_package_compute_error_aborts_collection() {
         let (dir, repo) = init_repo();
@@ -608,6 +951,7 @@ mod tests {
             config,
             root: root.clone(),
             cache: ChangedFilesCache::default(),
+            commit_files: CommitFilesCache::default(),
             commit_walk,
         };
 
