@@ -8,7 +8,7 @@ permissions: {}
 
 jobs:
   dispatch:
-    uses: FerrLabs/.github/.github/workflows/reusable-renovate-dispatch.yml@62a681d7ed2fb422b2f326e837b8bf0e4cc71947 # main
+    uses: FerrLabs/.github/.github/workflows/reusable-renovate-dispatch.yml@34983febd6f8a4d7aa5c78f7581dbc2ecaac5c88 # main
     with:
       runner: ubuntu-latest
     secrets: inherit
