@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.12.0] - 2026-09-01
+
+### Features
+
+- feat(graph): show what releasing a package would drag along (#979)
+
 ## [7.11.2] - 2026-08-31
 
 ### Bug Fixes
