@@ -102,10 +102,10 @@ pub(super) fn build_report(
         let Some(pkg) = config.packages.iter().find(|p| p.name == member) else {
             continue;
         };
-        bumped.insert(member.clone(), seed_bump);
+        bumped.insert(member.clone(), BumpType::None);
         packages.push(ImpactPackage {
             name: member,
-            bump: seed_bump.to_string(),
+            bump: BumpType::None.to_string(),
             current_version: versions.current(pkg),
             next_version: seed_next.clone(),
             joined: Joined::Group,
@@ -340,6 +340,33 @@ mod tests {
         assert!(
             docs.through.is_empty(),
             "a group member is not reached through a dependency"
+        );
+    }
+
+    #[test]
+    fn a_group_sibling_does_not_cascade_to_what_depends_on_it() {
+        let report = report(
+            r#"{
+                "workspace": { "linked": [["shared", "ui"]] },
+                "package": [
+                    { "name": "shared", "path": "shared" },
+                    { "name": "ui", "path": "ui" },
+                    { "name": "app", "path": "app", "dependsOn": ["ui"] }
+                ]
+            }"#,
+            "shared",
+            BumpType::Minor,
+        );
+
+        assert_eq!(
+            names(&report),
+            vec!["shared", "ui"],
+            "ui is realigned to the group version without a bump of its own, so a release leaves app alone and the preview must too"
+        );
+        assert_eq!(
+            entry(&report, "ui").bump,
+            "none",
+            "a release records no bump for a group member that had no plan"
         );
     }
 
