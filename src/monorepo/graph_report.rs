@@ -5,7 +5,8 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use crate::config::{Config, PackageConfig};
-use crate::git::{get_repo_root, open_repo};
+use crate::conventional_commits::BumpType;
+use crate::git::{collect_all_tags, get_repo_root, open_repo};
 use crate::monorepo::run::graph::release_order;
 
 #[derive(Serialize)]
@@ -24,10 +25,28 @@ struct GraphReport {
     cycle: Option<Vec<String>>,
 }
 
-pub fn run(config_path: Option<&Path>, json: bool) -> Result<()> {
+pub fn run(config_path: Option<&Path>, json: bool, impact: Option<&str>, bump: &str) -> Result<()> {
     let repo = open_repo(&std::env::current_dir()?)?;
     let root = get_repo_root(&repo)?;
     let config = Config::load(&root, config_path)?;
+
+    if let Some(seed) = impact {
+        let all_tags = collect_all_tags(&repo);
+        let report = crate::monorepo::impact::build_report(
+            &config,
+            &root,
+            &all_tags,
+            seed,
+            parse_bump(bump)?,
+        )?;
+        if json {
+            println!("{}", serde_json::to_string_pretty(&report)?);
+        } else {
+            crate::monorepo::impact::print_text(&report);
+        }
+        return Ok(());
+    }
+
     let report = build_report(&config.packages);
 
     if json {
@@ -40,6 +59,15 @@ pub fn run(config_path: Option<&Path>, json: bool) -> Result<()> {
         anyhow::bail!("dependency cycle detected");
     }
     Ok(())
+}
+
+fn parse_bump(raw: &str) -> Result<BumpType> {
+    match raw {
+        "major" => Ok(BumpType::Major),
+        "minor" => Ok(BumpType::Minor),
+        "patch" => Ok(BumpType::Patch),
+        other => anyhow::bail!("unknown bump {other:?}; expected major, minor or patch"),
+    }
 }
 
 fn build_report(packages: &[PackageConfig]) -> GraphReport {

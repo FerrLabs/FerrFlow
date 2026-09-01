@@ -7,6 +7,7 @@ mod util;
 mod version_source;
 
 mod graph_report;
+pub(crate) mod impact;
 
 mod plan_interactive;
 

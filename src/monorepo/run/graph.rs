@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::config::PackageConfig;
+use crate::conventional_commits::BumpType;
 use crate::error_code;
 
 #[derive(Debug)]
@@ -21,6 +22,37 @@ impl Cycle {
         anyhow::anyhow!("cycle detected: {}", rendered.join(" → "))
             .context(error_code::MONOREPO_DEPENDENCY_CYCLE)
     }
+}
+
+/// The packages that a further cascade round would pull in, given what is
+/// already bumped. Each dependency edge carries its own [`PropagatePolicy`],
+/// so an edge can decline to propagate at all.
+///
+/// The release cascade and `graph --impact` both call this, which is what
+/// makes the preview agree with what a release does.
+pub(crate) fn cascade_round(
+    packages: &[PackageConfig],
+    bumped: &HashMap<String, BumpType>,
+) -> Vec<(usize, BumpType)> {
+    let mut joined = Vec::new();
+    for (idx, pkg) in packages.iter().enumerate() {
+        if bumped.contains_key(&pkg.name) {
+            continue;
+        }
+        let bump = pkg
+            .depends_on
+            .iter()
+            .filter_map(|dep| {
+                let upstream = bumped.get(dep.name())?;
+                Some(dep.propagate().resolve(*upstream))
+            })
+            .max()
+            .unwrap_or(BumpType::None);
+        if bump != BumpType::None {
+            joined.push((idx, bump));
+        }
+    }
+    joined
 }
 
 pub(crate) fn release_order(packages: &[PackageConfig]) -> Result<Vec<usize>, Cycle> {
