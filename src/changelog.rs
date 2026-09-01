@@ -432,6 +432,46 @@ fn changelog_existing(changelog_path: &Path, package_name: &str) -> Result<Strin
     }
 }
 
+/// The section a changelog currently holds for `version`, from its heading to
+/// the next one.
+///
+/// Read back after `postBump` runs so that a hook which rewrote the file is
+/// what reaches the tag, the forge release body and the release commit,
+/// instead of the text generated before the hook had a say.
+pub fn section_for_version(changelog: &str, version: &str) -> Option<String> {
+    let start = changelog.find(&format!("## [{version}]"))?;
+    let rest = &changelog[start..];
+    let end = rest[1..]
+        .find(
+            "
+## ",
+        )
+        .map(|i| i + 1)
+        .unwrap_or(rest.len());
+    Some(rest[..end].trim_end().to_string())
+}
+
+/// The section to publish for `version`, preferring what the changelog file
+/// holds on disk over `generated`.
+///
+/// Called after `postBump`, so a hook that rewrote the file is what reaches
+/// the tag, the forge release body and the release commit. Falls back to
+/// `generated` whenever the file cannot be read or no longer carries a
+/// heading for this version, which keeps a hook that mangles the changelog
+/// from emptying the release notes as well.
+pub fn published_section(
+    root: &Path,
+    changelog_rel: Option<&str>,
+    version: &str,
+    generated: &str,
+) -> String {
+    changelog_rel
+        .map(|rel| root.join(rel))
+        .and_then(|path| std::fs::read_to_string(path).ok())
+        .and_then(|content| section_for_version(&content, version))
+        .unwrap_or_else(|| generated.to_string())
+}
+
 fn splice_section(existing: &str, section: &str) -> String {
     if let Some(pos) = existing.find("\n## ") {
         format!("{}{}{}", &existing[..pos], section, &existing[pos..])
@@ -492,6 +532,112 @@ pub fn update_changelog_with(
     std::fs::write(changelog_path, new_content)?;
     tracing::info!("  ✓ Updated {}", changelog_path.display());
     Ok(())
+}
+
+#[cfg(test)]
+mod published_section_tests {
+    use super::{published_section, section_for_version};
+
+    const FILE: &str = "# Changelog
+
+## [1.1.0] - 2026-09-01
+
+### Features
+
+- Added passkey authentication support.
+
+## [1.0.0] - 2026-08-01
+
+### Features
+
+- The first one.
+";
+
+    #[test]
+    fn a_section_stops_at_the_next_version() {
+        let section = section_for_version(FILE, "1.1.0").expect("1.1.0 present");
+
+        assert!(section.contains("passkey"), "{section}");
+        assert!(
+            !section.contains("1.0.0") && !section.contains("The first one"),
+            "the older release must not bleed into the newer section: {section}"
+        );
+    }
+
+    #[test]
+    fn the_last_section_runs_to_the_end_of_the_file() {
+        let section = section_for_version(FILE, "1.0.0").expect("1.0.0 present");
+
+        assert!(section.contains("The first one"), "{section}");
+    }
+
+    #[test]
+    fn a_version_the_file_does_not_carry_is_absent_rather_than_guessed() {
+        assert!(section_for_version(FILE, "2.0.0").is_none());
+    }
+
+    #[test]
+    fn a_hook_rewrite_is_what_gets_published() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("CHANGELOG.md"), FILE).unwrap();
+
+        let published = published_section(
+            dir.path(),
+            Some("CHANGELOG.md"),
+            "1.1.0",
+            "## [1.1.0]
+
+- feat(auth): support passkeys
+",
+        );
+
+        assert!(
+            published.contains("Added passkey authentication support"),
+            "the file on disk wins over the text generated before the hook: {published}"
+        );
+        assert!(
+            !published.contains("feat(auth)"),
+            "the pre-hook text must not survive: {published}"
+        );
+    }
+
+    #[test]
+    fn a_package_with_no_changelog_keeps_the_generated_text() {
+        let dir = tempfile::tempdir().unwrap();
+
+        let published = published_section(dir.path(), None, "1.1.0", "generated");
+
+        assert_eq!(published, "generated");
+    }
+
+    #[test]
+    fn a_changelog_a_hook_mangled_falls_back_instead_of_publishing_nothing() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("CHANGELOG.md"),
+            "# Changelog
+
+oops
+",
+        )
+        .unwrap();
+
+        let published = published_section(dir.path(), Some("CHANGELOG.md"), "1.1.0", "generated");
+
+        assert_eq!(
+            published, "generated",
+            "losing the heading must not empty the release notes"
+        );
+    }
+
+    #[test]
+    fn a_missing_file_falls_back_rather_than_failing_the_release() {
+        let dir = tempfile::tempdir().unwrap();
+
+        let published = published_section(dir.path(), Some("absent.md"), "1.1.0", "generated");
+
+        assert_eq!(published, "generated");
+    }
 }
 
 #[cfg(test)]

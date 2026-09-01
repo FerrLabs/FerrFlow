@@ -578,7 +578,7 @@ pub(super) fn run_release_logic(
                 new_tag: Some(tag.clone()),
             };
 
-            let body = build_section_with(&new_version, &commits, &changelog_render);
+            let mut body = build_section_with(&new_version, &commits, &changelog_render);
             hook_ctx.changelog = body.clone();
 
             if let Some(changelog_rel) = &pkg.changelog {
@@ -615,6 +615,15 @@ pub(super) fn run_release_logic(
                 let pkg_files = files_per_package.entry(pkg.name.clone()).or_default();
                 for f in &files_to_commit[len_before..] {
                     pkg_files.push(f.clone());
+                }
+
+                if !dry_run {
+                    body = crate::changelog::published_section(
+                        root,
+                        pkg.changelog.as_deref(),
+                        &new_version,
+                        &body,
+                    );
                 }
             }
 
