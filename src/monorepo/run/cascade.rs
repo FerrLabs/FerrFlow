@@ -45,24 +45,7 @@ pub(super) fn run_dependency_cascade(
         if cascade_round > config.packages.len() {
             break; // safety: avoid infinite loops from circular deps
         }
-        let mut new_bumps = Vec::new();
-        for (pkg_idx, pkg) in config.packages.iter().enumerate() {
-            if sink.bumped.contains_key(&pkg.name) {
-                continue;
-            }
-            let bump = pkg
-                .depends_on
-                .iter()
-                .filter_map(|dep| {
-                    let upstream = sink.bumped.get(dep.name())?;
-                    Some(dep.propagate().resolve(*upstream))
-                })
-                .max()
-                .unwrap_or(BumpType::None);
-            if bump != BumpType::None {
-                new_bumps.push((pkg_idx, bump));
-            }
-        }
+        let new_bumps = super::graph::cascade_round(&config.packages, sink.bumped);
         if new_bumps.is_empty() {
             break;
         }

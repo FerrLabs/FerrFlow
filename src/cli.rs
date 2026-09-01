@@ -97,6 +97,12 @@ pub enum Commands {
     Graph {
         #[arg(long)]
         json: bool,
+        /// Show what releasing this package would drag along, instead of the graph.
+        #[arg(long, value_name = "PACKAGE")]
+        impact: Option<String>,
+        /// The bump to assume for --impact.
+        #[arg(long, value_name = "TYPE", default_value = "minor")]
+        bump: String,
     },
     /// Compare each package's public API against its last tag and flag a bump the commits understate.
     ApiCheck {
@@ -301,7 +307,9 @@ impl Cli {
                 channel.as_deref(),
                 json,
             ),
-            Commands::Graph { json } => crate::monorepo::graph(self.config.as_deref(), json),
+            Commands::Graph { json, impact, bump } => {
+                crate::monorepo::graph(self.config.as_deref(), json, impact.as_deref(), &bump)
+            }
             Commands::ApiCheck { package, json } => {
                 crate::api_check::run(self.config.as_deref(), package.as_deref(), json)
             }

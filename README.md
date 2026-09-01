@@ -138,6 +138,10 @@ ferrflow tag api
 ferrflow graph
 ferrflow graph --json
 
+# See what releasing a package would drag along with it
+ferrflow graph --impact shared
+ferrflow graph --impact shared --bump major
+
 # Compare each package's public API against its last tag (Rust: needs cargo-semver-checks)
 ferrflow api-check
 ferrflow api-check --json
