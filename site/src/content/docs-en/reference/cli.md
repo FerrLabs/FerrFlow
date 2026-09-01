@@ -285,6 +285,55 @@ The output lists every commit in the range with its individual bump (`major` / `
 
 ---
 
+## `ferrflow graph`
+
+Print the dependency graph between your packages, the release order it implies, and any cycle that makes an order impossible. Monorepo only, since a single-package repo has nothing to order.
+
+```bash
+ferrflow graph [--json] [--impact <PACKAGE>] [--bump <TYPE>]
+```
+
+| Flag                 | Description                                                                                  |
+| -------------------- | -------------------------------------------------------------------------------------------- |
+| `--json`             | Emit the graph, or the impact report, as a structured JSON object instead of the human view. |
+| `--impact <PACKAGE>` | Show what releasing that package would drag along with it, instead of the graph.             |
+| `--bump <TYPE>`      | The bump to assume for `--impact`: `major`, `minor` or `patch`. Defaults to `minor`.         |
+
+A dependency that points outside the workspace is left out rather than invented, so third-party packages never appear. If a cycle exists, no release order is printed and the command exits non-zero.
+
+### What a release would drag along
+
+Before releasing something widely depended on, `--impact` answers what else goes out with it:
+
+```bash
+ferrflow graph --impact shared
+```
+
+```
+FerrFlow — Release impact
+
+  shared 1.0.0 → 1.1.0 (minor, assumed)
+
+  would also release
+    api                  1.0.0 → 1.1.0      minor bump, depends on shared
+    web                  1.0.0 → 1.0.1      patch bump, depends on shared
+    mobile               1.0.0 → 1.1.0      minor bump, through api (2 deep)
+
+  4 packages in total
+```
+
+The bump is assumed rather than derived from your commits, which is what lets you ask the hypothetical question. Pass `--bump major` to see what a breaking change would cost.
+
+Three things this accounts for that are easy to get wrong by hand:
+
+- A `dependsOn` entry can set `propagate` to `none`, which keeps that dependent out entirely, or to `patch`, which caps what the edge passes on. Two dependents of the same package can therefore take different bumps.
+- Members of a `linked` or `fixed` group join with no dependency edge between them at all.
+- Transitive dependents are marked with their distance, so you can see that `mobile` is reached through `api` rather than directly.
+
+This shares its propagation with the release itself rather than reimplementing it, so the packages, bumps and versions it reports are the ones a release would produce.
+
+---
+
 ## `ferrflow version`
 
 Print the current version of one or all packages. Useful in CI scripts.
