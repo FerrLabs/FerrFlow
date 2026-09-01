@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.13.0] - 2026-09-01
+
+### Features
+
+- feat(doctor): report lockfile drift and lockfiles left out of releases (#981)
+
 ## [7.12.0] - 2026-09-01
 
 ### Features
