@@ -139,6 +139,93 @@ pub fn update_for_manifest(repo_root: &Path, manifest_rel: &str) -> anyhow::Resu
     Ok(UpdateOutcome::NoLockfile)
 }
 
+/// What a lockfile says about the version of the package that owns it.
+pub enum LockfileState {
+    /// No lockfile alongside the manifest, or a manifest kind we do not model.
+    None,
+    /// A lockfile is there but does not record the owning package's own
+    /// version, so there is nothing to compare. pnpm and poetry are like this.
+    NoVersionRecorded {
+        lockfile_rel: String,
+    },
+    Agrees {
+        lockfile_rel: String,
+    },
+    Drifted {
+        lockfile_rel: String,
+        recorded: String,
+    },
+}
+
+/// What the lockfile beside `manifest_rel` says about that package's version.
+///
+/// Read-only counterpart to [`update_for_manifest`]: it locates the lockfile
+/// the same way but runs nothing, so it is safe on a machine without the
+/// package manager installed and without registry access.
+pub fn inspect_for_manifest(
+    repo_root: &Path,
+    manifest_rel: &str,
+    manifest_version: &str,
+) -> LockfileState {
+    let Ok(manifest_path) = join_within_repo(repo_root, manifest_rel) else {
+        return LockfileState::None;
+    };
+    let Some(filename) = manifest_path.file_name().and_then(|n| n.to_str()) else {
+        return LockfileState::None;
+    };
+    let Some(manifest) = Manifest::from_manifest_filename(filename) else {
+        return LockfileState::None;
+    };
+    let manifest_dir = manifest_path.parent().unwrap_or(repo_root);
+
+    for lockfile in manifest.lockfiles() {
+        let Some(lockfile_path) = locate_lockfile(repo_root, manifest_dir, lockfile.filename)
+        else {
+            continue;
+        };
+        let lockfile_rel = lockfile_path
+            .strip_prefix(repo_root)
+            .unwrap_or(&lockfile_path)
+            .to_string_lossy()
+            .replace('\\', "/");
+
+        let Some(package) = manifest_package_name(&manifest_path) else {
+            return LockfileState::NoVersionRecorded { lockfile_rel };
+        };
+        return match recorded_version(&lockfile_path, lockfile.filename, &package) {
+            Some(recorded) if recorded == manifest_version => {
+                LockfileState::Agrees { lockfile_rel }
+            }
+            Some(recorded) => LockfileState::Drifted {
+                lockfile_rel,
+                recorded,
+            },
+            None => LockfileState::NoVersionRecorded { lockfile_rel },
+        };
+    }
+
+    LockfileState::None
+}
+
+/// The version a lockfile records for `package`, when the format records the
+/// owning package at all. Only `Cargo.lock` does among the formats we handle:
+/// pnpm, yarn and poetry lock dependencies without restating the version of
+/// the package that owns them, so a drift of this shape cannot exist there.
+fn recorded_version(lockfile_path: &Path, filename: &str, package: &str) -> Option<String> {
+    if filename != "Cargo.lock" {
+        return None;
+    }
+    let content = std::fs::read_to_string(lockfile_path).ok()?;
+    let doc = content.parse::<toml_edit::DocumentMut>().ok()?;
+    let packages = doc.get("package")?.as_array_of_tables()?;
+    packages
+        .iter()
+        .find(|entry| entry.get("name").and_then(|n| n.as_str()) == Some(package))
+        .and_then(|entry| entry.get("version"))
+        .and_then(|v| v.as_str())
+        .map(|v| v.to_string())
+}
+
 fn manifest_package_name(manifest_path: &Path) -> Option<String> {
     let content = std::fs::read_to_string(manifest_path).ok()?;
     let doc = content.parse::<toml_edit::DocumentMut>().ok()?;

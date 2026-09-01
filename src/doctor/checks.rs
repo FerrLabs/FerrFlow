@@ -2,6 +2,7 @@ use std::path::Path;
 use std::process::Command;
 
 use crate::config::{Config, ForgeKind};
+use crate::formats::lockfiles::{LockfileState, inspect_for_manifest};
 use crate::formats::read_version;
 use crate::git::{Repository, collect_all_tags, get_remote_url};
 use crate::validate::ValidationLevel;
@@ -190,6 +191,9 @@ pub(super) fn versioning_section(config: Option<&Config>, root: &Path) -> Sectio
             .and_then(|vf| read_version(vf, root).ok())
             .unwrap_or_else(|| "unknown".to_string());
         checks.push(Check::ok(pkg.name.clone(), Some(format!("v{version}"))));
+        if let Some(check) = lockfile_check(config, pkg, root, &version) {
+            checks.push(check);
+        }
     }
 
     checks.push(Check::info(
@@ -198,6 +202,47 @@ pub(super) fn versioning_section(config: Option<&Config>, root: &Path) -> Sectio
     ));
 
     Section::new("Versioning", checks)
+}
+
+fn lockfile_check(
+    config: &Config,
+    pkg: &crate::config::PackageConfig,
+    root: &Path,
+    version: &str,
+) -> Option<Check> {
+    let manifest = pkg.versioned_files.first()?;
+    let name = format!("{} lockfile", pkg.name);
+    let syncs = pkg.effective_update_lockfiles(&config.workspace);
+
+    match inspect_for_manifest(root, &manifest.path, version) {
+        LockfileState::None => None,
+        LockfileState::Drifted {
+            lockfile_rel,
+            recorded,
+        } => Some(Check::warn(
+            name,
+            Some(format!(
+                "{lockfile_rel} records v{recorded} while {} says v{version}; builds passing --locked will refuse to run",
+                manifest.path
+            )),
+        )),
+        LockfileState::Agrees { lockfile_rel }
+        | LockfileState::NoVersionRecorded { lockfile_rel } => {
+            if syncs {
+                Some(Check::ok(
+                    name,
+                    Some(format!("{lockfile_rel} kept in sync")),
+                ))
+            } else {
+                Some(Check::warn(
+                    name,
+                    Some(format!(
+                        "{lockfile_rel} is not updated on release; set updateLockfiles so the next bump does not leave it behind"
+                    )),
+                ))
+            }
+        }
+    }
 }
 
 pub(super) fn forge_section(

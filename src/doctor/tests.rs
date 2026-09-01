@@ -172,3 +172,108 @@ mod end_to_end {
         assert_eq!(find(&section, "config parses").status, Status::Ok);
     }
 }
+
+mod lockfiles {
+    use super::super::checks::versioning_section;
+    use super::{Check, Status};
+    use crate::config::Config;
+    use std::path::Path;
+
+    struct Fixture {
+        dir: tempfile::TempDir,
+    }
+
+    impl Fixture {
+        fn new(workspace: &str, manifest_version: &str, lockfile: Option<&str>) -> Self {
+            let dir = tempfile::tempdir().unwrap();
+            let root = dir.path();
+            std::fs::create_dir_all(root.join("api")).unwrap();
+            std::fs::write(
+                root.join("api/Cargo.toml"),
+                format!("[package]\nname = \"ferrflow-api\"\nversion = \"{manifest_version}\"\n"),
+            )
+            .unwrap();
+            if let Some(recorded) = lockfile {
+                std::fs::write(
+                    root.join("api/Cargo.lock"),
+                    format!("[[package]]\nname = \"ferrflow-api\"\nversion = \"{recorded}\"\n"),
+                )
+                .unwrap();
+            }
+            std::fs::write(
+                root.join(".ferrflow"),
+                format!(
+                    r#"{{"workspace":{{{workspace}}},"package":[{{"name":"api","path":"api","versionedFiles":[{{"path":"api/Cargo.toml","format":"toml"}}]}}]}}"#
+                ),
+            )
+            .unwrap();
+            Self { dir }
+        }
+
+        fn root(&self) -> &Path {
+            self.dir.path()
+        }
+
+        fn lockfile_check(&self) -> Option<Check> {
+            let config = Config::load(self.root(), Some(&self.root().join(".ferrflow"))).unwrap();
+            versioning_section(Some(&config), self.root())
+                .checks
+                .into_iter()
+                .find(|c| c.name.contains("lockfile"))
+        }
+    }
+
+    #[test]
+    fn a_lockfile_that_disagrees_with_its_manifest_is_reported() {
+        let fx = Fixture::new(r#""updateLockfiles":true"#, "2026.8.1", Some("6.1.0"));
+
+        let check = fx.lockfile_check().expect("a lockfile check");
+
+        assert_eq!(check.status, Status::Warn);
+        let detail = check.detail.unwrap_or_default();
+        assert!(
+            detail.contains("6.1.0") && detail.contains("2026.8.1"),
+            "{detail}"
+        );
+        assert!(
+            detail.contains("--locked"),
+            "the detail should say what actually breaks: {detail}"
+        );
+    }
+
+    #[test]
+    fn a_lockfile_left_out_of_releases_is_flagged_before_it_drifts() {
+        let fx = Fixture::new("", "1.0.0", Some("1.0.0"));
+
+        let check = fx.lockfile_check().expect("a lockfile check");
+
+        assert_eq!(
+            check.status,
+            Status::Warn,
+            "versions agree today, but nothing keeps them agreeing on the next release"
+        );
+        assert!(
+            check.detail.unwrap_or_default().contains("updateLockfiles"),
+            "the warning has to name the setting that fixes it"
+        );
+    }
+
+    #[test]
+    fn a_synced_lockfile_that_agrees_is_not_a_warning() {
+        let fx = Fixture::new(r#""updateLockfiles":true"#, "1.0.0", Some("1.0.0"));
+
+        let check = fx.lockfile_check().expect("a lockfile check");
+
+        assert_eq!(check.status, Status::Ok);
+    }
+
+    #[test]
+    fn a_package_without_a_lockfile_is_not_mentioned() {
+        let fx = Fixture::new(r#""updateLockfiles":true"#, "1.0.0", None);
+
+        assert!(
+            fx.lockfile_check().is_none(),
+            "nothing to say about a lockfile that does not exist"
+        );
+    }
+}
