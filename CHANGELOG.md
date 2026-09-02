@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.15.1] - 2026-09-02
+
+### Bug Fixes
+
+- fix(schema): the snake_case format enum was missing cabal and cmake (#1002)
+
 ## [7.15.0] - 2026-09-02
 
 ### Features
