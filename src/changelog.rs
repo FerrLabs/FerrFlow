@@ -201,19 +201,26 @@ fn build_classic_section(new_version: &str, commits: &[GitLog], formats: &Commit
 
 const BREAKING_KEY: &str = "breaking";
 
-fn render_section_key(message: &str, formats: &CommitFormats) -> Option<&'static str> {
+fn render_section_key(
+    message: &str,
+    formats: &CommitFormats,
+    configured: &[String],
+) -> Option<String> {
     let category = classify_commit(message, formats);
     if category == CommitCategory::Breaking {
-        return Some(BREAKING_KEY);
+        return Some(BREAKING_KEY.to_string());
     }
 
     let header = parse_header(message);
 
     if let Some(h) = header.as_ref() {
         match h.commit_type {
-            "perf" => return Some("perf"),
-            "security" => return Some("security"),
-            "docs" => return Some("docs"),
+            "perf" => return Some("perf".to_string()),
+            "security" => return Some("security".to_string()),
+            "docs" => return Some("docs".to_string()),
+            other if category == CommitCategory::Other && configured.iter().any(|k| k == other) => {
+                return Some(other.to_string());
+            }
             _ => {}
         }
     }
@@ -224,16 +231,29 @@ fn render_section_key(message: &str, formats: &CommitFormats) -> Option<&'static
         .is_some_and(|s| s.eq_ignore_ascii_case("security"));
 
     match category {
-        CommitCategory::Feature => Some("feat"),
-        CommitCategory::Fix if is_security_scope => Some("security"),
-        CommitCategory::Fix => Some("fix"),
-        CommitCategory::Refactor => Some("refactor"),
+        CommitCategory::Feature => Some("feat".to_string()),
+        CommitCategory::Fix if is_security_scope => Some("security".to_string()),
+        CommitCategory::Fix => Some("fix".to_string()),
+        CommitCategory::Refactor => Some("refactor".to_string()),
         CommitCategory::Breaking | CommitCategory::Other => None,
     }
 }
 
-fn resolve_sections(config: &ChangelogConfig) -> Vec<(&'static str, String)> {
-    let default_label = |key: &str| -> &'static str {
+fn configured_section_keys(config: &ChangelogConfig) -> Vec<String> {
+    config
+        .sections
+        .as_ref()
+        .map(|map| {
+            map.iter()
+                .filter(|(_, setting)| !setting.is_hidden())
+                .map(|(key, _)| key.clone())
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn resolve_sections(config: &ChangelogConfig) -> Vec<(String, String)> {
+    let default_label = |key: &str| -> String {
         match key {
             "feat" => "Features",
             "fix" => "Bug Fixes",
@@ -243,40 +263,40 @@ fn resolve_sections(config: &ChangelogConfig) -> Vec<(&'static str, String)> {
             "refactor" => "Code Refactoring",
             _ => "Changes",
         }
+        .to_string()
     };
 
-    let mut enabled: Vec<(&'static str, String)> = Vec::new();
-    let mut push = |key: &'static str, label: String| {
-        if !enabled.iter().any(|(k, _)| *k == key) {
-            enabled.push((key, label));
+    let mut enabled: Vec<(String, String)> = Vec::new();
+    let mut push = |key: &str, label: String| {
+        if !enabled.iter().any(|(k, _)| k == key) {
+            enabled.push((key.to_string(), label));
         }
     };
 
     match &config.sections {
         None => {
-            push("feat", default_label("feat").to_string());
-            push("fix", default_label("fix").to_string());
+            push("feat", default_label("feat"));
+            push("fix", default_label("fix"));
         }
         Some(map) => {
-            let ordered = ["feat", "fix", "perf", "security", "docs", "refactor"];
-            let lookup = |key: &str| -> Option<Option<String>> {
-                map.get(key).map(|setting| {
-                    if setting.is_hidden() {
-                        None
-                    } else {
-                        Some(
-                            setting
-                                .label()
-                                .map(|s| s.to_string())
-                                .unwrap_or_else(|| default_label(key).to_string()),
-                        )
-                    }
+            let label_for = |key: &str| -> Option<String> {
+                map.get(key).and_then(|setting| {
+                    (!setting.is_hidden()).then(|| {
+                        setting
+                            .label()
+                            .map(str::to_string)
+                            .unwrap_or_else(|| default_label(key))
+                    })
                 })
             };
-            for key in ordered {
-                let resolved: &'static str = key;
-                if let Some(Some(label)) = lookup(key) {
-                    push(resolved, label);
+            for key in ["feat", "fix", "perf", "security", "docs", "refactor"] {
+                if let Some(label) = label_for(key) {
+                    push(key, label);
+                }
+            }
+            for key in map.keys() {
+                if let Some(label) = label_for(key) {
+                    push(key, label);
                 }
             }
         }
@@ -298,13 +318,14 @@ fn build_rich_section(
 ) -> String {
     let date = Local::now().format("%Y-%m-%d").to_string();
     let sections = resolve_sections(config);
+    let configured = configured_section_keys(config);
 
     let mut breaking: Vec<Entry> = Vec::new();
-    let mut buckets: std::collections::BTreeMap<&'static str, Vec<Entry>> =
+    let mut buckets: std::collections::BTreeMap<String, Vec<Entry>> =
         std::collections::BTreeMap::new();
 
     for commit in commits {
-        let Some(key) = render_section_key(&commit.message, render.formats()) else {
+        let Some(key) = render_section_key(&commit.message, render.formats(), &configured) else {
             continue;
         };
         let entry = build_entry(commit, config, render);
@@ -901,6 +922,99 @@ mod tests {
         SectionSetting::Enabled(true)
     }
 
+    fn labelled(label: &str) -> SectionSetting {
+        SectionSetting::Label(label.to_string())
+    }
+
+    fn render_with(map: BTreeMap<String, SectionSetting>, commits: &[GitLog]) -> String {
+        let config = ChangelogConfig {
+            sections: Some(map),
+            ..Default::default()
+        };
+        let render = ChangelogRender {
+            config: Some(&config),
+            ..Default::default()
+        };
+        build_section_with("1.0.0", commits, &render)
+    }
+
+    #[test]
+    fn a_configured_section_renders_a_type_the_built_ins_do_not_cover() {
+        let commits = make_commits(&["chore: bump deps", "ci: cache uv", "build: pin wheel"]);
+        let out = render_with(
+            sections(&[
+                ("chore", labelled("Chores")),
+                ("ci", labelled("CI")),
+                ("build", labelled("Build")),
+            ]),
+            &commits,
+        );
+        assert!(out.contains("### Chores"), "{out}");
+        assert!(out.contains("- bump deps"), "{out}");
+        assert!(out.contains("### CI"), "{out}");
+        assert!(out.contains("### Build"), "{out}");
+    }
+
+    #[test]
+    fn an_unconfigured_type_is_still_dropped() {
+        let commits = make_commits(&["chore: bump deps", "test: add cases"]);
+        let out = render_with(sections(&[("chore", labelled("Chores"))]), &commits);
+        assert!(out.contains("- bump deps"), "{out}");
+        assert!(
+            !out.contains("add cases"),
+            "test: must stay out when unconfigured: {out}"
+        );
+    }
+
+    #[test]
+    fn a_hidden_extra_section_stays_hidden() {
+        let commits = make_commits(&["chore: bump deps"]);
+        let out = render_with(
+            sections(&[("chore", SectionSetting::Enabled(false))]),
+            &commits,
+        );
+        assert!(!out.contains("bump deps"), "{out}");
+    }
+
+    #[test]
+    fn configuring_an_extra_section_does_not_move_the_built_in_ones() {
+        let commits = make_commits(&[
+            "feat: add login",
+            "fix(security): patch xss",
+            "refactor: clean up",
+            "chore: bump deps",
+        ]);
+        let out = render_with(
+            sections(&[
+                ("feat", enabled()),
+                ("fix", enabled()),
+                ("security", enabled()),
+                ("refactor", enabled()),
+                ("chore", labelled("Chores")),
+            ]),
+            &commits,
+        );
+        assert!(out.contains("### Features"), "{out}");
+        assert!(out.contains("### Security"), "{out}");
+        assert!(
+            out.contains("patch xss"),
+            "fix(security) must stay in Security: {out}"
+        );
+        assert!(out.contains("### Code Refactoring"), "{out}");
+        assert!(out.contains("### Chores"), "{out}");
+    }
+
+    #[test]
+    fn a_breaking_extra_typed_commit_still_lands_in_breaking_changes() {
+        let commits = make_commits(&["chore!: drop python 3.8"]);
+        let out = render_with(sections(&[("chore", labelled("Chores"))]), &commits);
+        assert!(out.contains("### Breaking Changes"), "{out}");
+        assert!(
+            !out.contains("### Chores"),
+            "breaking wins over the type section: {out}"
+        );
+    }
+
     #[test]
     fn default_render_is_byte_identical_to_classic() {
         let commits = make_commits(&[
@@ -936,15 +1050,21 @@ mod tests {
         let formats = CommitFormats::default();
         for subject in ["perf!: drop legacy API", "docs!: remove the v1 guide"] {
             assert_eq!(
-                render_section_key(subject, &formats),
+                render_section_key(subject, &formats, &[]).as_deref(),
                 Some(BREAKING_KEY),
                 "{subject:?} bumps major and must render as breaking"
             );
         }
-        assert_eq!(render_section_key("perf: cache", &formats), Some("perf"));
-        assert_eq!(render_section_key("docs: typo", &formats), Some("docs"));
         assert_eq!(
-            render_section_key("security: patch", &formats),
+            render_section_key("perf: cache", &formats, &[]).as_deref(),
+            Some("perf")
+        );
+        assert_eq!(
+            render_section_key("docs: typo", &formats, &[]).as_deref(),
+            Some("docs")
+        );
+        assert_eq!(
+            render_section_key("security: patch", &formats, &[]).as_deref(),
             Some("security")
         );
     }
