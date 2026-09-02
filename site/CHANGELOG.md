@@ -1,5 +1,16 @@
 # Changelog
 
+## [2026.9.4] - 2026-09-02
+
+### Features
+
+- feat(site): document the galaxyyml format and sync the schema (#900)
+
+### Bug Fixes
+
+- fix(site): refresh FerrFlow v7.15.1 release data
+- fix(site): sync the served schema after the snake_case enum fix (#901)
+
 ## [2026.9.3] - 2026-09-02
 
 ### Bug Fixes
