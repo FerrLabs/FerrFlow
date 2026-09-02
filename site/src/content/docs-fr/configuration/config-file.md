@@ -490,9 +490,9 @@ pre_bump        ← valider l'état, vérifier les prérequis
   ↓
 écriture des fichiers de version
   ↓
-post_bump       ← modifier des fichiers supplémentaires avec la nouvelle version
-  ↓
 génération du changelog
+  ↓
+post_bump       ← modifier d'autres fichiers, ou réécrire le changelog qui vient d'être généré
   ↓
 pre_commit      ← vérifier les changements stagés, lancer les linters
   ↓
@@ -516,6 +516,27 @@ pre_release     ← (mode PR) après l'ouverture de la PR de release, avant le m
 on_success      ← une fois, après une release entièrement réussie
 on_error        ← une fois, quand la release échoue ($FERRFLOW_ERROR_CODE)
 ```
+
+### Réécrire le changelog depuis un hook
+
+`post_bump` s'exécute après la génération et l'écriture de la section de changelog, et la reçoit dans `FERRFLOW_CHANGELOG`. Un hook peut réécrire `CHANGELOG.md` et FerrFlow reprend la modification : le fichier réécrit est commité, et c'est aussi lui qui alimente le tag git, le corps de la release sur la forge et le commit de release.
+
+Cela suffit à transformer des sujets de commit en prose sans que FerrFlow ait à savoir comment vous vous y prenez :
+
+```bash
+#!/bin/sh
+# Lit la section générée depuis $FERRFLOW_CHANGELOG, réécrit la prose dans
+# CHANGELOG.md. N'importe quel outil convient, y compris aucun.
+votre-reecrivain --input "$FERRFLOW_CHANGELOG" --write CHANGELOG.md
+```
+
+```json
+{ "workspace": { "hooks": { "postBump": "sh ./scripts/prose.sh" } } }
+```
+
+Deux points à connaître. Si la réécriture perd le titre `## [version]`, FerrFlow retombe sur le texte généré plutôt que de publier des notes de release vides. Et rien de tout cela ne s'exécute sous `--dry-run`, où aucun changelog n'est écrit : prévisualisez donc le résultat par une vraie release sur une branche plutôt que d'attendre que `--dry-run` vous le montre.
+
+La reproductibilité est à votre charge. Le changelog est commité et tagué, donc ce que produit le hook est définitif. Un réécrivain qui donne une réponse différente à chaque exécution rend les releases non reproductibles.
 
 ### Configuration
 

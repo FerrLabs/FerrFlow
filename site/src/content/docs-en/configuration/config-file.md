@@ -567,9 +567,9 @@ pre_bump        ← validate state, check prerequisites
   ↓
 write version files
   ↓
-post_bump       ← modify additional files based on new version
-  ↓
 generate changelog
+  ↓
+post_bump       ← modify additional files, or rewrite the changelog just written
   ↓
 pre_commit      ← review staged changes, run linters
   ↓
@@ -593,6 +593,27 @@ pre_release     ← (PR mode) after the release PR opens, before merge
 on_success      ← once, after the whole release completes cleanly
 on_error        ← once, when the release fails ($FERRFLOW_ERROR_CODE)
 ```
+
+### Rewriting the changelog from a hook
+
+`post_bump` runs after the changelog section is generated and written, and receives it in `FERRFLOW_CHANGELOG`. A hook can rewrite `CHANGELOG.md` and FerrFlow picks the change up: the rewritten file is committed, and it is also what reaches the git tag, the forge release body and the release commit.
+
+That is enough to turn commit subjects into prose without FerrFlow needing to know anything about how you do it:
+
+```bash
+#!/bin/sh
+# Read the generated section from $FERRFLOW_CHANGELOG, write prose back into
+# CHANGELOG.md. Any tool works here, including none.
+your-rewriter --input "$FERRFLOW_CHANGELOG" --write CHANGELOG.md
+```
+
+```json
+{ "workspace": { "hooks": { "postBump": "sh ./scripts/prose.sh" } } }
+```
+
+Two things worth knowing. If the rewrite loses the `## [version]` heading, FerrFlow falls back to the generated text rather than publishing empty release notes. And nothing here runs under `--dry-run`, where no changelog is written, so preview the result with a real release on a branch rather than expecting `--dry-run` to show it.
+
+Reproducibility is yours to manage. The changelog is committed and tagged, so whatever the hook produces is permanent. A rewriter that gives a different answer each run makes releases that cannot be reproduced.
 
 ### Configuration
 
