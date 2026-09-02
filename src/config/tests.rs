@@ -1144,11 +1144,23 @@ fn default_workspace_config_values() {
 }
 
 #[test]
+fn a_config_carrying_the_retired_telemetry_key_still_loads() {
+    // The schema keeps both spellings marked deprecated precisely so configs
+    // written before telemetry was removed stay valid. Dropping the field from
+    // WorkspaceConfig must not turn them into a parse error.
+    for key in ["anonymous_telemetry", "telemetry"] {
+        let json = format!(r#"{{"workspace":{{"remote":"origin","{key}":true}},"package":[]}}"#);
+        let config: Config =
+            serde_json::from_str(&json).unwrap_or_else(|e| panic!("{key} should still load: {e}"));
+        assert_eq!(config.workspace.remote, "origin");
+    }
+}
+
+#[test]
 fn serde_default_workspace_values() {
     let json = r#"{"workspace":{"remote":"origin"},"package":[]}"#;
     let config: Config = serde_json::from_str(json).unwrap();
     assert_eq!(config.workspace.remote, "origin");
-    assert!(config.workspace.anonymous_telemetry);
     assert!(config.workspace.auto_merge_releases);
 }
 
@@ -1800,10 +1812,6 @@ fn omitting_the_workspace_block_keeps_every_default() {
 
     assert_eq!(absent.workspace.remote, present.workspace.remote);
     assert_eq!(absent.workspace.branch, present.workspace.branch);
-    assert_eq!(
-        absent.workspace.anonymous_telemetry,
-        present.workspace.anonymous_telemetry
-    );
     assert_eq!(
         absent.workspace.auto_merge_releases,
         present.workspace.auto_merge_releases

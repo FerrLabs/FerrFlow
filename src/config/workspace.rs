@@ -14,8 +14,6 @@ pub struct WorkspaceConfig {
     pub remote: String,
     #[serde(default = "default_branch")]
     pub branch: String,
-    #[serde(default = "default_telemetry", alias = "telemetry")]
-    pub anonymous_telemetry: bool,
     #[serde(default)]
     pub versioning: Option<VersioningStrategy>,
     #[serde(alias = "tagTemplate")]
@@ -80,7 +78,6 @@ impl Default for WorkspaceConfig {
         Self {
             remote: default_remote(),
             branch: default_branch(),
-            anonymous_telemetry: default_telemetry(),
             versioning: Default::default(),
             tag_template: Default::default(),
             version_template: Default::default(),
@@ -167,10 +164,6 @@ pub fn default_commit_skip_markers() -> Vec<String> {
 }
 
 fn default_auto_merge() -> bool {
-    true
-}
-
-fn default_telemetry() -> bool {
     true
 }
 
