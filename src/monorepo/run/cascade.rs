@@ -39,17 +39,8 @@ pub(super) fn run_dependency_cascade(
     dry_run: bool,
     sink: &mut CascadeSink<'_>,
 ) -> anyhow::Result<()> {
-    let mut cascade_round = 0;
-    loop {
-        cascade_round += 1;
-        if cascade_round > config.packages.len() {
-            break; // safety: avoid infinite loops from circular deps
-        }
-        let new_bumps = super::graph::cascade_round(&config.packages, sink.bumped);
-        if new_bumps.is_empty() {
-            break;
-        }
-        for (pkg_idx, bump) in new_bumps {
+    for (pkg_idx, bump) in settle(config, sink.bumped) {
+        {
             let pkg = &config.packages[pkg_idx];
             let Some(vf) = pkg.versioned_files.first() else {
                 continue;
@@ -177,6 +168,40 @@ pub(super) fn run_dependency_cascade(
         }
     }
     Ok(())
+}
+
+/// Which packages the cascade adds, and the bump each ends up with, decided
+/// before anything is written.
+///
+/// A package fed by two edges of different strength must settle on the
+/// strongest, which means revisiting it when a stronger bump arrives in a
+/// later round. Doing that while writing files would give it two changelog
+/// entries and two planned tags, so the fixpoint is reached first and each
+/// package is acted on once.
+///
+/// Packages already bumped from their own commits are left alone: their
+/// version files, changelog and tag were produced before the cascade ran.
+fn settle(config: &Config, seeded: &HashMap<String, BumpType>) -> Vec<(usize, BumpType)> {
+    let mut state = seeded.clone();
+    let mut added: HashMap<usize, BumpType> = HashMap::new();
+
+    for _ in 0..config.packages.len().saturating_mul(4) {
+        let moved: Vec<(usize, BumpType)> = super::graph::cascade_round(&config.packages, &state)
+            .into_iter()
+            .filter(|(idx, _)| !seeded.contains_key(&config.packages[*idx].name))
+            .collect();
+        if moved.is_empty() {
+            break;
+        }
+        for (idx, bump) in moved {
+            state.insert(config.packages[idx].name.clone(), bump);
+            added.insert(idx, bump);
+        }
+    }
+
+    let mut settled: Vec<(usize, BumpType)> = added.into_iter().collect();
+    settled.sort_by_key(|(idx, _)| *idx);
+    settled
 }
 
 pub(super) fn update_dependent_manifests(
@@ -411,5 +436,104 @@ mod tests {
                 .contains("\"core\": \"^1.0.0\""),
             "the manifest must be left alone"
         );
+    }
+}
+
+#[cfg(test)]
+mod settle_tests {
+    use super::settle;
+    use crate::config::Config;
+    use crate::conventional_commits::BumpType;
+    use std::collections::HashMap;
+
+    fn settled(json: &str, seeded: &[(&str, BumpType)]) -> Vec<(String, BumpType)> {
+        let config: Config = serde_json::from_str(json).expect("valid config");
+        let seed: HashMap<String, BumpType> = seeded
+            .iter()
+            .map(|(name, bump)| ((*name).to_string(), *bump))
+            .collect();
+        settle(&config, &seed)
+            .into_iter()
+            .map(|(idx, bump)| (config.packages[idx].name.clone(), bump))
+            .collect()
+    }
+
+    const DIAMOND: &str = r#"{
+        "package": [
+            { "name": "shared", "path": "shared" },
+            { "name": "api", "path": "api", "dependsOn": ["shared"] },
+            { "name": "web", "path": "web",
+              "dependsOn": [{ "name": "shared", "propagate": "patch" }, "api"] }
+        ]
+    }"#;
+
+    #[test]
+    fn a_package_fed_by_two_edges_settles_on_the_strongest() {
+        let out = settled(DIAMOND, &[("shared", BumpType::Minor)]);
+
+        let web = out
+            .iter()
+            .find(|(name, _)| name == "web")
+            .expect("web is reached");
+        assert_eq!(
+            web.1,
+            BumpType::Minor,
+            "the patch edge reaches web first, the minor through api has to win: {out:?}"
+        );
+    }
+
+    #[test]
+    fn a_package_upgraded_across_rounds_is_still_acted_on_once() {
+        let out = settled(DIAMOND, &[("shared", BumpType::Minor)]);
+
+        assert_eq!(
+            out.iter().filter(|(name, _)| name == "web").count(),
+            1,
+            "two entries would write two changelog sections and plan two tags: {out:?}"
+        );
+    }
+
+    #[test]
+    fn a_package_bumped_from_its_own_commits_is_left_to_the_main_loop() {
+        let out = settled(
+            DIAMOND,
+            &[("shared", BumpType::Minor), ("web", BumpType::Patch)],
+        );
+
+        assert!(
+            !out.iter().any(|(name, _)| name == "web"),
+            "its files, changelog and tag were produced before the cascade ran: {out:?}"
+        );
+    }
+
+    #[test]
+    fn an_edge_that_declines_to_propagate_adds_nothing() {
+        let out = settled(
+            r#"{
+                "package": [
+                    { "name": "shared", "path": "shared" },
+                    { "name": "docs", "path": "docs",
+                      "dependsOn": [{ "name": "shared", "propagate": "none" }] }
+                ]
+            }"#,
+            &[("shared", BumpType::Major)],
+        );
+
+        assert!(out.is_empty(), "{out:?}");
+    }
+
+    #[test]
+    fn a_cycle_terminates_rather_than_spinning() {
+        let out = settled(
+            r#"{
+                "package": [
+                    { "name": "a", "path": "a", "dependsOn": ["b"] },
+                    { "name": "b", "path": "b", "dependsOn": ["a"] }
+                ]
+            }"#,
+            &[("a", BumpType::Minor)],
+        );
+
+        assert_eq!(out.len(), 1, "only b joins, and the walk stops: {out:?}");
     }
 }

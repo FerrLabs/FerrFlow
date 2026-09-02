@@ -114,35 +114,40 @@ pub(super) fn build_report(
         });
     }
 
+    let seeded: std::collections::HashSet<String> = bumped.keys().cloned().collect();
+    let mut first_depth: HashMap<usize, usize> = HashMap::new();
+    let mut settled: HashMap<usize, BumpType> = HashMap::new();
+
     let mut depth = 0;
-    loop {
+    for _ in 0..config.packages.len().saturating_mul(4) {
         depth += 1;
-        if depth > config.packages.len() {
-            break;
-        }
-        let joined = cascade_round(&config.packages, &bumped);
-        if joined.is_empty() {
-            break;
-        }
-        let round: Vec<ImpactPackage> = joined
-            .iter()
-            .map(|(idx, bump)| {
-                let pkg = &config.packages[*idx];
-                ImpactPackage {
-                    name: pkg.name.clone(),
-                    bump: bump.to_string(),
-                    current_version: versions.current(pkg),
-                    next_version: versions.next(pkg, *bump),
-                    joined: Joined::Dependency,
-                    depth,
-                    through: triggers(pkg, &bumped),
-                }
-            })
+        let moved: Vec<(usize, BumpType)> = cascade_round(&config.packages, &bumped)
+            .into_iter()
+            .filter(|(idx, _)| !seeded.contains(&config.packages[*idx].name))
             .collect();
-        for (idx, bump) in joined {
-            bumped.insert(config.packages[idx].name.clone(), bump);
+        if moved.is_empty() {
+            break;
         }
-        packages.extend(round);
+        for (idx, bump) in moved {
+            bumped.insert(config.packages[idx].name.clone(), bump);
+            first_depth.entry(idx).or_insert(depth);
+            settled.insert(idx, bump);
+        }
+    }
+
+    let mut reached: Vec<(usize, BumpType)> = settled.into_iter().collect();
+    reached.sort_by_key(|(idx, _)| *idx);
+    for (idx, bump) in reached {
+        let pkg = &config.packages[idx];
+        packages.push(ImpactPackage {
+            name: pkg.name.clone(),
+            bump: bump.to_string(),
+            current_version: versions.current(pkg),
+            next_version: versions.next(pkg, bump),
+            joined: Joined::Dependency,
+            depth: first_depth.get(&idx).copied().unwrap_or(1),
+            through: triggers(pkg, &bumped),
+        });
     }
 
     Ok(ImpactReport {
@@ -371,7 +376,7 @@ mod tests {
     }
 
     #[test]
-    fn a_package_reached_by_two_edges_takes_the_first_bump_to_arrive() {
+    fn a_package_reached_by_two_edges_takes_the_strongest_bump() {
         let report = report(
             r#"{
                 "package": [
@@ -387,13 +392,18 @@ mod tests {
 
         assert_eq!(
             entry(&report, "web").bump,
-            "patch",
-            "web joins on the patch edge in the first round and is never revisited when the minor arrives through api in the second"
+            "minor",
+            "web joins on the patch edge first, and the minor arriving through api in the next round has to win"
         );
         assert_eq!(
-            entry(&report, "web").depth,
+            names(&report).iter().filter(|n| **n == "web").count(),
             1,
-            "it joined in the first round, which is why the later minor cannot reach it"
+            "being revisited must not report the package twice"
+        );
+        assert_eq!(
+            entry(&report, "web").through,
+            vec!["shared", "api"],
+            "both edges fed it, so both are named"
         );
     }
 

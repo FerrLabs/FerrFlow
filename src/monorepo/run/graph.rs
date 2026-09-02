@@ -24,9 +24,14 @@ impl Cycle {
     }
 }
 
-/// The packages that a further cascade round would pull in, given what is
-/// already bumped. Each dependency edge carries its own [`PropagatePolicy`],
-/// so an edge can decline to propagate at all.
+/// The packages a further cascade round would move, given what is already
+/// bumped, and the bump each would take. Each dependency edge carries its own
+/// [`PropagatePolicy`], so an edge can decline to propagate at all.
+///
+/// A package is returned when the strongest bump reaching it is stronger than
+/// what it currently holds, so a package fed by two edges settles on the
+/// strongest rather than on whichever arrived first. Iterate until this
+/// returns nothing to reach the fixpoint.
 ///
 /// The release cascade and `graph --impact` both call this, which is what
 /// makes the preview agree with what a release does.
@@ -36,10 +41,8 @@ pub(crate) fn cascade_round(
 ) -> Vec<(usize, BumpType)> {
     let mut joined = Vec::new();
     for (idx, pkg) in packages.iter().enumerate() {
-        if bumped.contains_key(&pkg.name) {
-            continue;
-        }
-        let bump = pkg
+        let held = bumped.get(&pkg.name).copied().unwrap_or(BumpType::None);
+        let incoming = pkg
             .depends_on
             .iter()
             .filter_map(|dep| {
@@ -48,8 +51,8 @@ pub(crate) fn cascade_round(
             })
             .max()
             .unwrap_or(BumpType::None);
-        if bump != BumpType::None {
-            joined.push((idx, bump));
+        if incoming > held {
+            joined.push((idx, incoming));
         }
     }
     joined
