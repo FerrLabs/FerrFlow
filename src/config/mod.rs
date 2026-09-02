@@ -202,6 +202,13 @@ impl Config {
                 selector: None,
             });
         }
+        if root.join("galaxy.yml").exists() {
+            versioned_files.push(VersionedFile {
+                path: "galaxy.yml".to_string(),
+                format: FileFormat::GalaxyYaml,
+                selector: None,
+            });
+        }
         if root.join("go.mod").exists() {
             versioned_files.push(VersionedFile {
                 path: "go.mod".to_string(),

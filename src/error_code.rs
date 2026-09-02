@@ -326,6 +326,15 @@ pub const CMAKE_WRITE: ErrorCode = ErrorCode(4863);
 pub const CMAKE_INVALID_UTF8: ErrorCode = ErrorCode(4864);
 
 #[allow(dead_code)]
+pub const GALAXY_YAML_READ: ErrorCode = ErrorCode(4871);
+#[allow(dead_code)]
+pub const GALAXY_YAML_VERSION_NOT_FOUND: ErrorCode = ErrorCode(4872);
+#[allow(dead_code)]
+pub const GALAXY_YAML_WRITE: ErrorCode = ErrorCode(4873);
+#[allow(dead_code)]
+pub const GALAXY_YAML_INVALID_UTF8: ErrorCode = ErrorCode(4874);
+
+#[allow(dead_code)]
 pub const PRERELEASE_EMPTY_CHANNEL: ErrorCode = ErrorCode(5001);
 #[allow(dead_code)]
 pub const PRERELEASE_INVALID_CHANNEL: ErrorCode = ErrorCode(5002);
