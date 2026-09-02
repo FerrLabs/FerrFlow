@@ -7,6 +7,7 @@ use crate::state::AppState;
 
 mod health;
 mod latest;
+mod marketplace;
 mod openapi;
 mod preview;
 mod schema;
@@ -26,4 +27,8 @@ pub fn router() -> Router<AppState> {
         .route("/ferrflow/preview", post(preview::preview))
         .route("/ferrflow/openapi.json", get(openapi::openapi))
         .route("/ferrflow/token", post(token::issue_token))
+        .route(
+            "/ferrflow/webhooks/marketplace",
+            post(marketplace::marketplace),
+        )
 }

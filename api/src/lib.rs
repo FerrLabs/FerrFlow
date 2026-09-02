@@ -176,6 +176,39 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn marketplace_without_a_configured_secret_is_503() {
+        let resp = app()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/ferrflow/webhooks/marketplace")
+                    .header("content-type", "application/json")
+                    .body(Body::from(r#"{"action":"purchased"}"#))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::SERVICE_UNAVAILABLE);
+    }
+
+    #[tokio::test]
+    async fn marketplace_without_a_signature_is_401() {
+        let state = AppState::new(None).with_marketplace_webhook_secret(Some("s".to_string()));
+        let resp = build_router(state, &[])
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/ferrflow/webhooks/marketplace")
+                    .header("content-type", "application/json")
+                    .body(Body::from(r#"{"action":"purchased"}"#))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
     async fn an_unknown_path_is_404() {
         let (status, _) = get("/ferrflow/nope").await;
         assert_eq!(status, StatusCode::NOT_FOUND);

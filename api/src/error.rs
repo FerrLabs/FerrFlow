@@ -16,6 +16,7 @@ pub mod code {
     pub const INSTALL_NOT_FOUND: &str = "FERRFLOW_INSTALL_NOT_FOUND";
     pub const RATE_LIMITED: &str = "FERRFLOW_RATE_LIMITED";
     pub const GITHUB_UPSTREAM: &str = "FERRFLOW_GITHUB_UPSTREAM";
+    pub const SIGNATURE_INVALID: &str = "FERRFLOW_SIGNATURE_INVALID";
     pub const VALIDATION_FAILED: &str = "VALIDATION_FAILED";
 }
 

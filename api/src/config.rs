@@ -10,6 +10,7 @@ pub struct Config {
     /// `None` disables `POST /v1/ferrflow/token`, which then answers 503.
     /// That is the intended state for any deploy without the GitHub App key.
     pub github_app: Option<GithubAppConfig>,
+    pub marketplace_webhook_secret: Option<String>,
 }
 
 #[derive(Clone)]
@@ -42,6 +43,7 @@ impl Config {
             },
             allowed_origins: split_list(env::var("ALLOWED_ORIGINS").ok().as_deref()),
             github_app: github_app_from_env(),
+            marketplace_webhook_secret: marketplace_webhook_secret(),
         })
     }
 }
@@ -65,20 +67,27 @@ fn github_app_from_env() -> Option<GithubAppConfig> {
 /// where anything that dumps `/proc/self/environ` would find it.
 fn private_key() -> Option<String> {
     if let Some(path) = non_empty("FERRFLOW_APP_PRIVATE_KEY_FILE") {
-        return read_key_file(&path);
+        return read_secret_file(&path);
     }
     non_empty("FERRFLOW_APP_PRIVATE_KEY")
 }
 
-fn read_key_file(path: &str) -> Option<String> {
+fn marketplace_webhook_secret() -> Option<String> {
+    if let Some(path) = non_empty("FERRFLOW_MARKETPLACE_WEBHOOK_SECRET_FILE") {
+        return read_secret_file(&path);
+    }
+    non_empty("FERRFLOW_MARKETPLACE_WEBHOOK_SECRET")
+}
+
+fn read_secret_file(path: &str) -> Option<String> {
     match std::fs::read_to_string(path) {
-        Ok(pem) if !pem.trim().is_empty() => Some(pem),
+        Ok(secret) if !secret.trim().is_empty() => Some(secret.trim().to_string()),
         Ok(_) => {
-            tracing::error!(path, "FERRFLOW_APP_PRIVATE_KEY_FILE is empty");
+            tracing::error!(path, "secret file is empty");
             None
         }
         Err(e) => {
-            tracing::error!(path, error = %e, "cannot read FERRFLOW_APP_PRIVATE_KEY_FILE");
+            tracing::error!(path, error = %e, "cannot read secret file");
             None
         }
     }
@@ -118,6 +127,18 @@ mod tests {
     // empty. Treating that as "configured" would mint App JWTs from an empty
     // PEM and fail every request with a 502 instead of an honest 503.
     #[test]
+    fn a_secret_file_is_trimmed_like_the_env_var_path() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("webhook-secret");
+        std::fs::write(&path, "s3cr3t\n").unwrap();
+
+        assert_eq!(
+            read_secret_file(path.to_str().unwrap()).as_deref(),
+            Some("s3cr3t")
+        );
+    }
+
+    #[test]
     fn a_blank_key_is_the_same_as_an_absent_one() {
         let cfg = GithubAppConfig {
             client_id: "Iv23li".to_string(),
@@ -143,7 +164,7 @@ x
         )
         .unwrap();
 
-        let pem = read_key_file(path.to_str().unwrap());
+        let pem = read_secret_file(path.to_str().unwrap());
         assert!(pem.unwrap().contains("BEGIN RSA PRIVATE KEY"));
     }
 
@@ -157,8 +178,8 @@ x
         )
         .unwrap();
 
-        assert!(read_key_file(empty.to_str().unwrap()).is_none());
-        assert!(read_key_file(dir.path().join("absent.pem").to_str().unwrap()).is_none());
+        assert!(read_secret_file(empty.to_str().unwrap()).is_none());
+        assert!(read_secret_file(dir.path().join("absent.pem").to_str().unwrap()).is_none());
     }
 
     #[test]

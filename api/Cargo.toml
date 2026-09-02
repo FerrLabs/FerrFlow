@@ -28,6 +28,10 @@ reqwest = { version = "0.13", default-features = false, features = ["rustls", "j
 # `CryptoProvider::install_default()` à appeler).
 jsonwebtoken = { version = "11", features = ["rust_crypto"] }
 
+hmac = "0.13"
+sha2 = "0.11"
+hex = "0.4"
+
 # Négociation du contrat par en-tête (`x-ferrflow-api-version`), partagée avec
 # les autres APIs FerrLabs. C'est ce qui rend le versionnage par chemin
 # redondant : voir le retrait de `/v1` dans `lib.rs`.

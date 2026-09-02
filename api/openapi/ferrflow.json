@@ -204,6 +204,65 @@
           "503": { "description": "Service not configured on this deploy" }
         }
       }
+    },
+    "/ferrflow/webhooks/marketplace": {
+      "post": {
+        "tags": ["ferrflow"],
+        "summary": "GitHub Marketplace event receiver",
+        "description": "Receives GitHub Marketplace listing events. Every request is authenticated by the X-Hub-Signature-256 header, an HMAC-SHA256 of the raw request body keyed with the webhook secret configured on the deploy. Not intended for direct callers.",
+        "parameters": [
+          {
+            "name": "X-Hub-Signature-256",
+            "in": "header",
+            "required": true,
+            "description": "HMAC-SHA256 of the raw body, hex encoded, prefixed with sha256=.",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "X-GitHub-Event",
+            "in": "header",
+            "required": false,
+            "description": "Event name. Anything other than marketplace_purchase is acknowledged and ignored.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "GitHub Marketplace event payload.",
+                "properties": {
+                  "action": { "type": "string" },
+                  "marketplace_purchase": {
+                    "type": "object",
+                    "properties": {
+                      "account": {
+                        "type": "object",
+                        "properties": {
+                          "login": { "type": "string" },
+                          "type": { "type": "string" }
+                        }
+                      },
+                      "plan": {
+                        "type": "object",
+                        "properties": { "name": { "type": "string" } }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": { "description": "Event accepted" },
+          "400": { "description": "Signature valid but the payload could not be read" },
+          "401": { "description": "Signature missing or does not match the body" },
+          "503": { "description": "Service not configured on this deploy" }
+        }
+      }
     }
   },
   "components": {

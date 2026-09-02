@@ -10,6 +10,7 @@ use crate::config::{Config, GithubAppConfig};
 #[derive(Clone)]
 pub struct AppState {
     github_app: Option<Arc<(GithubAppConfig, GithubClient)>>,
+    marketplace_webhook_secret: Option<Arc<str>>,
 }
 
 impl AppState {
@@ -19,11 +20,23 @@ impl AppState {
                 let client = GithubClient::new(cfg.api_base_url.clone());
                 Arc::new((cfg, client))
             }),
+            marketplace_webhook_secret: None,
         }
+    }
+
+    #[must_use]
+    pub fn with_marketplace_webhook_secret(mut self, secret: Option<String>) -> Self {
+        self.marketplace_webhook_secret = secret.map(Arc::from);
+        self
     }
 
     pub fn from_config(config: &Config) -> Self {
         Self::new(config.github_app.clone())
+            .with_marketplace_webhook_secret(config.marketplace_webhook_secret.clone())
+    }
+
+    pub fn marketplace_webhook_secret(&self) -> Option<&str> {
+        self.marketplace_webhook_secret.as_deref()
     }
 
     pub fn github_app(&self) -> Option<(&GithubAppConfig, &GithubClient)> {
