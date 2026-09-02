@@ -11,6 +11,7 @@ pub mod github_release_asset;
 pub mod helm;
 pub mod npm;
 pub mod pypi;
+mod pypi_oidc;
 pub mod webhook;
 
 /// Inputs threaded into every publisher invocation. References the
@@ -129,8 +130,9 @@ pub fn run(p: &PublisherConfig, ctx: &PublishContext<'_>) -> Result<PublishOutco
         PublisherConfig::Pypi {
             registry,
             build,
+            trusted_publishing,
             args,
-        } => pypi::run(registry.as_deref(), *build, args, ctx),
+        } => pypi::run(registry.as_deref(), *build, *trusted_publishing, args, ctx),
         PublisherConfig::Webhook { url, body, headers } => {
             webhook::run(url, body.as_ref(), headers, ctx)
         }

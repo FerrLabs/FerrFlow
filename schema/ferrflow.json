@@ -977,6 +977,16 @@
               "default": true,
               "description": "Run python -m build in the package directory before uploading. Set false when the distributions in dist/ are produced earlier in the pipeline."
             },
+            "trustedPublishing": {
+              "type": "boolean",
+              "default": false,
+              "description": "Mint a short-lived upload token from PyPI trusted publishing instead of reading a stored token. Requires a GitHub Actions job with permissions: id-token: write, and this repository registered as a trusted publisher for the project. Mutually exclusive with the registry's tokenEnv."
+            },
+            "trusted_publishing": {
+              "type": "boolean",
+              "default": false,
+              "description": "Snake_case form of `trustedPublishing` — both spellings are accepted. Mint a short-lived upload token from PyPI trusted publishing instead of reading a stored token. Requires a GitHub Actions job with permissions: id-token: write, and this repository registered as a trusted publisher for the project. Mutually exclusive with the registry's tokenEnv."
+            },
             "args": {
               "type": "array",
               "items": {
