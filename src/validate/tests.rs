@@ -1,4 +1,3 @@
-use super::checks::*;
 use super::*;
 use crate::config::{Config, FileFormat, PackageConfig, VersionedFile, WorkspaceConfig};
 use std::collections::{BTreeMap, HashMap};
