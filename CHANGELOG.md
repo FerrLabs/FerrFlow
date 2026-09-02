@@ -4,6 +4,16 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.15.0] - 2026-09-02
+
+### Features
+
+- feat(formats): add galaxyyml for Ansible Galaxy collections (#999)
+
+### Bug Fixes
+
+- fix(config): accept the snake_case publisher fields the schema documents (#1000)
+
 ## [7.14.0] - 2026-09-02
 
 ### Features
