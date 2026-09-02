@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.13.3] - 2026-09-02
+
+### Bug Fixes
+
+- fix(cascade): a dependent takes the strongest bump, not the first to arrive (#988)
+
 ## [7.13.2] - 2026-09-02
 
 ### Bug Fixes
