@@ -1022,7 +1022,7 @@
         },
         "postBump": {
           "type": "string",
-          "description": "Run after writing version files, before changelog generation."
+          "description": "Run after writing version files and generating the changelog. The generated section is in FERRFLOW_CHANGELOG, and anything the hook writes is staged into the release commit."
         },
         "preCommit": {
           "type": "string",
@@ -1075,7 +1075,7 @@
         },
         "post_bump": {
           "type": "string",
-          "description": "Snake_case form of `postBump` — both spellings are accepted. Run after writing version files, before changelog generation."
+          "description": "Snake_case form of `postBump` — both spellings are accepted. Run after writing version files and generating the changelog. The generated section is in FERRFLOW_CHANGELOG, and anything the hook writes is staged into the release commit."
         },
         "pre_commit": {
           "type": "string",
