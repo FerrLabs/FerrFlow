@@ -199,6 +199,32 @@ mod tests {
     }
 
     #[test]
+    fn a_raise_whose_version_cannot_be_computed_is_not_passed_on() {
+        let config: Config = serde_json::from_str(CHAIN).expect("valid config");
+        // api holds a version no strategy can bump, so its raise cannot be
+        // applied. web depends on it and must not settle on the raise either.
+        let mut plans = vec![
+            plan_for("1.0.0", "1.1.0", BumpType::Minor),
+            plan_for("not-a-version", "not-a-version", BumpType::Patch),
+            plan_for("1.0.0", "1.0.1", BumpType::Patch),
+        ];
+
+        apply_cascade_upgrades(&config, &[], &mut plans);
+
+        let (api_bump, api_version, _) = bump_of(&plans, 1).expect("api still has a plan");
+        assert_eq!(api_bump, BumpType::Patch, "the raise could not be applied");
+        assert_eq!(api_version, "not-a-version", "so nothing was written to it");
+
+        let (web_bump, web_version, _) = bump_of(&plans, 2).expect("web still has a plan");
+        assert_eq!(
+            web_bump,
+            BumpType::Patch,
+            "web must not cascade off a raise api never took"
+        );
+        assert_eq!(web_version, "1.0.1");
+    }
+
+    #[test]
     fn an_edge_that_declines_to_propagate_raises_nothing() {
         let config: Config = serde_json::from_str(
             r#"{
