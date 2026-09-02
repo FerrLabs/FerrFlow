@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.9.1] - 2026-09-02
+
+### Features
+
+- feat(api): add the marketplace webhook route (#893)
+
 ## [2026.8.2] - 2026-08-31
 
 ### Bug Fixes

@@ -571,7 +571,7 @@ dependencies = [
 
 [[package]]
 name = "ferrflow-api"
-version = "2026.8.2"
+version = "2026.9.1"
 dependencies = [
  "anyhow",
  "axum",

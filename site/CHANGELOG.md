@@ -1,5 +1,18 @@
 # Changelog
 
+## [2026.9.1] - 2026-09-02
+
+### Features
+
+- feat(site): document the doctor lockfile checks (#887)
+- feat(site): document ferrflow graph and its impact flag (#885)
+
+### Bug Fixes
+
+- fix(site): correct the hooks lifecycle order and document changelog rewriting (#889)
+- fix(site): refresh FerrFlow v7.13.0 release data
+- fix(site): refresh FerrFlow v7.11.2 release data
+
 ## [2026.8.21] - 2026-08-31
 
 ### Bug Fixes
