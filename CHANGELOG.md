@@ -4,6 +4,13 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.13.2] - 2026-09-02
+
+### Bug Fixes
+
+- fix(schema): postBump runs after changelog generation, not before (#987)
+- fix(validate): drop the redundant glob import from the tests (#986)
+
 ## [7.13.1] - 2026-09-01
 
 ### Bug Fixes
