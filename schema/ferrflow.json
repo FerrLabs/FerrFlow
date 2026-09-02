@@ -32,14 +32,12 @@
         },
         "anonymous_telemetry": {
           "type": "boolean",
-          "description": "Deprecated and ignored: telemetry was removed from FerrFlow in v5.33. The key remains accepted so existing configs stay valid.",
-          "default": true,
+          "description": "Deprecated and ignored: telemetry was removed from FerrFlow in v5.33. The key remains accepted so existing configs written before then stay valid, but it drives nothing and should be deleted.",
           "deprecated": true
         },
         "telemetry": {
           "type": "boolean",
-          "description": "Deprecated and ignored: telemetry was removed from FerrFlow in v5.33. The key remains accepted so existing configs stay valid.",
-          "default": true,
+          "description": "Deprecated and ignored: telemetry was removed from FerrFlow in v5.33. The key remains accepted so existing configs written before then stay valid, but it drives nothing and should be deleted.",
           "deprecated": true
         },
         "versioning": {
