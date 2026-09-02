@@ -38,6 +38,7 @@ mod lock;
 mod plan;
 mod release_json;
 mod summary;
+mod upgrade;
 mod why;
 use checkpoint::Checkpoint;
 use drafts::publish_pending_drafts;
@@ -241,6 +242,7 @@ pub(super) fn run_release_logic(
         .collect::<Result<Vec<_>>>()?;
 
     let mut plans: Vec<Option<PackagePlan>> = plans.into_iter().map(Some).collect();
+    upgrade::apply_cascade_upgrades(config, &all_tags, &mut plans);
     groups::apply_groups(config, root, &mut plans);
 
     let all_packages = batch_package_snapshot(&release_order, &plans, &config.packages);
