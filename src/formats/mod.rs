@@ -1,5 +1,4 @@
 pub mod cabal;
-pub mod chart_yaml;
 pub mod cmake;
 pub mod csproj;
 #[cfg(feature = "cli")]
@@ -13,11 +12,11 @@ pub mod json;
 pub mod lockfiles;
 pub mod mix_exs;
 pub mod package_swift;
-pub mod pubspec_yaml;
 mod splice;
 pub mod toml_format;
 pub mod txt;
 pub mod xml;
+pub mod yaml_version;
 
 use anyhow::Result;
 use std::path::{Component, Path, PathBuf};
@@ -94,9 +93,10 @@ pub fn get_handler(format: &FileFormat) -> Box<dyn VersionFile> {
         FileFormat::Toml => Box::new(toml_format::TomlVersionFile),
         FileFormat::Txt => Box::new(txt::TxtVersionFile),
         FileFormat::Xml => Box::new(xml::XmlVersionFile),
-        FileFormat::PubspecYaml => Box::new(pubspec_yaml::PubspecYamlVersionFile),
+        FileFormat::PubspecYaml => Box::new(yaml_version::YamlTopLevelVersion::PUBSPEC),
+        FileFormat::GalaxyYaml => Box::new(yaml_version::YamlTopLevelVersion::GALAXY),
         FileFormat::MixExs => Box::new(mix_exs::MixExsVersionFile),
-        FileFormat::ChartYaml => Box::new(chart_yaml::ChartYamlVersionFile),
+        FileFormat::ChartYaml => Box::new(yaml_version::YamlTopLevelVersion::CHART),
         FileFormat::Gemspec => Box::new(gemspec::GemspecVersionFile),
         FileFormat::PackageSwift => Box::new(package_swift::PackageSwiftVersionFile),
         FileFormat::Cabal => Box::new(cabal::CabalVersionFile),
@@ -158,6 +158,7 @@ mod tests {
             FileFormat::PackageSwift,
             FileFormat::Cabal,
             FileFormat::Cmake,
+            FileFormat::GalaxyYaml,
         ] {
             let _ = get_handler(format);
         }
@@ -224,6 +225,7 @@ mod tests {
             FileFormat::PackageSwift,
             FileFormat::Cabal,
             FileFormat::Cmake,
+            FileFormat::GalaxyYaml,
         ] {
             let handler = get_handler(format);
             assert!(

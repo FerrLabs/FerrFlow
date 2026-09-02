@@ -44,6 +44,7 @@ That is the whole release: bump, changelog, tag, GitHub release.
 | `gradle` | `build.gradle`, `build.gradle.kts` | Java / Kotlin | `version = "…"` |
 | `helm` / `chartyaml` | `Chart.yaml` | Kubernetes / Helm | top-level `version:` |
 | `pubspecyaml` | `pubspec.yaml` | Dart / Flutter | top-level `version:` |
+| `galaxyyml` | `galaxy.yml` | Ansible collections | top-level `version:` |
 | `mixexs` | `mix.exs` | Elixir | `version: "…"` in `def project` |
 | `gemspec` | `*.gemspec` | Ruby | `s.version = "…"` |
 | `packageswift` | `Package.swift` | Swift | top-level `let <name>Version = "…"` |

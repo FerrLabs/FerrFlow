@@ -263,6 +263,8 @@ pub enum FileFormat {
     MixExs,
     #[serde(rename = "chartyaml")]
     ChartYaml,
+    #[serde(rename = "galaxyyml")]
+    GalaxyYaml,
     Gemspec,
     #[serde(rename = "packageswift")]
     PackageSwift,
