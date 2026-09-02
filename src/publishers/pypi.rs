@@ -11,6 +11,7 @@ const PUBLISH_RETRY_BACKOFF_SECS: [u64; 2] = [5, 15];
 pub fn run(
     registry: Option<&str>,
     build: bool,
+    trusted_publishing: bool,
     extra_args: &[String],
     ctx: &PublishContext<'_>,
 ) -> Result<PublishOutcome> {
@@ -25,14 +26,21 @@ pub fn run(
                     "publisher pypi: registry `{name}` is not declared under `workspace.registries`"
                 ))
                 .error_code(error_code::CONFIG_INVALID_PATH)?;
-            if let Some(env_name) = &r.token_env
-                && std::env::var(env_name).is_err()
-            {
-                return Err(anyhow!(
-                    "publisher pypi:{name}: env var `{env_name}` is not set; \
-                     export the registry token before running `ferrflow release`"
-                ))
-                .error_code(error_code::CONFIG_INVALID_PATH);
+            if let Some(env_name) = &r.token_env {
+                if trusted_publishing {
+                    return Err(anyhow!(
+                        "publisher pypi:{name}: `trustedPublishing` and the registry `tokenEnv` \
+                         (`{env_name}`) both configure authentication; keep one"
+                    ))
+                    .error_code(error_code::CONFIG_INVALID_PATH);
+                }
+                if std::env::var(env_name).is_err() {
+                    return Err(anyhow!(
+                        "publisher pypi:{name}: env var `{env_name}` is not set; \
+                         export the registry token before running `ferrflow release`"
+                    ))
+                    .error_code(error_code::CONFIG_INVALID_PATH);
+                }
             }
             Some(r)
         }
@@ -71,7 +79,11 @@ pub fn run(
     if let Some(url) = resolved.and_then(|r| r.url.as_deref()) {
         cmd.arg("--repository-url").arg(url);
     }
-    if let Some(env_name) = resolved.and_then(|r| r.token_env.as_deref())
+    if trusted_publishing {
+        let token = super::pypi_oidc::mint(resolved.and_then(|r| r.url.as_deref()))?;
+        cmd.env("TWINE_USERNAME", "__token__");
+        cmd.env("TWINE_PASSWORD", token);
+    } else if let Some(env_name) = resolved.and_then(|r| r.token_env.as_deref())
         && let Ok(token) = std::env::var(env_name)
     {
         cmd.env("TWINE_USERNAME", "__token__");
@@ -203,8 +215,8 @@ mod tests {
     #[test]
     fn missing_registry_definition_is_a_clear_error() {
         let registries = BTreeMap::new();
-        let err =
-            run(Some("internal"), false, &[], &ctx(&registries, true)).expect_err("must error");
+        let err = run(Some("internal"), false, false, &[], &ctx(&registries, true))
+            .expect_err("must error");
         let msg = format!("{err:?}");
         assert!(
             msg.contains("not declared under `workspace.registries`"),
@@ -222,16 +234,32 @@ mod tests {
                 token_env: Some("A_TOKEN_THAT_IS_NOT_SET_XYZ".to_string()),
             },
         );
-        let err =
-            run(Some("internal"), false, &[], &ctx(&registries, true)).expect_err("must error");
+        let err = run(Some("internal"), false, false, &[], &ctx(&registries, true))
+            .expect_err("must error");
         let msg = format!("{err:?}");
         assert!(msg.contains("is not set"), "got: {msg}");
     }
 
     #[test]
+    fn trusted_publishing_and_a_registry_token_together_are_refused() {
+        let mut registries = BTreeMap::new();
+        registries.insert(
+            "internal".to_string(),
+            RegistryConfig {
+                url: Some("https://pypi.internal/simple".to_string()),
+                token_env: Some("A_TOKEN_THAT_IS_NOT_SET_XYZ".to_string()),
+            },
+        );
+        let err = run(Some("internal"), false, true, &[], &ctx(&registries, true))
+            .expect_err("must error");
+        let msg = format!("{err:?}");
+        assert!(msg.contains("both configure authentication"), "got: {msg}");
+    }
+
+    #[test]
     fn dry_run_short_circuits_after_validation() {
         let registries = BTreeMap::new();
-        let outcome = run(None, true, &[], &ctx(&registries, true)).expect("dry run is ok");
+        let outcome = run(None, true, false, &[], &ctx(&registries, true)).expect("dry run is ok");
         assert!(matches!(outcome, PublishOutcome::DryRun));
     }
 

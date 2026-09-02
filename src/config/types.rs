@@ -240,6 +240,8 @@ pub enum PublisherConfig {
         registry: Option<String>,
         #[serde(default = "default_true")]
         build: bool,
+        #[serde(default, rename = "trustedPublishing", alias = "trusted_publishing")]
+        trusted_publishing: bool,
         #[serde(default)]
         args: Vec<String>,
     },
