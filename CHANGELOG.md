@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.14.0] - 2026-09-02
+
+### Features
+
+- feat(publishers): support PyPI trusted publishing (#997)
+
 ## [7.13.6] - 2026-09-02
 
 ### Bug Fixes
