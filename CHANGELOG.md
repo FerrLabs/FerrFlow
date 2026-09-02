@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.13.5] - 2026-09-02
+
+### Bug Fixes
+
+- fix(release): do not propagate a raise that cannot be applied (#992)
+
 ## [7.13.4] - 2026-09-02
 
 ### Bug Fixes
