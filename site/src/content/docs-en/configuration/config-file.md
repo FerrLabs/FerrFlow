@@ -918,6 +918,42 @@ Omit `registry` to publish to npmjs.org. `tag` defaults to `"latest"`. A scoped 
 
 `chart` is the directory containing `Chart.yaml`, relative to the package path. Auth assumes `helm registry login` was done in CI.
 
+### PyPI publisher
+
+```json title="ferrflow.json"
+{
+  "package": [
+    {
+      "name": "ferrlabs-sdk",
+      "path": "sdk",
+      "publishers": [{ "kind": "pypi" }]
+    }
+  ]
+}
+```
+
+Runs `python -m build` in the package directory, then `twine upload dist/*`. Set `build` to `false` when the distributions are produced earlier in the pipeline. Omit `registry` to publish to pypi.org.
+
+#### Trusted publishing
+
+```json title="ferrflow.json"
+{
+  "publishers": [{ "kind": "pypi", "trustedPublishing": true }]
+}
+```
+
+Mints a short-lived upload token from PyPI instead of reading a stored one, so no PyPI secret lives in the repository. The job has to grant the OIDC permission, and the repository and workflow have to be registered as a trusted publisher for the project:
+
+```yaml title=".github/workflows/release.yml"
+permissions:
+  contents: write
+  id-token: write
+```
+
+The token endpoint is derived from the registry url, so TestPyPI and a private index work unchanged. A non-https registry url is refused: the exchange must not happen in the clear.
+
+`trustedPublishing` and a registry `tokenEnv` are mutually exclusive. Setting both is a configuration error, reported before anything is published, rather than a silent choice between two credentials.
+
 ### GitHub release asset
 
 ```json title="ferrflow.json"
