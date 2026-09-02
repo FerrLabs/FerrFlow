@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.13.4] - 2026-09-02
+
+### Bug Fixes
+
+- fix(release): raise a package's own bump when a dependency moves further (#991)
+
 ## [7.13.3] - 2026-09-02
 
 ### Bug Fixes
