@@ -189,9 +189,9 @@ pub enum PublisherConfig {
     Cargo {
         #[serde(default)]
         registry: Option<String>,
-        #[serde(default, rename = "allowDirty")]
+        #[serde(default, rename = "allowDirty", alias = "allow_dirty")]
         allow_dirty: bool,
-        #[serde(default, rename = "noVerify")]
+        #[serde(default, rename = "noVerify", alias = "no_verify")]
         no_verify: bool,
         #[serde(default)]
         args: Vec<String>,
@@ -230,7 +230,7 @@ pub enum PublisherConfig {
     },
     GithubReleaseAsset {
         path: String,
-        #[serde(default, rename = "displayName")]
+        #[serde(default, rename = "displayName", alias = "display_name")]
         display_name: Option<String>,
         #[serde(default)]
         args: Vec<String>,
@@ -369,5 +369,57 @@ impl PublisherConfig {
                 format!("POST {url} ({package_name}@{new_version})")
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::PublisherConfig;
+
+    fn parse(json: &str) -> PublisherConfig {
+        serde_json::from_str(json).expect("publisher must deserialize")
+    }
+
+    #[test]
+    fn the_cargo_publisher_accepts_both_spellings() {
+        assert_eq!(
+            parse(r#"{"kind":"cargo","allowDirty":true,"noVerify":true}"#),
+            parse(r#"{"kind":"cargo","allow_dirty":true,"no_verify":true}"#)
+        );
+    }
+
+    #[test]
+    fn a_release_asset_display_name_accepts_both_spellings() {
+        assert_eq!(
+            parse(r#"{"kind":"github-release-asset","path":"sbom.json","displayName":"sbom"}"#),
+            parse(r#"{"kind":"github-release-asset","path":"sbom.json","display_name":"sbom"}"#)
+        );
+    }
+
+    #[test]
+    fn the_pypi_publisher_accepts_both_spellings() {
+        assert_eq!(
+            parse(r#"{"kind":"pypi","trustedPublishing":true}"#),
+            parse(r#"{"kind":"pypi","trusted_publishing":true}"#)
+        );
+    }
+
+    #[test]
+    fn a_snake_case_flag_is_not_silently_dropped() {
+        let PublisherConfig::Cargo { no_verify, .. } =
+            parse(r#"{"kind":"cargo","no_verify":true}"#)
+        else {
+            panic!("expected a cargo publisher");
+        };
+        assert!(
+            no_verify,
+            "no_verify must reach the publisher, not default to false"
+        );
+    }
+
+    #[test]
+    fn publishers_still_serialize_in_camel_case() {
+        let json = serde_json::to_string(&parse(r#"{"kind":"cargo","allow_dirty":true}"#)).unwrap();
+        assert!(json.contains("allowDirty"), "got: {json}");
     }
 }
