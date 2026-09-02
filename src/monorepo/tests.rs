@@ -994,3 +994,87 @@ mod cycle_detection {
         );
     }
 }
+
+mod bump_raising {
+    use crate::test_utils::{commit_file, git, init_repo, with_cwd};
+    use crate::timing::Timing;
+    use std::path::Path;
+
+    fn write_repo(root: &Path) {
+        for pkg in ["shared", "api", "web"] {
+            std::fs::create_dir_all(root.join(pkg)).unwrap();
+            std::fs::write(
+                root.join(pkg).join("package.json"),
+                format!("{{\"name\":\"{pkg}\",\"version\":\"1.0.0\"}}\n"),
+            )
+            .unwrap();
+        }
+        std::fs::write(
+            root.join(".ferrflow"),
+            r#"{"workspace": {"recoverMissedReleases": true}, "package": [
+                {"name": "shared", "path": "shared", "versionedFiles": [{"path": "shared/package.json", "format": "json"}]},
+                {"name": "api", "path": "api", "dependsOn": ["shared"], "versionedFiles": [{"path": "api/package.json", "format": "json"}]},
+                {"name": "web", "path": "web", "dependsOn": ["api"], "versionedFiles": [{"path": "web/package.json", "format": "json"}]}
+            ]}"#,
+        )
+        .unwrap();
+    }
+
+    fn version_of(root: &Path, pkg: &str) -> String {
+        let raw = std::fs::read_to_string(root.join(pkg).join("package.json")).unwrap();
+        let value: serde_json::Value = serde_json::from_str(&raw).unwrap();
+        value["version"].as_str().unwrap().to_string()
+    }
+
+    #[test]
+    fn a_release_raises_a_packages_own_patch_to_its_dependencys_minor() {
+        let (dir, _repo) = init_repo();
+        let root = dir.path();
+        write_repo(root);
+        git(root, &["add", "-A"]);
+        commit_file(root, "seed.txt", "x", "chore: seed", 1_950_000_000);
+        for pkg in ["shared", "api", "web"] {
+            git(root, &["tag", &format!("{pkg}@v1.0.0")]);
+        }
+        commit_file(
+            root,
+            "shared/feature.ts",
+            "x",
+            "feat(shared): add a helper",
+            1_950_000_100,
+        );
+        commit_file(
+            root,
+            "web/label.ts",
+            "x",
+            "fix(web): correct a label",
+            1_950_000_200,
+        );
+
+        let config = root.join(".ferrflow");
+        // The push fails with no remote configured, after the version files
+        // have been written, which is all this asserts on.
+        let _ = with_cwd(root, || {
+            crate::monorepo::release(
+                Some(&config),
+                false,
+                false,
+                false,
+                false,
+                &[],
+                &[],
+                None,
+                false,
+                false,
+                &mut Timing::new(false),
+            )
+        });
+
+        assert_eq!(
+            version_of(root, "web"),
+            "1.1.0",
+            "web has a fix of its own and depends on an api taking a minor, so it takes \
+the minor; a patch here means the raise never reached the release loop"
+        );
+    }
+}

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::config::Config;
 use crate::conventional_commits::BumpType;
@@ -37,34 +37,43 @@ pub(super) fn apply_cascade_upgrades(
         return;
     }
 
-    let mut raised: HashMap<usize, BumpType> = HashMap::new();
+    let mut raised: HashMap<usize, (BumpType, String)> = HashMap::new();
+    let mut blocked: HashSet<usize> = HashSet::new();
+
     for _ in 0..config.packages.len().saturating_mul(4) {
-        let moved = super::graph::cascade_round(&config.packages, &state);
+        let moved: Vec<(usize, BumpType)> = super::graph::cascade_round(&config.packages, &state)
+            .into_iter()
+            .filter(|(idx, _)| !blocked.contains(idx))
+            .collect();
         if moved.is_empty() {
             break;
         }
+        let mut progressed = false;
         for (idx, bump) in moved {
-            state.insert(config.packages[idx].name.clone(), bump);
             // A package with no plan of its own is left to the cascade proper,
             // which runs after the release loop. It still has to enter the
             // walk, or what depends on it never learns that it moved.
             if matches!(plans[idx], Some(PackagePlan::Bump(_))) {
-                raised.insert(idx, bump);
+                let Some(version) = raised_version(config, all_tags, plans, idx, bump) else {
+                    // The raise cannot be applied, so it must not be recorded
+                    // either: a dependent settling on it would cascade off a
+                    // version this package never takes.
+                    blocked.insert(idx);
+                    continue;
+                };
+                raised.insert(idx, (bump, version));
             }
+            state.insert(config.packages[idx].name.clone(), bump);
+            progressed = true;
+        }
+        if !progressed {
+            break;
         }
     }
 
-    for (idx, bump) in raised {
+    for (idx, (bump, new_version)) in raised {
         let pkg = &config.packages[idx];
         let Some(PackagePlan::Bump(plan)) = plans[idx].as_mut() else {
-            continue;
-        };
-        let prefix = pkg.tag_prefix(&config.workspace, true);
-        let strategy =
-            pkg.effective_versioning(&config.workspace, || tags_for_package(all_tags, &prefix));
-        let template = pkg.effective_version_template(&config.workspace);
-        let Ok(new_version) = compute_next_version(&plan.current_version, bump, strategy, template)
-        else {
             continue;
         };
         // The label is the bump for semver, but a calendar strategy name or
@@ -76,6 +85,26 @@ pub(super) fn apply_cascade_upgrades(
         plan.tag = pkg.tag_for_version(&config.workspace, true, &new_version);
         plan.new_version = new_version;
     }
+}
+
+/// The version a package would take at `bump`, or `None` when the strategy
+/// cannot produce one.
+fn raised_version(
+    config: &Config,
+    all_tags: &[String],
+    plans: &[Option<PackagePlan>],
+    idx: usize,
+    bump: BumpType,
+) -> Option<String> {
+    let pkg = &config.packages[idx];
+    let Some(PackagePlan::Bump(plan)) = plans.get(idx)? else {
+        return None;
+    };
+    let prefix = pkg.tag_prefix(&config.workspace, true);
+    let strategy =
+        pkg.effective_versioning(&config.workspace, || tags_for_package(all_tags, &prefix));
+    let template = pkg.effective_version_template(&config.workspace);
+    compute_next_version(&plan.current_version, bump, strategy, template).ok()
 }
 
 #[cfg(test)]
