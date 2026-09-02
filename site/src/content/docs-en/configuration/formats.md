@@ -65,6 +65,19 @@ path   = &quot;pubspec.yaml&quot;
 format = &quot;pubspecyaml&quot;
 </code></pre>
 </div></div>
+  <div class="ferr-tab" data-label="Ansible"><p class="ferr-tab__label">Ansible</p><div class="ferr-tab__body"><p>Used by Ansible Galaxy collections (<code>galaxy.yml</code>).</p>
+<p>FerrFlow updates the top-level <code>version:</code> key and leaves the rest of the manifest byte-identical.</p>
+<pre><code class="language-yaml">namespace: kubernetes_sigs
+name: kubespray
+version: 2.32.0       # ← updated
+readme: README.md
+</code></pre>
+<p>Config snippet:</p>
+<pre><code class="language-toml">[[package.versioned_files]]
+path   = &quot;galaxy.yml&quot;
+format = &quot;galaxyyml&quot;
+</code></pre>
+</div></div>
   <div class="ferr-tab" data-label="Elixir"><p class="ferr-tab__label">Elixir</p><div class="ferr-tab__body"><p>Used by Elixir / Mix projects (<code>mix.exs</code>).</p>
 <p>FerrFlow updates the first <code>version: &quot;…&quot;</code> literal it finds: the canonical spot is inside <code>def project do [ ..., version: &quot;x.y.z&quot;, ... ] end</code>.</p>
 <pre><code class="language-elixir">def project do
@@ -155,6 +168,7 @@ format = &quot;cmake&quot;
 | `build.gradle`, `build.gradle.kts` | `gradle`              | `version = "…"`                            |
 | `Chart.yaml`                       | `helm` or `chartyaml` | top-level `version:`                       |
 | `pubspec.yaml`                     | `pubspecyaml`         | top-level `version:`                       |
+| `galaxy.yml`                       | `galaxyyml`           | top-level `version:`                       |
 | `mix.exs`                          | `mixexs`              | `version: "…"` in project keyword list     |
 | `*.gemspec`                        | `gemspec`             | `<ident>.version = "…"`                    |
 | `Package.swift`                    | `packageswift`        | top-level `let <name>Version = "…"`        |

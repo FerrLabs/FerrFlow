@@ -81,6 +81,19 @@ version: 1.2.3 # ← mis à jour
 appVersion: '1.2.3' # ← mis à jour si présent
 ```
 
+## Ansible
+
+Utilisé par les collections Ansible Galaxy (`galaxy.yml`).
+
+FerrFlow met à jour la clé `version` de premier niveau et laisse le reste du manifeste identique à l'octet près.
+
+```yaml
+namespace: kubernetes_sigs
+name: kubespray
+version: 2.32.0 # ← mis à jour
+readme: README.md
+```
+
 ## Cabal
 
 Utilisé par les packages Haskell (`*.cabal`).
