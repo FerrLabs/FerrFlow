@@ -39,7 +39,8 @@ pub(super) fn run_dependency_cascade(
     dry_run: bool,
     sink: &mut CascadeSink<'_>,
 ) -> anyhow::Result<()> {
-    for (pkg_idx, bump) in settle(config, sink.bumped) {
+    let settled = settle(config, sink.bumped);
+    for (pkg_idx, bump) in settled.order {
         {
             let pkg = &config.packages[pkg_idx];
             let Some(vf) = pkg.versioned_files.first() else {
@@ -65,8 +66,13 @@ pub(super) fn run_dependency_cascade(
             let dep_trigger: Vec<&str> = pkg
                 .depends_on
                 .iter()
-                .map(|d| d.name())
-                .filter(|name| sink.bumped.contains_key(*name))
+                .filter(|dep| {
+                    settled
+                        .state
+                        .get(dep.name())
+                        .is_some_and(|up| dep.propagate().resolve(*up) != BumpType::None)
+                })
+                .map(|dep| dep.name())
                 .collect();
 
             if release_json {
@@ -170,6 +176,13 @@ pub(super) fn run_dependency_cascade(
     Ok(())
 }
 
+/// What the cascade adds: which packages, at which bump, in the order they
+/// were resolved, plus the state the walk settled on.
+struct Settled {
+    order: Vec<(usize, BumpType)>,
+    state: HashMap<String, BumpType>,
+}
+
 /// Which packages the cascade adds, and the bump each ends up with, decided
 /// before anything is written.
 ///
@@ -179,29 +192,40 @@ pub(super) fn run_dependency_cascade(
 /// entries and two planned tags, so the fixpoint is reached first and each
 /// package is acted on once.
 ///
+/// The order is the order packages were reached, so a dependency is always
+/// emitted before what depends on it. Sorting by array index instead would
+/// let a config that declares a dependent first produce its release commit
+/// and tag before the dependency it was bumped for.
+///
 /// Packages already bumped from their own commits are left alone: their
 /// version files, changelog and tag were produced before the cascade ran.
-fn settle(config: &Config, seeded: &HashMap<String, BumpType>) -> Vec<(usize, BumpType)> {
+fn settle(config: &Config, seeded: &HashMap<String, BumpType>) -> Settled {
     let mut state = seeded.clone();
-    let mut added: HashMap<usize, BumpType> = HashMap::new();
+    let mut order: Vec<usize> = Vec::new();
+    let mut reached: HashMap<usize, BumpType> = HashMap::new();
 
     for _ in 0..config.packages.len().saturating_mul(4) {
-        let moved: Vec<(usize, BumpType)> = super::graph::cascade_round(&config.packages, &state)
-            .into_iter()
-            .filter(|(idx, _)| !seeded.contains_key(&config.packages[*idx].name))
-            .collect();
+        let mut moved: Vec<(usize, BumpType)> =
+            super::graph::cascade_round(&config.packages, &state)
+                .into_iter()
+                .filter(|(idx, _)| !seeded.contains_key(&config.packages[*idx].name))
+                .collect();
         if moved.is_empty() {
             break;
         }
+        moved.sort_by_key(|(idx, _)| *idx);
         for (idx, bump) in moved {
             state.insert(config.packages[idx].name.clone(), bump);
-            added.insert(idx, bump);
+            if reached.insert(idx, bump).is_none() {
+                order.push(idx);
+            }
         }
     }
 
-    let mut settled: Vec<(usize, BumpType)> = added.into_iter().collect();
-    settled.sort_by_key(|(idx, _)| *idx);
-    settled
+    Settled {
+        order: order.into_iter().map(|idx| (idx, reached[&idx])).collect(),
+        state,
+    }
 }
 
 pub(super) fn update_dependent_manifests(
@@ -453,9 +477,51 @@ mod settle_tests {
             .map(|(name, bump)| ((*name).to_string(), *bump))
             .collect();
         settle(&config, &seed)
+            .order
             .into_iter()
             .map(|(idx, bump)| (config.packages[idx].name.clone(), bump))
             .collect()
+    }
+
+    fn settled_state(json: &str, seeded: &[(&str, BumpType)]) -> HashMap<String, BumpType> {
+        let config: Config = serde_json::from_str(json).expect("valid config");
+        let seed: HashMap<String, BumpType> = seeded
+            .iter()
+            .map(|(name, bump)| ((*name).to_string(), *bump))
+            .collect();
+        settle(&config, &seed).state
+    }
+
+    const DEPENDENT_FIRST: &str = r#"{
+        "package": [
+            { "name": "leaf", "path": "leaf", "dependsOn": ["mid"] },
+            { "name": "mid", "path": "mid", "dependsOn": ["shared"] },
+            { "name": "shared", "path": "shared" }
+        ]
+    }"#;
+
+    #[test]
+    fn a_dependency_is_emitted_before_what_depends_on_it() {
+        let out = settled(DEPENDENT_FIRST, &[("shared", BumpType::Minor)]);
+        let names: Vec<&str> = out.iter().map(|(n, _)| n.as_str()).collect();
+
+        assert_eq!(
+            names,
+            vec!["mid", "leaf"],
+            "the config declares leaf first, but emitting in array order would tag and commit it before the dependency it was bumped for"
+        );
+    }
+
+    #[test]
+    fn the_settled_state_names_every_package_reached() {
+        let state = settled_state(DEPENDENT_FIRST, &[("shared", BumpType::Minor)]);
+
+        assert_eq!(state.get("mid"), Some(&BumpType::Minor));
+        assert_eq!(
+            state.get("leaf"),
+            Some(&BumpType::Minor),
+            "callers resolve which dependency triggered a bump from this, so a package missing here reports an empty trigger"
+        );
     }
 
     const DIAMOND: &str = r#"{
