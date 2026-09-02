@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.9.3] - 2026-09-02
+
+### Bug Fixes
+
+- fix(site): sync the served schema after the telemetry field was dropped (#897)
+
 ## [2026.9.2] - 2026-09-02
 
 ### Bug Fixes
