@@ -165,7 +165,8 @@ interface SrTableRow {
         </p>
         <p class="updated" i18n="@@perf.updated">
           Last update: <strong>{{ updated }}</strong
-          >, ferrflow <code>{{ versionLabel }}</code> · binary size <code>{{ binarySize }} MB</code>
+          >, ferrflow <code>{{ versionLabel }}</code
+          >, binary size <code>{{ binarySize }} MB</code>
         </p>
       </header>
 
@@ -248,21 +249,18 @@ interface SrTableRow {
             parallel numbers are reported separately.
           </li>
           <li i18n="@@perf.method.notLikeForLike">
-            <strong
-              >Two cells are not like-for-like, and we'd rather say so than quietly win.</strong
-            >
-            On <code>200 × 10k</code>, <code>changesets status</code> is faster than FerrFlow, but
+            <strong>One row isn't like-for-like, and we'd rather say so than quietly win.</strong>
             changesets plans releases from <code>.changeset/*.md</code> files you write by hand, and
             never from commits. Six of our seven fixtures give it none, so it reports
             <em>no packages to be bumped</em> and stops. Its time tracks package count, not history:
-            it barely moves across a 100× range of commits, because it isn't reading them. That cuts
-            the other way too. Most of every row where we beat it is <code>npx</code> and Node
-            startup, not release planning. On <code>50 × 300 · graph</code>, FerrFlow is slower than
-            <code>commit-and-tag-version</code> because it's the only tool doing the job: resolving
-            a 50-package dependency cascade and recovering missed releases across the history. The
-            others emit one bump and have no notion of a dependency graph. We're fixing the fixtures
-            (<a href="https://github.com/FerrLabs/Fixtures/issues/141">Fixtures#141</a>); until
-            then, read those two cells as a measurement gap, not a verdict.
+            it barely moves across a 100× range of commits, because it isn't reading them. So where
+            we come out ahead, most of the gap is <code>npx</code> and Node startup rather than
+            release planning. Strip the startup out, as the split in the chart above does, and on
+            the largest fixture changesets spends less time working than we do, because it is doing
+            less. Read that row as a difference in job, not a verdict. The
+            <code>50 × 300, graph</code> fixture is the opposite case: there we resolve a 50-package
+            dependency cascade and recover missed releases across the history, while the others emit
+            one bump and have no notion of a dependency graph.
           </li>
           <li i18n="@@perf.method.reproducible">
             <strong>Reproducible</strong>: the full pipeline is in
@@ -277,9 +275,9 @@ interface SrTableRow {
           <h2 i18n="@@perf.parallel.title">Parallel mode</h2>
           <p class="lead" i18n="@@perf.parallel.lead">
             The comparison pins FerrFlow to a single thread (<code>--jobs 1</code>) so it's
-            apples-to-apples with the single-threaded JS tools. In real CI it uses every core.
-            Here's the same <code>release --dry-run</code> on all {{ runnerCores() }} cores of the
-            benchmark runner.
+            apples-to-apples with the single-threaded JS tools. In real CI it is free to use every
+            core, so this table reports what that actually buys. Here's the same
+            <code>release --dry-run</code> on all {{ runnerCores() }} cores of the benchmark runner.
           </p>
           <div class="perf-table-wrap">
             <table>
