@@ -1,0 +1,3 @@
+# Fetched from FerrLabs/FerrFlow-Docs by scripts/fetch-docs.mjs, which every
+# build and dev run invokes first. The docs are public and edited there.
+src/content/docs-*
