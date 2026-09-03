@@ -4,7 +4,9 @@
     "latestTag": "latest",
     "releaseCommitBody": "full",
     "tagTemplate": "v{version}",
-    "floatingTags": ["major"],
+    "floatingTags": [
+      "major"
+    ],
     "updateLockfiles": true,
     "skipCi": false,
     "hooks": {
@@ -16,18 +18,54 @@
       "name": "ferrflow",
       "path": ".",
       "changelog": "CHANGELOG.md",
-      "sharedPaths": ["src/"],
+      "sharedPaths": [
+        "src/"
+      ],
       "versionedFiles": [
-        { "path": "Cargo.toml", "format": "toml" },
-        { "path": "npm/package.json", "format": "json" },
-        { "path": "npm/platforms/linux-x64/package.json", "format": "json" },
-        { "path": "npm/platforms/linux-arm64/package.json", "format": "json" },
-        { "path": "npm/platforms/darwin-x64/package.json", "format": "json" },
-        { "path": "npm/platforms/darwin-arm64/package.json", "format": "json" },
-        { "path": "npm/platforms/win32-x64/package.json", "format": "json" },
-        { "path": "npm/platforms/win32-arm64/package.json", "format": "json" },
-        { "path": "npm/platforms/linux-arm/package.json", "format": "json" },
-        { "path": "ferrflow-wasm/Cargo.toml", "format": "toml" }
+        {
+          "path": "Cargo.toml",
+          "format": "toml"
+        },
+        {
+          "path": "npm/package.json",
+          "format": "json"
+        },
+        {
+          "path": "npm/platforms/linux-x64/package.json",
+          "format": "json"
+        },
+        {
+          "path": "npm/platforms/linux-arm64/package.json",
+          "format": "json"
+        },
+        {
+          "path": "npm/platforms/darwin-x64/package.json",
+          "format": "json"
+        },
+        {
+          "path": "npm/platforms/darwin-arm64/package.json",
+          "format": "json"
+        },
+        {
+          "path": "npm/platforms/win32-x64/package.json",
+          "format": "json"
+        },
+        {
+          "path": "npm/platforms/win32-arm64/package.json",
+          "format": "json"
+        },
+        {
+          "path": "npm/platforms/linux-arm/package.json",
+          "format": "json"
+        },
+        {
+          "path": "ferrflow-wasm/Cargo.toml",
+          "format": "toml"
+        },
+        {
+          "path": "docs/site/package.json",
+          "format": "json"
+        }
       ]
     }
   ]

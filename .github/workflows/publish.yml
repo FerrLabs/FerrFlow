@@ -449,6 +449,47 @@ jobs:
       - name: Build and publish
         run: bash npm/scripts/publish-wasm.sh "${{ steps.version.outputs.value }}"
 
+  publish-docs:
+    name: Publish @ferrflow/doc
+    needs: upload
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Extract version
+        id: version
+        run: echo "value=${TAG#v}" >> $GITHUB_OUTPUT
+        env:
+          TAG: ${{ github.ref_name }}
+      # ferrflow writes the version into docs/site/package.json during the
+      # release commit, so the checkout already carries it. Asserting instead of
+      # setting it keeps a mismatch loud rather than silently publishing the
+      # documentation under a version that does not match the binary.
+      - name: Check the manifest matches the tag
+        run: |
+          declared=$(node -p "require('./docs/site/package.json').version")
+          if [ "$declared" != "${{ steps.version.outputs.value }}" ]; then
+            echo "::error::docs/site/package.json is $declared but the tag is ${{ steps.version.outputs.value }}"
+            exit 1
+          fi
+      # Same idempotency as npm/scripts/publish.sh: a re-run after a partial
+      # failure should skip what is already on the registry rather than die on
+      # "cannot publish over the previously published version".
+      - name: Publish
+        working-directory: docs/site
+        run: |
+          if npm view "@ferrflow/doc@${{ steps.version.outputs.value }}" version >/dev/null 2>&1; then
+            echo "@ferrflow/doc@${{ steps.version.outputs.value }} already on registry, skipping"
+          else
+            npm publish --access public
+          fi
+
   publish-docker:
     name: Publish Docker
     needs: upload

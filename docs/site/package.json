@@ -1,0 +1,17 @@
+{
+  "name": "@ferrflow/doc",
+  "version": "7.16.0",
+  "description": "Documentation for FerrFlow, the universal semantic versioning CLI. Rendered at ferrflow.com/docs.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FerrLabs/FerrFlow.git",
+    "directory": "docs/site"
+  },
+  "homepage": "https://ferrflow.com/docs",
+  "keywords": [
+    "ferrflow",
+    "documentation",
+    "semantic-versioning"
+  ]
+}
