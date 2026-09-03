@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.17.0] - 2026-09-03
+
+### Features
+
+- feat(docs): move the site documentation here and package it as @ferrflow/doc (#1013)
+
 ## [7.16.0] - 2026-09-03
 
 ### Features
