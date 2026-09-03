@@ -3,6 +3,14 @@ name: CI
 on:
   push:
     branches: [main]
+    # The release job lives in this workflow, and .ferrflow declares one
+    # package at path ".", so any conventional commit here drives the CLI
+    # version whatever files it touches. A docs-only merge must not be able
+    # to publish a binary to crates.io and eight npm packages, none of which
+    # can be withdrawn. A push touching anything outside docs/site still
+    # matches and runs the full workflow, so a change that ships code and its
+    # documentation together releases as normal.
+    paths-ignore: ['docs/site/**']
   pull_request:
     branches: [main]
   workflow_dispatch:

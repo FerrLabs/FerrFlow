@@ -76,8 +76,23 @@ docs: update CLI reference
 
 ### Documentation
 
-When adding or changing features, update the relevant docs in
-`Application/packages/site/src/content/docs/`. Code and documentation ship together.
+Developer notes live in `docs/`. The pages rendered at
+[ferrflow.com/docs](https://ferrflow.com/docs) live in `docs/site/`, published as
+`@ferrflow/doc` on each release tag and consumed by the site as a dependency.
+
+When you add or change a feature, update `docs/site/docs-en/` in the same pull request. That is the
+point of keeping them here: a flag and the sentence describing it are reviewed together and cannot
+drift apart. The French pages under `docs/site/docs-fr/` are allowed to lag, and a PR is not blocked
+for leaving them.
+
+Use `docs:` for a change that only touches documentation. Anything else would bump the CLI and cut a
+release, publishing a binary to crates.io and eight npm packages for a typo, and none of that can be
+withdrawn. A pull request that ships code and its documentation together takes the code's type, as
+usual.
+
+Never edit `docs/site/docs-vN/` or `docs/site/docs-fr-vN/`. Those record what a past major actually
+documented, mistakes included, because someone pinned to that major reads them to understand the
+binary they are running. CI rejects a pull request that modifies one, and allows adding a new one.
 
 ## Reporting Bugs
 
