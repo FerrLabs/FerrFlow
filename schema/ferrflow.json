@@ -316,7 +316,7 @@
           "properties": {
             "sections": {
               "type": "object",
-              "description": "Map commit-type prefixes to section labels, or false to hide. Any conventional commit type works, including chore, ci, build and test; feat, fix, perf, docs, refactor and security carry built-in default labels and render first, in that order, with the rest following alphabetically. When omitted, defaults to feat -> Features and fix -> Bug Fixes (Breaking Changes always shown). 'security' applies to security: and fix(security): commits. A breaking marker always wins over the type's section.",
+              "description": "Map commit-type prefixes to section labels, or false to hide. Any conventional commit type works, including chore, ci, build and test; feat, fix, perf, security, docs and refactor carry built-in default labels and render first, in that order, with the rest following alphabetically. When omitted, defaults to feat -> Features and fix -> Bug Fixes (Breaking Changes always shown). 'security' applies to security: and fix(security): commits. A breaking marker always wins over the type's section.",
               "additionalProperties": {
                 "oneOf": [
                   {
