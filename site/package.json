@@ -8,11 +8,12 @@
     "pnpm": ">=11.8.0"
   },
   "scripts": {
-    "dev": "node scripts/fetch-docs.mjs && vite",
-    "build": "node scripts/fetch-docs.mjs && vite build && node scripts/gen-rss.mjs && node scripts/gen-sitemap.mjs",
+    "dev": "node scripts/fetch-docs.mjs && node scripts/fetch-changelog.mjs && vite",
+    "build": "node scripts/fetch-docs.mjs && node scripts/fetch-changelog.mjs && vite build && node scripts/gen-rss.mjs && node scripts/gen-sitemap.mjs",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
     "check:i18n": "node ./scripts/check-i18n.mjs",
     "preview": "vite preview",
+    "changelog:fetch": "node scripts/fetch-changelog.mjs",
     "docs:fetch": "node scripts/fetch-docs.mjs"
   },
   "dependencies": {
