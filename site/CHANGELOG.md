@@ -1,5 +1,17 @@
 # Changelog
 
+## [2026.9.6] - 2026-09-03
+
+### Features
+
+- feat(site): render the docs from the public FerrFlow-Docs repo (#908)
+
+### Bug Fixes
+
+- fix(site): refresh FerrFlow v7.16.0 release data
+- fix(site): fetch the changelog from FerrLabs/Changelog at build time (#909)
+- fix(site): correct the performance page's like-for-like caveat (#915)
+
 ## [2026.9.5] - 2026-09-03
 
 ### Bug Fixes
