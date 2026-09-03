@@ -127,7 +127,7 @@ impl Report {
 
         tracing::info!("");
         let summary = match self.status {
-            Status::Error => "problems found — see the errors above".red().bold(),
+            Status::Error => "problems found, see the errors above".red().bold(),
             Status::Warn => "ready, with warnings".yellow().bold(),
             Status::Ok | Status::Info => "all checks passed".green().bold(),
         };

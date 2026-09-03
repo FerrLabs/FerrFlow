@@ -25,7 +25,7 @@ pub(super) fn repo_section(
     let Some(repo) = repo else {
         checks.push(Check::error(
             "git repository",
-            Some("not a git repository — run `git init` in the project root".into()),
+            Some("not a git repository. Run `git init` in the project root".into()),
         ));
         return Section::new("Repo", checks);
     };
@@ -38,7 +38,7 @@ pub(super) fn repo_section(
         )),
         Err(_) => checks.push(Check::error(
             "commit history",
-            Some("no commits yet — make an initial commit before releasing".into()),
+            Some("no commits yet. Make an initial commit before releasing".into()),
         )),
     }
 
@@ -66,7 +66,7 @@ pub(super) fn repo_section(
         None => checks.push(Check::warn(
             "remote configured",
             Some(format!(
-                "no '{remote}' remote — releases push tags and commits there"
+                "no '{remote}' remote. Releases push tags and commits there"
             )),
         )),
     }
@@ -83,7 +83,7 @@ pub(super) fn repo_section(
     } else {
         checks.push(Check::info(
             "tags present",
-            Some("no tags yet — the first release creates them".into()),
+            Some("no tags yet. The first release creates them".into()),
         ));
     }
 
@@ -102,7 +102,7 @@ pub(super) fn config_section(
         0 => checks.push(Check::warn(
             "config file",
             Some(
-                "none found — run `ferrflow init` (otherwise FerrFlow auto-detects version files)"
+                "none found. Run `ferrflow init` (otherwise FerrFlow auto-detects version files)"
                     .into(),
             ),
         )),
@@ -116,7 +116,7 @@ pub(super) fn config_section(
             checks.push(Check::error(
                 "config file",
                 Some(format!(
-                    "multiple config files found ({list}) — ambiguous; pass --config to choose one"
+                    "multiple config files found ({list}), which is ambiguous. Pass --config to choose one"
                 )),
             ));
             return Section::new("Config", checks);
@@ -158,7 +158,7 @@ pub(super) fn versioning_section(config: Option<&Config>, root: &Path) -> Sectio
     let Some(config) = config else {
         checks.push(Check::info(
             "strategy",
-            Some("skipped — no parsed config".into()),
+            Some("skipped (no parsed config)".into()),
         ));
         return Section::new("Versioning", checks);
     };
@@ -222,7 +222,7 @@ fn lockfile_check(
         } => Some(Check::warn(
             name,
             Some(format!(
-                "{lockfile_rel} records v{recorded} while {} says v{version}; builds passing --locked will refuse to run",
+                "{lockfile_rel} records v{recorded} while {} says v{version}. Builds passing --locked will refuse to run",
                 manifest.path
             )),
         )),
@@ -237,7 +237,7 @@ fn lockfile_check(
                 Some(Check::warn(
                     name,
                     Some(format!(
-                        "{lockfile_rel} is not updated on release; set updateLockfiles so the next bump does not leave it behind"
+                        "{lockfile_rel} is not updated on release. Set updateLockfiles so the next bump does not leave it behind"
                     )),
                 ))
             }
@@ -275,7 +275,7 @@ pub(super) fn forge_section(
         }
         None => checks.push(Check::warn(
             "forge",
-            Some("could not detect the forge from the remote URL — set workspace.forge".into()),
+            Some("could not detect the forge from the remote URL. Set workspace.forge".into()),
         )),
     }
 
@@ -286,7 +286,7 @@ pub(super) fn forge_section(
         checks.push(Check::warn(
             "auth token",
             Some(format!(
-                "no token in env ({var} or FERRFLOW_TOKEN) — API pushes and releases will fail"
+                "no token in env ({var} or FERRFLOW_TOKEN). API pushes and releases will fail"
             )),
         ));
     }
