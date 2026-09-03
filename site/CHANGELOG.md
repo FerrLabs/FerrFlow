@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.9.5] - 2026-09-03
+
+### Bug Fixes
+
+- fix(site): sync the served JSON Schema with the CLI (#913)
+
 ## [2026.9.4] - 2026-09-02
 
 ### Features
