@@ -312,7 +312,7 @@
         },
         "changelog": {
           "type": "object",
-          "description": "Opt-in changelog rendering. When omitted, FerrFlow renders the classic three sections (Breaking Changes, Features, Bug Fixes) with flat bullets and no links.",
+          "description": "Opt-in changelog rendering. When this whole block is omitted, FerrFlow renders the classic sections (Breaking Changes, Features, Bug Fixes, Refactoring) with flat bullets and no links; perf, docs and security commits are not rendered in that mode.",
           "properties": {
             "sections": {
               "type": "object",
