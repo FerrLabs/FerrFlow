@@ -488,6 +488,13 @@ jobs:
       # Same idempotency as npm/scripts/publish.sh: a re-run after a partial
       # failure should skip what is already on the registry rather than die on
       # "cannot publish over the previously published version".
+      #
+      # The first release after this job was added failed on a bare
+      # "404 Not Found - PUT /@ferrflow%2fdoc", which says nothing about the
+      # cause. Trusted publishing over OIDC can push a new version of a package
+      # it is already registered for, but it cannot bring a package name into
+      # existence. That needs one manual publish, so the 404 is translated into
+      # the instruction rather than left as a riddle for whoever reads the log.
       - name: Publish
         working-directory: docs/site
         env:
@@ -495,9 +502,41 @@ jobs:
         run: |
           if npm view "@ferrflow/doc@$VERSION" version >/dev/null 2>&1; then
             echo "@ferrflow/doc@$VERSION already on registry, skipping"
-          else
-            npm publish --access public
+            exit 0
           fi
+
+          log="$RUNNER_TEMP/publish-doc.log"
+          if npm publish --access public >"$log" 2>&1; then
+            cat "$log"
+            exit 0
+          fi
+          cat "$log"
+
+          if grep -q 'E404' "$log" && ! npm view '@ferrflow/doc' version >/dev/null 2>&1; then
+            {
+              echo '### @ferrflow/doc has never been published'
+              echo
+              echo 'This job publishes over OIDC trusted publishing, which can add a version to a'
+              echo 'package it is registered for but cannot create the package name. npm answers the'
+              echo 'first push with a 404 rather than a permission error, which is what you see above.'
+              echo
+              echo 'One manual bootstrap fixes it for good:'
+              echo
+              echo '1. Publish once from a machine logged in to npm with rights on the `@ferrflow`'
+              echo '   scope: `cd docs/site && npm publish --access public`.'
+              echo '2. On npmjs.com, open the package settings and add this repository and the'
+              echo '   `Publish` workflow as a trusted publisher, the same way `@ferrflow/wasm` is'
+              echo '   set up.'
+              echo
+              echo 'Re-running this job then succeeds, and later releases need nothing.'
+              echo
+              echo 'Nothing else in the release is affected: the binary, the crate, the platform'
+              echo 'packages and the image all published normally, and the site keeps serving the'
+              echo 'documentation it already has.'
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::@ferrflow/doc does not exist on npm yet. OIDC publishing cannot create a package name, so it needs one manual publish plus a trusted-publisher entry. See the job summary for the two steps."
+          fi
+          exit 1
 
   publish-docker:
     name: Publish Docker
