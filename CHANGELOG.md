@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.16.0] - 2026-09-03
+
+### Features
+
+- feat(changelog): allow any conventional commit type as a section (#1004)
+
 ## [7.15.1] - 2026-09-02
 
 ### Bug Fixes
