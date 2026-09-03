@@ -312,7 +312,7 @@
         },
         "changelog": {
           "type": "object",
-          "description": "Opt-in changelog rendering. When this whole block is omitted, FerrFlow renders the classic sections (Breaking Changes, Features, Bug Fixes, Refactoring) with flat bullets and no links; perf, docs and security commits are not rendered in that mode.",
+          "description": "Opt-in changelog rendering. When this whole block is omitted, FerrFlow renders the classic sections (Breaking Changes, Features, Bug Fixes, Refactoring) with flat bullets and no links; perf commits fold into Bug Fixes, and every other type, docs and security included, is left out.",
           "properties": {
             "sections": {
               "type": "object",
