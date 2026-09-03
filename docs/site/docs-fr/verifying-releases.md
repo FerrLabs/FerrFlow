@@ -24,7 +24,7 @@ Disponible depuis la v5.2.
 
 Tous les sidecars sont téléchargeables depuis la page GitHub Release à côté du binaire.
 
-> Les releases jusqu'à **v5.47.4** embarquent une paire `.sig` + `.crt` au lieu d'un unique `.bundle`. Vérifiez-les avec `--certificate <fichier>.crt --signature <fichier>.sig` à la place de `--bundle`. Le changement vient de cosign v3, qui a remplacé les sorties signature et certificat séparées par un bundle unique.
+> Les releases jusqu'à **v5.47.4** embarquent une paire `.sig` + `.crt` au lieu d'un unique `.sigstore.json`. Vérifiez-les avec `--certificate <fichier>.crt --signature <fichier>.sig` à la place de `--bundle`. Le changement vient de cosign v3, qui a remplacé les sorties signature et certificat séparées par un bundle unique.
 
 ## Vérifier un tarball
 
@@ -40,7 +40,7 @@ gh release download "$TAG" --repo FerrLabs/FerrFlow \
 
 # vérifier
 cosign verify-blob \
-  --bundle ferrflow-linux-x64.tar.gz.bundle \
+  --bundle ferrflow-linux-x64.tar.gz.sigstore.json \
   --certificate-identity-regexp "https://github.com/FerrLabs/FerrFlow/.*" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   ferrflow-linux-x64.tar.gz
@@ -67,7 +67,7 @@ Le SBOM (`sbom.cdx.json`) est un document [CycloneDX](https://cyclonedx.org/) li
 
 ```bash
 cosign verify-blob \
-  --bundle sbom.cdx.json.bundle \
+  --bundle sbom.cdx.json.sigstore.json \
   --certificate-identity-regexp "https://github.com/FerrLabs/FerrFlow/.*" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   sbom.cdx.json

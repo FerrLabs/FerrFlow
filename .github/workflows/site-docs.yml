@@ -23,6 +23,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: '24'
@@ -31,15 +32,15 @@ jobs:
       # A frozen snapshot records what a past major actually documented, mistakes
       # included, because someone pinned to that major reads it to understand the
       # binary they are running. Adding a whole new one is how a version gets
-      # frozen, so only modifications to an existing one are rejected.
+      # frozen, so only edits and deletions inside an existing one are rejected.
       - name: Reject edits to a frozen snapshot
         if: github.event_name == 'pull_request'
         env:
           BASE: ${{ github.event.pull_request.base.sha }}
         run: |
-          edited=$(git diff --diff-filter=M --name-only "$BASE...HEAD" -- 'docs/site/docs-v*' 'docs/site/docs-fr-v*')
+          edited=$(git diff --diff-filter=MD --name-only "$BASE...HEAD" -- 'docs/site/docs-v*' 'docs/site/docs-fr-v*')
           if [ -n "$edited" ]; then
-            echo "These pages belong to a frozen version and must not change:"
+            echo "These pages belong to a frozen version and must not be changed or removed:"
             echo "$edited" | sed 's/^/  /'
             echo
             echo "Fix the current docs under docs/site/docs-en/ or docs/site/docs-fr/ instead."

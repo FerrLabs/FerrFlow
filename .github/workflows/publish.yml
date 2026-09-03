@@ -458,7 +458,12 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          persist-credentials: false
+      # setup-node is here to write the registry config that OIDC publishing
+      # needs. No `cache:` key is set, so nothing is restored, but the rule fires
+      # on the action rather than on the option.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7 # zizmor: ignore[cache-poisoning]
         with:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
@@ -472,10 +477,12 @@ jobs:
       # setting it keeps a mismatch loud rather than silently publishing the
       # documentation under a version that does not match the binary.
       - name: Check the manifest matches the tag
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
         run: |
           declared=$(node -p "require('./docs/site/package.json').version")
-          if [ "$declared" != "${{ steps.version.outputs.value }}" ]; then
-            echo "::error::docs/site/package.json is $declared but the tag is ${{ steps.version.outputs.value }}"
+          if [ "$declared" != "$VERSION" ]; then
+            echo "::error::docs/site/package.json is $declared but the tag is $VERSION"
             exit 1
           fi
       # Same idempotency as npm/scripts/publish.sh: a re-run after a partial
@@ -483,9 +490,11 @@ jobs:
       # "cannot publish over the previously published version".
       - name: Publish
         working-directory: docs/site
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
         run: |
-          if npm view "@ferrflow/doc@${{ steps.version.outputs.value }}" version >/dev/null 2>&1; then
-            echo "@ferrflow/doc@${{ steps.version.outputs.value }} already on registry, skipping"
+          if npm view "@ferrflow/doc@$VERSION" version >/dev/null 2>&1; then
+            echo "@ferrflow/doc@$VERSION already on registry, skipping"
           else
             npm publish --access public
           fi
