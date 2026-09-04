@@ -20,6 +20,12 @@ pub struct WorkspaceConfig {
     pub tag_template: Option<String>,
     #[serde(alias = "versionTemplate")]
     pub version_template: Option<String>,
+    /// Command whose stdout is appended to the version as semver build
+    /// metadata, after a `+`. It never reaches the tag or the changelog, which
+    /// keep the plain version, because build metadata is excluded from version
+    /// identity and ignored for precedence.
+    #[serde(default, alias = "buildMetadata")]
+    pub build_metadata: Option<String>,
     #[serde(default, alias = "recoverMissedReleases")]
     pub recover_missed_releases: bool,
     #[serde(default, alias = "releaseCommitMode")]
@@ -81,6 +87,7 @@ impl Default for WorkspaceConfig {
             versioning: Default::default(),
             tag_template: Default::default(),
             version_template: Default::default(),
+            build_metadata: Default::default(),
             recover_missed_releases: Default::default(),
             release_commit_mode: Default::default(),
             release_commit_scope: Default::default(),

@@ -277,6 +277,19 @@ pub(super) fn run_release_logic(
     }
     let bump_order: &[usize] = if finalizing { &[] } else { &release_order };
 
+    // Resolved once for the whole release, and never in a dry run: hooks are
+    // printed rather than executed there, and this follows the same rule so a
+    // rehearsal stays free of side effects.
+    let build_metadata = match config.workspace.build_metadata.as_deref() {
+        None => None,
+        Some(_) if bump_order.is_empty() => None,
+        Some(command) if dry_run => {
+            tracing::info!("  {} {}", "[buildMetadata]".dimmed(), command.dimmed());
+            None
+        }
+        Some(command) => Some(crate::hooks::capture_build_metadata(command, root)?),
+    };
+
     for &pkg_idx in bump_order {
         let pkg = &config.packages[pkg_idx];
         let plan = plans[pkg_idx]
@@ -547,8 +560,13 @@ pub(super) fn run_release_logic(
                 )?;
             }
 
+            let stamped = match build_metadata.as_deref() {
+                Some(meta) => format!("{new_version}+{meta}"),
+                None => new_version.clone(),
+            };
+
             for vf in &pkg.versioned_files {
-                write_version(vf, root, &new_version)?;
+                write_version(vf, root, &stamped)?;
                 if get_handler(&vf.format).modifies_file() {
                     if let Some((_, lines)) =
                         pkg_outputs.iter_mut().rev().find(|(n, _)| n == &pkg.name)

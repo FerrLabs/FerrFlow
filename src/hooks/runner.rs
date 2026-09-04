@@ -1,5 +1,6 @@
 use crate::config::OnFailure;
 use crate::error_code::{self, ErrorCodeExt};
+use anyhow::Context as _;
 use anyhow::Result;
 use colored::Colorize;
 use std::path::Path;
@@ -156,6 +157,26 @@ fn handle_failure(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn build_metadata_accepts_what_semver_allows_after_the_plus() {
+        for value in ["26.2-26.45", "abc123", "build-7", "a.b.c", "0"] {
+            assert!(
+                super::is_semver_metadata(value),
+                "{value} is valid build metadata"
+            );
+        }
+    }
+
+    #[test]
+    fn build_metadata_rejects_what_semver_does_not() {
+        for value in ["", "has space", "a..b", "a.", "plus+inside", "under_score"] {
+            assert!(
+                !super::is_semver_metadata(value),
+                "{value} must be rejected as build metadata"
+            );
+        }
+    }
+
     use super::*;
 
     #[test]
@@ -259,4 +280,51 @@ mod hook_env_tests {
         assert!(provided.iter().any(|k| k == "FERRFLOW_NEW_VERSION"));
         assert!(provided.iter().any(|k| k == "FERRFLOW_TAG"));
     }
+}
+
+/// Runs the `buildMetadata` command and returns its stdout as semver build
+/// metadata, without the leading `+`.
+///
+/// Kept separate from [`run_hook`] because a hook has no return channel: this
+/// one exists to produce a value, so it captures stdout and rejects anything
+/// semver would not accept after the `+`.
+pub fn capture_build_metadata(command: &str, working_dir: &Path) -> Result<String> {
+    let mut cmd = build_command(command);
+    cmd.current_dir(working_dir);
+
+    let output = cmd
+        .output()
+        .with_context(|| format!("buildMetadata command failed to start: {command}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!(
+            "buildMetadata command exited with {}: {}\n  {}",
+            output
+                .status
+                .code()
+                .map(|c| c.to_string())
+                .unwrap_or_else(|| "a signal".to_string()),
+            command,
+            stderr.trim()
+        );
+    }
+
+    let value = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if value.is_empty() {
+        anyhow::bail!("buildMetadata command printed nothing: {command}");
+    }
+    if !is_semver_metadata(&value) {
+        anyhow::bail!(
+            "buildMetadata must be dot-separated alphanumerics and hyphens, got {value:?} from: {command}"
+        );
+    }
+    Ok(value)
+}
+
+fn is_semver_metadata(value: &str) -> bool {
+    !value.is_empty()
+        && value.split('.').all(|part| {
+            !part.is_empty() && part.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+        })
 }
