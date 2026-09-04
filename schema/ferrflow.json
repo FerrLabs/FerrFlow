@@ -115,22 +115,43 @@
             "major": {
               "description": "Extra patterns that force a major bump. Empty by default — structural breaking markers already cover the conventional forms.",
               "oneOf": [
-                { "type": "string" },
-                { "type": "array", "items": { "type": "string" } }
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
               ]
             },
             "minor": {
               "description": "Patterns that select a minor bump. Defaults cover feat:, feat(scope):, feature:, and the Title-case and branch-style (Feat/) variants.",
               "oneOf": [
-                { "type": "string" },
-                { "type": "array", "items": { "type": "string" } }
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
               ]
             },
             "patch": {
               "description": "Patterns that select a patch bump. Defaults cover fix:, perf:, refactor: and their Title-case and branch-style variants.",
               "oneOf": [
-                { "type": "string" },
-                { "type": "array", "items": { "type": "string" } }
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
               ]
             },
             "caseSensitive": {
@@ -480,6 +501,14 @@
               "type": "string"
             }
           }
+        },
+        "buildMetadata": {
+          "type": "string",
+          "description": "Command whose stdout is appended to the version as semver build metadata, after a `+`. It is run once per release, never in a dry run, and its output must be dot-separated alphanumerics and hyphens. The tag and the changelog keep the plain version, since build metadata is excluded from version identity and ignored for precedence."
+        },
+        "build_metadata": {
+          "type": "string",
+          "description": "Command whose stdout is appended to the version as semver build metadata, after a `+`. It is run once per release, never in a dry run, and its output must be dot-separated alphanumerics and hyphens. The tag and the changelog keep the plain version, since build metadata is excluded from version identity and ignored for precedence."
         }
       },
       "additionalProperties": false
@@ -565,15 +594,26 @@
             "description": "Packages this package depends on. When one is bumped, this package is bumped too — by default with the same bump type. Each entry is either a package name or an object with a `propagate` policy.",
             "items": {
               "oneOf": [
-                { "type": "string" },
+                {
+                  "type": "string"
+                },
                 {
                   "type": "object",
-                  "required": ["name"],
+                  "required": [
+                    "name"
+                  ],
                   "properties": {
-                    "name": { "type": "string" },
+                    "name": {
+                      "type": "string"
+                    },
                     "propagate": {
                       "type": "string",
-                      "enum": ["same", "major-on-major", "patch", "none"],
+                      "enum": [
+                        "same",
+                        "major-on-major",
+                        "patch",
+                        "none"
+                      ],
                       "default": "same",
                       "description": "How this dependency's bump becomes a bump here. same: identical bump (a breaking upstream makes this package breaking too). major-on-major: major stays major, anything lower becomes a patch. patch: always a patch. none: no cascade from this dependency."
                     }
@@ -715,15 +755,26 @@
             "description": "Snake_case form of `dependsOn` — both spellings are accepted. Packages this package depends on. When one is bumped, this package is bumped too — by default with the same bump type. Each entry is either a package name or an object with a `propagate` policy.",
             "items": {
               "oneOf": [
-                { "type": "string" },
+                {
+                  "type": "string"
+                },
                 {
                   "type": "object",
-                  "required": ["name"],
+                  "required": [
+                    "name"
+                  ],
                   "properties": {
-                    "name": { "type": "string" },
+                    "name": {
+                      "type": "string"
+                    },
                     "propagate": {
                       "type": "string",
-                      "enum": ["same", "major-on-major", "patch", "none"],
+                      "enum": [
+                        "same",
+                        "major-on-major",
+                        "patch",
+                        "none"
+                      ],
                       "default": "same",
                       "description": "How this dependency's bump becomes a bump here. same: identical bump (a breaking upstream makes this package breaking too). major-on-major: major stays major, anything lower becomes a patch. patch: always a patch. none: no cascade from this dependency."
                     }
