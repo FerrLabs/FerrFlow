@@ -487,7 +487,7 @@
         },
         "build_metadata": {
           "type": "string",
-          "description": "Command whose stdout is appended to the version as semver build metadata, after a `+`. It is run once per release, never in a dry run, and its output must be dot-separated alphanumerics and hyphens. The tag and the changelog keep the plain version, since build metadata is excluded from version identity and ignored for precedence."
+          "description": "Snake_case form of `buildMetadata` — both spellings are accepted. Command whose stdout is appended to the version as semver build metadata, after a `+`. It is run once per release, never in a dry run, and its output must be dot-separated alphanumerics and hyphens. The tag and the changelog keep the plain version, since build metadata is excluded from version identity and ignored for precedence."
         }
       },
       "additionalProperties": false
@@ -649,7 +649,7 @@
           },
           "build_metadata": {
             "oneOf": [{ "type": "string" }, { "type": "boolean" }],
-            "description": "Overrides `workspace.buildMetadata` for this package. A command replaces the workspace one, `true` inherits it, and `false` releases this package with a plain version while the rest of the workspace stays stamped."
+            "description": "Snake_case form of `buildMetadata` — both spellings are accepted. Overrides `workspace.buildMetadata` for this package. A command replaces the workspace one, `true` inherits it, and `false` releases this package with a plain version while the rest of the workspace stays stamped."
           },
           "hooks": {
             "$ref": "#/$defs/hooks"
