@@ -2011,3 +2011,60 @@ fn an_annotated_tag_the_remote_holds_at_another_commit_is_still_rejected() {
         "expected the divergence error, got {rendered}"
     );
 }
+
+#[test]
+fn unreachable_tags_are_named_in_one_line() {
+    let tags: Vec<String> = ["v2.0.0", "v2.1.0", "v2.2.0", "v2.3.0"]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+    let msg = super::tags::unreachable_tags_message(&tags);
+
+    assert!(msg.contains("4 tags are not reachable"), "{msg}");
+    for tag in &tags {
+        assert!(msg.contains(tag.as_str()), "{tag} missing from {msg}");
+    }
+    assert_eq!(
+        msg.matches("orphanedTagStrategy").count(),
+        1,
+        "the hint belongs once, not once per tag: {msg}"
+    );
+}
+
+#[test]
+fn a_single_unreachable_tag_reads_as_singular() {
+    let tags = vec!["v2.0.0".to_string()];
+    let msg = super::tags::unreachable_tags_message(&tags);
+    assert!(msg.contains("1 tag is not reachable"), "{msg}");
+}
+
+#[test]
+fn a_long_list_of_unreachable_tags_is_truncated() {
+    let tags: Vec<String> = (0..12).map(|n| format!("v2.{n}.0")).collect();
+    let msg = super::tags::unreachable_tags_message(&tags);
+
+    assert!(msg.contains("12 tags are not reachable"), "{msg}");
+    assert!(msg.contains("and 7 more"), "{msg}");
+    assert!(
+        !msg.contains("v2.11.0"),
+        "the tail must be summarised, not listed: {msg}"
+    );
+}
+
+#[test]
+fn a_tag_already_reported_is_not_reported_again() {
+    let mut seen = std::collections::HashSet::new();
+    let first =
+        super::tags::take_unreported(vec!["v2.0.0".to_string(), "v2.1.0".to_string()], &mut seen);
+    assert_eq!(first.len(), 2, "the first lookup names every tag");
+
+    let second =
+        super::tags::take_unreported(vec!["v2.0.0".to_string(), "v2.1.0".to_string()], &mut seen);
+    assert!(
+        second.is_empty(),
+        "a command that resolves the last tag twice must not warn twice, got {second:?}"
+    );
+
+    let third = super::tags::take_unreported(vec!["v2.2.0".to_string()], &mut seen);
+    assert_eq!(third, vec!["v2.2.0".to_string()], "a new tag still reports");
+}
