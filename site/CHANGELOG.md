@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.9.8] - 2026-09-04
+
+### Features
+
+- feat(site): take the docs from @ferrflow/doc instead of fetching a repo (#921)
+
 ## [2026.9.7] - 2026-09-03
 
 ### Bug Fixes
