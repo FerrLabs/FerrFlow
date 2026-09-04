@@ -364,6 +364,38 @@ channel = &quot;beta&quot;
 </div></div>
 </div>
 
+### Métadonnées de build
+
+`buildMetadata` désigne une commande dont la sortie standard est ajoutée à la version après un `+`. À utiliser quand une partie de la version vient du code et non des commits : une plage de protocoles supportés, une révision amont vendorisée.
+
+La commande est exécutée une fois par release, depuis la racine du dépôt, avant l'écriture du moindre fichier de version. FerrFlow élague la sortie et exige des caractères alphanumériques et des tirets séparés par des points, seul jeu autorisé par semver après le `+`. La release est interrompue si la commande échoue, n'affiche rien, ou affiche autre chose que ce jeu.
+
+Seuls les fichiers de version portent le suffixe. Le tag, le changelog et le bump suivant conservent la version nue, car semver exclut les métadonnées de build de l'identité d'une version et les ignore dans les comparaisons de précédence. `1.4.0+26.2-26.45` est taggé `v1.4.0`, et le mineur qui suit est calculé à partir de `1.4.0`.
+
+Avec `--dry-run`, la commande est affichée et non exécutée.
+
+<div class="ferr-tabs">
+  <div class="ferr-tab" data-label="JSON"><p class="ferr-tab__label">JSON</p><div class="ferr-tab__body"><pre><code class="language-json">{
+  &quot;workspace&quot;: {
+    &quot;buildMetadata&quot;: &quot;sh scripts/protocol-versions.sh&quot;
+  }
+}
+</code></pre>
+</div></div>
+  <div class="ferr-tab" data-label="TOML"><p class="ferr-tab__label">TOML</p><div class="ferr-tab__body"><pre><code class="language-toml">[workspace]
+buildMetadata = &quot;sh scripts/protocol-versions.sh&quot;
+</code></pre>
+
+</div></div>
+  <div class="ferr-tab" data-label="JSON5"><p class="ferr-tab__label">JSON5</p><div class="ferr-tab__body"><pre><code class="language-json5">{
+  workspace: {
+    buildMetadata: &quot;sh scripts/protocol-versions.sh&quot;,
+  },
+}
+</code></pre>
+</div></div>
+</div>
+
 ## `package`
 
 Définit un package à versionner. Vous pouvez en avoir un ou plusieurs.

@@ -438,6 +438,38 @@ channel = &quot;beta&quot;
 </div></div>
 </div>
 
+### Build metadata
+
+`buildMetadata` names a command whose stdout is appended to the version after a `+`. Reach for it when part of the version comes from the code rather than from the commits: a supported protocol range, a vendored upstream revision.
+
+The command runs once per release, from the repository root, before any version file is written. FerrFlow trims the output and requires dot-separated alphanumerics and hyphens, which is all semver allows after the `+`. The release aborts if the command fails, prints nothing, or prints anything outside that set.
+
+Only the version files carry the suffix. The tag, the changelog and the next bump keep the plain version, because semver excludes build metadata from a version's identity and ignores it when comparing precedence. `1.4.0+26.2-26.45` is tagged `v1.4.0`, and the minor after it is computed from `1.4.0`.
+
+Under `--dry-run` the command is printed rather than executed.
+
+<div class="ferr-tabs">
+  <div class="ferr-tab" data-label="JSON"><p class="ferr-tab__label">JSON</p><div class="ferr-tab__body"><pre><code class="language-json">{
+  &quot;workspace&quot;: {
+    &quot;buildMetadata&quot;: &quot;sh scripts/protocol-versions.sh&quot;
+  }
+}
+</code></pre>
+</div></div>
+  <div class="ferr-tab" data-label="TOML"><p class="ferr-tab__label">TOML</p><div class="ferr-tab__body"><pre><code class="language-toml">[workspace]
+buildMetadata = &quot;sh scripts/protocol-versions.sh&quot;
+</code></pre>
+
+</div></div>
+  <div class="ferr-tab" data-label="JSON5"><p class="ferr-tab__label">JSON5</p><div class="ferr-tab__body"><pre><code class="language-json5">{
+  workspace: {
+    buildMetadata: &quot;sh scripts/protocol-versions.sh&quot;,
+  },
+}
+</code></pre>
+</div></div>
+</div>
+
 ### Changelog rendering
 
 Omit `changelog` entirely and FerrFlow writes the classic layout: **Breaking Changes**, **Features**, **Bug Fixes** and **Refactoring**, flat bullets, no links. `perf` commits fold into **Bug Fixes** there, and every other type, `docs` and `security` included, is left out.
