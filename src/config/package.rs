@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::conventional_commits::BumpType;
 
-use super::types::{HooksConfig, PublisherConfig, VersionSourcePolicy};
+use super::types::{BuildMetadata, HooksConfig, PublisherConfig, VersionSourcePolicy};
 use super::workspace::WorkspaceConfig;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -26,6 +26,10 @@ pub struct PackageConfig {
     pub floating_tags: Option<Vec<FloatingTagLevel>>,
     #[serde(default, alias = "latestTag")]
     pub latest_tag: Option<String>,
+    /// Overrides `workspace.buildMetadata` for this package. `false` releases
+    /// it with a plain version while the rest of the workspace stays stamped.
+    #[serde(default, alias = "buildMetadata")]
+    pub build_metadata: Option<BuildMetadata>,
     #[serde(default)]
     pub hooks: Option<HooksConfig>,
     #[serde(default)]
@@ -336,6 +340,7 @@ mod tests {
 
     fn pkg(path: &str, shared: &[&str]) -> PackageConfig {
         PackageConfig {
+            build_metadata: None,
             version_source: None,
             name: "api".to_string(),
             path: path.to_string(),

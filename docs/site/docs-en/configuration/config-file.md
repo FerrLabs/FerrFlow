@@ -448,6 +448,8 @@ Only the version files carry the suffix. The tag, the changelog and the next bum
 
 Under `--dry-run` the command is printed rather than executed.
 
+In a monorepo the command applies to every package that releases. A package can override it with a command of its own, or set `buildMetadata = false` to keep a plain version while the rest of the workspace stays stamped. Distinct commands run once each, however many packages share them.
+
 <div class="ferr-tabs">
   <div class="ferr-tab" data-label="JSON"><p class="ferr-tab__label">JSON</p><div class="ferr-tab__body"><pre><code class="language-json">{
   &quot;workspace&quot;: {
@@ -548,6 +550,7 @@ Defines a package to version. You can have one or many.
 | `tagTemplate`   | no       | inherited from workspace | Override tag template for this package                                                                                                                                                                                                                                        |
 | `floatingTags`  | no       | inherited from workspace | Override floating tags for this package                                                                                                                                                                                                                                       |
 | `latestTag`     | no       | inherited from workspace | Override the floating alias tag for this package                                                                                                                                                                                                                              |
+| `buildMetadata` | no       | inherited from workspace | Override the build metadata command for this package, or `false` to release it with a plain version                                                                                                                                                                           |
 | `versionSource` | no       | inherited from workspace | Override the tag-vs-file resolution for this package                                                                                                                                                                                                                          |
 
 ### `versionedFiles`

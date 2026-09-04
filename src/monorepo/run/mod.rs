@@ -23,6 +23,7 @@ use super::types::{CheckCommit, CheckPackage, CheckResult, RunOutput};
 use super::util::{auto_stage_new_files, collect_dirty_files};
 
 mod authored_commit;
+mod build_metadata;
 mod cascade;
 pub(crate) mod checkpoint;
 mod commit_body;
@@ -277,18 +278,7 @@ pub(super) fn run_release_logic(
     }
     let bump_order: &[usize] = if finalizing { &[] } else { &release_order };
 
-    // Resolved once for the whole release, and never in a dry run: hooks are
-    // printed rather than executed there, and this follows the same rule so a
-    // rehearsal stays free of side effects.
-    let build_metadata = match config.workspace.build_metadata.as_deref() {
-        None => None,
-        Some(_) if bump_order.is_empty() => None,
-        Some(command) if dry_run => {
-            tracing::info!("  {} {}", "[buildMetadata]".dimmed(), command.dimmed());
-            None
-        }
-        Some(command) => Some(crate::hooks::capture_build_metadata(command, root)?),
-    };
+    let captured_metadata = build_metadata::capture(config, bump_order, &plans, root, dry_run)?;
 
     for &pkg_idx in bump_order {
         let pkg = &config.packages[pkg_idx];
@@ -560,10 +550,7 @@ pub(super) fn run_release_logic(
                 )?;
             }
 
-            let stamped = match build_metadata.as_deref() {
-                Some(meta) => format!("{new_version}+{meta}"),
-                None => new_version.clone(),
-            };
+            let stamped = build_metadata::stamp(config, pkg, &captured_metadata, &new_version);
 
             for vf in &pkg.versioned_files {
                 write_version(vf, root, &stamped)?;

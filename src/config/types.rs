@@ -115,6 +115,15 @@ impl Default for ChannelValue {
     }
 }
 
+/// A `buildMetadata` setting. A command produces the suffix; `true` inherits
+/// the workspace command and `false` switches it off for one package.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum BuildMetadata {
+    Enabled(bool),
+    Command(String),
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "kebab-case")]
 pub enum PrereleaseIdentifier {

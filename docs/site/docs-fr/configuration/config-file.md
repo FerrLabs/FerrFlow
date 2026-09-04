@@ -374,6 +374,8 @@ Seuls les fichiers de version portent le suffixe. Le tag, le changelog et le bum
 
 Avec `--dry-run`, la commande est affichée et non exécutée.
 
+Dans un monorepo, la commande s'applique à chaque package publié. Un package peut la remplacer par la sienne, ou poser `buildMetadata = false` pour conserver une version nue pendant que le reste du workspace est estampillé. Chaque commande distincte n'est exécutée qu'une fois, quel que soit le nombre de packages qui la partagent.
+
 <div class="ferr-tabs">
   <div class="ferr-tab" data-label="JSON"><p class="ferr-tab__label">JSON</p><div class="ferr-tab__body"><pre><code class="language-json">{
   &quot;workspace&quot;: {
@@ -409,6 +411,7 @@ Définit un package à versionner. Vous pouvez en avoir un ou plusieurs.
 | `versioning`    | non    | hérité du workspace   | Surcharger la stratégie de versionnage pour ce package      |
 | `tagTemplate`   | non    | hérité du workspace   | Surcharger le modèle de tag pour ce package                 |
 | `latestTag`     | non    | hérité du workspace   | Surcharger le tag alias flottant pour ce package            |
+| `buildMetadata` | non    | hérité du workspace   | Surcharger la commande de métadonnées, ou `false` pour une version nue |
 | `versionSource` | non    | hérité du workspace   | Surcharger la résolution tag / fichier pour ce package      |
 
 ### `versionedFiles`

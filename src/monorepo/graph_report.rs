@@ -166,6 +166,7 @@ mod tests {
 
     fn pkg(name: &str, deps: &[&str]) -> PackageConfig {
         PackageConfig {
+            build_metadata: None,
             version_source: None,
             name: name.to_string(),
             path: name.to_string(),
