@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.17.1] - 2026-09-04
+
+### Bug Fixes
+
+- fix(git): collapse the unreachable-tag warnings into one line, emitted once (#1016)
+
 ## [7.17.0] - 2026-09-03
 
 ### Features
