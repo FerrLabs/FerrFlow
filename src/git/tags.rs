@@ -315,6 +315,7 @@ pub(super) fn find_last_tag_with_cache(
 ) -> Result<Option<TagMatch>> {
     let head = repo.head_id()?.detach();
     let mut latest: Option<TagMatch> = None;
+    let mut unreachable_tags: Vec<String> = Vec::new();
     let references = repo.references()?;
 
     for reference in references.tags()?.flatten() {
@@ -359,13 +360,7 @@ pub(super) fn find_last_tag_with_cache(
         } else {
             let short = &commit_oid.to_string()[..7].to_string();
             if strategy == OrphanedTagStrategy::Warn {
-                tracing::warn!(
-                    "Warning: tag '{}' points to orphaned commit {} (not reachable from HEAD).\n  \
-                     Hint: set 'orphanedTagStrategy' to 'treeHash' or 'message' for automatic recovery.\n  \
-                     See https://ferrflow.com/docs/configuration/config-file#orphaned-tag-strategy",
-                    tag_name,
-                    short
-                );
+                unreachable_tags.push(tag_name);
                 continue;
             }
             match find_matching_commit(repo, &commit, &strategy) {
@@ -418,7 +413,64 @@ pub(super) fn find_last_tag_with_cache(
         }
     }
 
+    warn_unreachable_tags(unreachable_tags);
+
     Ok(latest)
+}
+
+pub(super) fn take_unreported(tags: Vec<String>, seen: &mut HashSet<String>) -> Vec<String> {
+    tags.into_iter()
+        .filter(|t| seen.insert(t.clone()))
+        .collect()
+}
+
+pub(super) fn unreachable_tags_message(tags: &[String]) -> String {
+    const SHOWN: usize = 5;
+    let listed = tags
+        .iter()
+        .take(SHOWN)
+        .map(String::as_str)
+        .collect::<Vec<_>>()
+        .join(", ");
+    let names = if tags.len() > SHOWN {
+        format!("{listed} and {} more", tags.len() - SHOWN)
+    } else {
+        listed
+    };
+    let subject = if tags.len() == 1 {
+        "tag is"
+    } else {
+        "tags are"
+    };
+
+    format!(
+        "Warning: {} {} not reachable from HEAD ({}), so they were ignored.\n  \
+         Hint: set 'orphanedTagStrategy' to 'treeHash' or 'message' for automatic recovery.\n  \
+         See https://ferrflow.com/docs/configuration/config-file#orphaned-tag-strategy",
+        tags.len(),
+        subject,
+        names
+    )
+}
+
+fn warn_unreachable_tags(tags: Vec<String>) {
+    if tags.is_empty() {
+        return;
+    }
+
+    static REPORTED: std::sync::OnceLock<std::sync::Mutex<HashSet<String>>> =
+        std::sync::OnceLock::new();
+    let reported = REPORTED.get_or_init(|| std::sync::Mutex::new(HashSet::new()));
+
+    let fresh = match reported.lock() {
+        Ok(mut seen) => take_unreported(tags, &mut seen),
+        Err(_) => tags,
+    };
+    if fresh.is_empty() {
+        return;
+    }
+
+    tracing::warn!("{}", unreachable_tags_message(&fresh));
 }
 
 pub fn find_last_tag_name(
