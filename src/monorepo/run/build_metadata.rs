@@ -3,29 +3,37 @@ use colored::Colorize;
 use std::collections::HashMap;
 use std::path::Path;
 
-use crate::config::{Config, PackageConfig};
+use crate::config::{BuildMetadata, Config, PackageConfig};
+
+use super::plan::PackagePlan;
 
 /// The command that stamps `pkg`, taking the package override when there is one
 /// and falling back to the workspace command otherwise. `None` means this
 /// package's versions stay plain.
 pub fn resolve<'a>(config: &'a Config, pkg: &'a PackageConfig) -> Option<&'a str> {
     match &pkg.build_metadata {
-        Some(value) => value.command(),
-        None => config.workspace.build_metadata.as_deref(),
+        Some(BuildMetadata::Command(command)) => Some(command),
+        Some(BuildMetadata::Enabled(false)) => None,
+        Some(BuildMetadata::Enabled(true)) | None => config.workspace.build_metadata.as_deref(),
     }
 }
 
 /// Runs each distinct command once, before any version file is written, and
-/// returns the output keyed by command. A dry run prints the commands instead,
+/// returns the output keyed by command. Only packages that actually bump are
+/// consulted, so a skipped package's command neither runs nor can fail the run. A dry run prints the commands instead,
 /// which is how hooks behave, so a rehearsal stays free of side effects.
 pub fn capture(
     config: &Config,
     bump_order: &[usize],
+    plans: &[Option<PackagePlan>],
     root: &Path,
     dry_run: bool,
 ) -> Result<HashMap<String, String>> {
     let mut commands: Vec<&str> = Vec::new();
     for &idx in bump_order {
+        if !matches!(plans[idx], Some(PackagePlan::Bump(_))) {
+            continue;
+        }
         if let Some(command) = resolve(config, &config.packages[idx])
             && !commands.contains(&command)
         {
@@ -63,7 +71,31 @@ pub fn stamp(
 
 #[cfg(test)]
 mod tests {
+    use super::super::plan::{PackageBump, SkipReason};
     use super::*;
+    use crate::conventional_commits::BumpType;
+
+    fn bumped() -> Option<PackagePlan> {
+        Some(PackagePlan::Bump(Box::new(PackageBump {
+            recovered: false,
+            current_version: "1.0.0".to_string(),
+            new_version: "1.1.0".to_string(),
+            is_prerelease: false,
+            last_tag: None,
+            commits: Vec::new(),
+            bump: BumpType::Minor,
+            strategy_label: BumpType::Minor.to_string(),
+            tag: "v1.1.0".to_string(),
+            version_source: None,
+        })))
+    }
+
+    fn skipped() -> Option<PackagePlan> {
+        Some(PackagePlan::Skipped {
+            reason: SkipReason::NotTouched,
+            recovered: false,
+        })
+    }
 
     fn config(workspace_command: Option<&str>, packages: &[&str]) -> Config {
         let mut config = Config::default();
@@ -149,7 +181,7 @@ mod tests {
     fn a_dry_run_captures_nothing_and_leaves_versions_plain() {
         let config = config(Some("exit 1"), [r#"{"name":"a","path":"a"}"#].as_slice());
 
-        let captured = capture(&config, &[0], Path::new("."), true).unwrap();
+        let captured = capture(&config, &[0], &[bumped()], Path::new("."), true).unwrap();
 
         assert!(captured.is_empty());
         assert_eq!(
@@ -163,9 +195,42 @@ mod tests {
         let config = config(Some("exit 1"), [r#"{"name":"a","path":"a"}"#].as_slice());
 
         assert!(
-            capture(&config, &[], Path::new("."), false)
+            capture(&config, &[], &[bumped()], Path::new("."), false)
                 .unwrap()
                 .is_empty()
         );
+    }
+
+    #[test]
+    fn a_skipped_package_never_runs_its_command() {
+        let config = config(
+            None,
+            [
+                r#"{"name":"a","path":"a","buildMetadata":"exit 1"}"#,
+                r#"{"name":"b","path":"b"}"#,
+            ]
+            .as_slice(),
+        );
+
+        let captured = capture(
+            &config,
+            &[0, 1],
+            &[skipped(), bumped()],
+            Path::new("."),
+            false,
+        )
+        .unwrap();
+
+        assert!(captured.is_empty());
+    }
+
+    #[test]
+    fn package_true_inherits_the_workspace_command() {
+        let config = config(
+            Some("sh meta.sh"),
+            [r#"{"name":"a","path":"a","buildMetadata":true}"#].as_slice(),
+        );
+
+        assert_eq!(resolve(&config, &config.packages[0]), Some("sh meta.sh"));
     }
 }

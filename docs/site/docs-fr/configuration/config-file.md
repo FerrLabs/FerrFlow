@@ -411,6 +411,7 @@ Définit un package à versionner. Vous pouvez en avoir un ou plusieurs.
 | `versioning`    | non    | hérité du workspace   | Surcharger la stratégie de versionnage pour ce package      |
 | `tagTemplate`   | non    | hérité du workspace   | Surcharger le modèle de tag pour ce package                 |
 | `latestTag`     | non    | hérité du workspace   | Surcharger le tag alias flottant pour ce package            |
+| `buildMetadata` | non    | hérité du workspace   | Surcharger la commande de métadonnées, ou `false` pour une version nue |
 | `versionSource` | non    | hérité du workspace   | Surcharger la résolution tag / fichier pour ce package      |
 
 ### `versionedFiles`

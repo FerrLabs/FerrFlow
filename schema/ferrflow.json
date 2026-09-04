@@ -644,12 +644,12 @@
             ]
           },
           "buildMetadata": {
-            "oneOf": [{ "type": "string" }, { "const": false }],
-            "description": "Overrides `workspace.buildMetadata` for this package. A command replaces the workspace one; `false` releases this package with a plain version while the rest of the workspace stays stamped."
+            "oneOf": [{ "type": "string" }, { "type": "boolean" }],
+            "description": "Overrides `workspace.buildMetadata` for this package. A command replaces the workspace one, `true` inherits it, and `false` releases this package with a plain version while the rest of the workspace stays stamped."
           },
           "build_metadata": {
-            "oneOf": [{ "type": "string" }, { "const": false }],
-            "description": "Overrides `workspace.buildMetadata` for this package. A command replaces the workspace one; `false` releases this package with a plain version while the rest of the workspace stays stamped."
+            "oneOf": [{ "type": "string" }, { "type": "boolean" }],
+            "description": "Overrides `workspace.buildMetadata` for this package. A command replaces the workspace one, `true` inherits it, and `false` releases this package with a plain version while the rest of the workspace stays stamped."
           },
           "hooks": {
             "$ref": "#/$defs/hooks"

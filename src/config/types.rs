@@ -115,22 +115,13 @@ impl Default for ChannelValue {
     }
 }
 
-/// A `buildMetadata` setting. A command produces the suffix; `false` switches
-/// the inherited workspace command off for one package.
+/// A `buildMetadata` setting. A command produces the suffix; `true` inherits
+/// the workspace command and `false` switches it off for one package.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum BuildMetadata {
-    Off(bool),
+    Enabled(bool),
     Command(String),
-}
-
-impl BuildMetadata {
-    pub fn command(&self) -> Option<&str> {
-        match self {
-            BuildMetadata::Command(command) => Some(command),
-            BuildMetadata::Off(_) => None,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
