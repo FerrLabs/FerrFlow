@@ -525,6 +525,7 @@ fn pick_higher_semver_strips_leading_v() {
 
 fn make_pkg(name: &str, path: &str, shared: &[&str]) -> PackageConfig {
     PackageConfig {
+        build_metadata: None,
         version_source: None,
         name: name.into(),
         path: path.into(),

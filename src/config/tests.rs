@@ -194,6 +194,7 @@ fn effective_versioning_inherits_workspace() {
         ..WorkspaceConfig::default()
     };
     let pkg = PackageConfig {
+        build_metadata: None,
         version_source: None,
         name: "a".into(),
         path: ".".into(),
@@ -223,6 +224,7 @@ fn effective_versioning_package_overrides() {
         ..WorkspaceConfig::default()
     };
     let pkg = PackageConfig {
+        build_metadata: None,
         version_source: None,
         name: "a".into(),
         path: ".".into(),
@@ -252,6 +254,7 @@ fn effective_versioning_does_not_read_tags_when_strategy_is_configured() {
         ..WorkspaceConfig::default()
     };
     let pkg = PackageConfig {
+        build_metadata: None,
         version_source: None,
         name: "a".into(),
         path: ".".into(),
@@ -277,6 +280,7 @@ fn effective_versioning_does_not_read_tags_when_strategy_is_configured() {
 fn effective_versioning_autodetects_from_tags_when_unset() {
     let ws = WorkspaceConfig::default();
     let pkg = PackageConfig {
+        build_metadata: None,
         version_source: None,
         name: "a".into(),
         path: ".".into(),
@@ -304,6 +308,7 @@ fn effective_versioning_autodetects_from_tags_when_unset() {
 fn effective_versioning_falls_back_to_semver_without_tags() {
     let ws = WorkspaceConfig::default();
     let pkg = PackageConfig {
+        build_metadata: None,
         version_source: None,
         name: "a".into(),
         path: ".".into(),
@@ -328,6 +333,7 @@ fn effective_versioning_falls_back_to_semver_without_tags() {
 
 fn make_pkg(name: &str, tag_template: Option<&str>) -> PackageConfig {
     PackageConfig {
+        build_metadata: None,
         version_source: None,
         name: name.into(),
         path: ".".into(),
@@ -574,6 +580,7 @@ fn json_serializes_camel_case() {
             ..WorkspaceConfig::default()
         },
         packages: vec![PackageConfig {
+            build_metadata: None,
             version_source: None,
             name: "app".into(),
             path: ".".into(),
@@ -627,6 +634,7 @@ fn toml_keeps_snake_case() {
             ..WorkspaceConfig::default()
         },
         packages: vec![PackageConfig {
+            build_metadata: None,
             version_source: None,
             name: "app".into(),
             path: ".".into(),
@@ -1207,6 +1215,7 @@ fn depends_on_deserializes_snake_case() {
 fn tag_prefix_no_version_placeholder() {
     let ws = WorkspaceConfig::default();
     let pkg = PackageConfig {
+        build_metadata: None,
         version_source: None,
         name: "app".to_string(),
         path: ".".to_string(),
@@ -1230,6 +1239,7 @@ fn tag_prefix_no_version_placeholder() {
 fn tag_for_version_replaces_placeholders() {
     let ws = WorkspaceConfig::default();
     let pkg = PackageConfig {
+        build_metadata: None,
         version_source: None,
         name: "api".to_string(),
         latest_tag: None,
