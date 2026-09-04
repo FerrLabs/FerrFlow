@@ -8,26 +8,27 @@
     "pnpm": ">=11.8.0"
   },
   "scripts": {
-    "dev": "node scripts/fetch-docs.mjs && node scripts/fetch-changelog.mjs && vite",
-    "build": "node scripts/fetch-docs.mjs && node scripts/fetch-changelog.mjs && vite build && node scripts/gen-rss.mjs && node scripts/gen-sitemap.mjs",
+    "dev": "node scripts/sync-docs.mjs && node scripts/fetch-changelog.mjs && vite",
+    "build": "node scripts/sync-docs.mjs && node scripts/fetch-changelog.mjs && vite build && node scripts/gen-rss.mjs && node scripts/gen-sitemap.mjs",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
     "check:i18n": "node ./scripts/check-i18n.mjs",
     "preview": "vite preview",
     "changelog:fetch": "node scripts/fetch-changelog.mjs",
-    "docs:fetch": "node scripts/fetch-docs.mjs"
+    "docs:sync": "node scripts/sync-docs.mjs"
   },
   "dependencies": {
     "@analogjs/content": "^2.6.1",
     "@analogjs/router": "^2.6.1",
-    "@angular/localize": "^22.0.0",
-    "@ferrlabs/ui-foundation": "^5.0.0",
-    "@ferrlabs/ui-ng": "^1.10.0",
     "@angular/common": "^22.0.0",
     "@angular/core": "^22.0.0",
     "@angular/forms": "^22.0.0",
+    "@angular/localize": "^22.0.0",
     "@angular/platform-browser": "^22.0.0",
     "@angular/platform-server": "^22.0.0",
     "@angular/router": "^22.0.0",
+    "@ferrflow/doc": "7.17.0",
+    "@ferrlabs/ui-foundation": "^5.0.0",
+    "@ferrlabs/ui-ng": "^1.10.0",
     "chart.js": "^4.5.1",
     "front-matter": "^4.0.2",
     "marked": "^18.0.0",
