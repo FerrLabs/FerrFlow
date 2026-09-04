@@ -480,6 +480,14 @@
               "type": "string"
             }
           }
+        },
+        "buildMetadata": {
+          "type": "string",
+          "description": "Command whose stdout is appended to the version as semver build metadata, after a `+`. It is run once per release, never in a dry run, and its output must be dot-separated alphanumerics and hyphens. The tag and the changelog keep the plain version, since build metadata is excluded from version identity and ignored for precedence."
+        },
+        "build_metadata": {
+          "type": "string",
+          "description": "Command whose stdout is appended to the version as semver build metadata, after a `+`. It is run once per release, never in a dry run, and its output must be dot-separated alphanumerics and hyphens. The tag and the changelog keep the plain version, since build metadata is excluded from version identity and ignored for precedence."
         }
       },
       "additionalProperties": false
