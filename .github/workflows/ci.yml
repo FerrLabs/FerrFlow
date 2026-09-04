@@ -69,17 +69,24 @@ jobs:
         run: cargo deny --all-features check
       - name: cargo machete (unused deps)
         run: cargo machete
-      # A pull request that only moves Cargo.lock is Renovate refreshing the
+      # A Renovate pull request that only moves Cargo.lock is a refresh of the
       # transitive tree, and cargo vet then reports every crate that changed
       # version as uncertified. That is tens of thousands of lines nobody reads,
       # every week, on a required check, which teaches people to click through a
       # gate that is supposed to mean something. Where the answer is always the
-      # same the result is recorded rather than enforced. Anywhere else, and on
-      # main, it still fails the build: a deliberate dependency change is
-      # exactly when an unvetted diff is worth stopping for.
+      # same the result is recorded rather than enforced.
+      #
+      # The author check is load-bearing, not decoration. Editing Cargo.lock
+      # alone is enough to move a transitive crate to another version the
+      # existing Cargo.toml constraints already allow, which is precisely the
+      # unreviewed-code case cargo vet exists for and the one cargo audit, deny
+      # and osv-scanner do not cover: they catch known-bad crates, not new ones.
+      # Anyone but the bot keeps the hard gate, and so does main.
       - name: Is this a lockfile-only refresh
         id: vet_scope
-        if: github.event_name == 'pull_request'
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.user.login == 'ferrlabs-renovate[bot]'
         env:
           BASE: ${{ github.event.pull_request.base.sha }}
         run: |
@@ -101,12 +108,14 @@ jobs:
           {
             echo '### cargo vet did not pass, and did not fail the build'
             echo
-            echo 'This pull request moves `Cargo.lock` without touching any `Cargo.toml`, so every'
-            echo 'crate that changed version is uncertified by construction. The step ran and its'
-            echo 'output is above.'
+            echo 'This is a Renovate pull request that moves `Cargo.lock` without touching any'
+            echo '`Cargo.toml`, where the step is advisory. It failed; the log above holds the'
+            echo 'reason. Usually that is the refreshed crates being uncertified, but the'
+            echo 'exemption is not conditional on the reason, so read the output before assuming'
+            echo 'it is routine.'
             echo
-            echo 'It still fails the build on `main` and on any pull request that edits a'
-            echo '`Cargo.toml`. See FerrLabs/FerrFlow#1017.'
+            echo 'It still fails the build on `main`, on any pull request that edits a'
+            echo '`Cargo.toml`, and on anything not opened by the bot. See FerrLabs/FerrFlow#1017.'
           } >> "$GITHUB_STEP_SUMMARY"
 
   build:
