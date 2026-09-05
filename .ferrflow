@@ -10,7 +10,7 @@
     "updateLockfiles": true,
     "skipCi": false,
     "hooks": {
-      "postBump": "node scripts/sync-optional-deps.js"
+      "postBump": "node scripts/sync-optional-deps.js && node scripts/embed-release-data.js"
     }
   },
   "package": [
