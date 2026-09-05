@@ -16,17 +16,29 @@ fs.copyFileSync(
 
 // Written by the release job before ferrflow runs, from the hyperfine-baseline
 // artifact of the benchmark matrix this commit already waited on. Absent on a
-// dry run and on any release that skipped the benchmarks, which is not an
-// error: the previously published numbers stay in place.
+// dry run, on a workflow_dispatch release, and on any release that skipped the
+// benchmarks: the previously published numbers stay in place.
 const bench = process.env.FERRFLOW_BENCHMARK_JSON;
+let embedded = false;
+
 if (bench && fs.existsSync(bench)) {
-  const parsed = JSON.parse(fs.readFileSync(bench, "utf8"));
-  parsed.ferrflow_version = `ferrflow ${process.env.FERRFLOW_NEW_VERSION}`;
-  fs.writeFileSync(
-    path.join(target, "benchmarks.json"),
-    JSON.stringify(parsed, null, 2) + "\n",
-  );
-  console.log(`embedded benchmarks for ${parsed.ferrflow_version}`);
-} else {
-  console.log("no benchmark artifact in this run, keeping the published numbers");
+  // A truncated or malformed artifact must not abort the release. postBump
+  // runs once the version files are already bumped, and `.ferrflow` sets no
+  // onFailure, so an uncaught throw here stops the run mid-release.
+  try {
+    const parsed = JSON.parse(fs.readFileSync(bench, "utf8"));
+    parsed.ferrflow_version = `ferrflow ${process.env.FERRFLOW_NEW_VERSION}`;
+    fs.writeFileSync(
+      path.join(target, "benchmarks.json"),
+      JSON.stringify(parsed, null, 2) + "\n",
+    );
+    console.log(`embedded benchmarks for ${parsed.ferrflow_version}`);
+    embedded = true;
+  } catch (err) {
+    console.log(`benchmark artifact unusable (${err.message})`);
+  }
+}
+
+if (!embedded) {
+  console.log("no usable benchmark artifact, keeping the published numbers");
 }

@@ -705,10 +705,9 @@ jobs:
 
       - name: Run ferrflow release
         env:
+          FERRFLOW_BOT: "true"
           FERRFLOW_BENCHMARK_JSON: ${{ steps.bench.outcome == 'success' && format('{0}/bench/latest.json', runner.temp) || '' }}
         run: ./target/release/ferrflow ${{ inputs.dry_run == 'true' && '--dry-run' || '' }} release --draft
-        env:
-          FERRFLOW_BOT: "true"
       - name: Download benchmark summary
         if: needs.benchmark-aggregate.result == 'success'
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
