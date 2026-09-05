@@ -524,7 +524,10 @@ jobs:
 
   bench-fixtures:
     name: Generate Benchmark Fixtures
-    needs: test
+    # Same reasoning as `build` above: it checks out, generates fixtures and
+    # uploads them, reading nothing from `test`. `release` keeps `test` in its
+    # own `needs` and gates on `needs.test.result == 'success'`, so a failing
+    # test still cannot publish.
     runs-on: ubuntu-latest
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
     steps:
