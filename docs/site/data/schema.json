@@ -1,0 +1,1158 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ferrflow.com/schema/ferrflow.json",
+  "title": "FerrFlow Configuration",
+  "description": "Configuration file for FerrFlow — universal semantic versioning for monorepos and classic repos.",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference for editor autocompletion."
+    },
+    "include": {
+      "type": "array",
+      "description": "Files that each declare one package, merged into `package`. Paths and globs are relative to this config file. A package path inside an included file is relative to that file, and defaults to its directory.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "workspace": {
+      "type": "object",
+      "description": "Workspace-level settings.",
+      "properties": {
+        "remote": {
+          "type": "string",
+          "description": "Git remote name.",
+          "default": "origin"
+        },
+        "branch": {
+          "type": "string",
+          "description": "Main branch name.",
+          "default": "main"
+        },
+        "anonymous_telemetry": {
+          "type": "boolean",
+          "description": "Deprecated and ignored: telemetry was removed from FerrFlow in v5.33. The key remains accepted so existing configs written before then stay valid, but it drives nothing and should be deleted.",
+          "deprecated": true
+        },
+        "telemetry": {
+          "type": "boolean",
+          "description": "Deprecated and ignored: telemetry was removed from FerrFlow in v5.33. The key remains accepted so existing configs written before then stay valid, but it drives nothing and should be deleted.",
+          "deprecated": true
+        },
+        "versioning": {
+          "type": "string",
+          "description": "Default versioning strategy for all packages.",
+          "enum": [
+            "semver",
+            "calver",
+            "calver-short",
+            "calver-seq",
+            "calver-short-seq",
+            "sequential",
+            "zerover"
+          ],
+          "default": "semver"
+        },
+        "versionTemplate": {
+          "type": "string",
+          "description": "Version format built from named variables. Variables: year, short_year, month, padded_month, day, padded_day, week, padded_week, quarter, seq, major, minor, patch. Each must be separated by a literal so the previous version can be read back. Takes precedence over 'versioning'.",
+          "examples": [
+            "{year}.{month}.{day}",
+            "{short_year}.{padded_month}.{seq}",
+            "{year}.Q{quarter}.{seq}",
+            "{year}.{minor}.{patch}"
+          ]
+        },
+        "tagTemplate": {
+          "type": "string",
+          "description": "Tag template. Use {name} for package name and {version} for version. Default: 'v{version}' for single repos, '{name}@v{version}' for monorepos.",
+          "examples": [
+            "v{version}",
+            "{name}@v{version}",
+            "{name}/v{version}",
+            "release-{version}"
+          ]
+        },
+        "recoverMissedReleases": {
+          "type": "boolean",
+          "description": "Compare files against the last tag instead of just the last commit, recovering missed releases in monorepos.",
+          "default": false
+        },
+        "releaseCommitMode": {
+          "type": "string",
+          "description": "How to commit version bumps and changelog updates. 'commit' pushes directly to the branch, 'pr' creates a pull request, 'none' skips committing entirely.",
+          "enum": [
+            "commit",
+            "pr",
+            "none"
+          ],
+          "default": "commit"
+        },
+        "releaseCommitScope": {
+          "type": "string",
+          "description": "In monorepo mode, whether to create a single grouped commit for all packages or one commit per package. Only affects behavior when multiple packages are bumped.",
+          "enum": [
+            "grouped",
+            "per-package"
+          ],
+          "default": "grouped"
+        },
+        "releaseCommitBody": {
+          "type": "string",
+          "description": "What to put in the body of the release commit message, below the subject line. 'none' keeps the single-line subject. 'summary' lists one line per released package with its commit count. 'full' embeds the changelog section written for each package.",
+          "enum": [
+            "none",
+            "summary",
+            "full"
+          ],
+          "default": "none"
+        },
+        "commitFormats": {
+          "type": "object",
+          "description": "Which commit subjects map to which bump level. Resolution is major > minor > patch, first match wins. Breaking markers (feat!:, fix(api)!:, a BREAKING CHANGE: footer) are always detected structurally, whatever is configured here.",
+          "properties": {
+            "major": {
+              "description": "Extra patterns that force a major bump. Empty by default — structural breaking markers already cover the conventional forms.",
+              "oneOf": [
+                { "type": "string" },
+                { "type": "array", "items": { "type": "string" } }
+              ]
+            },
+            "minor": {
+              "description": "Patterns that select a minor bump. Defaults cover feat:, feat(scope):, feature:, and the Title-case and branch-style (Feat/) variants.",
+              "oneOf": [
+                { "type": "string" },
+                { "type": "array", "items": { "type": "string" } }
+              ]
+            },
+            "patch": {
+              "description": "Patterns that select a patch bump. Defaults cover fix:, perf:, refactor: and their Title-case and branch-style variants.",
+              "oneOf": [
+                { "type": "string" },
+                { "type": "array", "items": { "type": "string" } }
+              ]
+            },
+            "caseSensitive": {
+              "type": "boolean",
+              "description": "Match patterns exactly as written. Set false to lowercase both pattern and subject before matching. The 'all' catch-all keyword is recognised in any casing regardless.",
+              "default": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "autoMergeReleases": {
+          "type": "boolean",
+          "description": "Automatically merge release PRs when releaseCommitMode is 'pr'.",
+          "default": true
+        },
+        "skipCi": {
+          "type": "boolean",
+          "description": "Append [skip ci] to the release commit message. Defaults to true in 'commit' mode, false in 'pr' mode."
+        },
+        "commitSkipMarkers": {
+          "type": "array",
+          "description": "Markers in a commit subject line that cause FerrFlow to skip the commit when computing the next version. Matched case-insensitively, subject line only. Defaults to ['[skip ci]', '[ci skip]', '[no ci]', '[skip actions]', '[actions skip]'].",
+          "items": {
+            "type": "string"
+          }
+        },
+        "floatingTags": {
+          "type": "array",
+          "description": "Floating tag levels to create/move on each release. Each level produces a tag pointing to the latest matching release (e.g. 'major' creates a v1 tag for v1.2.3).",
+          "items": {
+            "type": "string",
+            "enum": [
+              "major",
+              "minor"
+            ]
+          },
+          "default": []
+        },
+        "forge": {
+          "type": "string",
+          "description": "Git forge type. 'auto' detects from the remote URL. Set 'github', 'gitlab', 'gitea', or 'bitbucket' to override (useful for self-hosted instances with custom domains).",
+          "enum": [
+            "auto",
+            "github",
+            "gitlab",
+            "gitea",
+            "bitbucket"
+          ],
+          "default": "auto"
+        },
+        "latestTag": {
+          "type": "string",
+          "description": "Template for a floating alias tag that always points at this package's newest non-prerelease release, e.g. \"latest\" or \"{name}@latest\". Absent (default) means no alias tag. Deliberately separate from tagTemplate: the alias is a name, not a version, so a tagTemplate of \"v{version}\" does not turn it into \"vlatest\". In a monorepo the template must include {name}, or every package will fight over the same ref.",
+          "examples": [
+            "latest",
+            "{name}@latest",
+            "{name}@stable"
+          ]
+        },
+        "orphanedTagStrategy": {
+          "type": "string",
+          "enum": [
+            "warn",
+            "treeHash",
+            "message"
+          ],
+          "description": "How to handle tags pointing to orphaned commits (after rebase + force-push). 'warn' logs a warning and skips. 'treeHash' attempts recovery by matching the commit's tree hash. 'message' attempts recovery by matching the commit message.",
+          "default": "warn"
+        },
+        "versionSource": {
+          "type": "string",
+          "enum": [
+            "highest",
+            "tag",
+            "file"
+          ],
+          "description": "Which source wins when a package has both a git tag and a version in a versioned file. 'highest' (default) takes whichever is higher, so a mistake in either source ratchets the version upward and is never walked back. 'tag' treats the tags as the record of what shipped and ignores the file. 'file' treats the file as the source and ignores the tag, which is what a package migrated between repos usually needs. With only one source present the setting has no effect.",
+          "default": "highest"
+        },
+        "hooks": {
+          "$ref": "#/$defs/hooks"
+        },
+        "deferPublish": {
+          "type": "boolean",
+          "description": "When true, `ferrflow release` does not run the configured publishers inline — it defers them to a separate `ferrflow publish` invocation (e.g. a CI job that carries the docker/helm/npm build toolchain the release job lacks). `ferrflow publish` always runs the publishers regardless of this flag.",
+          "default": false
+        },
+        "manifest_file": {
+          "type": "string",
+          "description": "Opt-in single-file source of truth for per-package versions, relative to the repo root (e.g. '.ferrflow.manifest.json'). When set, `ferrflow release` writes a full version snapshot to this file as part of the release commit, validates it against the versioned files at release start (a divergence is a hard error — run `ferrflow sync-manifest` to repair), and `status` / `version` read current versions from it. Omit to leave all behaviour unchanged.",
+          "examples": [
+            ".ferrflow.manifest.json"
+          ]
+        },
+        "updateDependents": {
+          "type": "boolean",
+          "description": "When true, after `ferrflow release` bumps a package, every dependent listed via `dependsOn` has its version constraint for that package rewritten to the new version in its own manifest, and the manifest is staged in the release commit. Only `json` (package.json) and `toml` (Cargo.toml) manifests are rewritten, and only plain operator + version constraints (`^1.2.3`, `~1.2.3`, `1.2.3`) — a `workspace:*`, `file:`/`git:` spec or a multi-part range is left untouched for a human to handle.",
+          "default": false
+        },
+        "updateLockfiles": {
+          "type": "boolean",
+          "description": "When true, after `ferrflow release` bumps a manifest (Cargo.toml, package.json, pyproject.toml, Gemfile, mix.exs) it refreshes the sibling lockfile (Cargo.lock, package-lock.json / pnpm-lock.yaml / yarn.lock, poetry.lock / uv.lock, Gemfile.lock, mix.lock) with the package manager's offline / lockfile-only mode and stages it in the same release commit. A missing package manager or an unresolvable offline update is warned about, never fatal. Set per-package `updateLockfiles: false` to opt a single package out.",
+          "default": false
+        },
+        "registries": {
+          "type": "object",
+          "description": "Named registry credentials referenced by package.publishers[]. Lets users declare 'the Kellnr token lives in CARGO_REGISTRIES_KELLNR_TOKEN' once and reuse it across every cargo / npm / docker publisher.",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string"
+              },
+              "tokenEnv": {
+                "type": "string",
+                "description": "Name of the env var holding the registry token. The token value is never read from config."
+              },
+              "token_env": {
+                "type": "string",
+                "description": "Snake_case form of `tokenEnv` — both spellings are accepted. Name of the env var holding the registry token. The token value is never read from config."
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "branches": {
+          "type": "array",
+          "description": "Map branches to pre-release channels. When FerrFlow runs on a branch matching a configured name/pattern, it uses the corresponding channel.",
+          "items": {
+            "type": "object",
+            "required": [
+              "name"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Branch name or glob pattern (e.g. 'main', 'release/*')."
+              },
+              "channel": {
+                "oneOf": [
+                  {
+                    "type": "boolean",
+                    "const": false,
+                    "description": "Stable release (no pre-release suffix)."
+                  },
+                  {
+                    "type": "string",
+                    "description": "Pre-release channel name (e.g. 'beta', 'dev', 'rc')."
+                  }
+                ],
+                "description": "false for stable releases, string for pre-release channel name.",
+                "default": false
+              },
+              "prereleaseIdentifier": {
+                "type": "string",
+                "description": "Strategy for the pre-release identifier after the channel name.",
+                "enum": [
+                  "increment",
+                  "timestamp",
+                  "short-hash",
+                  "timestamp-hash"
+                ],
+                "default": "increment"
+              },
+              "prerelease_identifier": {
+                "type": "string",
+                "description": "Snake_case form of `prereleaseIdentifier` — both spellings are accepted. Strategy for the pre-release identifier after the channel name.",
+                "enum": [
+                  "increment",
+                  "timestamp",
+                  "short-hash",
+                  "timestamp-hash"
+                ],
+                "default": "increment"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "changelog": {
+          "type": "object",
+          "description": "Opt-in changelog rendering. When this whole block is omitted, FerrFlow renders the classic sections (Breaking Changes, Features, Bug Fixes, Refactoring) with flat bullets and no links; perf commits fold into Bug Fixes, and every other type, docs and security included, is left out.",
+          "properties": {
+            "sections": {
+              "type": "object",
+              "description": "Map commit-type prefixes to section labels, or false to hide. Any conventional commit type works, including chore, ci, build and test; feat, fix, perf, security, docs and refactor carry built-in default labels and render first, in that order, with the rest following alphabetically. When omitted, defaults to feat -> Features and fix -> Bug Fixes (Breaking Changes always shown). 'security' applies to security: and fix(security): commits. A breaking marker always wins over the type's section.",
+              "additionalProperties": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "description": "Section heading label for this commit type."
+                  },
+                  {
+                    "type": "boolean",
+                    "const": false,
+                    "description": "Hide this commit type from the changelog."
+                  }
+                ]
+              }
+            },
+            "groupByScope": {
+              "type": "boolean",
+              "description": "Group bullets by commit scope using an inline bold prefix (- **api:** add events endpoint). Scopeless commits render first.",
+              "default": false
+            },
+            "includeCommitLinks": {
+              "type": "boolean",
+              "description": "Append a commit link to each bullet (([abc1234](<forge>/commit/abc1234))) when the forge is known. Silently omitted when the remote forge cannot be resolved.",
+              "default": false
+            },
+            "includeCompareLink": {
+              "type": "boolean",
+              "description": "Emit a keep-a-changelog compare footer ([1.2.3]: <forge>/compare/v1.2.2...v1.2.3) when the forge is known and a previous tag exists.",
+              "default": false
+            },
+            "group_by_scope": {
+              "type": "boolean",
+              "description": "Snake_case form of `groupByScope` — both spellings are accepted. Group bullets by commit scope using an inline bold prefix (- **api:** add events endpoint). Scopeless commits render first.",
+              "default": false
+            },
+            "include_commit_links": {
+              "type": "boolean",
+              "description": "Snake_case form of `includeCommitLinks` — both spellings are accepted. Append a commit link to each bullet (([abc1234](<forge>/commit/abc1234))) when the forge is known. Silently omitted when the remote forge cannot be resolved.",
+              "default": false
+            },
+            "include_compare_link": {
+              "type": "boolean",
+              "description": "Snake_case form of `includeCompareLink` — both spellings are accepted. Emit a keep-a-changelog compare footer ([1.2.3]: <forge>/compare/v1.2.2...v1.2.3) when the forge is known and a previous tag exists.",
+              "default": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "tag_template": {
+          "type": "string",
+          "description": "Snake_case form of `tagTemplate` — both spellings are accepted. Tag template. Use {name} for package name and {version} for version. Default: 'v{version}' for single repos, '{name}@v{version}' for monorepos.",
+          "examples": [
+            "v{version}",
+            "{name}@v{version}",
+            "{name}/v{version}",
+            "release-{version}"
+          ]
+        },
+        "recover_missed_releases": {
+          "type": "boolean",
+          "description": "Snake_case form of `recoverMissedReleases` — both spellings are accepted. Compare files against the last tag instead of just the last commit, recovering missed releases in monorepos.",
+          "default": false
+        },
+        "release_commit_mode": {
+          "type": "string",
+          "description": "Snake_case form of `releaseCommitMode` — both spellings are accepted. How to commit version bumps and changelog updates. 'commit' pushes directly to the branch, 'pr' creates a pull request, 'none' skips committing entirely.",
+          "enum": [
+            "commit",
+            "pr",
+            "none"
+          ],
+          "default": "commit"
+        },
+        "release_commit_scope": {
+          "type": "string",
+          "description": "Snake_case form of `releaseCommitScope` — both spellings are accepted. In monorepo mode, whether to create a single grouped commit for all packages or one commit per package. Only affects behavior when multiple packages are bumped.",
+          "enum": [
+            "grouped",
+            "per-package"
+          ],
+          "default": "grouped"
+        },
+        "auto_merge_releases": {
+          "type": "boolean",
+          "description": "Snake_case form of `autoMergeReleases` — both spellings are accepted. Automatically merge release PRs when releaseCommitMode is 'pr'.",
+          "default": true
+        },
+        "skip_ci": {
+          "type": "boolean",
+          "description": "Snake_case form of `skipCi` — both spellings are accepted. Append [skip ci] to the release commit message. Defaults to true in 'commit' mode, false in 'pr' mode."
+        },
+        "commit_skip_markers": {
+          "type": "array",
+          "description": "Snake_case form of `commitSkipMarkers` — both spellings are accepted. Markers in a commit subject line that cause FerrFlow to skip the commit when computing the next version. Matched case-insensitively, subject line only. Defaults to ['[skip ci]', '[ci skip]', '[no ci]', '[skip actions]', '[actions skip]'].",
+          "items": {
+            "type": "string"
+          }
+        },
+        "floating_tags": {
+          "type": "array",
+          "description": "Snake_case form of `floatingTags` — both spellings are accepted. Floating tag levels to create/move on each release. Each level produces a tag pointing to the latest matching release (e.g. 'major' creates a v1 tag for v1.2.3).",
+          "items": {
+            "type": "string",
+            "enum": [
+              "major",
+              "minor"
+            ]
+          },
+          "default": []
+        },
+        "orphaned_tag_strategy": {
+          "type": "string",
+          "enum": [
+            "warn",
+            "treeHash",
+            "message"
+          ],
+          "description": "Snake_case form of `orphanedTagStrategy` — both spellings are accepted. How to handle tags pointing to orphaned commits (after rebase + force-push). 'warn' logs a warning and skips. 'treeHash' attempts recovery by matching the commit's tree hash. 'message' attempts recovery by matching the commit message.",
+          "default": "warn"
+        },
+        "version_source": {
+          "type": "string",
+          "enum": [
+            "highest",
+            "tag",
+            "file"
+          ],
+          "description": "Snake_case form of `versionSource`, both spellings are accepted. Which source wins when a package has both a git tag and a version in a versioned file. 'highest' (default) takes whichever is higher, so a mistake in either source ratchets the version upward and is never walked back. 'tag' treats the tags as the record of what shipped and ignores the file. 'file' treats the file as the source and ignores the tag, which is what a package migrated between repos usually needs. With only one source present the setting has no effect.",
+          "default": "highest"
+        },
+        "defer_publish": {
+          "type": "boolean",
+          "description": "Snake_case form of `deferPublish` — both spellings are accepted. When true, `ferrflow release` does not run the configured publishers inline — it defers them to a separate `ferrflow publish` invocation (e.g. a CI job that carries the docker/helm/npm build toolchain the release job lacks). `ferrflow publish` always runs the publishers regardless of this flag.",
+          "default": false
+        },
+        "update_dependents": {
+          "type": "boolean",
+          "description": "Snake_case form of `updateDependents` — both spellings are accepted. When true, after `ferrflow release` bumps a package, every dependent listed via `dependsOn` has its version constraint for that package rewritten to the new version in its own manifest, and the manifest is staged in the release commit. Only `json` (package.json) and `toml` (Cargo.toml) manifests are rewritten, and only plain operator + version constraints (`^1.2.3`, `~1.2.3`, `1.2.3`) — a `workspace:*`, `file:`/`git:` spec or a multi-part range is left untouched for a human to handle.",
+          "default": false
+        },
+        "update_lockfiles": {
+          "type": "boolean",
+          "description": "Snake_case form of `updateLockfiles` — both spellings are accepted. When true, after `ferrflow release` bumps a manifest (Cargo.toml, package.json, pyproject.toml, Gemfile, mix.exs) it refreshes the sibling lockfile (Cargo.lock, package-lock.json / pnpm-lock.yaml / yarn.lock, poetry.lock / uv.lock, Gemfile.lock, mix.lock) with the package manager's offline / lockfile-only mode and stages it in the same release commit. A missing package manager or an unresolvable offline update is warned about, never fatal. Set per-package `updateLockfiles: false` to opt a single package out.",
+          "default": false
+        },
+        "linked": {
+          "type": "array",
+          "description": "Groups of packages that share a version line when co-released. When any member of a group has a releasable commit, every member is bumped to the same version (the highest resulting version across the group). Package names stay distinct. Each inner array is one group and must list at least two package names; a package may appear in only one linked/fixed group.",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "fixed": {
+          "type": "array",
+          "description": "Groups of packages locked to an identical version forever. Behaves like `linked`, but is intended for packages that must never diverge; `ferrflow validate` warns when a fixed group's versions have drifted apart. Each inner array is one group and must list at least two package names; a package may appear in only one linked/fixed group.",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "buildMetadata": {
+          "type": "string",
+          "description": "Command whose stdout is appended to the version as semver build metadata, after a `+`. It is run once per release, never in a dry run, and its output must be dot-separated alphanumerics and hyphens. The tag and the changelog keep the plain version, since build metadata is excluded from version identity and ignored for precedence."
+        },
+        "build_metadata": {
+          "type": "string",
+          "description": "Snake_case form of `buildMetadata` — both spellings are accepted. Command whose stdout is appended to the version as semver build metadata, after a `+`. It is run once per release, never in a dry run, and its output must be dot-separated alphanumerics and hyphens. The tag and the changelog keep the plain version, since build metadata is excluded from version identity and ignored for precedence."
+        }
+      },
+      "additionalProperties": false
+    },
+    "package": {
+      "type": "array",
+      "description": "List of packages to version. Use one entry for single repos, multiple for monorepos.",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "path"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Package name, used in tags and changelog headers."
+          },
+          "path": {
+            "type": "string",
+            "description": "Path to the package root, relative to the repo root. Use \".\" for single repos."
+          },
+          "changelog": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Path to the changelog file, relative to the repo root."
+          },
+          "versionedFiles": {
+            "type": "array",
+            "description": "Files that contain the package version to update on release.",
+            "items": {
+              "type": "object",
+              "required": [
+                "path",
+                "format"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "description": "Path to the version file, relative to the repo root."
+                },
+                "format": {
+                  "type": "string",
+                  "description": "File format used to locate and update the version field.",
+                  "enum": [
+                    "csproj",
+                    "toml",
+                    "json",
+                    "xml",
+                    "gradle",
+                    "gomod",
+                    "helm",
+                    "chartyaml",
+                    "pubspecyaml",
+                    "galaxyyml",
+                    "mixexs",
+                    "gemspec",
+                    "packageswift",
+                    "cabal",
+                    "cmake",
+                    "txt"
+                  ]
+                },
+                "selector": {
+                  "type": "string",
+                  "description": "Optional selector to disambiguate which version is bumped. xml: a slash-delimited tag path like '/project/version' (or '//tag' for first-anywhere); txt: a regex with one capture group around the version. Without a selector, xml uses a Maven-aware default (first <version> direct child of root)."
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "sharedPaths": {
+            "type": "array",
+            "description": "Paths whose changes should trigger a version bump for this package (monorepo only).",
+            "items": {
+              "type": "string"
+            }
+          },
+          "dependsOn": {
+            "type": "array",
+            "description": "Packages this package depends on. When one is bumped, this package is bumped too — by default with the same bump type. Each entry is either a package name or an object with a `propagate` policy.",
+            "items": {
+              "oneOf": [
+                { "type": "string" },
+                {
+                  "type": "object",
+                  "required": ["name"],
+                  "properties": {
+                    "name": { "type": "string" },
+                    "propagate": {
+                      "type": "string",
+                      "enum": ["same", "major-on-major", "patch", "none"],
+                      "default": "same",
+                      "description": "How this dependency's bump becomes a bump here. same: identical bump (a breaking upstream makes this package breaking too). major-on-major: major stays major, anything lower becomes a patch. patch: always a patch. none: no cascade from this dependency."
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "versioning": {
+            "type": "string",
+            "description": "Versioning strategy for this package. Overrides workspace default.",
+            "enum": [
+              "semver",
+              "calver",
+              "calver-short",
+              "calver-seq",
+              "calver-short-seq",
+              "sequential",
+              "zerover"
+            ]
+          },
+          "versionTemplate": {
+            "type": "string",
+            "description": "Version format built from named variables. Variables: year, short_year, month, padded_month, day, padded_day, week, padded_week, quarter, seq, major, minor, patch. Each must be separated by a literal so the previous version can be read back. Overrides workspace default. Takes precedence over 'versioning'.",
+            "examples": [
+              "{year}.{month}.{day}",
+              "{short_year}.{padded_month}.{seq}",
+              "{year}.Q{quarter}.{seq}",
+              "{year}.{minor}.{patch}"
+            ]
+          },
+          "tagTemplate": {
+            "type": "string",
+            "description": "Tag template for this package. Use {name} for package name and {version} for version. Overrides workspace default.",
+            "examples": [
+              "v{version}",
+              "{name}@v{version}",
+              "{name}/v{version}",
+              "release-{version}"
+            ]
+          },
+          "floatingTags": {
+            "type": "array",
+            "description": "Floating tag levels for this package. Overrides workspace default.",
+            "items": {
+              "type": "string",
+              "enum": [
+                "major",
+                "minor"
+              ]
+            }
+          },
+          "latestTag": {
+            "type": "string",
+            "description": "Floating alias tag template for this package. Overrides workspace default. Absent means the workspace setting applies.",
+            "examples": [
+              "latest",
+              "{name}@latest"
+            ]
+          },
+          "buildMetadata": {
+            "oneOf": [{ "type": "string" }, { "type": "boolean" }],
+            "description": "Overrides `workspace.buildMetadata` for this package. A command replaces the workspace one, `true` inherits it, and `false` releases this package with a plain version while the rest of the workspace stays stamped."
+          },
+          "build_metadata": {
+            "oneOf": [{ "type": "string" }, { "type": "boolean" }],
+            "description": "Snake_case form of `buildMetadata` — both spellings are accepted. Overrides `workspace.buildMetadata` for this package. A command replaces the workspace one, `true` inherits it, and `false` releases this package with a plain version while the rest of the workspace stays stamped."
+          },
+          "hooks": {
+            "$ref": "#/$defs/hooks"
+          },
+          "publishers": {
+            "type": "array",
+            "description": "Declarative publish targets evaluated after the GitHub Release is created. Each entry is a self-contained intent — see $defs/publisher for the kinds.",
+            "items": {
+              "$ref": "#/$defs/publisher"
+            },
+            "default": []
+          },
+          "updateLockfiles": {
+            "type": "boolean",
+            "description": "Per-package override for workspace.updateLockfiles. Set false to skip lockfile refresh for this package even when the workspace default is on; set true to refresh only this package when the workspace default is off. Omit to inherit the workspace setting."
+          },
+          "versionSource": {
+            "type": "string",
+            "enum": [
+              "highest",
+              "tag",
+              "file"
+            ],
+            "description": "Per-package override for workspace.versionSource. Lets one package in a monorepo pick its own tag-vs-file resolution without changing the policy for the others. Omit to inherit the workspace setting."
+          },
+          "versioned_files": {
+            "type": "array",
+            "description": "Snake_case form of `versionedFiles` — both spellings are accepted. Files that contain the package version to update on release.",
+            "items": {
+              "type": "object",
+              "required": [
+                "path",
+                "format"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "description": "Path to the version file, relative to the repo root."
+                },
+                "format": {
+                  "type": "string",
+                  "description": "File format used to locate and update the version field.",
+                  "enum": [
+                    "csproj",
+                    "toml",
+                    "json",
+                    "xml",
+                    "gradle",
+                    "gomod",
+                    "helm",
+                    "chartyaml",
+                    "pubspecyaml",
+                    "galaxyyml",
+                    "mixexs",
+                    "gemspec",
+                    "packageswift",
+                    "cabal",
+                    "cmake",
+                    "txt"
+                  ]
+                },
+                "selector": {
+                  "type": "string",
+                  "description": "Optional selector to disambiguate which version is bumped. xml: a slash-delimited tag path like '/project/version' (or '//tag' for first-anywhere); txt: a regex with one capture group around the version. Without a selector, xml uses a Maven-aware default (first <version> direct child of root)."
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "shared_paths": {
+            "type": "array",
+            "description": "Snake_case form of `sharedPaths` — both spellings are accepted. Paths whose changes should trigger a version bump for this package (monorepo only).",
+            "items": {
+              "type": "string"
+            }
+          },
+          "depends_on": {
+            "type": "array",
+            "description": "Snake_case form of `dependsOn` — both spellings are accepted. Packages this package depends on. When one is bumped, this package is bumped too — by default with the same bump type. Each entry is either a package name or an object with a `propagate` policy.",
+            "items": {
+              "oneOf": [
+                { "type": "string" },
+                {
+                  "type": "object",
+                  "required": ["name"],
+                  "properties": {
+                    "name": { "type": "string" },
+                    "propagate": {
+                      "type": "string",
+                      "enum": ["same", "major-on-major", "patch", "none"],
+                      "default": "same",
+                      "description": "How this dependency's bump becomes a bump here. same: identical bump (a breaking upstream makes this package breaking too). major-on-major: major stays major, anything lower becomes a patch. patch: always a patch. none: no cascade from this dependency."
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "tag_template": {
+            "type": "string",
+            "description": "Snake_case form of `tagTemplate` — both spellings are accepted. Tag template for this package. Use {name} for package name and {version} for version. Overrides workspace default.",
+            "examples": [
+              "v{version}",
+              "{name}@v{version}",
+              "{name}/v{version}",
+              "release-{version}"
+            ]
+          },
+          "floating_tags": {
+            "type": "array",
+            "description": "Snake_case form of `floatingTags` — both spellings are accepted. Floating tag levels for this package. Overrides workspace default.",
+            "items": {
+              "type": "string",
+              "enum": [
+                "major",
+                "minor"
+              ]
+            }
+          },
+          "update_lockfiles": {
+            "type": "boolean",
+            "description": "Snake_case form of `updateLockfiles` — both spellings are accepted. Per-package override for workspace.updateLockfiles. Set false to skip lockfile refresh for this package even when the workspace default is on; set true to refresh only this package when the workspace default is off. Omit to inherit the workspace setting."
+          },
+          "version_source": {
+            "type": "string",
+            "enum": [
+              "highest",
+              "tag",
+              "file"
+            ],
+            "description": "Snake_case form of `versionSource`, both spellings are accepted. Per-package override for workspace.versionSource. Lets one package in a monorepo pick its own tag-vs-file resolution without changing the policy for the others. Omit to inherit the workspace setting."
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "$defs": {
+    "publisher": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "const": "cargo"
+            },
+            "registry": {
+              "type": "string"
+            },
+            "allowDirty": {
+              "type": "boolean",
+              "default": false
+            },
+            "noVerify": {
+              "type": "boolean",
+              "default": false,
+              "description": "Pass cargo publish --no-verify. Set for multi-crate batch releases so inter-dependent crates don't fail on registry-index propagation timing."
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Extra flags appended verbatim to the underlying cargo publish invocation. Escape hatch for options FerrFlow doesn't model natively.",
+              "default": []
+            },
+            "allow_dirty": {
+              "type": "boolean",
+              "default": false,
+              "description": "Snake_case form of `allowDirty` — both spellings are accepted."
+            },
+            "no_verify": {
+              "type": "boolean",
+              "default": false,
+              "description": "Snake_case form of `noVerify` — both spellings are accepted. Pass cargo publish --no-verify. Set for multi-crate batch releases so inter-dependent crates don't fail on registry-index propagation timing."
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "const": "npm"
+            },
+            "registry": {
+              "type": "string"
+            },
+            "tag": {
+              "type": "string"
+            },
+            "access": {
+              "type": "string",
+              "enum": [
+                "public",
+                "restricted"
+              ]
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Extra flags appended verbatim to the underlying npm publish invocation. Escape hatch for options FerrFlow doesn't model natively.",
+              "default": []
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "image"
+          ],
+          "properties": {
+            "kind": {
+              "const": "docker"
+            },
+            "image": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": [
+                "{version}"
+              ]
+            },
+            "platforms": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "context": {
+              "type": "string",
+              "default": "."
+            },
+            "dockerfile": {
+              "type": "string",
+              "default": "Dockerfile"
+            },
+            "sign": {
+              "type": "string",
+              "enum": [
+                "none",
+                "sigstore"
+              ],
+              "default": "none"
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Extra flags appended verbatim to the underlying docker buildx build invocation (before the build-context positional). Escape hatch for options FerrFlow doesn't model natively.",
+              "default": []
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "registry"
+          ],
+          "properties": {
+            "kind": {
+              "const": "helm"
+            },
+            "chart": {
+              "type": "string",
+              "default": "."
+            },
+            "registry": {
+              "type": "string"
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Extra flags appended verbatim to the underlying helm push invocation. Escape hatch for options FerrFlow doesn't model natively.",
+              "default": []
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "path"
+          ],
+          "properties": {
+            "kind": {
+              "const": "github-release-asset"
+            },
+            "path": {
+              "type": "string"
+            },
+            "displayName": {
+              "type": "string"
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Extra flags appended verbatim to the underlying gh release upload invocation. Escape hatch for options FerrFlow doesn't model natively.",
+              "default": []
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "const": "pypi"
+            },
+            "registry": {
+              "type": "string",
+              "description": "Name of an entry under workspace.registries. Its url becomes twine --repository-url and its tokenEnv supplies TWINE_PASSWORD with username __token__. Omit to publish to pypi.org."
+            },
+            "build": {
+              "type": "boolean",
+              "default": true,
+              "description": "Run python -m build in the package directory before uploading. Set false when the distributions in dist/ are produced earlier in the pipeline."
+            },
+            "trustedPublishing": {
+              "type": "boolean",
+              "default": false,
+              "description": "Mint a short-lived upload token from PyPI trusted publishing instead of reading a stored token. Requires a GitHub Actions job with permissions: id-token: write, and this repository registered as a trusted publisher for the project. Mutually exclusive with the registry's tokenEnv."
+            },
+            "trusted_publishing": {
+              "type": "boolean",
+              "default": false,
+              "description": "Snake_case form of `trustedPublishing` — both spellings are accepted. Mint a short-lived upload token from PyPI trusted publishing instead of reading a stored token. Requires a GitHub Actions job with permissions: id-token: write, and this repository registered as a trusted publisher for the project. Mutually exclusive with the registry's tokenEnv."
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Extra flags appended verbatim to the underlying twine upload invocation.",
+              "default": []
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "url"
+          ],
+          "properties": {
+            "kind": {
+              "const": "webhook"
+            },
+            "url": {
+              "type": "string"
+            },
+            "body": {},
+            "headers": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "hooks": {
+      "type": "object",
+      "description": "Shell commands executed at lifecycle points during release.",
+      "properties": {
+        "preBump": {
+          "type": "string",
+          "description": "Run after bump calculation, before writing version files."
+        },
+        "postBump": {
+          "type": "string",
+          "description": "Run after writing version files and generating the changelog. The generated section is in FERRFLOW_CHANGELOG, and anything the hook writes is staged into the release commit."
+        },
+        "preCommit": {
+          "type": "string",
+          "description": "Run after changelog generation, before git commit."
+        },
+        "postCommit": {
+          "type": "string",
+          "description": "Run after the release commit is created, before tagging."
+        },
+        "preTag": {
+          "type": "string",
+          "description": "Run after the release commit, immediately before git tag."
+        },
+        "postTag": {
+          "type": "string",
+          "description": "Run after tags are created, before push."
+        },
+        "prePublish": {
+          "type": "string",
+          "description": "Run after commit and tag, before push."
+        },
+        "postPublish": {
+          "type": "string",
+          "description": "Run after push and release creation."
+        },
+        "preRelease": {
+          "type": "string",
+          "description": "Run after the release pull request is opened (PR mode), before merge."
+        },
+        "onSuccess": {
+          "type": "string",
+          "description": "Run once after the release completes successfully."
+        },
+        "onError": {
+          "type": "string",
+          "description": "Run once when the release fails; receives FERRFLOW_ERROR_CODE."
+        },
+        "onFailure": {
+          "type": "string",
+          "description": "Behavior when a hook exits non-zero.",
+          "enum": [
+            "abort",
+            "continue"
+          ],
+          "default": "abort"
+        },
+        "pre_bump": {
+          "type": "string",
+          "description": "Snake_case form of `preBump` — both spellings are accepted. Run after bump calculation, before writing version files."
+        },
+        "post_bump": {
+          "type": "string",
+          "description": "Snake_case form of `postBump` — both spellings are accepted. Run after writing version files and generating the changelog. The generated section is in FERRFLOW_CHANGELOG, and anything the hook writes is staged into the release commit."
+        },
+        "pre_commit": {
+          "type": "string",
+          "description": "Snake_case form of `preCommit` — both spellings are accepted. Run after changelog generation, before git commit."
+        },
+        "post_commit": {
+          "type": "string",
+          "description": "Snake_case form of `postCommit` — both spellings are accepted. Run after the release commit is created, before tagging."
+        },
+        "pre_tag": {
+          "type": "string",
+          "description": "Snake_case form of `preTag` — both spellings are accepted. Run after the release commit, immediately before git tag."
+        },
+        "post_tag": {
+          "type": "string",
+          "description": "Snake_case form of `postTag` — both spellings are accepted. Run after tags are created, before push."
+        },
+        "pre_publish": {
+          "type": "string",
+          "description": "Snake_case form of `prePublish` — both spellings are accepted. Run after commit and tag, before push."
+        },
+        "post_publish": {
+          "type": "string",
+          "description": "Snake_case form of `postPublish` — both spellings are accepted. Run after push and release creation."
+        },
+        "pre_release": {
+          "type": "string",
+          "description": "Snake_case form of `preRelease` — both spellings are accepted. Run after the release pull request is opened (PR mode), before merge."
+        },
+        "on_success": {
+          "type": "string",
+          "description": "Snake_case form of `onSuccess` — both spellings are accepted. Run once after the release completes successfully."
+        },
+        "on_error": {
+          "type": "string",
+          "description": "Snake_case form of `onError` — both spellings are accepted. Run once when the release fails; receives FERRFLOW_ERROR_CODE."
+        },
+        "on_failure": {
+          "type": "string",
+          "description": "Snake_case form of `onFailure` — both spellings are accepted. Behavior when a hook exits non-zero.",
+          "enum": [
+            "abort",
+            "continue"
+          ],
+          "default": "abort"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

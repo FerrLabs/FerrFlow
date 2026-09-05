@@ -690,10 +690,24 @@ jobs:
         run: cargo build --release
       # Git identity is configured by the binary itself (see
       # ensure_bot_token in src/bot_token.rs) when FERRFLOW_BOT=true.
+      # Before the release, not after: `auto_stage_new_files` diffs the dirty
+      # set around each hook, so anything already modified when ferrflow starts
+      # is invisible to it. The hook reads this path and writes into
+      # docs/site/data, which is how the numbers reach the published package.
+      - name: Download benchmark data for the release
+        id: bench
+        if: needs.benchmark-aggregate.result == 'success'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: hyperfine-baseline
+          path: ${{ runner.temp }}/bench
+        continue-on-error: true
+
       - name: Run ferrflow release
-        run: ./target/release/ferrflow ${{ inputs.dry_run == 'true' && '--dry-run' || '' }} release --draft
         env:
           FERRFLOW_BOT: "true"
+          FERRFLOW_BENCHMARK_JSON: ${{ steps.bench.outcome == 'success' && format('{0}/bench/latest.json', runner.temp) || '' }}
+        run: ./target/release/ferrflow ${{ inputs.dry_run == 'true' && '--dry-run' || '' }} release --draft
       - name: Download benchmark summary
         if: needs.benchmark-aggregate.result == 'success'
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
