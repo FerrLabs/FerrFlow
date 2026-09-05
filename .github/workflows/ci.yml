@@ -338,7 +338,12 @@ jobs:
   # measurement step. See FerrLabs/FerrFlow#397.
   micro-bench-build:
     name: Build micro bench binary
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+    # Still runs on pull requests even though nothing downstream does. It is a
+    # required status check, and a required check that stops reporting leaves
+    # every PR blocked on a result that never arrives. It costs runner minutes
+    # rather than wall-clock: it lands well before the fixture jobs that close
+    # the merge gate. Dropping it from the required list is tracked separately.
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
