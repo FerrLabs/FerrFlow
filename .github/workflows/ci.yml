@@ -343,7 +343,10 @@ jobs:
     # every PR blocked on a result that never arrives. It costs runner minutes
     # rather than wall-clock: it lands well before the fixture jobs that close
     # the merge gate. Dropping it from the required list is tracked separately.
-    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'pull_request' || >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main'
+      && !startsWith(github.event.head_commit.message, 'chore(release):'))
+      || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -381,7 +384,10 @@ jobs:
   micro-bench:
     name: Micro Benchmark - ${{ matrix.group }}
     needs: micro-bench-build
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main'
+      && !startsWith(github.event.head_commit.message, 'chore(release):'))
+      || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     continue-on-error: true
     strategy:
@@ -442,10 +448,18 @@ jobs:
   micro-bench-aggregate:
     name: Micro Benchmark (aggregate)
     needs: micro-bench
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main'
+      && !startsWith(github.event.head_commit.message, 'chore(release):'))
+      || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      # A job-level block zeroes every scope it omits. The artifact lookup and
+      # the cross-run download both read the Actions API, which happens to work
+      # unauthenticated on a public repository and would 403 the day this one
+      # turns private.
+      actions: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
@@ -496,6 +510,10 @@ jobs:
       # before #379, all long expired, and every comparison has been against an
       # empty history. Publishing it closes the loop.
       - name: Publish the updated baseline
+        # Read on any trigger, write only from a push. A dispatch run off a
+        # feature branch would otherwise become the newest baseline and the
+        # next main run would compare against another machine's numbers.
+        if: github.event_name == 'push'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: criterion-baseline
