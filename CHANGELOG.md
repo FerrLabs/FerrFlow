@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.20.0] - 2026-09-05
+
+### Features
+
+- feat(docs): ship the benchmarks and the schema in the doc package (#1039)
+
 ## [7.19.2] - 2026-09-05
 
 ### Bug Fixes
