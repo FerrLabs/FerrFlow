@@ -343,8 +343,9 @@ jobs:
     # every PR blocked on a result that never arrives. It costs runner minutes
     # rather than wall-clock: it lands well before the fixture jobs that close
     # the merge gate. Dropping it from the required list is tracked separately.
-    if: github.event_name == 'pull_request' || >-
-      (github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: >-
+      github.event_name == 'pull_request'
+      || (github.event_name == 'push' && github.ref == 'refs/heads/main'
       && !startsWith(github.event.head_commit.message, 'chore(release):'))
       || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
