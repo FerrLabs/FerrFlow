@@ -1,17 +1,9 @@
 name: PR title
 
-# `pull_request_target` est délibéré et sûr ici : le job appelé ne fait aucun
-# `checkout`, n'exécute donc rien qui vienne de la PR, et ne lit que le titre
-# dans la charge utile de l'événement. C'est aussi ce qui empêche une PR de fork
-# d'affaiblir sa propre validation en modifiant ce fichier, ce que
-# `pull_request` autoriserait.
 on:
   pull_request_target: # zizmor: ignore[dangerous-triggers]
     types: [opened, edited, reopened, synchronize]
 
-# Obligatoire : un workflow appelé ne peut que restreindre ce que l'appelant lui
-# donne. Sans ce bloc, le run finit en `startup_failure` et ne produit aucun
-# check run.
 permissions:
   pull-requests: read
 
