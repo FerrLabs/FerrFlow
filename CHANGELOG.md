@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.20.1] - 2026-09-06
+
+### Bug Fixes
+
+- fix(monorepo): stamp cascade-bumped packages with build metadata (#1041)
+
 ## [7.20.0] - 2026-09-05
 
 ### Features
