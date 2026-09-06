@@ -1,5 +1,16 @@
 # Changelog
 
+## [2026.9.14] - 2026-09-06
+
+### Features
+
+- feat(site): take the benchmarks and the schema from @ferrflow/doc (#943)
+
+### Bug Fixes
+
+- fix(site): refresh FerrFlow v7.20.1 release data
+- fix(deps): update dependency @ferrflow/doc to v7.20.1 (#942)
+
 ## [2026.9.13] - 2026-09-05
 
 ### Bug Fixes
