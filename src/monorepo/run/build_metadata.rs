@@ -77,7 +77,16 @@ fn capture_commands(
 ) -> Result<()> {
     for command in commands {
         if dry_run {
-            tracing::info!("  {} {}", "[buildMetadata]".dimmed(), command.dimmed());
+            // Nothing is captured in a rehearsal, so record the command with an
+            // empty value: it dedupes the print when the cascade pass asks for
+            // the same command, and `stamp` reads an empty value as no
+            // metadata.
+            if captured
+                .insert((*command).to_string(), String::new())
+                .is_none()
+            {
+                tracing::info!("  {} {}", "[buildMetadata]".dimmed(), command.dimmed());
+            }
             continue;
         }
         captured.insert(
@@ -97,8 +106,8 @@ pub fn stamp(
     version: &str,
 ) -> String {
     match resolve(config, pkg).and_then(|command| captured.get(command)) {
-        Some(metadata) => format!("{version}+{metadata}"),
-        None => version.to_string(),
+        Some(metadata) if !metadata.is_empty() => format!("{version}+{metadata}"),
+        _ => version.to_string(),
     }
 }
 
@@ -211,16 +220,22 @@ mod tests {
     }
 
     #[test]
-    fn a_dry_run_captures_nothing_and_leaves_versions_plain() {
+    fn a_dry_run_records_the_command_without_stamping_anything() {
         let config = config(Some("exit 1"), [r#"{"name":"a","path":"a"}"#].as_slice());
 
-        let captured = capture(&config, &[0], &[bumped()], Path::new("."), true).unwrap();
+        let mut captured = capture(&config, &[0], &[bumped()], Path::new("."), true).unwrap();
 
-        assert!(captured.is_empty());
+        // The command is recorded so the cascade pass does not print it a
+        // second time, but with no value, so nothing is stamped.
+        assert_eq!(captured.get("exit 1").map(String::as_str), Some(""));
         assert_eq!(
             stamp(&config, &config.packages[0], &captured, "1.4.0"),
             "1.4.0"
         );
+
+        // And asking again prints nothing new.
+        capture_more(&config, &[0], Path::new("."), true, &mut captured).unwrap();
+        assert_eq!(captured.len(), 1);
     }
 
     #[test]

@@ -44,7 +44,17 @@ pub(super) fn run_dependency_cascade(
     // These packages were not in `bump_order`, so `capture` never saw them and
     // their commands are missing from the map. Without this they released with
     // a plain version while a directly bumped sibling carried the suffix.
-    let cascaded: Vec<usize> = settled.order.iter().map(|(idx, _)| *idx).collect();
+    // Restricted to packages the loop below can actually write. It still drops
+    // a package on three further paths (unreadable current version, no next
+    // version, version unchanged), which are only knowable by resolving the
+    // whole settled set first; those keep the old behaviour of running the
+    // command for a package that then writes nothing.
+    let cascaded: Vec<usize> = settled
+        .order
+        .iter()
+        .map(|(idx, _)| *idx)
+        .filter(|idx| !config.packages[*idx].versioned_files.is_empty())
+        .collect();
     super::build_metadata::capture_more(config, &cascaded, root, dry_run, captured_metadata)?;
     for (pkg_idx, bump) in settled.order {
         {
@@ -387,6 +397,92 @@ mod tests {
         )
         .unwrap();
         dir
+    }
+
+    fn metadata_workspace() -> tempfile::TempDir {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        for name in ["core", "cli"] {
+            std::fs::create_dir(root.join(name)).unwrap();
+        }
+        std::fs::write(
+            root.join("core/package.json"),
+            "{\n  \"name\": \"core\",\n  \"version\": \"1.0.0\"\n}\n",
+        )
+        .unwrap();
+        std::fs::write(
+            root.join("cli/package.json"),
+            "{\n  \"name\": \"cli\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"core\": \"^1.0.0\"\n  }\n}\n",
+        )
+        .unwrap();
+        std::fs::write(
+            root.join("ferrflow.json"),
+            r#"{
+  "workspace": { "buildMetadata": "echo 26.2-26.45" },
+  "package": [
+    { "name": "core", "path": "core",
+      "versionedFiles": [{ "path": "core/package.json", "format": "json" }] },
+    { "name": "cli", "path": "cli", "dependsOn": [{ "name": "core" }],
+      "versionedFiles": [{ "path": "cli/package.json", "format": "json" }] }
+  ]
+}
+"#,
+        )
+        .unwrap();
+        dir
+    }
+
+    #[test]
+    fn a_cascaded_package_is_stamped_but_its_tag_is_not() {
+        let dir = metadata_workspace();
+        let config = Config::load(dir.path(), None).unwrap();
+
+        let mut any_bumped = false;
+        let mut json_packages = Vec::new();
+        let mut released = Vec::new();
+        let mut files_to_commit = Vec::new();
+        let mut files_per_package = HashMap::new();
+        let mut tags_to_create = Vec::new();
+        let mut pkg_outputs = Vec::new();
+        let mut bumped = HashMap::from([("core".to_string(), BumpType::Minor)]);
+        let mut bumped_versions = HashMap::from([("core".to_string(), "1.1.0".to_string())]);
+        let mut sink = CascadeSink {
+            any_bumped: &mut any_bumped,
+            json_packages: &mut json_packages,
+            released: &mut released,
+            files_to_commit: &mut files_to_commit,
+            files_per_package: &mut files_per_package,
+            tags_to_create: &mut tags_to_create,
+            pkg_outputs: &mut pkg_outputs,
+            bumped: &mut bumped,
+            bumped_versions: &mut bumped_versions,
+        };
+
+        run_dependency_cascade(
+            &config,
+            dir.path(),
+            &[],
+            None,
+            false,
+            false,
+            false,
+            &mut sink,
+            &mut std::collections::HashMap::new(),
+        )
+        .unwrap();
+
+        let written = std::fs::read_to_string(dir.path().join("cli/package.json")).unwrap();
+        assert!(
+            written.contains("+26.2-26.45"),
+            "a cascaded package was written without its build metadata: {written}"
+        );
+        assert!(
+            tags_to_create
+                .iter()
+                .all(|t| !t.tag.contains('+') && !t.version.contains('+')),
+            "build metadata leaked into a tag: {:?}",
+            tags_to_create.iter().map(|t| &t.tag).collect::<Vec<_>>()
+        );
     }
 
     #[test]
