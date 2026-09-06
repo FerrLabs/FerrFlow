@@ -278,7 +278,7 @@ pub(super) fn run_release_logic(
     }
     let bump_order: &[usize] = if finalizing { &[] } else { &release_order };
 
-    let captured_metadata = build_metadata::capture(config, bump_order, &plans, root, dry_run)?;
+    let mut captured_metadata = build_metadata::capture(config, bump_order, &plans, root, dry_run)?;
 
     for &pkg_idx in bump_order {
         let pkg = &config.packages[pkg_idx];
@@ -672,6 +672,7 @@ pub(super) fn run_release_logic(
             release_json,
             dry_run,
             &mut sink,
+            &mut captured_metadata,
         )?;
     }
 

@@ -42,17 +42,50 @@ pub fn capture(
     }
 
     let mut captured = HashMap::new();
+    capture_commands(&commands, root, dry_run, &mut captured)?;
+    Ok(captured)
+}
+
+/// Fills `captured` with the output of any of `indices`' commands it does not
+/// already hold. The dependency cascade settles after [`capture`] has run, so
+/// a package bumped only because a dependency moved is unknown at that point
+/// and its command has to be captured here instead.
+pub fn capture_more(
+    config: &Config,
+    indices: &[usize],
+    root: &Path,
+    dry_run: bool,
+    captured: &mut HashMap<String, String>,
+) -> Result<()> {
+    let mut commands: Vec<&str> = Vec::new();
+    for &idx in indices {
+        if let Some(command) = resolve(config, &config.packages[idx])
+            && !captured.contains_key(command)
+            && !commands.contains(&command)
+        {
+            commands.push(command);
+        }
+    }
+    capture_commands(&commands, root, dry_run, captured)
+}
+
+fn capture_commands(
+    commands: &[&str],
+    root: &Path,
+    dry_run: bool,
+    captured: &mut HashMap<String, String>,
+) -> Result<()> {
     for command in commands {
         if dry_run {
             tracing::info!("  {} {}", "[buildMetadata]".dimmed(), command.dimmed());
             continue;
         }
         captured.insert(
-            command.to_string(),
+            (*command).to_string(),
             crate::hooks::capture_build_metadata(command, root)?,
         );
     }
-    Ok(captured)
+    Ok(())
 }
 
 /// `version`, with the package's build metadata appended after a `+` when it
@@ -198,6 +231,53 @@ mod tests {
             capture(&config, &[], &[bumped()], Path::new("."), false)
                 .unwrap()
                 .is_empty()
+        );
+    }
+
+    #[test]
+    fn capture_more_reuses_an_output_already_in_the_map() {
+        let config = config(
+            Some("echo fresh"),
+            [r#"{"name":"a","path":"a"}"#].as_slice(),
+        );
+        let mut captured =
+            HashMap::from([("echo fresh".to_string(), "from-the-main-loop".to_string())]);
+
+        capture_more(&config, &[0], Path::new("."), false, &mut captured).unwrap();
+
+        assert_eq!(captured["echo fresh"], "from-the-main-loop");
+    }
+
+    #[test]
+    fn capture_more_runs_a_command_the_main_loop_never_saw() {
+        let config = config(
+            None,
+            [r#"{"name":"a","path":"a","buildMetadata":"echo cascaded"}"#].as_slice(),
+        );
+        let mut captured = HashMap::new();
+
+        capture_more(&config, &[0], Path::new("."), false, &mut captured).unwrap();
+
+        assert_eq!(
+            captured.get("echo cascaded").map(String::as_str),
+            Some("cascaded")
+        );
+    }
+
+    #[test]
+    fn capture_more_skips_a_package_that_opted_out() {
+        let config = config(
+            Some("echo workspace"),
+            [r#"{"name":"a","path":"a","buildMetadata":false}"#].as_slice(),
+        );
+        let mut captured = HashMap::new();
+
+        capture_more(&config, &[0], Path::new("."), false, &mut captured).unwrap();
+
+        assert!(captured.is_empty());
+        assert_eq!(
+            stamp(&config, &config.packages[0], &captured, "1.4.0"),
+            "1.4.0"
         );
     }
 
