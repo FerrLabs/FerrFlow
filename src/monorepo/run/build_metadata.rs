@@ -106,6 +106,9 @@ pub fn stamp(
     version: &str,
 ) -> String {
     match resolve(config, pkg).and_then(|command| captured.get(command)) {
+        // An empty value is the dry-run sentinel from `capture_commands`: a
+        // real capture is never empty, `capture_build_metadata` rejects a
+        // command that prints nothing.
         Some(metadata) if !metadata.is_empty() => format!("{version}+{metadata}"),
         _ => version.to_string(),
     }
