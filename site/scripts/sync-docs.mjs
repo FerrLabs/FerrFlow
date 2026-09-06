@@ -1,9 +1,22 @@
-import { cpSync, readdirSync, renameSync, rmSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  readFileSync,
+  readdirSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const PACKAGE = '@ferrflow/doc';
+
+const DATA_FILES = [
+  ['data/benchmarks.json', 'src/app/data/benchmarks.json'],
+  ['data/schema.json', 'public/schema/ferrflow.json'],
+];
 
 const siteRoot = fileURLToPath(new URL('..', import.meta.url));
 const contentDir = join(siteRoot, 'src/content');
@@ -14,6 +27,15 @@ function fail(message) {
   console.error('[docs] Refusing to build, because an empty content directory');
   console.error('[docs] would publish a site with no documentation and no error.');
   process.exitCode = 1;
+}
+
+let previousReleaseSize;
+try {
+  previousReleaseSize = JSON.parse(
+    readFileSync(join(siteRoot, 'src/app/data/benchmarks.json'), 'utf8'),
+  ).ferrflow_release_size_mb;
+} catch {
+  previousReleaseSize = undefined;
 }
 
 try {
@@ -44,10 +66,41 @@ try {
     renameSync(join(contentDir, `${name}.incoming`), join(contentDir, name));
   }
 
+  // The benchmark numbers and the JSON schema ship in the same package as the
+  // pages, so one dependency bump moves all three together. Before this they
+  // arrived from a six-hourly job that pushed with an org-admin PAT, and the
+  // three could name three different versions of the CLI at once.
+  for (const [from, to] of DATA_FILES) {
+    const source = join(packageRoot, from);
+    if (!existsSync(source)) {
+      throw new Error(`${PACKAGE}@${version} carries no ${from}`);
+    }
+    cpSync(source, join(siteRoot, to));
+  }
+
+  // `ferrflow_release_size_mb` is the linux-x64 tarball, and the release that
+  // publishes this package cannot know its own asset sizes yet, so the package
+  // never carries it. Losing it is not a missing stat: the landing page falls
+  // back to `ferrflow_binary_size_mb`, the unstripped CI build, which is 8.0 MB
+  // against a real download of 3.4. Carry the last known value forward.
+  const benchPath = join(siteRoot, 'src/app/data/benchmarks.json');
+  const incoming = JSON.parse(readFileSync(benchPath, 'utf8'));
+  if (previousReleaseSize && !incoming.ferrflow_release_size_mb) {
+    incoming.ferrflow_release_size_mb = previousReleaseSize;
+    writeFileSync(benchPath, `${JSON.stringify(incoming, null, 2)}
+`);
+    console.log(`[docs] carried ferrflow_release_size_mb=${previousReleaseSize} forward`);
+  } else if (!incoming.ferrflow_release_size_mb) {
+    console.warn('[docs] no ferrflow_release_size_mb, in the package or carried forward.');
+    console.warn('[docs] The landing page will show the unstripped CI build size instead,');
+    console.warn('[docs] which is roughly 2.4x the real download.');
+  }
+
   const pages = versions.reduce((total, name) => total + countPages(join(packageRoot, name)), 0);
   console.log(
     `[docs] ${pages} pages from ${PACKAGE}@${version} across ${versions.length} versions`,
   );
+  console.log(`[docs] benchmarks and schema from ${PACKAGE}@${version}`);
 } catch (error) {
   fail(error.message);
 }
