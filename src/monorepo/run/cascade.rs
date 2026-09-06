@@ -38,8 +38,14 @@ pub(super) fn run_dependency_cascade(
     release_json: bool,
     dry_run: bool,
     sink: &mut CascadeSink<'_>,
+    captured_metadata: &mut std::collections::HashMap<String, String>,
 ) -> anyhow::Result<()> {
     let settled = settle(config, sink.bumped);
+    // These packages were not in `bump_order`, so `capture` never saw them and
+    // their commands are missing from the map. Without this they released with
+    // a plain version while a directly bumped sibling carried the suffix.
+    let cascaded: Vec<usize> = settled.order.iter().map(|(idx, _)| *idx).collect();
+    super::build_metadata::capture_more(config, &cascaded, root, dry_run, captured_metadata)?;
     for (pkg_idx, bump) in settled.order {
         {
             let pkg = &config.packages[pkg_idx];
@@ -117,8 +123,10 @@ pub(super) fn run_dependency_cascade(
                     dep_trigger.join(", ").cyan()
                 )];
                 if !dry_run {
+                    let stamped =
+                        super::build_metadata::stamp(config, pkg, captured_metadata, &new_version);
                     for vf in &pkg.versioned_files {
-                        write_version(vf, root, &new_version)?;
+                        write_version(vf, root, &stamped)?;
                         if get_handler(&vf.format).modifies_file() {
                             lines.push(format!("  ✓ Updated {}", vf.path));
                             sink.files_to_commit.push(vf.path.clone());
@@ -416,6 +424,7 @@ mod tests {
             false,
             true,
             &mut sink,
+            &mut std::collections::HashMap::new(),
         )
         .unwrap();
 
