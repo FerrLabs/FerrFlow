@@ -888,9 +888,14 @@ mod tests {
             !fx.root.join("go.mod").exists(),
             "the fixture must not create go.mod, or this proves nothing"
         );
-        plan_result(&fx, &changed, "mymod").unwrap_or_else(|e| {
+        let plan = plan_result(&fx, &changed, "mymod").unwrap_or_else(|e| {
             panic!("a gomod package must plan without a go.mod on disk: {e:?}")
         });
+        assert!(
+            matches!(plan, PackagePlan::Bump(_)),
+            "the plan must reach the far side of the file check, got {:?}",
+            plan.summary()
+        );
     }
 
     #[test]
