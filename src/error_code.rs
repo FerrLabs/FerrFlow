@@ -84,6 +84,9 @@ pub const CONFIG_DUPLICATE_PACKAGE: ErrorCode = ErrorCode(1022);
 pub const CONFIG_MISSING_PACKAGE_PATH: ErrorCode = ErrorCode(1023);
 
 #[allow(dead_code)]
+pub const CONFIG_MISSING_VERSIONED_FILE: ErrorCode = ErrorCode(1024);
+
+#[allow(dead_code)]
 pub const VALIDATE_INVALID_REPO_SPEC: ErrorCode = ErrorCode(1100);
 #[allow(dead_code)]
 pub const VALIDATE_GITHUB_API: ErrorCode = ErrorCode(1101);

@@ -1,8 +1,9 @@
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 
 use crate::changelog::GitLog;
 use crate::config::{Config, OrphanedTagStrategy, PackageConfig, VersioningStrategy};
 use crate::conventional_commits::{BumpType, determine_bump};
+use crate::error_code::{self, ErrorCodeExt};
 use crate::formats::read_version;
 use crate::git::{
     Repository, TagIndex, find_highest_semver_tag_with_cache, get_changed_files_for_commit,
@@ -269,6 +270,34 @@ pub(super) fn commits_for_package(
     Ok(scope_commits_to_package(repo, pkg, inputs, commits))
 }
 
+fn ensure_versioned_files_exist(pkg: &PackageConfig, root: &Path) -> Result<()> {
+    for vf in &pkg.versioned_files {
+        if root.join(&vf.path).exists() {
+            continue;
+        }
+        return Err(anyhow!(
+            "package \"{name}\": versioned file \"{path}\" does not exist, so this release \
+             would create a tag no manifest carries.\n  \
+             Paths in versionedFiles are relative to the repository root, not to the \
+             package's own path. Did you mean \"{suggestion}\"?",
+            name = pkg.name,
+            path = vf.path,
+            suggestion = suggested_versioned_path(pkg, &vf.path),
+        ))
+        .error_code(error_code::CONFIG_MISSING_VERSIONED_FILE);
+    }
+    Ok(())
+}
+
+fn suggested_versioned_path(pkg: &PackageConfig, path: &str) -> String {
+    let prefix = pkg.path.trim_end_matches('/');
+    if prefix.is_empty() || prefix == "." || path.starts_with(prefix) {
+        path.to_string()
+    } else {
+        format!("{prefix}/{path}")
+    }
+}
+
 pub(super) fn compute_plan(
     repo: &Repository,
     pkg: &PackageConfig,
@@ -299,6 +328,8 @@ pub(super) fn compute_plan(
     let pkg_strategy = pkg.effective_versioning(&config.workspace, || {
         tags_for_package(inputs.all_tags, &tag_search_prefix)
     });
+
+    ensure_versioned_files_exist(pkg, inputs.root)?;
 
     let file_source = pkg.versioned_files.first().and_then(|vf| {
         read_version(vf, inputs.root)
@@ -731,6 +762,114 @@ mod tests {
         assert!(
             !site.iter().any(|s| s.contains("object id")),
             "a server-only commit must not appear in the site changelog, got {site:?}"
+        );
+    }
+
+    fn missing_file_fixture(pkg_path: &str, versioned_path: &str) -> (Fixture, Vec<String>) {
+        let (dir, repo) = init_repo();
+        let root = dir.path().to_path_buf();
+        write_pkg(&root, "api", "2.4.0");
+        write_pkg(&root, "sdk", "1.0.0");
+        write_config_raw(
+            &root,
+            "",
+            &format!(
+                r#"{{"name":"api","path":"{pkg_path}","versionedFiles":[{{"path":"{versioned_path}","format":"toml"}}]}},
+                   {{"name":"sdk","path":"sdk","versionedFiles":[{{"path":"sdk/Cargo.toml","format":"toml"}}]}}"#
+            ),
+        );
+        git(&root, &["add", "-A"]);
+        commit_file(&root, "seed.txt", "x", "chore: seed", 1_950_000_000);
+        commit_file(
+            &root,
+            "api/endpoint.rs",
+            "x",
+            "feat(api): add an endpoint",
+            1_950_000_100,
+        );
+        let fx = build_fixture(root, dir, repo);
+        let changed_files = get_changed_files(&fx.repo).unwrap();
+        (fx, changed_files)
+    }
+
+    fn plan_result(fx: &Fixture, changed_files: &[String], name: &str) -> Result<PackagePlan> {
+        let all_tags = collect_all_tags(&fx.repo);
+        let head_ancestors = build_head_ancestors(&fx.repo).ok();
+        let tag_index = TagIndex::build(&fx.repo).ok();
+        let prerelease_ctx = PrereleaseContext::resolve(None, "main", None).unwrap();
+        let forced: Vec<Forced<'_>> = Vec::new();
+        let inputs = build_inputs(
+            fx,
+            &tag_index,
+            &head_ancestors,
+            &all_tags,
+            &prerelease_ctx,
+            &forced,
+            changed_files,
+        );
+        let pkg = fx
+            .config
+            .packages
+            .iter()
+            .find(|p| p.name == name)
+            .expect("package in fixture");
+        compute_plan(&fx.repo, pkg, &inputs)
+    }
+
+    #[test]
+    fn a_versioned_file_that_does_not_exist_fails_the_plan_rather_than_bumping_nothing() {
+        // versionedFiles paths are relative to the repository root. Giving one
+        // relative to the package used to plan a bump, tag it, and write no
+        // file, leaving the repo tagged at a version no manifest carries.
+        let (fx, changed) = missing_file_fixture("api", "Cargo.toml");
+
+        let err = match plan_result(&fx, &changed, "api") {
+            Ok(plan) => panic!(
+                "a missing versioned file must fail, got {:?}",
+                plan.summary()
+            ),
+            Err(err) => err,
+        };
+        let msg = format!("{err:?}");
+        assert!(msg.contains("does not exist"), "{msg}");
+        assert!(
+            msg.contains("api/Cargo.toml"),
+            "the error should point at the repo-root path it probably meant: {msg}"
+        );
+    }
+
+    #[test]
+    fn a_versioned_file_that_exists_still_plans_normally() {
+        let (fx, changed) = missing_file_fixture("api", "api/Cargo.toml");
+
+        let plan = plan_result(&fx, &changed, "api")
+            .unwrap_or_else(|e| panic!("a correct config must still plan: {e:?}"));
+        assert!(
+            matches!(plan, PackagePlan::Bump(_)),
+            "expected a bump, got {:?}",
+            plan.summary()
+        );
+    }
+
+    #[test]
+    fn an_untouched_package_is_skipped_before_its_files_are_checked() {
+        // Scoping the check to packages this run would actually write keeps a
+        // partial or sparse checkout from failing a release for a package it
+        // was never going to touch.
+        let (fx, changed) = missing_file_fixture("api", "Cargo.toml");
+
+        let plan = plan_result(&fx, &changed, "sdk")
+            .unwrap_or_else(|e| panic!("an untouched package must not fail: {e:?}"));
+        assert!(
+            matches!(
+                plan,
+                PackagePlan::Skipped {
+                    reason: SkipReason::NotTouched,
+                    ..
+                }
+            ),
+            "expected sdk to be skipped, got {:?}",
+            plan.summary()
         );
     }
 
