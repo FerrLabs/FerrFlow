@@ -79,6 +79,12 @@ tracing-subscriber = { version = "0.3", default-features = false, features = ["s
 # the user's config directory is a symlink TOCTOU). Tests also use it.
 tempfile = "3"
 
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Storage_FileSystem", "Win32_System_Threading"] }
+
 [dev-dependencies]
 cargo-husky = { version = "1", default-features = false, features = ["user-hooks"] }
 criterion = { version = "0.8", features = ["html_reports"] }

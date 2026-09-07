@@ -7,7 +7,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::error_code::{self, ErrorCodeExt};
 
-const STALE_LOCK_TTL: Duration = Duration::from_secs(30 * 60);
+const STALE_LOCK_TTL: Duration = Duration::from_secs(6 * 60 * 60);
+const UNKNOWN_HOST: &str = "unknown";
 
 /// RAII lock guard for `ferrflow release`. Acquires `ferrflow.lock` in the
 /// repository's common git dir atomically via O_CREAT|O_EXCL, and releases
@@ -30,8 +31,13 @@ pub struct ReleaseLock {
 
 impl ReleaseLock {
     /// Try to acquire the release lock. Returns Err if another live
-    /// release is in progress. Stale locks (older than STALE_LOCK_TTL
-    /// with the PID no longer alive) are taken over with a warning.
+    /// release is in progress.
+    ///
+    /// A lock written by this host is judged on whether its PID is still
+    /// alive: a dead owner is taken over at once however recent the lock,
+    /// and a live one is never taken over however old. STALE_LOCK_TTL is
+    /// the fallback for a lock whose owner this host cannot ask about,
+    /// meaning another machine's PID or an unreadable lockfile.
     pub fn acquire(repo: &Repository) -> Result<Self> {
         let path = lock_path(repo)?;
 
@@ -119,7 +125,67 @@ fn read_lock_info(path: &Path) -> Option<String> {
     Some(buf)
 }
 
+struct LockOwner {
+    pid: u32,
+    host: String,
+}
+
+fn parse_lock_info(raw: &str) -> Option<LockOwner> {
+    let mut lines = raw.lines();
+    let pid = lines.next()?.trim().parse().ok()?;
+    let _written_at = lines.next()?;
+    let host = lines.next()?.trim().to_string();
+    Some(LockOwner { pid, host })
+}
+
+#[cfg(unix)]
+fn process_is_alive(pid: u32) -> bool {
+    // SAFETY: signal 0 runs the existence and permission checks without
+    // delivering anything, and takes no pointer arguments.
+    let sent = unsafe { libc::kill(pid as libc::pid_t, 0) };
+    if sent == 0 {
+        return true;
+    }
+    std::io::Error::last_os_error().raw_os_error() == Some(libc::EPERM)
+}
+
+#[cfg(windows)]
+fn process_is_alive(pid: u32) -> bool {
+    use windows_sys::Win32::Foundation::{CloseHandle, WAIT_TIMEOUT};
+    use windows_sys::Win32::Storage::FileSystem::SYNCHRONIZE;
+    use windows_sys::Win32::System::Threading::{OpenProcess, WaitForSingleObject};
+
+    // SAFETY: OpenProcess takes no pointers and reports failure by
+    // returning a null handle, which is checked before the handle is used.
+    let handle = unsafe { OpenProcess(SYNCHRONIZE, 0, pid) };
+    if handle.is_null() {
+        return false;
+    }
+    // SAFETY: `handle` is a live process handle from the call above, and is
+    // closed exactly once below.
+    let status = unsafe { WaitForSingleObject(handle, 0) };
+    // SAFETY: same handle, not used again after this point.
+    unsafe { CloseHandle(handle) };
+    status == WAIT_TIMEOUT
+}
+
+#[cfg(not(any(unix, windows)))]
+fn process_is_alive(_pid: u32) -> bool {
+    true
+}
+
 fn take_over_if_stale(path: &Path) -> Result<bool> {
+    if let Some(owner) = read_lock_info(path).as_deref().and_then(parse_lock_info)
+        && owner.host != UNKNOWN_HOST
+        && owner.host == hostname_or_unknown()
+    {
+        if process_is_alive(owner.pid) {
+            return Ok(false);
+        }
+        let _ = std::fs::remove_file(path);
+        return Ok(true);
+    }
+
     let metadata = match std::fs::metadata(path) {
         Ok(m) => m,
         Err(_) => return Ok(false),
@@ -139,7 +205,7 @@ fn take_over_if_stale(path: &Path) -> Result<bool> {
 fn hostname_or_unknown() -> String {
     std::env::var("HOSTNAME")
         .or_else(|_| std::env::var("COMPUTERNAME"))
-        .unwrap_or_else(|_| "unknown".to_string())
+        .unwrap_or_else(|_| UNKNOWN_HOST.to_string())
 }
 
 #[cfg(test)]
@@ -248,6 +314,97 @@ mod tests {
             .expect_err("the main checkout must not release while a worktree holds the lock");
         assert!(format!("{err:?}").contains("already running"), "{err:?}");
         drop(lock);
+    }
+
+    fn write_lock(repo: &Repository, pid: u32, host: &str, age: Duration) -> PathBuf {
+        let path = lock_path(repo).unwrap();
+        std::fs::write(&path, format!("{pid}\n0\n{host}\n")).unwrap();
+        let when = SystemTime::now() - age;
+        std::fs::OpenOptions::new()
+            .write(true)
+            .open(&path)
+            .unwrap()
+            .set_times(std::fs::FileTimes::new().set_modified(when))
+            .unwrap();
+        path
+    }
+
+    fn a_dead_pid() -> u32 {
+        let mut child = std::process::Command::new("git")
+            .arg("--version")
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn()
+            .expect("git should be on PATH");
+        let pid = child.id();
+        child.wait().unwrap();
+        drop(child);
+        assert!(
+            !process_is_alive(pid),
+            "pid {pid} was reaped but still reads as alive, so this test proves nothing"
+        );
+        pid
+    }
+
+    #[test]
+    fn a_dead_owner_on_this_host_is_taken_over_without_waiting_for_the_ttl() {
+        let (_dir, repo) = init_test_repo();
+        write_lock(&repo, a_dead_pid(), &hostname_or_unknown(), Duration::ZERO);
+
+        let _lock = ReleaseLock::acquire(&repo)
+            .expect("a lock whose owner is gone should be taken over at once");
+    }
+
+    #[test]
+    fn a_live_owner_keeps_its_lock_however_old_the_lockfile_is() {
+        let (_dir, repo) = init_test_repo();
+        write_lock(
+            &repo,
+            std::process::id(),
+            &hostname_or_unknown(),
+            STALE_LOCK_TTL * 4,
+        );
+
+        let err = ReleaseLock::acquire(&repo)
+            .expect_err("a running release must not lose its lock to the TTL");
+        assert!(format!("{err:?}").contains("already running"), "{err:?}");
+    }
+
+    #[test]
+    fn another_hosts_lock_is_still_judged_on_the_ttl_alone() {
+        let (_dir, repo) = init_test_repo();
+        // Live here, so liveness would say "keep it" if the host were ignored.
+        write_lock(&repo, std::process::id(), "some-other-host", Duration::ZERO);
+        let err = ReleaseLock::acquire(&repo).expect_err("a fresh foreign lock still blocks");
+        assert!(format!("{err:?}").contains("already running"), "{err:?}");
+
+        write_lock(
+            &repo,
+            std::process::id(),
+            "some-other-host",
+            STALE_LOCK_TTL * 2,
+        );
+        let _lock =
+            ReleaseLock::acquire(&repo).expect("an expired foreign lock is taken over on the TTL");
+    }
+
+    #[test]
+    fn an_unnamed_host_is_never_trusted_for_liveness() {
+        let (_dir, repo) = init_test_repo();
+        write_lock(&repo, a_dead_pid(), UNKNOWN_HOST, Duration::ZERO);
+
+        let err = ReleaseLock::acquire(&repo)
+            .expect_err("two machines both calling themselves 'unknown' must not compare PIDs");
+        assert!(format!("{err:?}").contains("already running"), "{err:?}");
+    }
+
+    #[test]
+    fn an_unreadable_lockfile_falls_back_to_the_ttl() {
+        let (_dir, repo) = init_test_repo();
+        let path = lock_path(&repo).unwrap();
+        std::fs::write(&path, "garbage").unwrap();
+        let err = ReleaseLock::acquire(&repo).expect_err("a fresh unparseable lock still blocks");
+        assert!(format!("{err:?}").contains("already running"), "{err:?}");
     }
 
     #[test]
