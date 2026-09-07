@@ -125,7 +125,7 @@ Plusieurs fichiers de config trouv\u00e9s dans le r\u00e9pertoire.
 
 <span id="e1024"></span>
 
-Un package que cette execution allait publier declare une entree `versionedFiles` dont le fichier n'est pas sur le disque. La release est interrompue au lieu de poser un tag qu'aucun manifeste ne porte.
+Un package que cette execution allait publier declare une entree `versionedFiles` dont le fichier n'est pas sur le disque. L'execution s'arrete au moment du plan plutot qu'au moment de l'ecriture, ou le meme probleme apparait sous la forme d'une simple erreur de lecture.
 
 La cause habituelle est un chemin ecrit relativement au package plutot qu'a la racine du depot. `package.path` n'est pas un prefixe que FerrFlow ajoute pour vous :
 

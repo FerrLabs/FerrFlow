@@ -125,7 +125,7 @@ Running `ferrflow init` when a config file already exists.
 
 <span id="e1024"></span>
 
-A package that this run would release lists a `versionedFiles` entry whose file is not on disk. The release is stopped rather than tagging a version no manifest carries.
+A package that this run would release lists a `versionedFiles` entry whose file is not on disk. The run stops at plan time rather than at write time, where the same problem surfaces as a bare read error.
 
 The usual cause is a path written relative to the package instead of the repository root. `package.path` is not a prefix that FerrFlow adds for you:
 

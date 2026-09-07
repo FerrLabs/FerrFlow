@@ -272,12 +272,19 @@ pub(super) fn commits_for_package(
 
 fn ensure_versioned_files_exist(pkg: &PackageConfig, root: &Path) -> Result<()> {
     for vf in &pkg.versioned_files {
+        // A handler that does not write the file cannot be caught out by its
+        // absence. gomod is the case: the version lives in the git tag, its
+        // write_version is a no-op, and a go.mod entry is only there to name
+        // the format.
+        if !crate::formats::get_handler(&vf.format).modifies_file() {
+            continue;
+        }
         if root.join(&vf.path).exists() {
             continue;
         }
         return Err(anyhow!(
-            "package \"{name}\": versioned file \"{path}\" does not exist, so this release \
-             would create a tag no manifest carries.\n  \
+            "package \"{name}\": versioned file \"{path}\" does not exist, so the release \
+             would fail when it tries to write it.\n  \
              Paths in versionedFiles are relative to the repository root, not to the \
              package's own path. Did you mean \"{suggestion}\"?",
             name = pkg.name,
@@ -849,6 +856,41 @@ mod tests {
             "expected a bump, got {:?}",
             plan.summary()
         );
+    }
+
+    #[test]
+    fn a_format_that_never_writes_the_file_does_not_need_it_to_exist() {
+        // go.mod carries no version: gomod reads it from the git tag and its
+        // write_version is a no-op, so a missing go.mod cannot cause the drift
+        // this check exists to catch.
+        let (dir, repo) = init_repo();
+        let root = dir.path().to_path_buf();
+        write_pkg(&root, "mymod", "1.0.0");
+        write_config_raw(
+            &root,
+            "",
+            r#"{"name":"mymod","path":".","versionedFiles":[{"path":"go.mod","format":"gomod"}]}"#,
+        );
+        git(&root, &["add", "-A"]);
+        commit_file(&root, "seed.txt", "x", "chore: seed", 1_950_000_000);
+        git(&root, &["tag", "v1.0.0"]);
+        commit_file(
+            &root,
+            "handler.go",
+            "x",
+            "fix: handle a nil pointer",
+            1_950_000_100,
+        );
+        let fx = build_fixture(root, dir, repo);
+        let changed = get_changed_files(&fx.repo).unwrap();
+
+        assert!(
+            !fx.root.join("go.mod").exists(),
+            "the fixture must not create go.mod, or this proves nothing"
+        );
+        plan_result(&fx, &changed, "mymod").unwrap_or_else(|e| {
+            panic!("a gomod package must plan without a go.mod on disk: {e:?}")
+        });
     }
 
     #[test]
