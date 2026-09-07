@@ -132,7 +132,16 @@ struct LockOwner {
 
 fn parse_lock_info(raw: &str) -> Option<LockOwner> {
     let mut lines = raw.lines();
-    let pid = lines.next()?.trim().parse().ok()?;
+    // A pid of 0, or one that wraps negative into unix's pid_t, makes the
+    // liveness check address a process group rather than a process, which
+    // always reads as alive. `acquire` writes neither, so treat them as an
+    // unreadable lockfile and let the TTL decide.
+    let pid: u32 = lines
+        .next()?
+        .trim()
+        .parse()
+        .ok()
+        .filter(|&pid| pid != 0 && pid <= i32::MAX as u32)?;
     let _written_at = lines.next()?;
     let host = lines.next()?.trim().to_string();
     Some(LockOwner { pid, host })
@@ -151,7 +160,9 @@ fn process_is_alive(pid: u32) -> bool {
 
 #[cfg(windows)]
 fn process_is_alive(pid: u32) -> bool {
-    use windows_sys::Win32::Foundation::{CloseHandle, WAIT_TIMEOUT};
+    use windows_sys::Win32::Foundation::{
+        CloseHandle, ERROR_ACCESS_DENIED, GetLastError, WAIT_TIMEOUT,
+    };
     use windows_sys::Win32::Storage::FileSystem::SYNCHRONIZE;
     use windows_sys::Win32::System::Threading::{OpenProcess, WaitForSingleObject};
 
@@ -159,7 +170,12 @@ fn process_is_alive(pid: u32) -> bool {
     // returning a null handle, which is checked before the handle is used.
     let handle = unsafe { OpenProcess(SYNCHRONIZE, 0, pid) };
     if handle.is_null() {
-        return false;
+        // A process's default DACL grants SYNCHRONIZE to its owner and
+        // SYSTEM only, so a release started by another account is opaque to
+        // us even though it is running. This is the EPERM case on unix.
+        // SAFETY: GetLastError takes no arguments and reads this thread's
+        // last error code, set by the failed call directly above.
+        return unsafe { GetLastError() } == ERROR_ACCESS_DENIED;
     }
     // SAFETY: `handle` is a live process handle from the call above, and is
     // closed exactly once below.
@@ -182,8 +198,11 @@ fn take_over_if_stale(path: &Path) -> Result<bool> {
         if process_is_alive(owner.pid) {
             return Ok(false);
         }
-        let _ = std::fs::remove_file(path);
-        return Ok(true);
+        // Reporting a takeover the removal did not perform would recurse:
+        // `acquire` retries, `create_new` fails the same way, and this
+        // reaches the same verdict. Returning the removal's own outcome
+        // falls through to the "already running" error instead.
+        return Ok(std::fs::remove_file(path).is_ok());
     }
 
     let metadata = match std::fs::metadata(path) {
@@ -198,8 +217,7 @@ fn take_over_if_stale(path: &Path) -> Result<bool> {
     if modified < STALE_LOCK_TTL {
         return Ok(false);
     }
-    let _ = std::fs::remove_file(path);
-    Ok(true)
+    Ok(std::fs::remove_file(path).is_ok())
 }
 
 #[cfg(unix)]
@@ -376,6 +394,29 @@ mod tests {
             "HOSTNAME is a shell variable bash does not export, so an env-only lookup \
              leaves the liveness check inert on most Linux hosts and CI containers"
         );
+    }
+
+    #[test]
+    fn a_process_this_user_may_not_open_still_reads_as_alive() {
+        // The OS refuses to talk about a process owned by another account:
+        // EPERM on unix, ERROR_ACCESS_DENIED on Windows. Reading that as
+        // "gone" would steal the lock from a running release.
+        #[cfg(unix)]
+        let foreign = 1;
+        #[cfg(windows)]
+        let foreign = 4;
+        assert!(
+            process_is_alive(foreign),
+            "pid {foreign} is always running, whether or not this user can open it"
+        );
+    }
+
+    #[test]
+    fn a_pid_that_would_address_a_process_group_is_not_trusted() {
+        let host = hostname_or_unknown();
+        assert!(parse_lock_info(&format!("0\n0\n{host}\n")).is_none());
+        assert!(parse_lock_info(&format!("4294967295\n0\n{host}\n")).is_none());
+        assert!(parse_lock_info(&format!("1234\n0\n{host}\n")).is_some());
     }
 
     #[test]

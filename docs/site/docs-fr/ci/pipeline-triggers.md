@@ -209,7 +209,9 @@ Depuis la v5.2, `ferrflow release` acquiert `ferrflow.lock` de maniere atomique 
 
 Rien à brancher. Le verrou est automatique sur chaque invocation `release`. Les commandes en lecture seule (`check`, `status`, `version`, `tag`) ne le prennent pas.
 
-Si une execution précédente a planté sans relacher le verrou, l'invocation suivante le reprend automatiquement apres 30 minutes (l'hote + le PID inscrits dans le lockfile permettent à FerrFlow de detecter les verrous orphelins). Pour le reprendre plus tot, supprimez `ferrflow.lock` de ce git dir a la main.
+Si une execution precedente a plante sans relacher le verrou, l'invocation suivante lit l'hote et le PID inscrits dans le lockfile et le reprend des qu'elle constate que le proprietaire a disparu. Sur la machine qui a ecrit le verrou, c'est immediat, sans attente : un job CI qui a plante ne bloque pas le suivant. Symetriquement, une release toujours en cours garde son verrou aussi longtemps qu'il faut, donc un gros monorepo qui publie pendant des heures n'est jamais interrompu par un delai d'expiration.
+
+Le delai de peremption de 6 heures ne sert que de repli pour un verrou sur lequel cette machine ne peut rien savoir, c'est-a-dire ecrit par un autre hote sur un systeme de fichiers partage, ou dans un lockfile trop abime pour etre lu. Pour reprendre un tel verrou plus tot, lancez `ferrflow release --force-unlock`, ou supprimez `ferrflow.lock` du git dir a la main.
 
 <aside class="ferr-aside ferr-aside--note"><div class="ferr-aside__body"><p>Le verrou est par-depot, scope au git dir commun. Il couvre tous les worktrees lies, mais il ne protege pas entre des clones separes du meme depot : si vous lancez des releases simultanees depuis deux runners differents contre deux checkouts du meme remote, le verrou ne voit pas l&#39;autre cote. Utilisez un seul runner de release, ou serialisez au niveau CI (<code>concurrency:</code> dans GitHub Actions, <code>interruptible: false</code> dans GitLab).</p>
 </div></aside>
