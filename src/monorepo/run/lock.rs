@@ -202,10 +202,32 @@ fn take_over_if_stale(path: &Path) -> Result<bool> {
     Ok(true)
 }
 
+#[cfg(unix)]
+fn system_hostname() -> Option<String> {
+    let mut buf = vec![0u8; 256];
+    // SAFETY: gethostname writes at most `buf.len()` bytes into a buffer we
+    // own, and the buffer stays alive for the whole call.
+    let rc = unsafe { libc::gethostname(buf.as_mut_ptr().cast(), buf.len()) };
+    if rc != 0 {
+        return None;
+    }
+    let end = buf.iter().position(|b| *b == 0).unwrap_or(buf.len());
+    buf.truncate(end);
+    String::from_utf8(buf).ok()
+}
+
+#[cfg(not(unix))]
+fn system_hostname() -> Option<String> {
+    None
+}
+
 fn hostname_or_unknown() -> String {
-    std::env::var("HOSTNAME")
-        .or_else(|_| std::env::var("COMPUTERNAME"))
-        .unwrap_or_else(|_| UNKNOWN_HOST.to_string())
+    let named = |host: String| (!host.trim().is_empty()).then_some(host);
+    system_hostname()
+        .and_then(named)
+        .or_else(|| std::env::var("HOSTNAME").ok().and_then(named))
+        .or_else(|| std::env::var("COMPUTERNAME").ok().and_then(named))
+        .unwrap_or_else(|| UNKNOWN_HOST.to_string())
 }
 
 #[cfg(test)]
@@ -344,6 +366,16 @@ mod tests {
             "pid {pid} was reaped but still reads as alive, so this test proves nothing"
         );
         pid
+    }
+
+    #[test]
+    fn the_host_names_itself_without_an_exported_env_var() {
+        assert_ne!(
+            hostname_or_unknown(),
+            UNKNOWN_HOST,
+            "HOSTNAME is a shell variable bash does not export, so an env-only lookup \
+             leaves the liveness check inert on most Linux hosts and CI containers"
+        );
     }
 
     #[test]
