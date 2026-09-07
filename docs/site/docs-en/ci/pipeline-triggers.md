@@ -258,7 +258,7 @@ Since v5.2, `ferrflow release` acquires `ferrflow.lock` atomically (`O_CREAT|O_E
 
 You don't need to wire anything up. The lock is automatic on every `release` invocation. Read-only commands (`check`, `status`, `version`, `tag`) skip it.
 
-If a previous run crashed without releasing the lock, the next invocation takes it over automatically after 30 minutes (the host + PID stamped inside the lockfile lets FerrFlow detect stale locks). To take it over sooner, delete `.git/ferrflow.lock` manually.
+If a previous run crashed without releasing the lock, the next invocation takes it over automatically after 30 minutes (the host + PID stamped inside the lockfile lets FerrFlow detect stale locks). To take it over sooner, delete `ferrflow.lock` from that git dir manually.
 
 <aside class="ferr-aside ferr-aside--note"><div class="ferr-aside__body"><p>The lock is per-repo, scoped to the common git dir. It covers every linked worktree, but it does not protect across separate clones of the same repo: if you run releases concurrently from two different runners against two different checkouts of the same remote, the lock won&#39;t see the other side. Use a single release runner, or serialize at the CI level (<code>concurrency:</code> in GitHub Actions, <code>interruptible: false</code> in GitLab).</p>
 </div></aside>
