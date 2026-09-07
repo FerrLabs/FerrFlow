@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.9.15] - 2026-09-07
+
+### Bug Fixes
+
+- fix(deps): update dependency @ferrflow/doc to v7.20.2 (#947)
+
 ## [2026.9.14] - 2026-09-06
 
 ### Features
