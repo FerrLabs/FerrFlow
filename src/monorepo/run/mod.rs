@@ -117,9 +117,9 @@ pub(super) fn run_release_logic(
     let _release_lock = if dry_run {
         None
     } else if force_unlock {
-        Some(lock::ReleaseLock::acquire_force(root)?)
+        Some(lock::ReleaseLock::acquire_force(&repo)?)
     } else {
-        Some(lock::ReleaseLock::acquire(root)?)
+        Some(lock::ReleaseLock::acquire(&repo)?)
     };
 
     if !dry_run {

@@ -1,4 +1,5 @@
 use anyhow::{Context, Result, anyhow};
+use gix::Repository;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -8,8 +9,10 @@ use crate::error_code::{self, ErrorCodeExt};
 
 const STALE_LOCK_TTL: Duration = Duration::from_secs(30 * 60);
 
-/// RAII lock guard for `ferrflow release`. Acquires `.git/ferrflow.lock`
-/// atomically via O_CREAT|O_EXCL. Releases the file on drop.
+/// RAII lock guard for `ferrflow release`. Acquires `ferrflow.lock` in the
+/// repository's common git dir atomically via O_CREAT|O_EXCL, and releases
+/// the file on drop. The common dir is shared by every linked worktree, so
+/// one repository has one lock however many worktrees are checked out.
 ///
 /// Prevents two concurrent `release` invocations on the same repo from
 /// racing — typical scenario: a manually-triggered release running at
@@ -29,17 +32,8 @@ impl ReleaseLock {
     /// Try to acquire the release lock. Returns Err if another live
     /// release is in progress. Stale locks (older than STALE_LOCK_TTL
     /// with the PID no longer alive) are taken over with a warning.
-    pub fn acquire(repo_root: &Path) -> Result<Self> {
-        let git_dir = repo_root.join(".git");
-        if !git_dir.is_dir() {
-            return Err(anyhow!(
-                "release lock cannot acquire — {} is not a regular .git directory \
-                 (worktrees and submodules currently unsupported by the lock)",
-                git_dir.display()
-            ))
-            .error_code(error_code::GIT_NOT_A_REPO);
-        }
-        let path = git_dir.join("ferrflow.lock");
+    pub fn acquire(repo: &Repository) -> Result<Self> {
+        let path = lock_path(repo)?;
 
         match OpenOptions::new().write(true).create_new(true).open(&path) {
             Ok(mut file) => {
@@ -66,7 +60,7 @@ impl ReleaseLock {
                         "Warning: previous release lock at {} appeared stale; took it over.",
                         path.display()
                     );
-                    return Self::acquire(repo_root);
+                    return Self::acquire(repo);
                 }
                 let existing = read_lock_info(&path).unwrap_or_else(|| "<unreadable>".to_string());
                 Err(anyhow!(
@@ -87,8 +81,8 @@ impl ReleaseLock {
 
     /// Force-acquire the lock, ignoring any existing one. Used by
     /// `--force-unlock` for manual recovery.
-    pub fn acquire_force(repo_root: &Path) -> Result<Self> {
-        let path = repo_root.join(".git").join("ferrflow.lock");
+    pub fn acquire_force(repo: &Repository) -> Result<Self> {
+        let path = lock_path(repo)?;
         if path.exists() {
             let _ = std::fs::remove_file(&path);
             tracing::warn!(
@@ -96,8 +90,20 @@ impl ReleaseLock {
                 path.display()
             );
         }
-        Self::acquire(repo_root)
+        Self::acquire(repo)
     }
+}
+
+fn lock_path(repo: &Repository) -> Result<PathBuf> {
+    if repo.workdir().is_none() {
+        return Err(anyhow!(
+            "release lock cannot acquire — {} is a bare repository, which has \
+             nothing to release from",
+            repo.common_dir().display()
+        ))
+        .error_code(error_code::GIT_NOT_A_REPO);
+    }
+    Ok(repo.common_dir().join("ferrflow.lock"))
 }
 
 impl Drop for ReleaseLock {
@@ -140,33 +146,59 @@ fn hostname_or_unknown() -> String {
 mod tests {
     use super::*;
 
-    fn init_test_repo() -> tempfile::TempDir {
+    fn git(dir: &Path, args: &[&str]) {
+        let status = std::process::Command::new("git")
+            .current_dir(dir)
+            .args(args)
+            .env_remove("GIT_DIR")
+            .env_remove("GIT_WORK_TREE")
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .expect("git should be on PATH");
+        assert!(status.success(), "git {args:?} failed");
+    }
+
+    fn init_test_repo() -> (tempfile::TempDir, Repository) {
         let dir = tempfile::tempdir().unwrap();
-        std::fs::create_dir(dir.path().join(".git")).unwrap();
-        dir
+        git(dir.path(), &["init", "-q", "-b", "main"]);
+        git(dir.path(), &["config", "user.email", "t@example.com"]);
+        git(dir.path(), &["config", "user.name", "t"]);
+        git(dir.path(), &["commit", "-q", "--allow-empty", "-m", "root"]);
+        let repo = crate::git::open_repo(dir.path()).unwrap();
+        (dir, repo)
+    }
+
+    fn add_worktree(main: &Path, name: &str) -> Repository {
+        let path = main.join(name);
+        git(
+            main,
+            &["worktree", "add", "-q", "-b", name, path.to_str().unwrap()],
+        );
+        crate::git::open_repo(&path).unwrap()
     }
 
     #[test]
     fn acquire_in_clean_repo_succeeds() {
-        let dir = init_test_repo();
-        let _lock = ReleaseLock::acquire(dir.path()).expect("first acquire");
+        let (dir, repo) = init_test_repo();
+        let _lock = ReleaseLock::acquire(&repo).expect("first acquire");
         assert!(dir.path().join(".git/ferrflow.lock").exists());
     }
 
     #[test]
     fn drop_removes_the_lockfile() {
-        let dir = init_test_repo();
+        let (dir, repo) = init_test_repo();
         {
-            let _lock = ReleaseLock::acquire(dir.path()).unwrap();
+            let _lock = ReleaseLock::acquire(&repo).unwrap();
         }
         assert!(!dir.path().join(".git/ferrflow.lock").exists());
     }
 
     #[test]
     fn second_acquire_fails_while_first_held() {
-        let dir = init_test_repo();
-        let _first = ReleaseLock::acquire(dir.path()).unwrap();
-        let err = ReleaseLock::acquire(dir.path()).expect_err("second acquire should fail");
+        let (_dir, repo) = init_test_repo();
+        let _first = ReleaseLock::acquire(&repo).unwrap();
+        let err = ReleaseLock::acquire(&repo).expect_err("second acquire should fail");
         let msg = format!("{err:?}");
         assert!(
             msg.contains("already running"),
@@ -176,24 +208,52 @@ mod tests {
 
     #[test]
     fn force_unlock_takes_over_active_lock() {
-        let dir = init_test_repo();
-        let first = ReleaseLock::acquire(dir.path()).unwrap();
-        let _second = ReleaseLock::acquire_force(dir.path())
-            .expect("force-unlock should succeed even if held");
+        let (_dir, repo) = init_test_repo();
+        let first = ReleaseLock::acquire(&repo).unwrap();
+        let _second =
+            ReleaseLock::acquire_force(&repo).expect("force-unlock should succeed even if held");
         drop(first);
     }
 
     #[test]
-    fn errors_when_git_dir_missing() {
+    fn a_bare_repo_errors_and_says_so() {
         let dir = tempfile::tempdir().unwrap();
-        let err = ReleaseLock::acquire(dir.path()).expect_err("no .git → should error");
-        assert!(format!("{err:?}").contains(".git directory"));
+        git(dir.path(), &["init", "-q", "--bare", "bare.git"]);
+        let repo = crate::git::open_repo(&dir.path().join("bare.git")).unwrap();
+        let err = ReleaseLock::acquire(&repo).expect_err("bare repo should error");
+        let msg = format!("{err:?}");
+        assert!(msg.contains("bare repository"), "{msg}");
+        assert!(
+            !msg.contains("worktree"),
+            "the bare error should not blame worktrees: {msg}"
+        );
+    }
+
+    #[test]
+    fn a_worktree_can_acquire_and_shares_the_main_repository_lock() {
+        let (dir, main) = init_test_repo();
+        let worktree = add_worktree(dir.path(), "wt");
+
+        let lock = ReleaseLock::acquire(&worktree).expect("a worktree should be able to release");
+        assert!(
+            dir.path().join(".git/ferrflow.lock").exists(),
+            "the lock belongs in the common dir, not the per-worktree git dir"
+        );
+        assert!(
+            !dir.path().join("wt/.git").is_dir(),
+            "the worktree's .git should stay a file, so this proves the fallback is not in play"
+        );
+
+        let err = ReleaseLock::acquire(&main)
+            .expect_err("the main checkout must not release while a worktree holds the lock");
+        assert!(format!("{err:?}").contains("already running"), "{err:?}");
+        drop(lock);
     }
 
     #[test]
     fn lockfile_content_includes_pid() {
-        let dir = init_test_repo();
-        let _lock = ReleaseLock::acquire(dir.path()).unwrap();
+        let (dir, repo) = init_test_repo();
+        let _lock = ReleaseLock::acquire(&repo).unwrap();
         let content = std::fs::read_to_string(dir.path().join(".git/ferrflow.lock")).unwrap();
         let expected = std::process::id().to_string();
         assert!(
