@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.21.2] - 2026-09-16
+
+### Bug Fixes
+
+- fix(deps): bump rustls to 0.23.45 for RUSTSEC-2026-0285 (#1075)
+
 ## [7.21.1] - 2026-09-07
 
 ### Bug Fixes
