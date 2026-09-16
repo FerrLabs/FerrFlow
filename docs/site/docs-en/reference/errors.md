@@ -121,6 +121,26 @@ More than one config file was found in the project root (e.g. both `ferrflow.jso
 
 Running `ferrflow init` when a config file already exists.
 
+### E1024: Versioned file does not exist
+
+<span id="e1024"></span>
+
+A package that this run would release lists a `versionedFiles` entry whose file is not on disk. The run stops at plan time rather than at write time, where the same problem surfaces as a bare read error.
+
+The usual cause is a path written relative to the package instead of the repository root. `package.path` is not a prefix that FerrFlow adds for you:
+
+```toml
+[[package]]
+name = "api"
+path = "packages/api"
+
+[[package.versioned_files]]
+path = "Cargo.toml"              # wrong, looked up at the repository root
+# path = "packages/api/Cargo.toml"  # right
+```
+
+The error names the path it probably meant. `ferrflow validate` reports the same problem for every configured package, including ones this run would not touch.
+
 ## Validation Errors
 
 ### E1100: Invalid repo spec
