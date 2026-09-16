@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.21.3] - 2026-09-16
+
+### Bug Fixes
+
+- fix(release): fail when a package's versioned file does not exist (#1064)
+
 ## [7.21.2] - 2026-09-16
 
 ### Bug Fixes
