@@ -708,8 +708,8 @@ user-login = "epage"
 user-name = "Ed Page"
 
 [[publisher.toml_edit]]
-version = "0.25.13+spec-1.1.0"
-when = "2026-07-14"
+version = "0.25.15+spec-1.1.0"
+when = "2026-09-11"
 user-id = 6743
 user-login = "epage"
 user-name = "Ed Page"
@@ -750,15 +750,15 @@ user-login = "Manishearth"
 user-name = "Manish Goregaokar"
 
 [[publisher.ureq]]
-version = "3.4.0"
-when = "2026-08-08"
+version = "3.4.1"
+when = "2026-09-06"
 user-id = 5441
 user-login = "algesten"
 user-name = "Martin Algesten"
 
 [[publisher.ureq-proto]]
-version = "0.6.1"
-when = "2026-08-08"
+version = "0.6.2"
+when = "2026-09-06"
 user-id = 5441
 user-login = "algesten"
 user-name = "Martin Algesten"
@@ -1122,8 +1122,8 @@ who = "Henri Sivonen <hsivonen@hsivonen.fi>"
 criteria = "safe-to-deploy"
 user-id = 4484 # Henri Sivonen (hsivonen)
 start = "2019-02-26"
-end = "2025-10-23"
-notes = "I, Henri Sivonen, wrote encoding_rs for Gecko and have reviewed contributions by others. There are two caveats to the certification: 1) The crate does things that are documented to be UB but that do not appear to actually be UB due to integer types differing from the general rule; https://github.com/hsivonen/encoding_rs/issues/79 . 2) It would be prudent to re-review the code that reinterprets buffers of integers as SIMD vectors; see https://github.com/hsivonen/encoding_rs/issues/87 ."
+end = "2027-09-07"
+notes = "I, Henri Sivonen, wrote encoding_rs for Gecko and have reviewed contributions by others."
 aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
 
 [[audits.mozilla.wildcard-audits.unicode-normalization]]
