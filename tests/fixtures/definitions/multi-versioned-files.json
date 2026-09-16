@@ -14,6 +14,12 @@
       "tag": "v1.0.0"
     }
   ],
+  "hooks": [
+    {
+      "path": "version2.toml",
+      "content": "[package]\nname = \"myapp\"\nversion = \"1.0.0\"\n"
+    }
+  ],
   "commits": [
     { "message": "feat: add multi-format support", "files": ["src/main.rs"] }
   ],
