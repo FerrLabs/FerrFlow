@@ -258,7 +258,9 @@ Since v5.2, `ferrflow release` acquires `ferrflow.lock` atomically (`O_CREAT|O_E
 
 You don't need to wire anything up. The lock is automatic on every `release` invocation. Read-only commands (`check`, `status`, `version`, `tag`) skip it.
 
-If a previous run crashed without releasing the lock, the next invocation takes it over automatically after 30 minutes (the host + PID stamped inside the lockfile lets FerrFlow detect stale locks). To take it over sooner, delete `ferrflow.lock` from that git dir manually.
+If a previous run crashed without releasing the lock, the next invocation reads the host and PID stamped inside the lockfile and takes it over as soon as it can see that the owner is gone. On the machine that wrote the lock that is immediate, with no waiting: a crashed CI job does not leave the next one blocked. By the same token a release that is still running keeps its lock however long it takes, so a large monorepo publishing for hours is never interrupted by a timeout.
+
+The 6 hour staleness timeout is only the fallback for a lock this machine cannot ask about, meaning one written by a different host on a shared filesystem, or a lockfile too damaged to read. To take a lock over sooner in that case, run `ferrflow release --force-unlock`, or delete `ferrflow.lock` from the git dir manually.
 
 <aside class="ferr-aside ferr-aside--note"><div class="ferr-aside__body"><p>The lock is per-repo, scoped to the common git dir. It covers every linked worktree, but it does not protect across separate clones of the same repo: if you run releases concurrently from two different runners against two different checkouts of the same remote, the lock won&#39;t see the other side. Use a single release runner, or serialize at the CI level (<code>concurrency:</code> in GitHub Actions, <code>interruptible: false</code> in GitLab).</p>
 </div></aside>
