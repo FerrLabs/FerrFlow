@@ -205,13 +205,13 @@ jobs:
 
 ## Securite de concurrence
 
-Depuis la v5.2, `ferrflow release` acquiert `.git/ferrflow.lock` de maniere atomique (`O_CREAT|O_EXCL`) au debut de chaque execution mutante. Une seconde invocation concurrente sur le meme depot echoue immediatement avec une erreur claire au lieu de courir contre les refs git. Le scenario classique est une release declenchee manuellement qui demarre en meme temps qu'un `auto-release` planifie en cron, ce qui produit des jeux de tags poussés à moitié, des refus non fast-forward ou des draft releases dupliquees.
+Depuis la v5.2, `ferrflow release` acquiert `ferrflow.lock` de maniere atomique (`O_CREAT|O_EXCL`) au debut de chaque execution mutante. Le lockfile se trouve dans le git dir commun du depot, c'est-a-dire `.git/` dans un checkout ordinaire et le `.git/` du checkout principal quand vous lancez depuis un worktree lie, si bien que tous les worktrees d'un depot partagent un seul verrou. C'est le comportement voulu : ils poussent vers le meme remote et se disputent les memes refs, donc un verrou par worktree n'empecherait rien. Une seconde invocation concurrente sur le meme depot echoue immediatement avec une erreur claire au lieu de courir contre les refs git. Le scenario classique est une release declenchee manuellement qui demarre en meme temps qu'un `auto-release` planifie en cron, ce qui produit des jeux de tags poussés à moitié, des refus non fast-forward ou des draft releases dupliquees.
 
 Rien à brancher. Le verrou est automatique sur chaque invocation `release`. Les commandes en lecture seule (`check`, `status`, `version`, `tag`) ne le prennent pas.
 
-Si une execution précédente a planté sans relacher le verrou, l'invocation suivante le reprend automatiquement apres 30 minutes (l'hote + le PID inscrits dans le lockfile permettent à FerrFlow de detecter les verrous orphelins). Pour le reprendre plus tot, supprimez `.git/ferrflow.lock` à la main.
+Si une execution précédente a planté sans relacher le verrou, l'invocation suivante le reprend automatiquement apres 30 minutes (l'hote + le PID inscrits dans le lockfile permettent à FerrFlow de detecter les verrous orphelins). Pour le reprendre plus tot, supprimez `ferrflow.lock` de ce git dir a la main.
 
-<aside class="ferr-aside ferr-aside--note"><div class="ferr-aside__body"><p>Le verrou est par-depot, scope a <code>.git/</code>. Il ne protege pas entre des clones separes du meme depot : si vous lancez des releases simultanees depuis deux runners differents contre deux checkouts du meme remote, le verrou ne voit pas l&#39;autre cote. Utilisez un seul runner de release, ou serialisez au niveau CI (<code>concurrency:</code> dans GitHub Actions, <code>interruptible: false</code> dans GitLab).</p>
+<aside class="ferr-aside ferr-aside--note"><div class="ferr-aside__body"><p>Le verrou est par-depot, scope au git dir commun. Il couvre tous les worktrees lies, mais il ne protege pas entre des clones separes du meme depot : si vous lancez des releases simultanees depuis deux runners differents contre deux checkouts du meme remote, le verrou ne voit pas l&#39;autre cote. Utilisez un seul runner de release, ou serialisez au niveau CI (<code>concurrency:</code> dans GitHub Actions, <code>interruptible: false</code> dans GitLab).</p>
 </div></aside>
 
 ## Reprise apres crash
