@@ -4,6 +4,13 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.21.4] - 2026-09-17
+
+### Bug Fixes
+
+- fix(release): decide lock takeover on owner liveness, not lockfile age (#1055)
+- fix(release): take the release lock in the common git dir so worktrees work (#1054)
+
 ## [7.21.3] - 2026-09-16
 
 ### Bug Fixes
