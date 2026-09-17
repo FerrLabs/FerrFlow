@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.9.4] - 2026-09-17
+
+### Bug Fixes
+
+- fix(deps): update rustls to 0.23.45 (#965)
+
 ## [2026.9.1] - 2026-09-02
 
 ### Features
