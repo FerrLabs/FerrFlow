@@ -151,8 +151,8 @@ pub enum Commands {
     },
     SyncManifest,
     /// Generate a FerrFlow config from another release tool's. A JavaScript source config is
-    /// executed with node to read what it exports, even under --dry-run, so only run this
-    /// on a repo you trust.
+    /// executed with node to read what it exports, and --dry-run is ignored (the config
+    /// runs and ferrflow.json is written), so only run this on a repo you trust.
     Migrate {
         #[arg(long, value_enum)]
         from: Option<MigrateSourceArg>,
