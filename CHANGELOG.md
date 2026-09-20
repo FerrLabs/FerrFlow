@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.21.5] - 2026-09-20
+
+### Bug Fixes
+
+- perf(monorepo): diff a commit range in parallel and cache decoded trees (#1089)
+
 ## [7.21.4] - 2026-09-17
 
 ### Bug Fixes
