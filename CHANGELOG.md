@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.21.6] - 2026-09-20
+
+### Bug Fixes
+
+- fix(migrate): say that a JavaScript config is executed, dry run included (#1094)
+
 ## [7.21.5] - 2026-09-20
 
 ### Bug Fixes
