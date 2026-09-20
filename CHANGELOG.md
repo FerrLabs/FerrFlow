@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.21.7] - 2026-09-20
+
+### Bug Fixes
+
+- fix(npm): use the dev-build fallback only from a source checkout (#1096)
+
 ## [7.21.6] - 2026-09-20
 
 ### Bug Fixes
