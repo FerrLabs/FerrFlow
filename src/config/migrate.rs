@@ -133,6 +133,11 @@ fn read_file(path: &Path) -> Result<String> {
 }
 
 fn eval_js_to_json(path: &Path) -> Result<String> {
+    tracing::info!(
+        "Running {} with node to read what it exports. A JavaScript config is a program, \
+         so this executes it.",
+        path.display()
+    );
     let file_url = super::loader_js::path_to_file_url(path)?;
     let script = format!(
         "const m = await import('{file_url}'); \
