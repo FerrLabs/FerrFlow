@@ -13,6 +13,7 @@ use crate::git::{
 use crate::prerelease::PrereleaseContext;
 use crate::versioning::compute_next_version;
 use gix::ObjectId;
+use rayon::prelude::*;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -157,6 +158,42 @@ fn files_for_commit_cached(
     files
 }
 
+const PARALLEL_PREFETCH_THRESHOLD: usize = 256;
+
+fn prefetch_commit_files(repo: &Repository, commits: &[GitLog], cache: &CommitFilesCache) {
+    if rayon::current_num_threads() < 2 {
+        return;
+    }
+    let missing: Vec<ObjectId> = {
+        let known = cache.lock().expect("commit-files cache poisoned");
+        commits
+            .iter()
+            .filter_map(|c| ObjectId::from_hex(c.id.as_bytes()).ok())
+            .filter(|id| !known.contains_key(id))
+            .collect()
+    };
+    if missing.len() < PARALLEL_PREFETCH_THRESHOLD {
+        return;
+    }
+
+    let shared = repo.clone().into_sync();
+    let fetched: Vec<(ObjectId, Arc<Vec<String>>)> = missing
+        .par_iter()
+        .map_init(
+            || shared.to_thread_local(),
+            |worker, id| {
+                let files = get_changed_files_for_commit(worker, *id).unwrap_or_default();
+                (*id, Arc::new(files))
+            },
+        )
+        .collect();
+
+    cache
+        .lock()
+        .expect("commit-files cache poisoned")
+        .extend(fetched);
+}
+
 fn scope_commits_to_package(
     repo: &Repository,
     pkg: &PackageConfig,
@@ -166,6 +203,7 @@ fn scope_commits_to_package(
     if !inputs.config.is_monorepo() {
         return commits;
     }
+    prefetch_commit_files(repo, &commits, inputs.commit_files_cache);
     commits
         .into_iter()
         .filter(|c| {
@@ -466,7 +504,6 @@ mod tests {
     use crate::config::Config;
     use crate::git::{TagIndex, build_head_ancestors, collect_all_tags, get_changed_files};
     use crate::test_utils::{commit_file, git, init_repo};
-    use rayon::prelude::*;
     use std::path::Path;
 
     #[test]
@@ -965,6 +1002,135 @@ mod tests {
             suggested_versioned_path(&package("root", "."), "Cargo.toml"),
             None
         );
+    }
+
+    fn fast_import_history(dir: &Path, commits: usize) {
+        use std::io::Write;
+        let mut stream = String::new();
+        for i in 0..commits {
+            let pkg = if i % 3 == 0 { "api" } else { "sdk" };
+            let body = format!("fix({pkg}): change {i}\n");
+            stream.push_str("commit refs/heads/main\n");
+            stream.push_str(&format!(
+                "committer Test <test@test.com> {} +0000\n",
+                1_950_000_000 + i
+            ));
+            stream.push_str(&format!("data {}\n{body}", body.len()));
+            let content = format!("{i}\n");
+            stream.push_str(&format!(
+                "M 100644 inline {pkg}/file.txt\ndata {}\n{content}",
+                content.len()
+            ));
+        }
+        let mut child = std::process::Command::new("git")
+            .current_dir(dir)
+            .args(["fast-import", "--quiet"])
+            .stdin(std::process::Stdio::piped())
+            .spawn()
+            .expect("git should be on PATH");
+        child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(stream.as_bytes())
+            .unwrap();
+        assert!(child.wait().unwrap().success(), "git fast-import failed");
+    }
+
+    fn history(repo: &Repository) -> Vec<GitLog> {
+        let head = repo.head_id().unwrap().detach();
+        repo.rev_walk([head])
+            .all()
+            .unwrap()
+            .map(|info| {
+                let id = info.unwrap().id.to_string();
+                GitLog {
+                    hash: id[..7].to_string(),
+                    id,
+                    message: String::new(),
+                }
+            })
+            .collect()
+    }
+
+    fn in_pool<T: Send>(threads: usize, f: impl FnOnce() -> T + Send) -> T {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build()
+            .unwrap()
+            .install(f)
+    }
+
+    #[test]
+    fn a_parallel_prefetch_caches_exactly_what_the_sequential_path_computes() {
+        let dir = tempfile::tempdir().unwrap();
+        crate::test_utils::init_repo_at(dir.path());
+        fast_import_history(dir.path(), PARALLEL_PREFETCH_THRESHOLD + 40);
+        let repo = crate::git::open_repo(dir.path()).unwrap();
+        let commits = history(&repo);
+        assert!(commits.len() > PARALLEL_PREFETCH_THRESHOLD);
+
+        let prefetched = CommitFilesCache::default();
+        in_pool(4, || {
+            let worker = crate::git::open_repo(dir.path()).unwrap();
+            prefetch_commit_files(&worker, &commits, &prefetched);
+        });
+        let prefetched = prefetched.into_inner().unwrap();
+        assert_eq!(
+            prefetched.len(),
+            commits.len(),
+            "every commit in the range should have been diffed up front"
+        );
+
+        for commit in &commits {
+            let id = ObjectId::from_hex(commit.id.as_bytes()).unwrap();
+            let sequential = get_changed_files_for_commit(&repo, id).unwrap();
+            assert_eq!(
+                *prefetched[&id], sequential,
+                "commit {} differs between the two paths",
+                commit.hash
+            );
+        }
+        let touched_api = prefetched
+            .values()
+            .filter(|files| files.iter().any(|f| f.starts_with("api/")))
+            .count();
+        assert_eq!(touched_api, commits.len().div_ceil(3));
+    }
+
+    #[test]
+    fn a_single_threaded_pool_leaves_the_work_to_the_sequential_path() {
+        let dir = tempfile::tempdir().unwrap();
+        crate::test_utils::init_repo_at(dir.path());
+        fast_import_history(dir.path(), PARALLEL_PREFETCH_THRESHOLD + 40);
+        let repo = crate::git::open_repo(dir.path()).unwrap();
+        let commits = history(&repo);
+
+        let cache = CommitFilesCache::default();
+        in_pool(1, || {
+            let worker = crate::git::open_repo(dir.path()).unwrap();
+            prefetch_commit_files(&worker, &commits, &cache);
+        });
+        assert!(
+            cache.lock().unwrap().is_empty(),
+            "--jobs 1 must not pay for a thread-safe clone it cannot use"
+        );
+    }
+
+    #[test]
+    fn a_short_range_is_not_worth_a_prefetch() {
+        let dir = tempfile::tempdir().unwrap();
+        crate::test_utils::init_repo_at(dir.path());
+        fast_import_history(dir.path(), 20);
+        let repo = crate::git::open_repo(dir.path()).unwrap();
+        let commits = history(&repo);
+
+        let cache = CommitFilesCache::default();
+        in_pool(4, || {
+            let worker = crate::git::open_repo(dir.path()).unwrap();
+            prefetch_commit_files(&worker, &commits, &cache);
+        });
+        assert!(cache.lock().unwrap().is_empty());
     }
 
     fn write_config_raw(dir: &Path, workspace: &str, packages: &str) {
