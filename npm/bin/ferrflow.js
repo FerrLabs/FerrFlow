@@ -34,8 +34,10 @@ function getBinaryPath() {
 
   // Fallback: local dev build
   const ext = process.platform === "win32" ? ".exe" : "";
-  const devBuild = join(__dirname, "..", "..", "target", "release", `ferrflow${ext}`);
-  if (existsSync(devBuild)) return devBuild;
+  const repoRoot = join(__dirname, "..", "..");
+  const inSourceCheckout = existsSync(join(repoRoot, "Cargo.toml"));
+  const devBuild = join(repoRoot, "target", "release", `ferrflow${ext}`);
+  if (inSourceCheckout && existsSync(devBuild)) return devBuild;
 
   console.error(
     `Unsupported platform: ${process.platform}-${process.arch}\n` +
