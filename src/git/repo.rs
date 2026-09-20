@@ -5,8 +5,14 @@ use crate::error_code::{self, ErrorCodeExt};
 
 pub type Repository = gix::Repository;
 
+const OBJECT_CACHE_LIMIT: &str = "gitoxide.objects.cacheLimit=4m";
+
 pub fn open_repo(path: &Path) -> Result<Repository> {
-    gix::discover(path)
+    let mut trust_map = gix::sec::trust::Mapping::<gix::open::Options>::default();
+    trust_map.full = trust_map.full.config_overrides([OBJECT_CACHE_LIMIT]);
+    trust_map.reduced = trust_map.reduced.config_overrides([OBJECT_CACHE_LIMIT]);
+    gix::ThreadSafeRepository::discover_opts(path, Default::default(), trust_map)
+        .map(|repo| repo.to_thread_local())
         .with_context(|| format!("Not a git repository: {}", path.display()))
         .error_code(error_code::GIT_NOT_A_REPO)
 }
