@@ -4,6 +4,13 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.21.10] - 2026-09-21
+
+### Bug Fixes
+
+- fix(docker): ship git in the image and document the GitLab entrypoint override (#1109)
+- fix(docs): restore accented characters in French docs (#1108)
+
 ## [7.21.9] - 2026-09-21
 
 ### Bug Fixes
