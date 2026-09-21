@@ -193,9 +193,7 @@ jobs:
           subject-path: artifacts/*
 
       - name: Install cosign
-        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
-        with:
-          cosign-release: v3.1.3
+        uses: ./.github/actions/install-cosign
 
       - name: Sign release artifacts with cosign (keyless)
         # Keyless Sigstore signing — no private key to manage. Identity
@@ -346,9 +344,22 @@ jobs:
         # everything needed to write to draft release assets on the
         # workflow's own repo.
         run: |
+          set -euo pipefail
           TAG="${{ github.ref_name }}"
+          upload_with_retry() {
+            local file="$1" attempt
+            for attempt in 1 2 3; do
+              if gh release upload "$TAG" "$file" --clobber; then
+                return 0
+              fi
+              echo "::warning::upload failed for ${file} (attempt ${attempt}/3)"
+              sleep $((attempt * 10))
+            done
+            echo "upload failed for ${file} after 3 attempts" >&2
+            return 1
+          }
           for file in artifacts/*; do
-            gh release upload "$TAG" "$file" --clobber
+            upload_with_retry "$file"
           done
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -365,16 +376,25 @@ jobs:
           FERRFLOW_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  sweep-orphans:
+    name: Publish orphaned older draft releases
+    needs: upload
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
       - name: Publish any orphaned older draft releases
-        # A transient failure earlier in this job (a cosign hiccup, an
+        # A transient failure in an earlier Publish run (a cosign hiccup, an
         # upload error) leaves a fully-cut draft with nothing to ever
-        # publish it — v5.2.2 and v5.3.0 sat orphaned for six weeks (#718):
-        # the ferrflow step above only publishes the draft for the tag
-        # being released. Any draft with a semver tag strictly older than
-        # the current one is such an orphan — its release commit and tag
-        # are on main, only its Publish run died. Publish them (never as
-        # latest) and warn loudly so the underlying failure still gets
-        # looked at.
+        # publish it: v5.2.2 and v5.3.0 sat orphaned for six weeks (#718).
+        # The upload job only publishes the draft for the tag being
+        # released. Any draft with a semver tag strictly older than the
+        # current one is such an orphan: its release commit and tag are on
+        # main, only its Publish run died. Publish them (never as latest)
+        # and warn loudly so the underlying failure still gets looked at.
+        # Runs even when this run's upload failed, so two bad runs in a row
+        # cannot strand a draft (#1091).
         run: |
           set -euo pipefail
           TAG="${{ github.ref_name }}"
@@ -390,6 +410,7 @@ jobs:
           done
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
 
   publish-crate:
     name: Publish crates.io
@@ -599,9 +620,7 @@ jobs:
         continue-on-error: true
 
       - name: Install cosign for Docker signing
-        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
-        with:
-          cosign-release: v3.1.3
+        uses: ./.github/actions/install-cosign
 
       - name: Sign Docker image with cosign (keyless)
         # Sigstore signature stored alongside the image in GHCR. Verify
@@ -618,3 +637,38 @@ jobs:
           cosign sign --yes "ghcr.io/ferrlabs/ferrflow@${DIGEST}"
           cosign sign --yes "ghcr.io/ferrlabs/ferrflow:${VERSION}"
           cosign sign --yes "ghcr.io/ferrlabs/ferrflow:latest"
+
+  report-failure:
+    name: Report a failed release
+    needs: [build, upload, sweep-orphans, publish-crate, publish-npm, publish-wasm, publish-docs, publish-docker]
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Open or update the release failure issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          set -euo pipefail
+          title="Publish failed for ${TAG}"
+          jobs=$(jq -r 'to_entries[] | "| `\(.key)` | \(.value.result) |"' <<< "$NEEDS")
+          body="The Publish run for \`${TAG}\` did not finish: ${RUN_URL}
+
+          A skipped job never reached its registry. Re-run the failed jobs once the cause is understood.
+
+          | Job | Result |
+          |---|---|
+          ${jobs}"
+          existing=$(gh issue list --state open --search "in:title \"${title}\"" --json number,title \
+            --jq ".[] | select(.title == \"${title}\") | .number" | head -n1)
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh issue create --title "$title" --body "$body"
+          fi
+          echo "::error::Publish failed for ${TAG}, reported in the repository issues"
