@@ -76,6 +76,8 @@ ferrflow check [OPTIONS]
 | `--channel <NAME>` | Pre-release channel override (e.g. `beta`, `rc`, `dev`) |
 | `--comment`        | Post a preview comment on the current PR/MR             |
 
+`--comment` needs a forge token (`FERRFLOW_TOKEN`, or the forge's own variable such as `GITHUB_TOKEN` or `GITLAB_TOKEN`). Without one it prints a warning naming the variables it read and posts nothing, but still exits 0, so a pull request from a fork, which gets no secrets, does not fail its pipeline. Outside a pull request or merge request it does nothing.
+
 ---
 
 ## `ferrflow publish`

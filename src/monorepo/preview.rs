@@ -6,21 +6,68 @@ use crate::git::{Repository, get_remote_url};
 
 use super::types::{CheckPackage, CheckResult};
 
+#[derive(Debug, PartialEq)]
+pub(crate) enum ForgeUnavailable {
+    NoRemote(String),
+    UnknownForge { host: Option<String> },
+    NoToken(ForgeKind),
+}
+
+impl std::fmt::Display for ForgeUnavailable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::NoRemote(remote) => write!(f, "remote `{remote}` not found"),
+            Self::UnknownForge { host: Some(host) } => write!(
+                f,
+                "could not tell which forge hosts {host}, set `forge` in the config"
+            ),
+            Self::UnknownForge { host: None } => write!(f, "could not parse the remote URL"),
+            Self::NoToken(kind) => {
+                let vars: Vec<_> = std::iter::once(crate::config::GENERIC_TOKEN_ENV_VAR)
+                    .chain(kind.token_env_vars().iter().copied())
+                    .collect();
+                write!(f, "no {kind:?} token found in {}", vars.join(" or "))
+            }
+        }
+    }
+}
+
+struct ForgeTarget {
+    kind: ForgeKind,
+    slug: String,
+    host: String,
+}
+
+fn forge_target(remote_url: &str, configured: ForgeKind) -> Result<ForgeTarget, ForgeUnavailable> {
+    let unknown = || ForgeUnavailable::UnknownForge {
+        host: forge::extract_host(remote_url),
+    };
+    let slug = forge::extract_repo_slug(remote_url).ok_or_else(unknown)?;
+    let host = forge::extract_host(remote_url).ok_or_else(unknown)?;
+    let kind = match configured {
+        ForgeKind::Auto => forge::detect_forge_with_probe(remote_url).ok_or_else(unknown)?,
+        explicit => explicit,
+    };
+    Ok(ForgeTarget { kind, slug, host })
+}
+
+pub(crate) fn try_build_forge_instance(
+    repo: &Repository,
+    config: &Config,
+) -> Result<Box<dyn forge::Forge>, ForgeUnavailable> {
+    let remote = &config.workspace.remote;
+    let remote_url =
+        get_remote_url(repo, remote).ok_or_else(|| ForgeUnavailable::NoRemote(remote.clone()))?;
+    let ForgeTarget { kind, slug, host } = forge_target(&remote_url, config.workspace.forge)?;
+    let token = forge::resolve_token(kind).ok_or(ForgeUnavailable::NoToken(kind))?;
+    Ok(forge::build_forge(kind, token, slug, host))
+}
+
 pub(crate) fn build_forge_instance(
     repo: &Repository,
     config: &Config,
 ) -> Option<Box<dyn forge::Forge>> {
-    let remote_url = get_remote_url(repo, &config.workspace.remote)?;
-    let slug = forge::extract_repo_slug(&remote_url)?;
-    let host = forge::extract_host(&remote_url)?;
-
-    let kind = match config.workspace.forge {
-        ForgeKind::Auto => forge::detect_forge_with_probe(&remote_url)?,
-        explicit => explicit,
-    };
-
-    let token = forge::resolve_token(kind)?;
-    Some(forge::build_forge(kind, token, slug, host))
+    try_build_forge_instance(repo, config).ok()
 }
 
 pub(super) fn post_preview_comment(repo: &Repository, config: &Config, root: &Path) {
@@ -29,9 +76,12 @@ pub(super) fn post_preview_comment(repo: &Repository, config: &Config, root: &Pa
         None => return, // Not in a PR context, skip silently
     };
 
-    let forge_instance = match build_forge_instance(repo, config) {
-        Some(f) => f,
-        None => return, // No forge detected or no token, skip silently
+    let forge_instance = match try_build_forge_instance(repo, config) {
+        Ok(f) => f,
+        Err(reason) => {
+            tracing::warn!("Warning: preview comment not posted: {reason}");
+            return;
+        }
     };
 
     let json_result = capture_check_json(root);
@@ -150,5 +200,55 @@ mod tests {
             "foo](javascript:alert(1))"
         );
         assert_eq!(escape_md_cell("|<img src=x>"), r"\|&lt;img src=x&gt;");
+    }
+
+    #[test]
+    fn missing_token_names_every_variable_that_was_read() {
+        assert_eq!(
+            ForgeUnavailable::NoToken(ForgeKind::Gitlab).to_string(),
+            "no Gitlab token found in FERRFLOW_TOKEN or GITLAB_TOKEN"
+        );
+        assert_eq!(
+            ForgeUnavailable::NoToken(ForgeKind::Gitea).to_string(),
+            "no Gitea token found in FERRFLOW_TOKEN or GITEA_TOKEN or FORGEJO_TOKEN"
+        );
+    }
+
+    #[test]
+    fn forge_target_detects_known_hosts_without_a_token() {
+        let target = forge_target("git@gitlab.com:group/app.git", ForgeKind::Auto).unwrap();
+        assert_eq!(target.kind, ForgeKind::Gitlab);
+        assert_eq!(target.slug, "group/app");
+        assert_eq!(target.host, "gitlab.com");
+    }
+
+    #[test]
+    fn forge_target_honours_an_explicit_forge() {
+        let target =
+            forge_target("https://git.example.com/team/app.git", ForgeKind::Gitea).unwrap();
+        assert_eq!(target.kind, ForgeKind::Gitea);
+        assert_eq!(target.host, "git.example.com");
+    }
+
+    #[test]
+    fn forge_target_reports_an_unparseable_remote() {
+        assert_eq!(
+            forge_target("not a remote", ForgeKind::Github).err(),
+            Some(ForgeUnavailable::UnknownForge { host: None })
+        );
+    }
+
+    #[test]
+    fn unknown_forge_message_never_carries_remote_credentials() {
+        let reason = forge_target(
+            "https://oauth2:glpat-secret@git.example.com",
+            ForgeKind::Gitea,
+        )
+        .err()
+        .expect("a remote without a path has no slug");
+        let rendered = format!("{reason} {reason:?}");
+        assert!(rendered.contains("git.example.com"));
+        assert!(!rendered.contains("glpat-secret"));
+        assert!(!rendered.contains("oauth2"));
     }
 }
