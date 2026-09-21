@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.21.8] - 2026-09-21
+
+### Bug Fixes
+
+- fix(migrate): honour --dry-run by printing the config instead of writing it (#1103)
+
 ## [7.21.7] - 2026-09-20
 
 ### Bug Fixes
