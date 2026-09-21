@@ -16,6 +16,7 @@ mod loader_js;
 mod migrate;
 mod package;
 mod types;
+mod unknown_keys;
 mod workspace;
 
 #[allow(unused_imports)]
@@ -162,7 +163,11 @@ impl Config {
             _ => &JsonFormat,
         };
 
-        handler.parse(&content)
+        let config = handler.parse(&content)?;
+        if let Ok(value) = handler.parse_value(&content) {
+            unknown_keys::warn_unknown_keys::<Self>(value, path, &[]);
+        }
+        Ok(config)
     }
 
     fn load_explicit(path: &Path) -> Result<Self> {

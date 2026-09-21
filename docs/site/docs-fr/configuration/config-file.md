@@ -17,6 +17,14 @@ Si aucun fichier de configuration n'est trouvé, FerrFlow détecte automatiqueme
 <aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>Ajoutez <code>&quot;$schema&quot;: &quot;https://ferrflow.com/schema/ferrflow.json&quot;</code> à votre configuration JSON pour l&#39;autocomplétion et la validation dans votre éditeur.</p>
 </div></aside>
 
+FerrFlow signale toute clé qu'il ne reconnaît pas, quel que soit le format de configuration et y compris dans les fichiers inclus, et propose la clé valide la plus proche quand il y en a une. La clé est ignorée et la commande continue :
+
+```
+Warning: unknown key `workspace.hooks.post-bump` in ferrflow.json, ignored. Did you mean `postBump`?
+```
+
+Sans cet avertissement, une option mal orthographiée ressemble en tout point à une option laissée à sa valeur par défaut : traitez-le comme une erreur dans votre configuration.
+
 ## Formats de configuration
 
 <div class="ferr-tabs">

@@ -17,6 +17,14 @@ If no config file is found, FerrFlow auto-detects common version files in the cu
 <aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>Add <code>&quot;$schema&quot;: &quot;https://ferrflow.com/schema/ferrflow.json&quot;</code> to your JSON config for editor autocompletion and validation.</p>
 </div></aside>
 
+FerrFlow warns about any key it does not recognise, in every config format and in included files, and suggests the closest valid key when there is one. The key is ignored and the command carries on:
+
+```
+Warning: unknown key `workspace.hooks.post-bump` in ferrflow.json, ignored. Did you mean `postBump`?
+```
+
+A misspelled option otherwise looks exactly like one left at its default, so treat these warnings as errors in your config.
+
 ## Config formats
 
 <div class="ferr-tabs">

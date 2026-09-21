@@ -5,6 +5,7 @@ use std::path::{Component, Path, PathBuf};
 use crate::error_code::{self, ErrorCodeExt};
 
 use super::format::{DotfileFormat, Json5Format, JsonFormat, TomlFormat};
+use super::unknown_keys::{Segment, warn_unknown_keys};
 use super::{Config, ConfigFormatHandler, PackageConfig};
 
 const SKIP_DIRS: &[&str] = &[
@@ -80,6 +81,11 @@ fn load_fragment(path: &Path, repo_root: &Path) -> Result<PackageConfig> {
         }
     }
 
+    warn_unknown_keys::<PackageConfig>(
+        value.clone(),
+        path,
+        &[Segment::Key("package".into()), Segment::Index(0)],
+    );
     let mut package: PackageConfig = serde_json::from_value(value)
         .with_context(|| format!("in included file {}", path.display()))
         .error_code(error_code::CONFIG_INCLUDE_INVALID)?;
