@@ -151,8 +151,8 @@ pub enum Commands {
     },
     SyncManifest,
     /// Generate a FerrFlow config from another release tool's. A JavaScript source config is
-    /// executed with node to read what it exports, and --dry-run is ignored (the config
-    /// runs and ferrflow.json is written), so only run this on a repo you trust.
+    /// executed with node to read what it exports, even under --dry-run (which prints the
+    /// result instead of writing ferrflow.json), so only run this on a repo you trust.
     Migrate {
         #[arg(long, value_enum)]
         from: Option<MigrateSourceArg>,
@@ -348,7 +348,9 @@ impl Cli {
                 crate::rollback::run(&packages, yes, self.config.as_deref())
             }
             Commands::SyncManifest => crate::manifest::sync_cwd(self.config.as_deref()),
-            Commands::Migrate { from } => crate::config::migrate(from.map(Into::into)),
+            Commands::Migrate { from } => {
+                crate::config::migrate(from.map(Into::into), self.dry_run)
+            }
             Commands::Doctor { format, online } => {
                 crate::doctor::run(self.config.as_deref(), format, online)
             }

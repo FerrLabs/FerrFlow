@@ -7,7 +7,7 @@ use crate::config::package::{FileFormat, PackageConfig, VersionedFile};
 use crate::config::workspace::WorkspaceConfig;
 use crate::error_code::{self, ErrorCodeExt};
 
-use super::{MigrationReport, Source, read_source_as_json, write_and_report};
+use super::{Migration, MigrationReport, Source, read_source_as_json};
 
 pub(super) const CONFIG_FILES: &[&str] = &[
     ".versionrc",
@@ -22,11 +22,16 @@ pub(super) fn detect() -> Option<PathBuf> {
     CONFIG_FILES.iter().map(PathBuf::from).find(|p| p.exists())
 }
 
-pub(super) fn run() -> Result<()> {
+pub(super) fn run() -> Result<Migration> {
     let path = detect().ok_or_else(|| anyhow::anyhow!("no .versionrc found"))?;
     let raw = read_source_as_json(&path)?;
     let (config, report) = build(&raw)?;
-    write_and_report(Source::StandardVersion, &path, &config, &report)
+    Ok(Migration::new(
+        Source::StandardVersion,
+        path,
+        config,
+        report,
+    ))
 }
 
 #[derive(Debug, Deserialize, Default)]

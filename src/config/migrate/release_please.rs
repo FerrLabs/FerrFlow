@@ -9,7 +9,7 @@ use crate::config::types::ReleaseCommitMode;
 use crate::config::workspace::WorkspaceConfig;
 use crate::error_code::{self, ErrorCodeExt};
 
-use super::{MigrationReport, Source, write_and_report};
+use super::{Migration, MigrationReport, Source};
 
 pub(super) const CONFIG_FILE: &str = "release-please-config.json";
 
@@ -18,12 +18,12 @@ pub(super) fn detect() -> Option<PathBuf> {
     p.exists().then_some(p)
 }
 
-pub(super) fn run() -> Result<()> {
+pub(super) fn run() -> Result<Migration> {
     let path = detect().ok_or_else(|| anyhow::anyhow!("no {CONFIG_FILE} found"))?;
     let raw = std::fs::read_to_string(&path)
         .map_err(|e| anyhow::anyhow!("could not read {}: {e}", path.display()))?;
     let (config, report) = build(&raw)?;
-    write_and_report(Source::ReleasePlease, &path, &config, &report)
+    Ok(Migration::new(Source::ReleasePlease, path, config, report))
 }
 
 #[derive(Debug, Deserialize, Default)]

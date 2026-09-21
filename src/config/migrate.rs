@@ -50,7 +50,30 @@ const SEMANTIC_RELEASE_FILES: &[&str] = &[
     "release.config.mjs",
 ];
 
-pub fn migrate(from: Option<Source>) -> Result<()> {
+pub(super) struct Migration {
+    source: Source,
+    from: PathBuf,
+    config: Config,
+    report: MigrationReport,
+}
+
+impl Migration {
+    pub(super) fn new(
+        source: Source,
+        from: PathBuf,
+        config: Config,
+        report: MigrationReport,
+    ) -> Self {
+        Self {
+            source,
+            from,
+            config,
+            report,
+        }
+    }
+}
+
+pub fn migrate(from: Option<Source>, dry_run: bool) -> Result<()> {
     ensure_no_existing_config()?;
 
     let source = match from {
@@ -58,12 +81,29 @@ pub fn migrate(from: Option<Source>) -> Result<()> {
         None => detect_source()?,
     };
 
-    match source {
-        Source::SemanticRelease => migrate_semantic_release(),
-        Source::Changesets => changesets::run(),
-        Source::ReleasePlease => release_please::run(),
-        Source::StandardVersion => standard_version::run(),
+    let migration = match source {
+        Source::SemanticRelease => migrate_semantic_release()?,
+        Source::Changesets => changesets::run()?,
+        Source::ReleasePlease => release_please::run()?,
+        Source::StandardVersion => standard_version::run()?,
+    };
+
+    let (filename, content) = emit(&migration, Path::new("."), dry_run)?;
+    print_report(&migration, &filename, dry_run);
+    if dry_run {
+        println!("{content}");
     }
+    Ok(())
+}
+
+fn emit(migration: &Migration, dir: &Path, dry_run: bool) -> Result<(String, String)> {
+    let handler = format_handler(ConfigFileFormat::Json);
+    let content = handler.serialize(&migration.config)?;
+    let filename = handler.filename().to_string();
+    if !dry_run {
+        std::fs::write(dir.join(&filename), &content)?;
+    }
+    Ok((filename, content))
 }
 
 fn ensure_no_existing_config() -> Result<()> {
@@ -513,7 +553,7 @@ fn apply_exec_plugin(
     }
 }
 
-fn migrate_semantic_release() -> Result<()> {
+fn migrate_semantic_release() -> Result<Migration> {
     let path = find_semantic_release_config().ok_or_else(|| {
         anyhow::anyhow!(
             "no semantic-release config found ({})",
@@ -523,29 +563,36 @@ fn migrate_semantic_release() -> Result<()> {
     let raw = read_source_as_json(&path)?;
 
     let (config, report) = build_config_from_releaserc(&raw)?;
-    write_and_report(Source::SemanticRelease, &path, &config, &report)
+    Ok(Migration::new(
+        Source::SemanticRelease,
+        path,
+        config,
+        report,
+    ))
 }
 
-pub(super) fn write_and_report(
-    source: Source,
-    from: &Path,
-    config: &Config,
-    report: &MigrationReport,
-) -> Result<()> {
-    let handler = format_handler(ConfigFileFormat::Json);
-    let content = handler.serialize(config)?;
-    let filename = handler.filename();
-    std::fs::write(filename, &content)?;
-    print_report(source, from, filename, report);
-    Ok(())
-}
-
-fn print_report(source: Source, from: &Path, wrote: &str, report: &MigrationReport) {
-    println!(
-        "Migrated {} config from {} → {wrote}\n",
-        source.label(),
-        from.display()
-    );
+fn print_report(migration: &Migration, filename: &str, dry_run: bool) {
+    let Migration {
+        source,
+        from,
+        report,
+        ..
+    } = migration;
+    if dry_run {
+        println!(
+            "Dry run: would migrate {} config from {} → {filename}, nothing written
+",
+            source.label(),
+            from.display()
+        );
+    } else {
+        println!(
+            "Migrated {} config from {} → {filename}
+",
+            source.label(),
+            from.display()
+        );
+    }
 
     if !report.mapped.is_empty() {
         println!("Mapped:");
@@ -569,7 +616,14 @@ fn print_report(source: Source, from: &Path, wrote: &str, report: &MigrationRepo
         println!();
     }
 
-    println!("Next: review {wrote}, then `ferrflow validate` and `ferrflow check`.");
+    if dry_run {
+        println!(
+            "Run without --dry-run to write {filename}. It would contain:
+"
+        );
+    } else {
+        println!("Next: review {filename}, then `ferrflow validate` and `ferrflow check`.");
+    }
 }
 
 #[cfg(test)]

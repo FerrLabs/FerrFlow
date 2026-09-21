@@ -232,3 +232,34 @@ fn yaml_to_json_produces_parseable_json() {
 fn malformed_yaml_is_an_error() {
     assert!(yaml_to_json("plugins: [unclosed").is_err());
 }
+
+fn sample_migration() -> Migration {
+    let (config, report) = build(r#"{"tagFormat": "v${version}"}"#);
+    Migration::new(
+        Source::SemanticRelease,
+        PathBuf::from(".releaserc"),
+        config,
+        report,
+    )
+}
+
+#[test]
+fn dry_run_returns_the_config_without_writing_it() {
+    let dir = tempfile::tempdir().unwrap();
+    let (filename, content) = emit(&sample_migration(), dir.path(), true).unwrap();
+    assert_eq!(filename, "ferrflow.json");
+    assert!(content.contains("v{{version}}"));
+    assert!(!dir.path().join(&filename).exists());
+}
+
+#[test]
+fn real_run_writes_exactly_what_the_dry_run_shows() {
+    let dir = tempfile::tempdir().unwrap();
+    let (_, preview) = emit(&sample_migration(), dir.path(), true).unwrap();
+    let (filename, content) = emit(&sample_migration(), dir.path(), false).unwrap();
+    assert_eq!(content, preview);
+    assert_eq!(
+        std::fs::read_to_string(dir.path().join(filename)).unwrap(),
+        content
+    );
+}
