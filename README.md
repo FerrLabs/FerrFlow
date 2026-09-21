@@ -73,8 +73,11 @@ npm install -D ferrflow
 docker run --rm -v "$PWD:/repo" ghcr.io/ferrlabs/ferrflow:latest check
 ```
 
-The image runs as a non-root user (`ferrflow`, uid 1000) and works on `/repo`.
-If your checkout is owned by a different uid, pass your own:
+The image runs as a non-root user (`ferrflow`, uid 1000) and works on `/repo`. It ships `git`,
+trusts the checkout whoever owns it, and signs release commits as `FerrFlow <bot@ferrflow.com>`
+unless `GIT_AUTHOR_NAME` / `GIT_AUTHOR_EMAIL` or the repository's own `user.*` config say otherwise.
+FerrFlow still needs write access to the files it bumps, so if your checkout is owned by a different
+uid, pass your own:
 
 ```bash
 docker run --rm -u "$(id -u):$(id -g)" -v "$PWD:/repo" ghcr.io/ferrlabs/ferrflow:latest check

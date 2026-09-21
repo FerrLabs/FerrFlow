@@ -9,7 +9,9 @@ L'image Docker officielle FerrFlow embarque le binaire et peut être utilisée d
 
 ```yaml
 release:
-  image: ghcr.io/ferrlabs/ferrflow:latest
+  image:
+    name: ghcr.io/ferrlabs/ferrflow:latest
+    entrypoint: [""]
   stage: release
   script:
     - ferrflow release
@@ -20,6 +22,10 @@ release:
       when: on_success
 ```
 
+Le point d'entrée de l'image est `ferrflow`, donc `docker run ghcr.io/ferrlabs/ferrflow:latest check` fonctionne tel quel. GitLab, lui, exécute le `script` d'un job dans un shell : c'est pourquoi chaque exemple ici le réinitialise avec `entrypoint: [""]`. Sans cette ligne, le job échoue avec `unrecognized subcommand 'sh'`.
+
+L'image embarque `git`, fait confiance au dépôt quel que soit l'utilisateur qui l'a cloné, et signe les commits de release `FerrFlow <bot@ferrflow.com>`. Pour les signer au nom de la personne qui a déclenché le pipeline, définissez `GIT_AUTHOR_NAME: $GITLAB_USER_NAME` et `GIT_AUTHOR_EMAIL: $GITLAB_USER_EMAIL` dans les variables du job.
+
 <aside class="ferr-aside ferr-aside--warning"><div class="ferr-aside__body"><p>Assurez-vous que votre runner CI clone avec l&#39;historique complet. Ajoutez <code>GIT_DEPTH: 0</code> aux variables du job pour désactiver le clonage superficiel.</p>
 </div></aside>
 
@@ -27,7 +33,9 @@ release:
 
 ```yaml
 release:
-  image: ghcr.io/ferrlabs/ferrflow:latest
+  image:
+    name: ghcr.io/ferrlabs/ferrflow:latest
+    entrypoint: [""]
   variables:
     GIT_DEPTH: 0 # historique complet : requis pour le scan des tags
     GITLAB_TOKEN: $CI_JOB_TOKEN
@@ -43,7 +51,9 @@ Si `CI_JOB_TOKEN` n'a pas les permissions pour pousser des tags, créez un deplo
 
 ```yaml
 release:
-  image: ghcr.io/ferrlabs/ferrflow:latest
+  image:
+    name: ghcr.io/ferrlabs/ferrflow:latest
+    entrypoint: [""]
   variables:
     GIT_DEPTH: 0
     GITLAB_TOKEN: $FERRFLOW_DEPLOY_TOKEN # variable CI avec accès write_repository
@@ -59,7 +69,9 @@ FerrFlow peut poster un commentaire sur chaque merge request montrant quelles ve
 
 ```yaml title=".gitlab-ci.yml"
 ferrflow-preview:
-  image: ghcr.io/ferrlabs/ferrflow:latest
+  image:
+    name: ghcr.io/ferrlabs/ferrflow:latest
+    entrypoint: [""]
   stage: test
   variables:
     GIT_DEPTH: 0
