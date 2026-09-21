@@ -66,7 +66,7 @@ FerrFlow ajoute `[skip ci]` dans le message des commits de version par défaut p
 
 ## Commentaires de preview sur les PR
 
-FerrFlow peut poster un commentaire sur chaque pull request montrant quelles versions seront bump\u00e9es au merge. Le commentaire est mis \u00e0 jour automatiquement \u00e0 chaque push.
+FerrFlow peut poster un commentaire sur chaque pull request montrant quelles versions seront bumpées au merge. Le commentaire est mis à jour automatiquement à chaque push.
 
 ```yaml title=".github/workflows/preview.yml"
 name: FerrFlow Preview
@@ -92,15 +92,15 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-Si aucun changement publiable n'est d\u00e9tect\u00e9, le commentaire l'indique.
+Si aucun changement publiable n'est détecté, le commentaire l'indique.
 
 ## Exemple monorepo
 
-Dans un monorepo, FerrFlow publie chaque package modifi\u00e9 en une seule ex\u00e9cution :
+Dans un monorepo, FerrFlow publie chaque package modifié en une seule exécution :
 
 ```yaml
 - uses: FerrLabs/ferrflow@v4
   env:
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-# Cr\u00e9e api@v1.3.0 et site@v0.5.1 en une seule \u00e9tape si les deux ont chang\u00e9
+# Crée api@v1.3.0 et site@v0.5.1 en une seule étape si les deux ont changé
 ```

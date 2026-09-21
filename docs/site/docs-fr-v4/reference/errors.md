@@ -1,6 +1,6 @@
 ---
 title: Codes d'erreur
-description: "R\u00e9f\u00e9rence des codes d'erreur FerrFlow avec causes et solutions."
+description: "Référence des codes d'erreur FerrFlow avec causes et solutions."
 ---
 
 Quand FerrFlow rencontre une erreur, il affiche un code comme `error[E2001]` avec un lien vers cette page. Utilisez le code pour trouver la cause et la solution.
@@ -11,60 +11,60 @@ Quand FerrFlow rencontre une erreur, il affiche un code comme `error[E2001]` ave
 
 <span id="e1001"></span>
 
-Le fichier de config indiqu\u00e9 via `--config` n'existe pas.
+Le fichier de config indiqué via `--config` n'existe pas.
 
-<aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>Lancez <code>ferrflow init</code> pour cr\u00e9er un fichier de config, ou v\u00e9rifiez le chemin.</p>
+<aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>Lancez <code>ferrflow init</code> pour créer un fichier de config, ou vérifiez le chemin.</p>
 </div></aside>
 
-### E1002 : \u00c9chec du parsing ferrflow.json
+### E1002 : Échec du parsing ferrflow.json
 
 <span id="e1002"></span>
 
 Le fichier `ferrflow.json` contient du JSON invalide.
 
-### E1003 : \u00c9chec du parsing ferrflow.json5
+### E1003 : Échec du parsing ferrflow.json5
 
 <span id="e1003"></span>
 
 Le fichier `ferrflow.json5` contient du JSON5 invalide.
 
-### E1004 : \u00c9chec du parsing ferrflow.toml
+### E1004 : Échec du parsing ferrflow.toml
 
 <span id="e1004"></span>
 
 Le fichier `ferrflow.toml` contient du TOML invalide.
 
-### E1005 : Erreur de s\u00e9rialisation TOML
+### E1005 : Erreur de sérialisation TOML
 
 <span id="e1005"></span>
 
-Erreur interne lors de l'\u00e9criture TOML.
+Erreur interne lors de l'écriture TOML.
 
-### E1006 : \u00c9chec du parsing .ferrflow
+### E1006 : Échec du parsing .ferrflow
 
 <span id="e1006"></span>
 
 Le fichier `.ferrflow` contient du JSON invalide.
 
-### E1007 : Erreur de s\u00e9rialisation .ferrflow
+### E1007 : Erreur de sérialisation .ferrflow
 
 <span id="e1007"></span>
 
-Erreur interne lors de l'\u00e9criture du dotfile.
+Erreur interne lors de l'écriture du dotfile.
 
-### E1008 : R\u00e9solution de chemin impossible
+### E1008 : Résolution de chemin impossible
 
 <span id="e1008"></span>
 
-Un chemin dans la config n'a pas pu \u00eatre r\u00e9solu en chemin absolu.
+Un chemin dans la config n'a pas pu être résolu en chemin absolu.
 
-### E1009 : \u00c9criture du loader temporaire impossible
+### E1009 : Écriture du loader temporaire impossible
 
 <span id="e1009"></span>
 
-Impossible d'\u00e9crire le loader JS/TS temporaire.
+Impossible d'écrire le loader JS/TS temporaire.
 
-### E1010 : Impossible d'ex\u00e9cuter tsx
+### E1010 : Impossible d'exécuter tsx
 
 <span id="e1010"></span>
 
@@ -73,7 +73,7 @@ Le runtime `tsx` est introuvable pour les configs `.ts`.
 <aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>Installez tsx : <code>npm install -g tsx</code>, ou utilisez un format JSON/TOML.</p>
 </div></aside>
 
-### E1011 : Impossible d'ex\u00e9cuter node
+### E1011 : Impossible d'exécuter node
 
 <span id="e1011"></span>
 
@@ -82,11 +82,11 @@ Le runtime `node` est introuvable pour les configs `.js`.
 <aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>Installez Node.js ou utilisez un format JSON/TOML.</p>
 </div></aside>
 
-### E1012 : \u00c9valuation de la config \u00e9chou\u00e9e
+### E1012 : Évaluation de la config échouée
 
 <span id="e1012"></span>
 
-Le fichier JS/TS a lev\u00e9 une erreur lors de l'\u00e9valuation.
+Le fichier JS/TS a levé une erreur lors de l'évaluation.
 
 ### E1013 : Sortie de config invalide
 
@@ -104,22 +104,22 @@ Le fichier JS/TS n'a pas produit de JSON valide.
 
 <span id="e1015"></span>
 
-Le fichier de config existe mais ne peut pas \u00eatre lu.
+Le fichier de config existe mais ne peut pas être lu.
 
 ### E1016 : Plusieurs fichiers de config
 
 <span id="e1016"></span>
 
-Plusieurs fichiers de config trouv\u00e9s dans le r\u00e9pertoire.
+Plusieurs fichiers de config trouvés dans le répertoire.
 
 <aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>Gardez un seul fichier de config.</p>
 </div></aside>
 
-### E1017 : Fichier d\u00e9j\u00e0 existant
+### E1017 : Fichier déjà existant
 
 <span id="e1017"></span>
 
-`ferrflow init` lanc\u00e9 alors qu'un fichier de config existe d\u00e9j\u00e0.
+`ferrflow init` lancé alors qu'un fichier de config existe déjà.
 
 ## Erreurs de validation
 
@@ -133,13 +133,13 @@ L'argument `--repo` ne correspond pas au format attendu `owner/repo`.
 
 <span id="e1101"></span>
 
-L'API GitHub a retourn\u00e9 une erreur lors de la validation distante.
+L'API GitHub a retourné une erreur lors de la validation distante.
 
 ### E1102 : Erreur API GitLab
 
 <span id="e1102"></span>
 
-L'API GitLab a retourn\u00e9 une erreur lors de la validation distante.
+L'API GitLab a retourné une erreur lors de la validation distante.
 
 ### E1103 : UTF-8 invalide
 
@@ -147,78 +147,78 @@ L'API GitLab a retourn\u00e9 une erreur lors de la validation distante.
 
 Le fichier de config distant contient un encodage UTF-8 invalide.
 
-### E1104 : Parsing de la config distante \u00e9chou\u00e9
+### E1104 : Parsing de la config distante échoué
 
 <span id="e1104"></span>
 
-Le fichier de config distant n'a pas pu \u00eatre pars\u00e9.
+Le fichier de config distant n'a pas pu être parsé.
 
 ### E1105 : Fichier de config distant introuvable
 
 <span id="e1105"></span>
 
-Le chemin sp\u00e9cifi\u00e9 n'existe pas dans le d\u00e9p\u00f4t distant.
+Le chemin spécifié n'existe pas dans le dépôt distant.
 
-### E1106 : Aucun fichier de config trouv\u00e9
+### E1106 : Aucun fichier de config trouvé
 
 <span id="e1106"></span>
 
-Aucun fichier de config FerrFlow dans le d\u00e9p\u00f4t distant.
+Aucun fichier de config FerrFlow dans le dépôt distant.
 
-### E1107 : --ref n\u00e9cessite --repo
+### E1107 : --ref nécessite --repo
 
 <span id="e1107"></span>
 
-Le flag `--ref` a \u00e9t\u00e9 utilis\u00e9 sans `--repo`.
+Le flag `--ref` a été utilisé sans `--repo`.
 
-## Op\u00e9rations Git
+## Opérations Git
 
-### E2001 : Pas un d\u00e9p\u00f4t git
+### E2001 : Pas un dépôt git
 
 <span id="e2001"></span>
 
-Le r\u00e9pertoire courant n'est pas dans un d\u00e9p\u00f4t git.
+Le répertoire courant n'est pas dans un dépôt git.
 
-### E2002 : D\u00e9p\u00f4t bare non support\u00e9
+### E2002 : Dépôt bare non supporté
 
 <span id="e2002"></span>
 
-FerrFlow ne supporte pas les d\u00e9p\u00f4ts git bare.
+FerrFlow ne supporte pas les dépôts git bare.
 
 ### E2003 : Tag existant
 
 <span id="e2003"></span>
 
-Le tag que FerrFlow veut cr\u00e9er existe d\u00e9j\u00e0.
+Le tag que FerrFlow veut créer existe déjà.
 
 <aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>Supprimez le tag existant ou utilisez <code>--force</code>.</p>
 </div></aside>
 
-### E2004 : Push de branche \u00e9chou\u00e9
+### E2004 : Push de branche échoué
 
 <span id="e2004"></span>
 
 Impossible de push la branche de release.
 
-<aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>V\u00e9rifiez vos droits de push et les r\u00e8gles de protection.</p>
+<aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>Vérifiez vos droits de push et les règles de protection.</p>
 </div></aside>
 
-### E2005 : Push rejet\u00e9
+### E2005 : Push rejeté
 
 <span id="e2005"></span>
 
-Le remote a rejet\u00e9 le push.
+Le remote a rejeté le push.
 
-<aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>Pullez les derniers changements et r\u00e9essayez.</p>
+<aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>Pullez les derniers changements et réessayez.</p>
 </div></aside>
 
-### E2006 : Push des tags \u00e9chou\u00e9
+### E2006 : Push des tags échoué
 
 <span id="e2006"></span>
 
 Impossible de push les tags vers le remote.
 
-### E2007 : Push des tags flottants \u00e9chou\u00e9
+### E2007 : Push des tags flottants échoué
 
 <span id="e2007"></span>
 
@@ -228,60 +228,60 @@ Impossible de force-push les tags flottants.
 
 <span id="e2008"></span>
 
-Le remote git configur\u00e9 n'existe pas.
+Le remote git configuré n'existe pas.
 
-<aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>V\u00e9rifiez <code>git remote -v</code> et le champ <code>remote</code> de votre config.</p>
+<aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>Vérifiez <code>git remote -v</code> et le champ <code>remote</code> de votre config.</p>
 </div></aside>
 
-### E2009 : V\u00e9rification post-push \u00e9chou\u00e9e
+### E2009 : Vérification post-push échouée
 
 <span id="e2009"></span>
 
-Le commit de release n'a pas pu \u00eatre v\u00e9rifi\u00e9 sur la branche distante.
+Le commit de release n'a pas pu être vérifié sur la branche distante.
 
 ### E2010 : Branche distante introuvable
 
 <span id="e2010"></span>
 
-La branche distante n'a pas \u00e9t\u00e9 trouv\u00e9e apr\u00e8s le push.
+La branche distante n'a pas été trouvée après le push.
 
 ## API GitHub
 
-### E3001 : Cr\u00e9ation de release \u00e9chou\u00e9e
+### E3001 : Création de release échouée
 
 <span id="e3001"></span>
 
-L'API GitHub Releases a retourn\u00e9 une erreur.
+L'API GitHub Releases a retourné une erreur.
 
-<aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>V\u00e9rifiez que <code>GITHUB_TOKEN</code> a la permission <code>contents: write</code>.</p>
+<aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>Vérifiez que <code>GITHUB_TOKEN</code> a la permission <code>contents: write</code>.</p>
 </div></aside>
 
 ### E3002 to E3010 : Erreurs API GitHub
 
 <span id="e3002"></span>
 
-Erreurs lors d'op\u00e9rations sur l'API GitHub (releases, PR, auto-merge, GraphQL).
+Erreurs lors d'opérations sur l'API GitHub (releases, PR, auto-merge, GraphQL).
 
 ## API GitLab
 
-### E3101 : Cr\u00e9ation de release \u00e9chou\u00e9e
+### E3101 : Création de release échouée
 
 <span id="e3101"></span>
 
-L'API GitLab Releases a retourn\u00e9 une erreur.
+L'API GitLab Releases a retourné une erreur.
 
-<aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>V\u00e9rifiez que le token CI a les acc\u00e8s API n\u00e9cessaires.</p>
+<aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>Vérifiez que le token CI a les accès API nécessaires.</p>
 </div></aside>
 
 ### E3102 to E3105 : Erreurs API GitLab
 
 <span id="e3102"></span>
 
-Erreurs lors d'op\u00e9rations sur l'API GitLab (releases, MR, merge).
+Erreurs lors d'opérations sur l'API GitLab (releases, MR, merge).
 
 ## Fichiers de version
 
-Les erreurs E4xxx concernent la lecture, l'\u00e9criture et le parsing des fichiers de version :
+Les erreurs E4xxx concernent la lecture, l'écriture et le parsing des fichiers de version :
 
 | Plage          | Format                            |
 | -------------- | --------------------------------- |
@@ -293,24 +293,24 @@ Les erreurs E4xxx concernent la lecture, l'\u00e9criture et le parsing des fichi
 | E4601 to E4603 | Go mod                            |
 | E4701 to E4704 | Texte (VERSION, VERSION.txt)      |
 
-Erreurs courantes : lecture impossible, syntaxe invalide, champ `version` manquant, \u00e9criture impossible, UTF-8 invalide.
+Erreurs courantes : lecture impossible, syntaxe invalide, champ `version` manquant, écriture impossible, UTF-8 invalide.
 
-## Pr\u00e9-release
+## Pré-release
 
 ### E5001 : Nom de channel vide
 
 <span id="e5001"></span>
 
-Le nom du channel de pr\u00e9-release est vide.
+Le nom du channel de pré-release est vide.
 
-<aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>Sp\u00e9cifiez un nom : <code>--channel beta</code></p>
+<aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>Spécifiez un nom : <code>--channel beta</code></p>
 </div></aside>
 
 ### E5002 : Nom de channel invalide
 
 <span id="e5002"></span>
 
-Seuls les alphanum\u00e9riques et tirets sont accept\u00e9s.
+Seuls les alphanumériques et tirets sont acceptés.
 
 ## Versioning
 
@@ -325,18 +325,18 @@ La version actuelle n'est pas un semver valide.
 
 ## Hooks
 
-### E6001 : Hook \u00e9chou\u00e9
+### E6001 : Hook échoué
 
 <span id="e6001"></span>
 
-Un hook a \u00e9chou\u00e9 avec `on_failure: "abort"`.
+Un hook a échoué avec `on_failure: "abort"`.
 
-<aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>V\u00e9rifiez la commande du hook, ou mettez <code>on_failure: &quot;continue&quot;</code>.</p>
+<aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>Vérifiez la commande du hook, ou mettez <code>on_failure: &quot;continue&quot;</code>.</p>
 </div></aside>
 
 ## Query
 
-### E7001 : Aucun package configur\u00e9
+### E7001 : Aucun package configuré
 
 <span id="e7001"></span>
 
@@ -349,7 +349,7 @@ Aucun package dans le fichier de config.
 
 <span id="e7002"></span>
 
-Le nom de package sp\u00e9cifi\u00e9 n'existe pas dans la config.
+Le nom de package spécifié n'existe pas dans la config.
 
 <aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>Lancez <code>ferrflow version</code> pour lister les packages.</p>
 </div></aside>
@@ -360,13 +360,13 @@ Le nom de package sp\u00e9cifi\u00e9 n'existe pas dans la config.
 
 <span id="e8001"></span>
 
-Un package r\u00e9f\u00e9renc\u00e9 pendant la release n'a pas \u00e9t\u00e9 trouv\u00e9.
+Un package référencé pendant la release n'a pas été trouvé.
 
-### E8002 : Tag flottant r\u00e9gressif
+### E8002 : Tag flottant régressif
 
 <span id="e8002"></span>
 
-Un tag flottant serait d\u00e9plac\u00e9 vers une version plus ancienne.
+Un tag flottant serait déplacé vers une version plus ancienne.
 
-<aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>Utilisez <code>--force</code> pour ignorer la v\u00e9rification.</p>
+<aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>Utilisez <code>--force</code> pour ignorer la vérification.</p>
 </div></aside>
