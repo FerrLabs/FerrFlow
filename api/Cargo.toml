@@ -36,7 +36,7 @@ hex = "0.4"
 # Négociation du contrat par en-tête (`x-ferrflow-api-version`), partagée avec
 # les autres APIs FerrLabs. C'est ce qui rend le versionnage par chemin
 # redondant : voir le retrait de `/v1` dans `lib.rs`.
-ferrlabs-api-version = { version = "1.0.0", registry = "kellnr" }
+ferrlabs-api-version = { version = "1.0.0" }
 
 # The FerrFlow CLI core, linked as a library so `/validate`, `/preview` and
 # `/schema` answer with the exact same code the CLI runs — there is no second

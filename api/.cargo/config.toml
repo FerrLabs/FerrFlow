@@ -1,8 +1,0 @@
-# Private FerrLabs Cargo registry (Kellnr). The ferrlabs-* crates resolve from
-# here. Auth token comes from CARGO_REGISTRIES_KELLNR_TOKEN (CI: org secret;
-# local dev: ~/.cargo/credentials.toml).
-[registries.kellnr]
-index = "sparse+https://crates.ferrlabs.com/api/v1/crates/"
-
-[registry]
-global-credential-providers = ["cargo:token"]

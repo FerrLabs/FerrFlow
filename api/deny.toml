@@ -50,8 +50,6 @@ unknown-registry = "deny"
 unknown-git = "deny"
 allow-registry = [
   "https://github.com/rust-lang/crates.io-index",
-  # Kellnr, the private registry serving the `ferrlabs-*` crates.
-  "sparse+https://crates.ferrlabs.com/api/v1/crates/",
 ]
 allow-git = [
   # First-party, and the dependency is pinned to an immutable rev rather than

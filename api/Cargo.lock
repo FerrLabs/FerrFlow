@@ -602,8 +602,8 @@ dependencies = [
 [[package]]
 name = "ferrlabs-api-version"
 version = "1.0.0"
-source = "sparse+https://crates.ferrlabs.com/api/v1/crates/"
-checksum = "3f115bf46025808c2c34cdefe72a968e43a4be90ee56f46167d62136e17f9858"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "798aa75959b4553df7feb1359dcf5e198c52f8092b7ab41c9026bbc43e402f67"
 dependencies = [
  "axum",
  "http",
