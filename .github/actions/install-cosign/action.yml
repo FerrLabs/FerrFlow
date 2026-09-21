@@ -17,13 +17,11 @@ runs:
           ARM64) arch=arm64 sha="$SHA256_ARM64" ;;
           *) echo "Unsupported runner architecture: $RUNNER_ARCH" >&2; exit 1 ;;
         esac
-        dir="$RUNNER_TEMP/cosign-bin"
-        mkdir -p "$dir"
+        download="$RUNNER_TEMP/cosign"
         curl -fsSL \
           --retry 5 --retry-all-errors --retry-delay 10 --connect-timeout 20 \
-          -o "$dir/cosign" \
+          -o "$download" \
           "https://github.com/sigstore/cosign/releases/download/${COSIGN_VERSION}/cosign-linux-${arch}"
-        echo "${sha}  $dir/cosign" | sha256sum --check --strict
-        chmod +x "$dir/cosign"
-        echo "$dir" >> "$GITHUB_PATH"
-        "$dir/cosign" version
+        echo "${sha}  $download" | sha256sum --check --strict
+        sudo install -m 0755 "$download" /usr/local/bin/cosign
+        cosign version
