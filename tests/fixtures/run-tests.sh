@@ -30,44 +30,66 @@ strip_ansi() {
     sed 's/\x1b\[[0-9;]*m//g'
 }
 
-# Parse a TOML string array value. Reads the file, extracts the array for the
-# given key, and prints one element per line (without quotes).
+PYTHON=""
+for candidate in python3 python; do
+    if "$candidate" -c 'import sys; sys.stdout.reconfigure' >/dev/null 2>&1; then
+        PYTHON="$candidate"
+        break
+    fi
+done
+if [ -z "$PYTHON" ]; then
+    echo "Error: no working Python 3 found (tried python3, python)."
+    echo "The fixture expectations are parsed with it, and without it every fixture reads as passing while nothing is checked."
+    exit 1
+fi
+
+parse_toml() {
+    "$PYTHON" - "$@" <<'PY'
+import re
+import sys
+
+sys.stdout.reconfigure(encoding="utf-8", newline="\n")
+path, key, kind = sys.argv[1:4]
+with open(path, encoding="utf-8") as f:
+    content = f.read()
+name = re.escape(key)
+if kind == "array":
+    m = re.search(r"^" + name + r"\s*=\s*\[(.*?)\]", content, re.MULTILINE | re.DOTALL)
+    if m:
+        for item in re.findall(r'"([^"]*)"', m.group(1)):
+            print(item)
+else:
+    m = re.search(r"^" + name + r"\s*=\s*(\d+)", content, re.MULTILINE)
+    if m:
+        print(m.group(1))
+PY
+}
+
 parse_toml_array() {
-    local file="$1" key="$2"
-    python3 -c "
-import sys, re
-content = open('$file').read()
-m = re.search(r'^${key}\s*=\s*\[(.*?)\]', content, re.MULTILINE | re.DOTALL)
-if m:
-    items = re.findall(r'\"([^\"]*)\"', m.group(1))
-    for item in items:
-        print(item)
-" 2>/dev/null || true
+    parse_toml "$1" "$2" array
 }
 
-# Parse a TOML integer value
 parse_toml_int() {
-    local file="$1" key="$2"
-    python3 -c "
-import sys, re
-content = open('$file').read()
-m = re.search(r'^${key}\s*=\s*(\d+)', content, re.MULTILINE)
-if m:
-    print(m.group(1))
-" 2>/dev/null || true
+    parse_toml "$1" "$2" int
 }
 
-# Parse a TOML boolean value
-parse_toml_bool() {
-    local file="$1" key="$2"
-    python3 -c "
-import sys, re
-content = open('$file').read()
-m = re.search(r'^${key}\s*=\s*(true|false)', content, re.MULTILINE)
-if m:
-    print(m.group(1))
-" 2>/dev/null || true
+self_test_parser() {
+    local probe items=() code
+    probe="$(mktemp)"
+    printf 'check_contains = [\n    "plain",\n    "arrow \342\206\222 here",\n]\nexit_code = 3\n' > "$probe"
+    mapfile -t items < <(parse_toml_array "$probe" check_contains)
+    code="$(parse_toml_int "$probe" exit_code)" || code=""
+    rm -f "$probe"
+    if [ "${#items[@]}" -ne 2 ] || [ "${items[0]}" != "plain" ] \
+        || [ "${items[1]}" != "arrow → here" ] || [ "$code" != "3" ]; then
+        echo "Error: the expectation parser does not round-trip here (using $PYTHON)."
+        echo "Read ${#items[@]} items $(printf '[%q] ' "${items[@]}")and exit_code [$code]."
+        echo "Every fixture would read as passing while nothing is checked, so stopping."
+        exit 1
+    fi
 }
+
+self_test_parser
 
 # Run a single fixture test and write result to a temp file
 run_fixture() {
@@ -161,8 +183,9 @@ run_fixture() {
     expected_count=$(parse_toml_int "$expect_file" "packages_released")
     if [ -n "$expected_count" ] && [ -n "$json_output" ]; then
         local actual_count
-        actual_count=$(echo "$json_output" | python3 -c "
+        actual_count=$(echo "$json_output" | "$PYTHON" -c "
 import sys, json
+sys.stdout.reconfigure(newline='\n')
 try:
     data = json.load(sys.stdin)
     pkgs = data if isinstance(data, list) else data.get('packages', data.get('releases', []))
