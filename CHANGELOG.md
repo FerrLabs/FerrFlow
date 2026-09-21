@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.21.9] - 2026-09-21
+
+### Bug Fixes
+
+- fix(check): warn when --comment cannot post, naming the missing token (#1105)
+
 ## [7.21.8] - 2026-09-21
 
 ### Bug Fixes

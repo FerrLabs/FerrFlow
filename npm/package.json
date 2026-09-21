@@ -20,18 +20,18 @@
   "license": "MIT",
   "name": "ferrflow",
   "optionalDependencies": {
-    "@ferrflow/darwin-arm64": "7.21.8",
-    "@ferrflow/darwin-x64": "7.21.8",
-    "@ferrflow/linux-arm": "7.21.8",
-    "@ferrflow/linux-arm64": "7.21.8",
-    "@ferrflow/linux-x64": "7.21.8",
-    "@ferrflow/win32-arm64": "7.21.8",
-    "@ferrflow/win32-x64": "7.21.8"
+    "@ferrflow/darwin-arm64": "7.21.9",
+    "@ferrflow/darwin-x64": "7.21.9",
+    "@ferrflow/linux-arm": "7.21.9",
+    "@ferrflow/linux-arm64": "7.21.9",
+    "@ferrflow/linux-x64": "7.21.9",
+    "@ferrflow/win32-arm64": "7.21.9",
+    "@ferrflow/win32-x64": "7.21.9"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/FerrLabs/FerrFlow.git"
   },
   "type": "module",
-  "version": "7.21.8"
+  "version": "7.21.9"
 }
