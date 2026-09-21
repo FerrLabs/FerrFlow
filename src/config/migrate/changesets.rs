@@ -7,7 +7,7 @@ use crate::config::package::{FileFormat, PackageConfig, VersionedFile};
 use crate::config::workspace::WorkspaceConfig;
 use crate::error_code::{self, ErrorCodeExt};
 
-use super::{MigrationReport, Source, write_and_report};
+use super::{Migration, MigrationReport, Source};
 
 pub(super) const CONFIG_FILE: &str = ".changeset/config.json";
 
@@ -16,12 +16,12 @@ pub(super) fn detect() -> Option<PathBuf> {
     p.exists().then_some(p)
 }
 
-pub(super) fn run() -> Result<()> {
+pub(super) fn run() -> Result<Migration> {
     let path = detect().ok_or_else(|| anyhow::anyhow!("no {CONFIG_FILE} found"))?;
     let raw = std::fs::read_to_string(&path)
         .map_err(|e| anyhow::anyhow!("could not read {}: {e}", path.display()))?;
     let (config, report) = build(&raw, Path::new("."))?;
-    write_and_report(Source::Changesets, &path, &config, &report)
+    Ok(Migration::new(Source::Changesets, path, config, report))
 }
 
 #[derive(Debug, Deserialize, Default)]
