@@ -9,7 +9,7 @@ use super::types::{CheckPackage, CheckResult};
 #[derive(Debug, PartialEq)]
 pub(crate) enum ForgeUnavailable {
     NoRemote(String),
-    UnknownForge(String),
+    UnknownForge { host: Option<String> },
     NoToken(ForgeKind),
 }
 
@@ -17,10 +17,11 @@ impl std::fmt::Display for ForgeUnavailable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::NoRemote(remote) => write!(f, "remote `{remote}` not found"),
-            Self::UnknownForge(url) => write!(
+            Self::UnknownForge { host: Some(host) } => write!(
                 f,
-                "could not tell which forge hosts {url}, set `forge` in the config"
+                "could not tell which forge hosts {host}, set `forge` in the config"
             ),
+            Self::UnknownForge { host: None } => write!(f, "could not parse the remote URL"),
             Self::NoToken(kind) => {
                 let vars: Vec<_> = std::iter::once(crate::config::GENERIC_TOKEN_ENV_VAR)
                     .chain(kind.token_env_vars().iter().copied())
@@ -38,7 +39,9 @@ struct ForgeTarget {
 }
 
 fn forge_target(remote_url: &str, configured: ForgeKind) -> Result<ForgeTarget, ForgeUnavailable> {
-    let unknown = || ForgeUnavailable::UnknownForge(remote_url.to_string());
+    let unknown = || ForgeUnavailable::UnknownForge {
+        host: forge::extract_host(remote_url),
+    };
     let slug = forge::extract_repo_slug(remote_url).ok_or_else(unknown)?;
     let host = forge::extract_host(remote_url).ok_or_else(unknown)?;
     let kind = match configured {
@@ -231,7 +234,21 @@ mod tests {
     fn forge_target_reports_an_unparseable_remote() {
         assert_eq!(
             forge_target("not a remote", ForgeKind::Github).err(),
-            Some(ForgeUnavailable::UnknownForge("not a remote".into()))
+            Some(ForgeUnavailable::UnknownForge { host: None })
         );
+    }
+
+    #[test]
+    fn unknown_forge_message_never_carries_remote_credentials() {
+        let reason = forge_target(
+            "https://oauth2:glpat-secret@git.example.com",
+            ForgeKind::Gitea,
+        )
+        .err()
+        .expect("a remote without a path has no slug");
+        let rendered = format!("{reason} {reason:?}");
+        assert!(rendered.contains("git.example.com"));
+        assert!(!rendered.contains("glpat-secret"));
+        assert!(!rendered.contains("oauth2"));
     }
 }
