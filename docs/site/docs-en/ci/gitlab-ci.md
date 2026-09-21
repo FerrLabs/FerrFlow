@@ -85,6 +85,8 @@ If no releasable changes are detected, the comment says so.
 <aside class="ferr-aside ferr-aside--note"><div class="ferr-aside__body"><p><code>CI_JOB_TOKEN</code> has permission to post MR notes by default. If your project restricts this, use a project access token with <code>api</code> scope stored as a CI variable.</p>
 </div></aside>
 
+If you store that token as a **protected** variable, GitLab only exposes it to pipelines on protected branches and tags, and a merge request pipeline from an ordinary branch runs without it. FerrFlow then prints `Warning: preview comment not posted: no Gitlab token found in FERRFLOW_TOKEN or GITLAB_TOKEN` and the job still succeeds. Either unprotect the variable or use `CI_JOB_TOKEN`, which every job receives.
+
 ## GitLab Releases
 
 When `GITLAB_TOKEN` is set, FerrFlow creates a GitLab Release with the generated changelog as release notes, matching the behaviour of the GitHub integration.

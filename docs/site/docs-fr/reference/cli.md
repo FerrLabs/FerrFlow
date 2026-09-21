@@ -45,6 +45,8 @@ ferrflow check [OPTIONS]
 | `--channel <NAME>` | Canal de pré-release à utiliser (ex. `beta`, `rc`, `dev`)       |
 | `--comment`        | Poster un commentaire de prévisualisation sur la PR/MR courante |
 
+`--comment` a besoin d'un token de forge (`FERRFLOW_TOKEN`, ou la variable propre à la forge comme `GITHUB_TOKEN` ou `GITLAB_TOKEN`). Sans token, la commande affiche un avertissement qui nomme les variables lues et ne poste rien, mais sort quand même avec le code 0, pour qu'une pull request venant d'un fork, qui ne reçoit aucun secret, ne fasse pas échouer son pipeline. Hors d'une pull request ou d'une merge request, elle ne fait rien.
+
 ---
 
 ## `ferrflow publish`
