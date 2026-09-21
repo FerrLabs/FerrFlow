@@ -55,7 +55,7 @@ release:
 
 ## Commentaires de preview sur les MR
 
-FerrFlow peut poster un commentaire sur chaque merge request montrant quelles versions seront bump\u00e9es au merge. Le commentaire est mis \u00e0 jour automatiquement \u00e0 chaque push.
+FerrFlow peut poster un commentaire sur chaque merge request montrant quelles versions seront bumpées au merge. Le commentaire est mis à jour automatiquement à chaque push.
 
 ```yaml title=".gitlab-ci.yml"
 ferrflow-preview:
@@ -70,10 +70,10 @@ ferrflow-preview:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
 ```
 
-Si aucun changement publiable n'est d\u00e9tect\u00e9, le commentaire l'indique.
+Si aucun changement publiable n'est détecté, le commentaire l'indique.
 
 Si vous stockez ce token dans une variable **protégée**, GitLab ne l'expose qu'aux pipelines des branches et tags protégés, et le pipeline d'une merge request venant d'une branche ordinaire tourne sans lui. FerrFlow affiche alors `Warning: preview comment not posted: no Gitlab token found in FERRFLOW_TOKEN or GITLAB_TOKEN` et le job réussit quand même. Retirez la protection de la variable, ou utilisez `CI_JOB_TOKEN`, que chaque job reçoit.
 
 ## GitLab Releases
 
-Lorsque `GITLAB_TOKEN` est d\u00e9fini, FerrFlow cr\u00e9e une GitLab Release avec le changelog g\u00e9n\u00e9r\u00e9 comme notes de release, de la m\u00eame mani\u00e8re que l'int\u00e9gration GitHub.
+Lorsque `GITLAB_TOKEN` est défini, FerrFlow crée une GitLab Release avec le changelog généré comme notes de release, de la même manière que l'intégration GitHub.
