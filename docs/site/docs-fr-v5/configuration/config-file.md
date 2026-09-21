@@ -3,16 +3,16 @@ title: Configuration
 description: Référence complète du fichier de configuration FerrFlow.
 ---
 
-FerrFlow supporte six formats de fichier de configuration, recherch\u00e9s dans cet ordre :
+FerrFlow supporte six formats de fichier de configuration, recherchés dans cet ordre :
 
 1. `ferrflow.json`
 2. `ferrflow.json5`
 3. `ferrflow.toml`
-4. `ferrflow.ts` (n\u00e9cessite `tsx`)
-5. `ferrflow.js` (n\u00e9cessite `node`)
+4. `ferrflow.ts` (nécessite `tsx`)
+5. `ferrflow.js` (nécessite `node`)
 6. `.ferrflow` (JSON)
 
-Si aucun fichier de configuration n'est trouv\u00e9, FerrFlow d\u00e9tecte automatiquement les fichiers de version courants dans le r\u00e9pertoire actuel.
+Si aucun fichier de configuration n'est trouvé, FerrFlow détecte automatiquement les fichiers de version courants dans le répertoire actuel.
 
 <aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>Ajoutez <code>&quot;$schema&quot;: &quot;https://ferrflow.com/schema/ferrflow.json&quot;</code> à votre configuration JSON pour l&#39;autocomplétion et la validation dans votre éditeur.</p>
 </div></aside>
@@ -88,19 +88,19 @@ format = &quot;toml&quot;
 </div></div>
 </div>
 
-<aside class="ferr-aside ferr-aside--note"><div class="ferr-aside__body"><p>Les configurations JSON, JSON5, et TypeScript/JavaScript utilisent des cl\u00e9s en <strong>camelCase</strong> (<code>tagTemplate</code>, <code>versionedFiles</code>).
-La configuration TOML utilise des cl\u00e9s en <strong>snake_case</strong> (<code>tag_template</code>, <code>versioned_files</code>).
-Toutes les formes sont \u00e9quivalentes.</p>
+<aside class="ferr-aside ferr-aside--note"><div class="ferr-aside__body"><p>Les configurations JSON, JSON5, et TypeScript/JavaScript utilisent des clés en <strong>camelCase</strong> (<code>tagTemplate</code>, <code>versionedFiles</code>).
+La configuration TOML utilise des clés en <strong>snake_case</strong> (<code>tag_template</code>, <code>versioned_files</code>).
+Toutes les formes sont équivalentes.</p>
 </div></aside>
 
 ### Configurations TypeScript et JavaScript
 
-Les fichiers de config TypeScript (`.ts`) et JavaScript (`.js`) utilisent un export ESM par d\u00e9faut. L'export peut \u00eatre un objet ou une fonction asynchrone.
+Les fichiers de config TypeScript (`.ts`) et JavaScript (`.js`) utilisent un export ESM par défaut. L'export peut être un objet ou une fonction asynchrone.
 
-<aside class="ferr-aside ferr-aside--warning"><div class="ferr-aside__body"><p>Les configs TypeScript n\u00e9cessitent <code>tsx</code> (<code>npm install -g tsx</code>). Les configs JavaScript n\u00e9cessitent <code>node</code> (v18+).</p>
+<aside class="ferr-aside ferr-aside--warning"><div class="ferr-aside__body"><p>Les configs TypeScript nécessitent <code>tsx</code> (<code>npm install -g tsx</code>). Les configs JavaScript nécessitent <code>node</code> (v18+).</p>
 </div></aside>
 
-L'avantage principal des configs TS/JS : les **hooks sous forme de fonctions**. Au lieu de commandes shell, vous pouvez \u00e9crire des hooks natifs avec acc\u00e8s complet au contexte :
+L'avantage principal des configs TS/JS : les **hooks sous forme de fonctions**. Au lieu de commandes shell, vous pouvez écrire des hooks natifs avec accès complet au contexte :
 
 ```ts title="ferrflow.ts"
 export default {
@@ -129,19 +129,19 @@ export default {
 
 #### Objet de contexte des hooks
 
-Les hooks en fonction re\u00e7oivent un objet de contexte avec ces champs :
+Les hooks en fonction reçoivent un objet de contexte avec ces champs :
 
 | Champ          | Type           | Description                                                                  |
 | -------------- | -------------- | ---------------------------------------------------------------------------- |
 | `package`      | string         | Nom du package                                                               |
-| `oldVersion`   | string         | Version avant le bump (vide pour la premi\u00e8re release)                   |
-| `newVersion`   | string         | Version apr\u00e8s le bump                                                   |
+| `oldVersion`   | string         | Version avant le bump (vide pour la première release)                   |
+| `newVersion`   | string         | Version après le bump                                                   |
 | `bumpType`     | string         | `major`, `minor`, `patch`, ou `none`                                         |
 | `tag`          | string         | Nom complet du tag git                                                       |
 | `dryRun`       | boolean        | Vrai si `--dry-run` est actif                                                |
 | `packagePath`  | string         | Chemin absolu vers la racine du package                                      |
-| `channel`      | string ou null | Nom du channel de pr\u00e9-release                                           |
-| `isPrerelease` | boolean        | Vrai si c'est une pr\u00e9-release                                           |
+| `channel`      | string ou null | Nom du channel de pré-release                                           |
+| `isPrerelease` | boolean        | Vrai si c'est une pré-release                                           |
 | `monorepo`     | boolean        | Vrai si c'est une release monorepo                                           |
 | `changelog`    | string         | Section de changelog rendue pour ce bump (markdown)                          |
 | `commits`      | array          | `{ hash, message, type?, scope?, breaking }` par commit du bump              |
@@ -165,7 +165,7 @@ export default {
 };
 ```
 
-Les hooks sous forme de commandes shell et de fonctions peuvent \u00eatre m\u00e9lang\u00e9s dans la m\u00eame config.
+Les hooks sous forme de commandes shell et de fonctions peuvent être mélangés dans la même config.
 
 ## `workspace`
 
