@@ -21,7 +21,7 @@ on:
         default: false
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}${{ startsWith(github.event.head_commit.message, 'chore(release):') && format('-{0}', github.sha) || '' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
@@ -719,7 +719,7 @@ jobs:
         env:
           FERRFLOW_BOT: "true"
           FERRFLOW_BENCHMARK_JSON: ${{ steps.bench.outcome == 'success' && format('{0}/bench/latest.json', runner.temp) || '' }}
-        run: ./target/release/ferrflow ${{ inputs.dry_run == 'true' && '--dry-run' || '' }} release --draft
+        run: ./target/release/ferrflow ${{ inputs.dry_run && '--dry-run' || '' }} release --draft
       - name: Download benchmark summary
         if: needs.benchmark-aggregate.result == 'success'
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
