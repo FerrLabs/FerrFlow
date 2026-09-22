@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.24.2] - 2026-09-22
+
+### Refactoring
+
+- refactor: share the URL authority delimiters between the three host parsers (#1151)
+
 ## [7.24.1] - 2026-09-22
 
 ### Bug Fixes
