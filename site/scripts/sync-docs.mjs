@@ -75,7 +75,9 @@ try {
     if (!existsSync(source)) {
       throw new Error(`${PACKAGE}@${version} carries no ${from}`);
     }
-    cpSync(source, join(siteRoot, to), { recursive: true });
+    const destination = join(siteRoot, to);
+    rmSync(destination, { recursive: true, force: true });
+    cpSync(source, destination, { recursive: true });
   }
 
   // `ferrflow_release_size_mb` is the linux-x64 tarball, and the release that
