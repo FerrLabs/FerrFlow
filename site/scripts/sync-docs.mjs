@@ -5,6 +5,7 @@ import {
   readdirSync,
   renameSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -76,7 +77,9 @@ try {
       throw new Error(`${PACKAGE}@${version} carries no ${from}`);
     }
     const destination = join(siteRoot, to);
-    rmSync(destination, { recursive: true, force: true });
+    if (statSync(source).isDirectory()) {
+      rmSync(destination, { recursive: true, force: true });
+    }
     cpSync(source, destination, { recursive: true });
   }
 
