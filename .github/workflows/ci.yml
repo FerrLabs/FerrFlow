@@ -147,15 +147,18 @@ jobs:
     name: Generate Fixtures
     if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):')
     runs-on: ubuntu-latest
+    outputs:
+      cache-key: ${{ steps.fixture-cache.outputs.cache-primary-key }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - name: Cache generated fixtures
+      - name: Look up generated fixtures
         id: fixture-cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: fixtures-generated
           key: fixtures-${{ hashFiles('tests/fixtures/definitions/**') }}
+          lookup-only: true
 
       - name: Generate fixtures
         if: steps.fixture-cache.outputs.cache-hit != 'true'
@@ -164,27 +167,23 @@ jobs:
           definitions: tests/fixtures/definitions
 
       - name: Resolve generated path
-        id: path
+        if: steps.fixture-cache.outputs.cache-hit != 'true'
         run: |
-          if [ -d "fixtures-generated" ]; then
-            echo "dir=fixtures-generated" >> "$GITHUB_OUTPUT"
-          else
+          if [ ! -d "fixtures-generated" ]; then
             for d in /tmp/tmp.*/generated; do
               if [ -d "$d" ]; then
                 cp -r "$d" fixtures-generated
-                echo "dir=fixtures-generated" >> "$GITHUB_OUTPUT"
                 break
               fi
             done
           fi
 
-      - name: Upload generated fixtures
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+      - name: Save generated fixtures
+        if: steps.fixture-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
-          name: fixtures-generated
-          path: fixtures-generated/
-          include-hidden-files: true
-          retention-days: 1
+          path: fixtures-generated
+          key: ${{ steps.fixture-cache.outputs.cache-primary-key }}
 
   fixture-monorepo:
     name: Fixtures — Monorepo
@@ -197,10 +196,11 @@ jobs:
         with:
           name: ferrflow-binary
           path: bin/
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
-          name: fixtures-generated
-          path: fixtures-generated/
+          path: fixtures-generated
+          key: ${{ needs.fixture-generate.outputs.cache-key }}
+          fail-on-cache-miss: true
       - name: Run monorepo fixture tests
         env:
           FERRFLOW_BIN: ./bin/ferrflow
@@ -233,10 +233,11 @@ jobs:
         with:
           name: ferrflow-binary
           path: bin/
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
-          name: fixtures-generated
-          path: fixtures-generated/
+          path: fixtures-generated
+          key: ${{ needs.fixture-generate.outputs.cache-key }}
+          fail-on-cache-miss: true
       - name: Run single-package fixture tests
         env:
           FERRFLOW_BIN: ./bin/ferrflow
@@ -269,10 +270,11 @@ jobs:
         with:
           name: ferrflow-binary
           path: bin/
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
-          name: fixtures-generated
-          path: fixtures-generated/
+          path: fixtures-generated
+          key: ${{ needs.fixture-generate.outputs.cache-key }}
+          fail-on-cache-miss: true
       - name: Run config fixture tests
         env:
           FERRFLOW_BIN: ./bin/ferrflow
@@ -305,10 +307,11 @@ jobs:
         with:
           name: ferrflow-binary
           path: bin/
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
-          name: fixtures-generated
-          path: fixtures-generated/
+          path: fixtures-generated
+          key: ${{ needs.fixture-generate.outputs.cache-key }}
+          fail-on-cache-miss: true
       - name: Run advanced fixture tests
         env:
           FERRFLOW_BIN: ./bin/ferrflow
@@ -525,21 +528,29 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+    outputs:
+      cache-key: ${{ steps.bench-cache.outputs.cache-primary-key }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Look up benchmark fixtures
+        id: bench-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: bench-fixtures
+          key: bench-fixtures-${{ hashFiles('benchmarks/fixtures/definitions/**') }}
+          lookup-only: true
       - name: Generate benchmark fixtures
+        if: steps.bench-cache.outputs.cache-hit != 'true'
         uses: FerrLabs/Fixtures@7b04ba1b93ababf2b557ca4521a243c23217ef0a # v1.2.2 (packed repos)
         with:
           definitions: benchmarks/fixtures/definitions
           generated-dir: bench-fixtures
-      - name: Upload benchmark fixtures
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+      - name: Save benchmark fixtures
+        if: steps.bench-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
-          name: bench-fixtures
-          path: bench-fixtures/
-          include-hidden-files: true
-          retention-days: 1
-          if-no-files-found: error
+          path: bench-fixtures
+          key: ${{ steps.bench-cache.outputs.cache-primary-key }}
 
   benchmark:
     name: Benchmark - ${{ matrix.fixture }}
@@ -563,10 +574,11 @@ jobs:
         with:
           name: ferrflow-binary
           path: bin/
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
-          name: bench-fixtures
-          path: bench-fixtures/
+          path: bench-fixtures
+          key: ${{ needs.bench-fixtures.outputs.cache-key }}
+          fail-on-cache-miss: true
       - name: Isolate this shard's fixture
         env:
           FIXTURE: ${{ matrix.fixture }}
