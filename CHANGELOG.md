@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.24.5] - 2026-09-22
+
+### Bug Fixes
+
+- fix(forge): only recognise GitHub Enterprise by its version header (#1156)
+
 ## [7.24.4] - 2026-09-22
 
 ### Bug Fixes
