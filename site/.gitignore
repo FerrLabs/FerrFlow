@@ -9,4 +9,4 @@ src/content/changelog*
 # Written from @ferrflow/doc by scripts/sync-docs.mjs, which every build and
 # dev run invokes first. Committing it meant every Renovate bump of that
 # package landed with the served copy describing the previous version.
-public/schema/ferrflow.json
+public/schema/
