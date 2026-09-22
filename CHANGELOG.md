@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.24.7] - 2026-09-22
+
+### Bug Fixes
+
+- fix(forge): accept an underscore in a hostname (#1164)
+
 ## [7.24.6] - 2026-09-22
 
 ### Bug Fixes
