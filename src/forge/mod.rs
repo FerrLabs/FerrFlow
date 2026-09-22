@@ -190,40 +190,48 @@ fn host_names_gitlab(url: &str) -> bool {
     extract_host(url).is_some_and(|host| host.contains("gitlab"))
 }
 
+const GHES_VERSION_HEADER: &str = "x-github-enterprise-version";
+
+struct ProbeResponse {
+    status: u16,
+    ghes: bool,
+}
+
 fn probe_host(host: &str) -> Option<ForgeKind> {
     let agent: ureq::Agent = ureq::Agent::config_builder()
         .timeout_global(Some(PROBE_TIMEOUT))
+        .http_status_as_error(false)
         .build()
         .into();
-    let status = |path: &str| probe_status(&agent, &format!("https://{host}{path}"));
-    kind_from_probe_statuses(
-        status("/api/v4/version"),
-        status("/api/v1/version"),
-        status("/api/v3"),
+    let get = |path: &str| probe(&agent, &format!("https://{host}{path}"));
+    kind_from_probes(
+        get("/api/v4/version").map(|r| r.status),
+        get("/api/v1/version").map(|r| r.status),
+        get("/api/v3").is_some_and(|r| r.ghes),
     )
 }
 
-fn probe_status(agent: &ureq::Agent, url: &str) -> Option<u16> {
-    match agent.get(url).header("User-Agent", "ferrflow").call() {
-        Ok(response) => Some(response.status().as_u16()),
-        Err(ureq::Error::StatusCode(code)) => Some(code),
-        Err(_) => None,
-    }
+fn probe(agent: &ureq::Agent, url: &str) -> Option<ProbeResponse> {
+    let response = agent
+        .get(url)
+        .header("User-Agent", "ferrflow")
+        .call()
+        .ok()?;
+    Some(ProbeResponse {
+        status: response.status().as_u16(),
+        ghes: response.headers().contains_key(GHES_VERSION_HEADER),
+    })
 }
 
-fn kind_from_probe_statuses(
-    gitlab: Option<u16>,
-    gitea: Option<u16>,
-    github: Option<u16>,
-) -> Option<ForgeKind> {
+fn kind_from_probes(gitlab: Option<u16>, gitea: Option<u16>, ghes: bool) -> Option<ForgeKind> {
+    if ghes {
+        return Some(ForgeKind::Github);
+    }
     if matches!(gitlab, Some(200) | Some(401)) {
         return Some(ForgeKind::Gitlab);
     }
     if gitea == Some(200) {
         return Some(ForgeKind::Gitea);
-    }
-    if github == Some(200) {
-        return Some(ForgeKind::Github);
     }
     None
 }
@@ -443,30 +451,40 @@ mod tests {
     #[test]
     fn probe_classifier_maps_statuses_to_kinds() {
         assert_eq!(
-            kind_from_probe_statuses(Some(200), None, None),
+            kind_from_probes(Some(200), None, false),
             Some(ForgeKind::Gitlab)
         );
         assert_eq!(
-            kind_from_probe_statuses(Some(401), None, None),
+            kind_from_probes(Some(401), None, false),
             Some(ForgeKind::Gitlab)
         );
         assert_eq!(
-            kind_from_probe_statuses(Some(401), Some(200), Some(200)),
+            kind_from_probes(Some(401), Some(200), false),
             Some(ForgeKind::Gitlab)
         );
         assert_eq!(
-            kind_from_probe_statuses(Some(404), Some(200), None),
+            kind_from_probes(Some(404), Some(200), false),
             Some(ForgeKind::Gitea)
         );
+        assert_eq!(kind_from_probes(Some(404), Some(404), false), None);
+        assert_eq!(kind_from_probes(None, None, false), None);
+    }
+
+    #[test]
+    fn only_the_ghes_version_header_makes_a_host_github() {
         assert_eq!(
-            kind_from_probe_statuses(Some(404), Some(404), Some(200)),
+            kind_from_probes(Some(404), Some(404), true),
             Some(ForgeKind::Github)
         );
+        assert_eq!(kind_from_probes(Some(404), Some(404), false), None);
+    }
+
+    #[test]
+    fn a_private_mode_ghes_answering_401_everywhere_is_still_github() {
         assert_eq!(
-            kind_from_probe_statuses(Some(404), Some(404), Some(404)),
-            None
+            kind_from_probes(Some(401), Some(401), true),
+            Some(ForgeKind::Github)
         );
-        assert_eq!(kind_from_probe_statuses(None, None, None), None);
     }
 
     #[test]
