@@ -877,27 +877,26 @@ mod tests {
 
     #[test]
     fn the_host_ends_where_git_ends_it_not_at_the_last_at_sign() {
-        for (url, host) in [
+        for (url, host, forge) in [
             (
                 r"https://github.com\@gitlab.com/acme/repo.git",
                 "github.com",
+                Some(ForgeKind::Github),
             ),
             (
                 "https://evil.example?@github.com/acme/repo.git",
                 "evil.example",
+                None,
             ),
             (
                 "https://evil.example#@github.com/acme/repo.git",
                 "evil.example",
+                None,
             ),
         ] {
             assert_eq!(extract_host(url).as_deref(), Some(host), "{url}");
-            assert_ne!(detect_forge_from_url(url), Some(ForgeKind::Gitlab), "{url}");
+            assert_eq!(detect_forge_from_url(url), forge, "{url}");
         }
-        assert_eq!(
-            detect_forge_from_url("https://evil.example?@github.com/acme/repo.git"),
-            None
-        );
     }
 
     #[test]
