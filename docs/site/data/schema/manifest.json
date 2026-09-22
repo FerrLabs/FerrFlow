@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ferrflow.com/schema/manifest.json",
+  "title": "FerrFlow Version Manifest",
+  "description": "Single-file source of truth for per-package versions, written by `ferrflow release` when workspace.manifest_file is configured. Lists the current version of every configured package as of the last release.",
+  "type": "object",
+  "required": ["version", "packages"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference for editor autocompletion."
+    },
+    "version": {
+      "type": "integer",
+      "description": "Manifest schema version. Currently always 1.",
+      "const": 1
+    },
+    "packages": {
+      "type": "object",
+      "description": "Map of package name to its current version. Sorted alphabetically for deterministic diffs.",
+      "additionalProperties": {
+        "type": "string",
+        "description": "The current version of the package."
+      }
+    },
+    "released_at": {
+      "type": "string",
+      "description": "ISO-8601 UTC timestamp of when the manifest was written.",
+      "format": "date-time",
+      "examples": ["2026-05-22T18:30:00Z"]
+    },
+    "commit": {
+      "type": "string",
+      "description": "Short SHA of the release commit (or HEAD at write time)."
+    }
+  },
+  "additionalProperties": false
+}

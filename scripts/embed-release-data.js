@@ -4,19 +4,20 @@ const path = require("path");
 const root = path.join(__dirname, "..");
 const target = path.join(root, "docs", "site", "data");
 
-fs.mkdirSync(target, { recursive: true });
+const schemaSource = path.join(root, "schema");
+const schemaTarget = path.join(target, "schema");
+
+fs.mkdirSync(schemaTarget, { recursive: true });
 
 // The schema is the source of truth for the CLI being released, so the copy
 // shipped alongside the pages is that exact file rather than whatever main
 // happens to hold when a site build runs.
-fs.copyFileSync(
-  path.join(root, "schema", "ferrflow.json"),
-  path.join(target, "schema.json"),
-);
-fs.copyFileSync(
-  path.join(root, "schema", "ferrflow-package.json"),
-  path.join(target, "package-schema.json"),
-);
+const schemas = fs
+  .readdirSync(schemaSource)
+  .filter((name) => name.endsWith(".json"));
+for (const name of schemas) {
+  fs.copyFileSync(path.join(schemaSource, name), path.join(schemaTarget, name));
+}
 
 // Written by the release job before ferrflow runs, from the hyperfine-baseline
 // artifact of the benchmark matrix this commit already waited on. Absent on a
