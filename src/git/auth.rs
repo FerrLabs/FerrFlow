@@ -2,8 +2,8 @@ use std::process::Command;
 
 use super::repo::Repository;
 use crate::config::ForgeKind;
-use crate::forge::extract_host;
 use crate::forge::gitlab::GitLabToken;
+use crate::forge::{AUTHORITY_END, extract_host};
 
 #[cfg(test)]
 pub(super) fn extract_url_password(url: &str) -> Option<(String, String)> {
@@ -90,7 +90,7 @@ pub(super) fn server_config_url(url: &str) -> Option<String> {
     if scheme.is_empty() {
         return None;
     }
-    let authority = rest.split(['/', '\\', '?', '#']).next()?;
+    let authority = rest.split(AUTHORITY_END).next()?;
     let host = authority.rsplit('@').next().unwrap_or(authority);
     if host.is_empty() {
         return None;

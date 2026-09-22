@@ -40,7 +40,7 @@ fn endpoint_host(endpoint: &str) -> Option<&str> {
     if !scheme.eq_ignore_ascii_case("https") {
         return None;
     }
-    let authority = rest.split(['/', '\\', '?', '#']).next()?;
+    let authority = rest.split(crate::forge::AUTHORITY_END).next()?;
     let authority = authority.rsplit('@').next().unwrap_or(authority);
     let host = authority.split(':').next()?;
     (!host.is_empty()).then_some(host)

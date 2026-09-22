@@ -207,6 +207,8 @@ fn kind_from_probe_statuses(
     None
 }
 
+pub(crate) const AUTHORITY_END: [char; 4] = ['/', '\\', '?', '#'];
+
 struct RemoteParts<'a> {
     authority: &'a str,
     path: &'a str,
@@ -216,7 +218,7 @@ fn split_remote(url: &str) -> Option<RemoteParts<'_>> {
     let (authority, path) = match url.split_once("://") {
         Some((scheme, _)) if scheme.eq_ignore_ascii_case("file") => return None,
         Some((_, rest)) => {
-            let end = rest.find(['/', '\\', '?', '#']).unwrap_or(rest.len());
+            let end = rest.find(AUTHORITY_END).unwrap_or(rest.len());
             let (authority, tail) = rest.split_at(end);
             (authority, tail.strip_prefix('/').unwrap_or(""))
         }
