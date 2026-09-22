@@ -180,7 +180,7 @@ impl FileSource for GitLabSource {
         }
         let mut req = ureq::get(&url);
         if let Some(ref token) = self.token {
-            req = req.header("PRIVATE-TOKEN", token);
+            req = req.header(crate::forge::gitlab::GitLabToken::of(token).header(), token);
         }
         req = req.header("User-Agent", "ferrflow");
         match req.call() {

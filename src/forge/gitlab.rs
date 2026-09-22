@@ -7,8 +7,42 @@ use crate::error_code::{self, ErrorCodeExt};
 const PER_PAGE: u32 = 100;
 const MAX_PAGES: u32 = 100;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GitLabToken {
+    Private,
+    Job,
+}
+
+impl GitLabToken {
+    pub fn of(token: &str) -> Self {
+        Self::matching(token, std::env::var("CI_JOB_TOKEN").ok().as_deref())
+    }
+
+    fn matching(token: &str, ci_job_token: Option<&str>) -> Self {
+        match ci_job_token {
+            Some(job) if !job.is_empty() && job == token => Self::Job,
+            _ => Self::Private,
+        }
+    }
+
+    pub fn header(self) -> &'static str {
+        match self {
+            Self::Private => "PRIVATE-TOKEN",
+            Self::Job => "JOB-TOKEN",
+        }
+    }
+
+    pub fn git_username(self) -> &'static str {
+        match self {
+            Self::Private => "oauth2",
+            Self::Job => "gitlab-ci-token",
+        }
+    }
+}
+
 pub struct GitLabForge {
     pub token: String,
+    pub token_kind: GitLabToken,
     pub slug: String,
     pub api_base: String,
     pub agent: ureq::Agent,
@@ -26,7 +60,7 @@ impl GitLabForge {
             let body: serde_json::Value = self
                 .agent
                 .get(&url)
-                .header("PRIVATE-TOKEN", &self.token)
+                .header(self.token_kind.header(), &self.token)
                 .header("User-Agent", "ferrflow")
                 .call()
                 .with_context(|| format!("Failed to list {what}"))?
@@ -80,7 +114,7 @@ impl Forge for GitLabForge {
         let response: serde_json::Value = self
             .agent
             .post(&url)
-            .header("PRIVATE-TOKEN", &self.token)
+            .header(self.token_kind.header(), &self.token)
             .header("User-Agent", "ferrflow")
             .send_json(payload)
             .with_context(|| format!("Failed to create GitLab release for {tag}"))
@@ -123,7 +157,7 @@ impl Forge for GitLabForge {
         let response: serde_json::Value = self
             .agent
             .post(&url)
-            .header("PRIVATE-TOKEN", &self.token)
+            .header(self.token_kind.header(), &self.token)
             .header("User-Agent", "ferrflow")
             .send_json(payload)
             .with_context(|| format!("Failed to create MR from {head} to {base}"))
@@ -159,7 +193,7 @@ impl Forge for GitLabForge {
         let result = self
             .agent
             .put(&url)
-            .header("PRIVATE-TOKEN", &self.token)
+            .header(self.token_kind.header(), &self.token)
             .header("User-Agent", "ferrflow")
             .send_json(payload);
 
@@ -174,7 +208,7 @@ impl Forge for GitLabForge {
 
         self.agent
             .put(&url)
-            .header("PRIVATE-TOKEN", &self.token)
+            .header(self.token_kind.header(), &self.token)
             .header("User-Agent", "ferrflow")
             .send_json(payload)
             .with_context(|| format!("Failed to merge MR !{}", mr.id))
@@ -219,7 +253,7 @@ impl Forge for GitLabForge {
         );
         self.agent
             .post(&url)
-            .header("PRIVATE-TOKEN", &self.token)
+            .header(self.token_kind.header(), &self.token)
             .header("User-Agent", "ferrflow")
             .send_json(serde_json::json!({ "body": body }))
             .with_context(|| "Failed to create MR note")?;
@@ -236,7 +270,7 @@ impl Forge for GitLabForge {
         );
         self.agent
             .put(&url)
-            .header("PRIVATE-TOKEN", &self.token)
+            .header(self.token_kind.header(), &self.token)
             .header("User-Agent", "ferrflow")
             .send_json(serde_json::json!({ "body": body }))
             .with_context(|| "Failed to update MR note")?;
@@ -252,7 +286,7 @@ impl Forge for GitLabForge {
         let response: serde_json::Value = self
             .agent
             .get(&url)
-            .header("PRIVATE-TOKEN", &self.token)
+            .header(self.token_kind.header(), &self.token)
             .header("User-Agent", "ferrflow")
             .call()
             .with_context(|| format!("Failed to list open MRs for {head}"))
@@ -273,7 +307,7 @@ impl Forge for GitLabForge {
         let url = format!("{}/projects/{project}/merge_requests/{id}", self.api_base);
         self.agent
             .put(&url)
-            .header("PRIVATE-TOKEN", &self.token)
+            .header(self.token_kind.header(), &self.token)
             .header("User-Agent", "ferrflow")
             .send_json(serde_json::json!({ "title": title, "description": body }))
             .with_context(|| format!("Failed to update MR !{id}"))
@@ -291,9 +325,39 @@ mod tests {
     use super::*;
 
     #[test]
+    fn a_token_equal_to_ci_job_token_is_a_job_token() {
+        assert_eq!(
+            GitLabToken::matching("job-abc", Some("job-abc")),
+            GitLabToken::Job
+        );
+    }
+
+    #[test]
+    fn any_other_token_stays_a_private_token() {
+        assert_eq!(
+            GitLabToken::matching("glpat-abc", Some("job-abc")),
+            GitLabToken::Private
+        );
+        assert_eq!(
+            GitLabToken::matching("glpat-abc", None),
+            GitLabToken::Private
+        );
+        assert_eq!(GitLabToken::matching("", Some("")), GitLabToken::Private);
+    }
+
+    #[test]
+    fn job_tokens_use_the_job_token_header_and_the_ci_git_user() {
+        assert_eq!(GitLabToken::Job.header(), "JOB-TOKEN");
+        assert_eq!(GitLabToken::Job.git_username(), "gitlab-ci-token");
+        assert_eq!(GitLabToken::Private.header(), "PRIVATE-TOKEN");
+        assert_eq!(GitLabToken::Private.git_username(), "oauth2");
+    }
+
+    #[test]
     fn encoded_project_id_simple() {
         let forge = GitLabForge {
             token: String::new(),
+            token_kind: GitLabToken::Private,
             slug: "owner/repo".to_string(),
             api_base: "https://gitlab.com/api/v4".to_string(),
             agent: ureq::Agent::new_with_defaults(),
@@ -305,6 +369,7 @@ mod tests {
     fn encoded_project_id_subgroup() {
         let forge = GitLabForge {
             token: String::new(),
+            token_kind: GitLabToken::Private,
             slug: "group/subgroup/repo".to_string(),
             api_base: "https://gitlab.com/api/v4".to_string(),
             agent: ureq::Agent::new_with_defaults(),
@@ -316,6 +381,7 @@ mod tests {
     fn mr_noun_returns_mr() {
         let forge = GitLabForge {
             token: String::new(),
+            token_kind: GitLabToken::Private,
             slug: "owner/repo".to_string(),
             api_base: "https://gitlab.com/api/v4".to_string(),
             agent: ureq::Agent::new_with_defaults(),
@@ -327,6 +393,7 @@ mod tests {
     fn release_noun_returns_gitlab_release() {
         let forge = GitLabForge {
             token: String::new(),
+            token_kind: GitLabToken::Private,
             slug: "owner/repo".to_string(),
             api_base: "https://gitlab.com/api/v4".to_string(),
             agent: ureq::Agent::new_with_defaults(),
@@ -338,6 +405,7 @@ mod tests {
     fn find_draft_release_always_none() {
         let forge = GitLabForge {
             token: String::new(),
+            token_kind: GitLabToken::Private,
             slug: "owner/repo".to_string(),
             api_base: "https://gitlab.com/api/v4".to_string(),
             agent: ureq::Agent::new_with_defaults(),
@@ -349,6 +417,7 @@ mod tests {
     fn publish_release_noop() {
         let forge = GitLabForge {
             token: String::new(),
+            token_kind: GitLabToken::Private,
             slug: "owner/repo".to_string(),
             api_base: "https://gitlab.com/api/v4".to_string(),
             agent: ureq::Agent::new_with_defaults(),
@@ -389,6 +458,7 @@ mod tests {
     fn api_base_self_hosted() {
         let forge = GitLabForge {
             token: String::new(),
+            token_kind: GitLabToken::Private,
             slug: "team/project".to_string(),
             api_base: "https://gitlab.internal/api/v4".to_string(),
             agent: ureq::Agent::new_with_defaults(),

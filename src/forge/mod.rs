@@ -292,6 +292,7 @@ pub fn build_forge(kind: ForgeKind, token: String, slug: String, host: String) -
         ForgeKind::Gitlab => {
             let api_base = format!("https://{host}/api/v4");
             Box::new(gitlab::GitLabForge {
+                token_kind: gitlab::GitLabToken::of(&token),
                 token,
                 slug,
                 api_base,
@@ -329,9 +330,7 @@ pub fn build_forge(kind: ForgeKind, token: String, slug: String, host: String) -
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Mutex;
-
-    static ENV_LOCK: Mutex<()> = Mutex::new(());
+    use crate::test_utils::ENV_LOCK;
 
     #[test]
     fn detect_github_https() {
