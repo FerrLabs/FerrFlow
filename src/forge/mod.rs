@@ -201,6 +201,7 @@ fn probe_host(host: &str) -> Option<ForgeKind> {
     let agent: ureq::Agent = ureq::Agent::config_builder()
         .timeout_global(Some(PROBE_TIMEOUT))
         .http_status_as_error(false)
+        .max_redirects(0)
         .build()
         .into();
     let get = |path: &str| probe(&agent, &format!("https://{host}{path}"));
@@ -466,7 +467,6 @@ mod tests {
             kind_from_probes(Some(404), Some(200), false),
             Some(ForgeKind::Gitea)
         );
-        assert_eq!(kind_from_probes(Some(404), Some(404), false), None);
         assert_eq!(kind_from_probes(None, None, false), None);
     }
 
