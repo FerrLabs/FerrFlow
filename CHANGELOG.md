@@ -4,6 +4,17 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.24.0] - 2026-09-22
+
+### Features
+
+- feat(docs): ship every schema in the doc package under its own name (#1141)
+
+### Bug Fixes
+
+- fix(forge): end the remote host where git does, and drop the duplicate host parser (#1147)
+- fix(docs): drop schema copies that no longer exist in schema/ (#1144)
+
 ## [7.23.2] - 2026-09-22
 
 ### Bug Fixes
