@@ -90,7 +90,7 @@ pub(super) fn server_config_url(url: &str) -> Option<String> {
     if scheme.is_empty() {
         return None;
     }
-    let authority = rest.split(['/', '?', '#']).next()?;
+    let authority = rest.split(['/', '\\', '?', '#']).next()?;
     let host = authority.rsplit('@').next().unwrap_or(authority);
     if host.is_empty() {
         return None;

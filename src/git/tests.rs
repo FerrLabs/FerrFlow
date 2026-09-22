@@ -1340,6 +1340,26 @@ fn server_config_url_derives_the_checkout_key() {
 }
 
 #[test]
+fn server_config_url_keys_the_host_git_actually_contacts() {
+    for (url, key) in [
+        (
+            r"https://github.com\@gitlab.com/acme/repo.git",
+            "https://github.com/",
+        ),
+        (
+            "https://evil.example?@github.com/acme/repo.git",
+            "https://evil.example/",
+        ),
+        (
+            "https://evil.example#@github.com/acme/repo.git",
+            "https://evil.example/",
+        ),
+    ] {
+        assert_eq!(server_config_url(url).as_deref(), Some(key), "{url}");
+    }
+}
+
+#[test]
 fn configure_git_command_skips_helper_without_token() {
     let _guard = EnvGuard::new()
         .unset("FERRFLOW_TOKEN")
