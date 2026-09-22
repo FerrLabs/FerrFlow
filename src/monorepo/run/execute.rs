@@ -7,7 +7,7 @@ use std::path::Path;
 use crate::config::{Config, ReleaseCommitMode, ReleaseCommitScope};
 use crate::error_code::{self, ErrorCodeExt};
 use crate::git::{
-    Repository, create_branch_and_commit, create_branch_and_commits, create_commit,
+    Remote, Repository, create_branch_and_commit, create_branch_and_commits, create_commit,
     create_or_move_tag, create_tag, force_push_branch, force_push_tags, get_tag_message, push,
     push_tags, release_branch_foreign_commit, tag_exists,
 };
@@ -223,7 +223,7 @@ fn run_commit_or_pr(
                     forge.as_ref(),
                     plan.repo,
                     plan.root,
-                    &plan.config.workspace.remote,
+                    Remote::of(&plan.config.workspace),
                     plan.target_branch,
                     &head,
                     file_refs,
@@ -239,7 +239,7 @@ fn run_commit_or_pr(
         }
         ReleaseCommitMode::Pr => {
             let branch_name = release_branch_name(plan.target_branch);
-            let remote = &plan.config.workspace.remote;
+            let remote = Remote::of(&plan.config.workspace);
 
             match release_branch_foreign_commit(plan.repo, remote, &branch_name, plan.target_branch)
             {
@@ -556,7 +556,11 @@ fn push_refs(
     let tag_refs: Vec<&str> = plan.tags_to_create.iter().map(|t| t.tag.as_str()).collect();
 
     if let ReleaseCommitMode::Commit = mode {
-        push(plan.repo, &plan.config.workspace.remote, plan.target_branch)?;
+        push(
+            plan.repo,
+            Remote::of(&plan.config.workspace),
+            plan.target_branch,
+        )?;
         plan.shared_outputs.push(format!(
             "✓ Pushed and verified on {}/{}",
             plan.config.workspace.remote, plan.target_branch
@@ -564,13 +568,13 @@ fn push_refs(
     }
 
     if !tag_refs.is_empty() && mode != ReleaseCommitMode::Pr {
-        push_tags(plan.repo, &plan.config.workspace.remote, &tag_refs)?;
+        push_tags(plan.repo, Remote::of(&plan.config.workspace), &tag_refs)?;
         plan.shared_outputs.push("✓ Pushed tags".to_string());
     }
 
     if !floating_tag_names.is_empty() {
         let float_refs: Vec<&str> = floating_tag_names.iter().map(String::as_str).collect();
-        force_push_tags(plan.repo, &plan.config.workspace.remote, &float_refs)?;
+        force_push_tags(plan.repo, Remote::of(&plan.config.workspace), &float_refs)?;
         plan.shared_outputs
             .push("✓ Pushed floating tags".to_string());
     }

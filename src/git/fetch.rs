@@ -1,9 +1,14 @@
 use anyhow::{Context, Result, anyhow};
 
 use super::auth::{configure_git_command, get_remote_url};
+use super::remote::Remote;
 use super::repo::Repository;
 
-pub fn fetch_tags(repo: &Repository, remote_name: &str) -> Result<()> {
+pub fn fetch_tags(repo: &Repository, remote: Remote<'_>) -> Result<()> {
+    let Remote {
+        name: remote_name,
+        forge,
+    } = remote;
     let workdir = repo
         .workdir()
         .ok_or_else(|| anyhow!("Bare repositories are not supported"))?;
@@ -12,7 +17,7 @@ pub fn fetch_tags(repo: &Repository, remote_name: &str) -> Result<()> {
 
     let mut cmd = std::process::Command::new("git");
     cmd.current_dir(workdir);
-    configure_git_command(&mut cmd, &url);
+    configure_git_command(&mut cmd, &url, forge);
     cmd.args(["fetch", "--tags", remote_name]);
 
     let output = cmd
