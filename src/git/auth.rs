@@ -2,6 +2,7 @@ use std::process::Command;
 
 use super::repo::Repository;
 use crate::config::ForgeKind;
+use crate::forge::extract_host;
 use crate::forge::gitlab::GitLabToken;
 
 #[cfg(test)]
@@ -15,22 +16,8 @@ pub(super) fn extract_url_password(url: &str) -> Option<(String, String)> {
     Some((user.to_string(), password.to_string()))
 }
 
-pub(super) fn host_of(url: &str) -> Option<&str> {
-    let rest = match url.split_once("://") {
-        Some((_, rest)) => rest,
-        None => url,
-    };
-    let authority = rest.split(['/', '\\', '?', '#']).next()?;
-    let host = match authority.rsplit_once('@') {
-        Some((_, host)) => host,
-        None => authority,
-    };
-    let host = host.split(':').next()?;
-    (!host.is_empty()).then_some(host)
-}
-
 fn is_gitlab(url: &str) -> bool {
-    host_of(url).is_some_and(|host| host.contains("gitlab"))
+    extract_host(url).is_some_and(|host| host.contains("gitlab"))
 }
 
 fn forge_of(url: &str, configured: ForgeKind) -> Option<ForgeKind> {
