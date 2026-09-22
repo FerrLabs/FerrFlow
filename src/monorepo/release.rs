@@ -32,6 +32,7 @@ pub fn release(
 
     if !dry_run {
         crate::manifest::validate_in_sync(&config, &root)?;
+        crate::git::ensure_commit_identity(&root)?;
     }
 
     if !json {

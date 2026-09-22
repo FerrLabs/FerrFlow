@@ -43,6 +43,8 @@ FerrFlow a besoin de `contents: write` pour :
 
 Si votre repository a des règles de protection de branche, créez un token dédié avec les permissions nécessaires et passez-le via `FERRFLOW_TOKEN` ou configurez l'input `token` de l'action.
 
+Les commits et tags de release utilisent l'identité git du dépôt. Si le job n'en définit aucune, FerrFlow commite en tant que `github-actions[bot]`, le compte auquel un push via `GITHUB_TOKEN` est de toute façon attribué. Hors de GitHub Actions, une release sans `user.name` ni `user.email` s'arrête avant de modifier quoi que ce soit.
+
 <aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>Vous préférez ne pas gérer de token ? Mettez <code>bot: true</code> pour attribuer les releases à <code>ferrflow[bot]</code> sans aucun secret : voir le guide <a href="/fr/docs/ci/hosted-bot">Bot hébergé</a>.</p>
 </div></aside>
 
