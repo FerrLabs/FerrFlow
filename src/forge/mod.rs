@@ -277,7 +277,7 @@ fn valid_host(host: &str) -> Option<String> {
         && host.len() <= 253
         && host
             .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b == b'.' || b == b'-');
+            .all(|b| b.is_ascii_alphanumeric() || b == b'.' || b == b'-' || b == b'_');
     ok.then(|| host.to_ascii_lowercase())
 }
 
@@ -467,6 +467,7 @@ mod tests {
             kind_from_probes(Some(404), Some(200), false),
             Some(ForgeKind::Gitea)
         );
+        assert_eq!(kind_from_probes(Some(302), Some(302), false), None);
         assert_eq!(kind_from_probes(None, None, false), None);
     }
 
@@ -993,9 +994,24 @@ mod tests {
     }
 
     #[test]
+    fn an_underscore_is_part_of_the_host() {
+        assert_eq!(
+            extract_host("https://gitlab_int.corp/team/app.git").as_deref(),
+            Some("gitlab_int.corp")
+        );
+        assert_eq!(
+            resolve_forge(
+                "https://gitlab_int.corp/team/app.git",
+                ForgeKind::Auto,
+                Probe::Skipped
+            ),
+            Some(ForgeKind::Gitlab)
+        );
+    }
+
+    #[test]
     fn extract_host_rejects_non_hostname_chars() {
         assert_eq!(extract_host("https://ho st/owner/repo"), None);
-        assert_eq!(extract_host("https://host_underscore/o/r"), None);
         assert_eq!(extract_host("https://h%40ck/o/r"), None);
         assert_eq!(
             extract_host("https://git.corp.example.com/o/r").as_deref(),
