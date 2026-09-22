@@ -303,3 +303,65 @@ mod lockfiles {
         );
     }
 }
+
+fn only(vars: &'static [&'static str]) -> impl Fn(&str) -> bool {
+    move |var| vars.contains(&var)
+}
+
+fn token_status(
+    forge: Option<crate::config::ForgeKind>,
+    vars: &'static [&'static str],
+) -> (Status, String) {
+    let check = super::checks::token_check(forge, only(vars));
+    (check.status, check.detail.unwrap_or_default())
+}
+
+#[test]
+fn an_unrecognised_forge_does_not_count_the_github_token() {
+    let (status, detail) = token_status(None, &["GITHUB_TOKEN"]);
+    assert_eq!(status, Status::Warn);
+    assert!(
+        detail.contains("only sent to a remote recognised as GitHub"),
+        "{detail}"
+    );
+}
+
+#[test]
+fn ferrflow_token_is_enough_whatever_the_forge() {
+    assert_eq!(token_status(None, &["FERRFLOW_TOKEN"]).0, Status::Ok);
+    assert_eq!(
+        token_status(Some(crate::config::ForgeKind::Gitea), &["FERRFLOW_TOKEN"]).0,
+        Status::Ok
+    );
+}
+
+#[test]
+fn forgejo_token_counts_for_gitea() {
+    let (status, detail) = token_status(Some(crate::config::ForgeKind::Gitea), &["FORGEJO_TOKEN"]);
+    assert_eq!(status, Status::Ok);
+    assert_eq!(detail, "FORGEJO_TOKEN is set");
+}
+
+#[test]
+fn gitea_with_only_the_github_token_warns_that_releases_need_their_own() {
+    let (status, detail) = token_status(Some(crate::config::ForgeKind::Gitea), &["GITHUB_TOKEN"]);
+    assert_eq!(status, Status::Warn);
+    assert!(
+        detail.contains("releases need GITEA_TOKEN or FORGEJO_TOKEN"),
+        "{detail}"
+    );
+}
+
+#[test]
+fn a_known_forge_without_its_token_warns() {
+    let (status, detail) = token_status(Some(crate::config::ForgeKind::Gitlab), &["GITHUB_TOKEN"]);
+    assert_eq!(status, Status::Warn);
+    assert!(
+        detail.contains("GITLAB_TOKEN or FERRFLOW_TOKEN"),
+        "{detail}"
+    );
+    assert_eq!(
+        token_status(Some(crate::config::ForgeKind::Github), &["GITHUB_TOKEN"]).0,
+        Status::Ok
+    );
+}

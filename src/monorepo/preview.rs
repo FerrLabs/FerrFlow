@@ -44,10 +44,8 @@ fn forge_target(remote_url: &str, configured: ForgeKind) -> Result<ForgeTarget, 
     };
     let slug = forge::extract_repo_slug(remote_url).ok_or_else(unknown)?;
     let host = forge::extract_host(remote_url).ok_or_else(unknown)?;
-    let kind = match configured {
-        ForgeKind::Auto => forge::detect_forge_with_probe(remote_url).ok_or_else(unknown)?,
-        explicit => explicit,
-    };
+    let kind =
+        forge::resolve_forge(remote_url, configured, forge::Probe::Allowed).ok_or_else(unknown)?;
     Ok(ForgeTarget { kind, slug, host })
 }
 
