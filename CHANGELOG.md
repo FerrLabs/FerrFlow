@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.23.2] - 2026-09-22
+
+### Bug Fixes
+
+- fix(forge): never read a host or slug from a file:// remote (#1139)
+
 ## [7.23.1] - 2026-09-22
 
 ### Bug Fixes
