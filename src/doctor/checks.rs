@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::process::Command;
 
-use crate::config::{Config, ForgeKind};
+use crate::config::{Config, ForgeKind, GENERIC_TOKEN_ENV_VAR};
 use crate::formats::lockfiles::{LockfileState, inspect_for_manifest};
 use crate::formats::read_version;
 use crate::git::{
@@ -259,7 +259,13 @@ pub(super) fn forge_section(
     let remote = remote_name(config);
     let url = repo.and_then(|r| get_remote_url(r, remote));
     let configured = config.map(|c| c.workspace.forge).unwrap_or(ForgeKind::Auto);
-    let detected = url.as_deref().and_then(crate::forge::detect_forge_from_url);
+    let detected = url.as_deref().and_then(|url| {
+        if online {
+            crate::forge::detect_forge_with_probe(url)
+        } else {
+            crate::forge::detect_forge_from_url(url)
+        }
+    });
     let forge = match configured {
         ForgeKind::Auto => detected,
         explicit => Some(explicit),
@@ -279,21 +285,16 @@ pub(super) fn forge_section(
         }
         None => checks.push(Check::warn(
             "forge",
-            Some("could not detect the forge from the remote URL. Set workspace.forge".into()),
+            Some(
+                "could not detect the forge from the remote URL. Set workspace.forge, or run with --online to probe the host"
+                    .into(),
+            ),
         )),
     }
 
-    let (var, present) = token_env(forge);
-    if present {
-        checks.push(Check::ok("auth token", Some(format!("{var} is set"))));
-    } else {
-        checks.push(Check::warn(
-            "auth token",
-            Some(format!(
-                "no token in env ({var} or FERRFLOW_TOKEN). API pushes and releases will fail"
-            )),
-        ));
-    }
+    checks.push(token_check(forge, |var| {
+        std::env::var(var).is_ok_and(|value| !value.is_empty())
+    }));
 
     if online {
         checks.push(online_check(forge));
@@ -404,17 +405,38 @@ fn github_rate_limit() -> anyhow::Result<(u64, u64)> {
     Ok((remaining, limit))
 }
 
-fn token_env(forge: Option<ForgeKind>) -> (&'static str, bool) {
-    let is_set = |var: &str| std::env::var(var).is_ok_and(|v| !v.is_empty());
-    if is_set("FERRFLOW_TOKEN") {
-        return ("FERRFLOW_TOKEN", true);
+pub(super) fn token_check(forge: Option<ForgeKind>, is_set: impl Fn(&str) -> bool) -> Check {
+    if is_set(GENERIC_TOKEN_ENV_VAR) {
+        return Check::ok(
+            "auth token",
+            Some(format!("{GENERIC_TOKEN_ENV_VAR} is set")),
+        );
     }
-    match forge {
-        Some(ForgeKind::Gitlab) => ("GITLAB_TOKEN", is_set("GITLAB_TOKEN")),
-        Some(ForgeKind::Gitea) => ("GITEA_TOKEN", is_set("GITEA_TOKEN")),
-        Some(ForgeKind::Bitbucket) => ("BITBUCKET_TOKEN", is_set("BITBUCKET_TOKEN")),
-        _ => ("GITHUB_TOKEN", is_set("GITHUB_TOKEN")),
+    let Some(kind) = forge else {
+        let detail = if is_set("GITHUB_TOKEN") {
+            "GITHUB_TOKEN is set, but it is only sent to a remote recognised as GitHub and this one is not. \
+             Set workspace.forge, or pass the token as FERRFLOW_TOKEN"
+        } else {
+            "no token in env. With the forge unknown, only FERRFLOW_TOKEN is used"
+        };
+        return Check::warn("auth token", Some(detail.into()));
+    };
+    let vars = kind.token_env_vars();
+    if let Some(var) = vars.iter().find(|var| is_set(var)) {
+        return Check::ok("auth token", Some(format!("{var} is set")));
     }
+    let expected = vars.join(" or ");
+    let detail = if kind == ForgeKind::Gitea && is_set("GITHUB_TOKEN") {
+        format!(
+            "only GITHUB_TOKEN is set. It still covers the push until the next major version, \
+             but releases need {expected}"
+        )
+    } else {
+        format!(
+            "no token in env ({expected} or {GENERIC_TOKEN_ENV_VAR}). API pushes and releases will fail"
+        )
+    };
+    Check::warn("auth token", Some(detail))
 }
 
 fn forge_label(kind: ForgeKind) -> &'static str {

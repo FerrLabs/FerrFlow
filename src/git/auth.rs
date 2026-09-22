@@ -67,7 +67,8 @@ fn github_token_fallback(url: &str, forge: Option<ForgeKind>) -> Option<String> 
             GITEA_FALLBACK_WARNING.call_once(|| {
                 tracing::warn!(
                     "Warning: pushing to {} with GITHUB_TOKEN because neither GITEA_TOKEN nor FORGEJO_TOKEN is set. \
-                     This fallback goes away in the next major version: pass the token as GITEA_TOKEN \
+                     This fallback covers the push only: creating the release reads GITEA_TOKEN or FORGEJO_TOKEN, \
+                     so it is skipped. The fallback goes away in the next major version: pass the token as GITEA_TOKEN \
                      (on Gitea or Forgejo Actions, `GITEA_TOKEN: ${{{{ secrets.GITHUB_TOKEN }}}}`).",
                     host()
                 );
