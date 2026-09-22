@@ -687,9 +687,10 @@ jobs:
       contents: write
       id-token: write
     env:
-      TAG_SIGNING_KEY: ${{ secrets.TAG_SIGNING_KEY }}
-      TAG_SIGNING_NAME: ${{ vars.TAG_SIGNING_NAME }}
-      TAG_SIGNING_EMAIL: ${{ vars.TAG_SIGNING_EMAIL }}
+      # Only whether the key exists: `secrets` is not available in a step `if`,
+      # and the key itself belongs to the one step that uses it rather than to
+      # every step in this job, `cargo build` and its build scripts included.
+      HAS_TAG_SIGNING_KEY: ${{ secrets.TAG_SIGNING_KEY != '' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -725,7 +726,11 @@ jobs:
       # signed here with a key belonging to an account GitHub can check it
       # against.
       - name: Configure tag signing
-        if: env.TAG_SIGNING_KEY != ''
+        if: env.HAS_TAG_SIGNING_KEY == 'true'
+        env:
+          TAG_SIGNING_KEY: ${{ secrets.TAG_SIGNING_KEY }}
+          TAG_SIGNING_NAME: ${{ vars.TAG_SIGNING_NAME }}
+          TAG_SIGNING_EMAIL: ${{ vars.TAG_SIGNING_EMAIL }}
         run: |
           set -euo pipefail
 

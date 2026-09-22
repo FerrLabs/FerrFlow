@@ -71,7 +71,7 @@ Sous PowerShell, écrivez la passphrase vide `-N '""'`, ou omettez `-N` et appuy
 
 Ajoutez `ferrflow-tag-signing.pub` à ce compte via **Settings > SSH and GPG keys > New SSH key** en choisissant le type **Signing Key**, stockez la moitié privée dans le secret `TAG_SIGNING_KEY`, et mettez dans `tag_signing_email` une des adresses vérifiées du compte. GitHub vérifie un tag contre les clés du compte dont le tagger porte l'adresse vérifiée : en cas de décalage, le tag s'affiche comme non vérifié, la release n'échoue pas.
 
-L'action écrit la clé sous `RUNNER_TEMP`, le temps du job, et elle n'atteint ni le dépôt ni le tag lui-même. Seul le tag est signé : le commit de release porte déjà la signature de GitHub en mode bot, et les archives de release sont signées à part avec cosign.
+L'action écrit la clé sous `RUNNER_TEMP`, le temps du job, et elle n'atteint ni le dépôt ni le tag lui-même. L'identité du tagger est exportée au job : un `git commit` fait par une étape ultérieure de votre workflow portera donc aussi ce committer. Seul le tag est signé : le commit de release porte déjà la signature de GitHub en mode bot, et les archives de release sont signées à part avec cosign.
 
 ## Accéder à la sortie de la release
 

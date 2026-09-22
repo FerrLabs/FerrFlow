@@ -147,7 +147,7 @@ runs:
     # `FERRFLOW_BOT_USER_ID` env vars on the calling job.
 
     - name: Configure tag signing
-      if: inputs.tag_signing_key != '' && inputs.mode != 'publish'
+      if: inputs.tag_signing_key != '' && inputs.mode == 'release'
       shell: bash
       env:
         TAG_SIGNING_KEY: ${{ inputs.tag_signing_key }}

@@ -71,7 +71,7 @@ In PowerShell, write the empty passphrase as `-N '""'`, or leave `-N` out and pr
 
 Add `ferrflow-tag-signing.pub` to that account under **Settings > SSH and GPG keys > New SSH key** with the key type **Signing Key**, store the private half as the `TAG_SIGNING_KEY` secret, and set `tag_signing_email` to one of the account's verified emails. GitHub verifies a tag against the keys of the account whose verified email the tagger carries, so a mismatch there shows as unverified rather than failing the release.
 
-The action writes the key under `RUNNER_TEMP` for the job only, and it never reaches the repository or the tag itself. Only the tag is signed: the release commit already carries GitHub's own signature in bot mode, and the release archives are signed separately with cosign.
+The action writes the key under `RUNNER_TEMP` for the job only, and it never reaches the repository or the tag itself. The tagger identity is exported to the job, so any `git commit` a later step of your workflow makes is recorded with that committer too. Only the tag is signed: the release commit already carries GitHub's own signature in bot mode, and the release archives are signed separately with cosign.
 
 ## Accessing the release output
 
