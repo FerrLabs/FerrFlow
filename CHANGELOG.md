@@ -4,6 +4,13 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.22.1] - 2026-09-22
+
+### Bug Fixes
+
+- fix(release): fall back to github-actions[bot] when no git identity is set (#1128)
+- fix(auth): pick the push credential from the resolved forge, not the host name (#1124)
+
 ## [7.22.0] - 2026-09-22
 
 ### Features
