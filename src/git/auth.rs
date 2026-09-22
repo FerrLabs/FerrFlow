@@ -1,7 +1,8 @@
 use std::process::Command;
+use std::sync::Once;
 
 use super::repo::Repository;
-use crate::config::ForgeKind;
+use crate::config::{ForgeKind, GENERIC_TOKEN_ENV_VAR, all_token_env_vars};
 use crate::forge::gitlab::GitLabToken;
 use crate::forge::{AUTHORITY_END, extract_host};
 
@@ -32,28 +33,73 @@ fn non_empty_env(var: &str) -> Option<String> {
     std::env::var(var).ok().filter(|value| !value.is_empty())
 }
 
+const GITHUB_TOKEN_VAR: &str = "GITHUB_TOKEN";
+
+static GITEA_FALLBACK_WARNING: Once = Once::new();
+static GITHUB_TOKEN_WITHHELD_WARNING: Once = Once::new();
+
 pub(super) fn token_for_url(url: &str, forge: ForgeKind) -> Option<(String, String)> {
-    let ferrflow_token = non_empty_env("FERRFLOW_TOKEN");
-    let gitlab_token = non_empty_env("GITLAB_TOKEN");
-    let github_token = non_empty_env("GITHUB_TOKEN");
-    if ferrflow_token.is_none() && gitlab_token.is_none() && github_token.is_none() {
+    if !all_token_env_vars().any(|var| non_empty_env(var).is_some()) {
         return None;
     }
-    let is_gitlab = forge_of(url, forge) == Some(ForgeKind::Gitlab);
-    if let Some(token) = ferrflow_token {
-        let user = if is_gitlab {
-            GitLabToken::of(&token).git_username()
-        } else {
-            "x-access-token"
-        };
-        return Some((user.to_string(), token));
+    select_credential(url, forge_of(url, forge))
+}
+
+pub(super) fn select_credential(url: &str, forge: Option<ForgeKind>) -> Option<(String, String)> {
+    let token = non_empty_env(GENERIC_TOKEN_ENV_VAR)
+        .or_else(|| forge.and_then(forge_token))
+        .or_else(|| github_token_fallback(url, forge))?;
+    Some((git_username(forge, &token).to_string(), token))
+}
+
+fn forge_token(forge: ForgeKind) -> Option<String> {
+    forge
+        .token_env_vars()
+        .iter()
+        .find_map(|var| non_empty_env(var))
+}
+
+fn github_token_fallback(url: &str, forge: Option<ForgeKind>) -> Option<String> {
+    let token = non_empty_env(GITHUB_TOKEN_VAR)?;
+    let host = || extract_host(url).unwrap_or_else(|| "this remote".to_string());
+    match forge {
+        Some(ForgeKind::Gitea) => {
+            GITEA_FALLBACK_WARNING.call_once(|| {
+                tracing::warn!(
+                    "Warning: pushing to {} with GITHUB_TOKEN because neither GITEA_TOKEN nor FORGEJO_TOKEN is set. \
+                     This fallback goes away in the next major version: pass the token as GITEA_TOKEN \
+                     (on Gitea or Forgejo Actions, `GITEA_TOKEN: ${{{{ secrets.GITHUB_TOKEN }}}}`).",
+                    host()
+                );
+            });
+            Some(token)
+        }
+        None if is_http(url) => {
+            GITHUB_TOKEN_WITHHELD_WARNING.call_once(|| {
+                tracing::warn!(
+                    "Warning: not sending GITHUB_TOKEN to {}, which is not recognised as GitHub. \
+                     Set `forge` in the config if it is a GitHub Enterprise instance, or pass the token as FERRFLOW_TOKEN.",
+                    host()
+                );
+            });
+            None
+        }
+        _ => None,
     }
-    if is_gitlab {
-        let token = gitlab_token?;
-        let user = GitLabToken::of(&token).git_username();
-        return Some((user.to_string(), token));
+}
+
+fn is_http(url: &str) -> bool {
+    url.split_once("://").is_some_and(|(scheme, _)| {
+        scheme.eq_ignore_ascii_case("https") || scheme.eq_ignore_ascii_case("http")
+    })
+}
+
+fn git_username(forge: Option<ForgeKind>, token: &str) -> &'static str {
+    match forge {
+        Some(ForgeKind::Gitlab) => GitLabToken::of(token).git_username(),
+        Some(ForgeKind::Bitbucket) => "x-token-auth",
+        _ => "x-access-token",
     }
-    github_token.map(|token| ("x-access-token".to_string(), token))
 }
 
 /// Where the credential reaches git. `/proc/<pid>/cmdline` is world-readable,

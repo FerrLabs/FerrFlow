@@ -1,4 +1,7 @@
-use super::auth::{configure_git_command, extract_url_password, server_config_url, token_for_url};
+use super::auth::{
+    configure_git_command, extract_url_password, select_credential, server_config_url,
+    token_for_url,
+};
 use super::push::{local_tag_target_sha, parse_ls_remote_tags, remote_tag_target_shas};
 use super::repo::Repository;
 use super::retry::{is_transient_git_error, retry_transient};
@@ -1106,6 +1109,104 @@ fn an_empty_token_variable_is_no_credential() {
         .set("GITHUB_TOKEN", "");
     assert_eq!(
         token_for_url("https://github.com/owner/repo.git", ForgeKind::Auto),
+        None
+    );
+}
+
+fn clean_token_env() -> EnvGuard {
+    EnvGuard::new()
+        .unset("FERRFLOW_TOKEN")
+        .unset("GITHUB_TOKEN")
+        .unset("GITLAB_TOKEN")
+        .unset("GITEA_TOKEN")
+        .unset("FORGEJO_TOKEN")
+        .unset("BITBUCKET_TOKEN")
+        .unset("CI_JOB_TOKEN")
+}
+
+const SELF_HOSTED: &str = "https://git.corp.example/team/app.git";
+
+fn credential(pair: (&str, &str)) -> Option<(String, String)> {
+    Some((pair.0.to_string(), pair.1.to_string()))
+}
+
+#[test]
+fn an_unidentified_host_never_gets_the_github_token() {
+    let _guard = clean_token_env().set("GITHUB_TOKEN", "gh_secret");
+    assert_eq!(select_credential(SELF_HOSTED, None), None);
+}
+
+#[test]
+fn an_unidentified_host_still_gets_ferrflow_token() {
+    let _guard = clean_token_env()
+        .set("GITHUB_TOKEN", "gh_secret")
+        .set("FERRFLOW_TOKEN", "ff_secret");
+    assert_eq!(
+        select_credential(SELF_HOSTED, None),
+        credential(("x-access-token", "ff_secret"))
+    );
+}
+
+#[test]
+fn github_pushes_with_the_github_token() {
+    let _guard = clean_token_env()
+        .set("GITHUB_TOKEN", "gh_secret")
+        .set("GITEA_TOKEN", "gt_secret");
+    assert_eq!(
+        select_credential(SELF_HOSTED, Some(ForgeKind::Github)),
+        credential(("x-access-token", "gh_secret"))
+    );
+}
+
+#[test]
+fn gitea_prefers_its_own_token_over_the_github_one() {
+    let _guard = clean_token_env()
+        .set("GITHUB_TOKEN", "gh_secret")
+        .set("GITEA_TOKEN", "gt_secret");
+    assert_eq!(
+        select_credential(SELF_HOSTED, Some(ForgeKind::Gitea)),
+        credential(("x-access-token", "gt_secret"))
+    );
+}
+
+#[test]
+fn forgejo_token_is_read_for_gitea() {
+    let _guard = clean_token_env().set("FORGEJO_TOKEN", "fj_secret");
+    assert_eq!(
+        select_credential(SELF_HOSTED, Some(ForgeKind::Gitea)),
+        credential(("x-access-token", "fj_secret"))
+    );
+}
+
+#[test]
+fn gitea_falls_back_to_the_github_token_during_the_transition() {
+    let _guard = clean_token_env().set("GITHUB_TOKEN", "actions_secret");
+    assert_eq!(
+        select_credential(SELF_HOSTED, Some(ForgeKind::Gitea)),
+        credential(("x-access-token", "actions_secret"))
+    );
+}
+
+#[test]
+fn bitbucket_pushes_its_access_token_as_x_token_auth() {
+    let _guard = clean_token_env()
+        .set("GITHUB_TOKEN", "gh_secret")
+        .set("BITBUCKET_TOKEN", "bb_secret");
+    assert_eq!(
+        select_credential(SELF_HOSTED, Some(ForgeKind::Bitbucket)),
+        credential(("x-token-auth", "bb_secret"))
+    );
+}
+
+#[test]
+fn bitbucket_and_gitlab_never_get_the_github_token() {
+    let _guard = clean_token_env().set("GITHUB_TOKEN", "gh_secret");
+    assert_eq!(
+        select_credential(SELF_HOSTED, Some(ForgeKind::Bitbucket)),
+        None
+    );
+    assert_eq!(
+        select_credential(SELF_HOSTED, Some(ForgeKind::Gitlab)),
         None
     );
 }
