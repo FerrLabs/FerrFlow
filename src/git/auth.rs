@@ -1,6 +1,7 @@
 use std::process::Command;
 
 use super::repo::Repository;
+use crate::forge::gitlab::GitLabToken;
 
 #[cfg(test)]
 pub(super) fn extract_url_password(url: &str) -> Option<(String, String)> {
@@ -34,7 +35,7 @@ fn is_gitlab(url: &str) -> bool {
 pub(super) fn token_for_url(url: &str) -> Option<(String, String)> {
     if let Ok(token) = std::env::var("FERRFLOW_TOKEN") {
         let user = if is_gitlab(url) {
-            "oauth2"
+            GitLabToken::of(&token).git_username()
         } else {
             "x-access-token"
         };
@@ -42,7 +43,8 @@ pub(super) fn token_for_url(url: &str) -> Option<(String, String)> {
     }
     if is_gitlab(url) {
         if let Ok(token) = std::env::var("GITLAB_TOKEN") {
-            return Some(("oauth2".to_string(), token));
+            let user = GitLabToken::of(&token).git_username();
+            return Some((user.to_string(), token));
         }
     } else if let Ok(token) = std::env::var("GITHUB_TOKEN") {
         return Some(("x-access-token".to_string(), token));

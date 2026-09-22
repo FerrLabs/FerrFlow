@@ -37,6 +37,7 @@ pub mod test_utils {
     use std::sync::Mutex;
 
     pub static CWD_LOCK: Mutex<()> = Mutex::new(());
+    pub static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     pub fn with_cwd<F: FnOnce() -> anyhow::Result<()>>(
         dir: &std::path::Path,

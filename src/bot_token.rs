@@ -324,9 +324,7 @@ fn configure_bot_git_identity_in(repo_dir: &std::path::Path) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Mutex;
-
-    static ENV_LOCK: Mutex<()> = Mutex::new(());
+    use crate::test_utils::ENV_LOCK;
 
     fn with_env<F: FnOnce()>(vars: &[(&str, Option<&str>)], f: F) {
         let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());

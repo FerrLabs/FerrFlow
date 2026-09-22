@@ -45,6 +45,12 @@ release:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 ```
 
+## Using `CI_JOB_TOKEN`
+
+The examples above pass the job token as `GITLAB_TOKEN: $CI_JOB_TOKEN`. FerrFlow recognises it because its value equals `CI_JOB_TOKEN`, and authenticates the way GitLab expects for a job token: API calls carry a `JOB-TOKEN` header and git pushes as `gitlab-ci-token`. The same applies when the job token is passed as `FERRFLOW_TOKEN`. Any other token (project, group or personal access token) is sent as `PRIVATE-TOKEN` and pushes as `oauth2`.
+
+What a job token may do is set per project under **Settings > CI/CD > Job token permissions**. Pushing the release commit and tags needs **Allow Git push requests to the repository**. When GitLab refuses one of the API calls FerrFlow makes with a job token, use a project access token with the `api` scope instead.
+
 ## Using a deploy token
 
 If `CI_JOB_TOKEN` doesn't have permission to push tags, create a project deploy token with `write_repository` access and store it as a CI variable:

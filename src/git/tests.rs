@@ -989,6 +989,37 @@ fn token_for_url_picks_gitlab_user_for_gitlab_urls() {
 }
 
 #[test]
+fn a_ci_job_token_pushes_as_gitlab_ci_token() {
+    let _guard = EnvGuard::new()
+        .unset("FERRFLOW_TOKEN")
+        .set("CI_JOB_TOKEN", "job_secret")
+        .set("GITLAB_TOKEN", "job_secret");
+    assert_eq!(
+        token_for_url("https://gitlab.com/group/project.git"),
+        Some(("gitlab-ci-token".to_string(), "job_secret".to_string()))
+    );
+}
+
+#[test]
+fn a_ci_job_token_passed_as_ferrflow_token_pushes_as_gitlab_ci_token() {
+    let _guard = EnvGuard::new()
+        .set("CI_JOB_TOKEN", "job_secret")
+        .set("FERRFLOW_TOKEN", "job_secret");
+    let (user, _) = token_for_url("https://gitlab.com/group/project.git").expect("token");
+    assert_eq!(user, "gitlab-ci-token");
+}
+
+#[test]
+fn a_personal_token_in_a_ci_job_still_pushes_as_oauth2() {
+    let _guard = EnvGuard::new()
+        .unset("FERRFLOW_TOKEN")
+        .set("CI_JOB_TOKEN", "job_secret")
+        .set("GITLAB_TOKEN", "glpat_secret");
+    let (user, _) = token_for_url("https://gitlab.com/group/project.git").expect("token");
+    assert_eq!(user, "oauth2");
+}
+
+#[test]
 fn token_for_url_falls_back_to_provider_env() {
     let _guard = EnvGuard::new()
         .unset("FERRFLOW_TOKEN")
@@ -1273,7 +1304,7 @@ fn configure_git_command_skips_helper_without_token() {
     assert!(args.is_empty(), "no flags should be added, got {args:?}");
 }
 
-static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+use crate::test_utils::ENV_LOCK;
 
 struct EnvGuard {
     _lock: std::sync::MutexGuard<'static, ()>,
