@@ -39,6 +39,18 @@ inputs:
     description: 'OIDC audience requested from the GitHub Actions runner. Must match the server-side expected audience.'
     required: false
     default: 'ferrflow.ferrlabs.com'
+  tag_signing_key:
+    description: 'SSH private key that signs the release tag. GitHub verifies a tag against the keys of the account whose verified email the tagger carries, so the matching public key must be registered as a signing key on that account, and tag_signing_email must be one of its verified emails. A GitHub App identity such as ferrflow[bot] cannot be used: apps hold no keys, and GitHub signs the commits it creates through the API but not tag objects.'
+    required: false
+    default: ''
+  tag_signing_name:
+    description: 'Tagger name used when tag_signing_key is set.'
+    required: false
+    default: ''
+  tag_signing_email:
+    description: 'Tagger email used when tag_signing_key is set. Must be a verified email on the account that owns the signing key.'
+    required: false
+    default: ''
 
 runs:
   using: composite
@@ -133,6 +145,37 @@ runs:
     # `ensure_commit_identity` falls back to github-actions[bot]. Self-hosters
     # running their own App can override via `FERRFLOW_BOT_LOGIN` and
     # `FERRFLOW_BOT_USER_ID` env vars on the calling job.
+
+    - name: Configure tag signing
+      if: inputs.tag_signing_key != '' && inputs.mode == 'release'
+      shell: bash
+      env:
+        TAG_SIGNING_KEY: ${{ inputs.tag_signing_key }}
+        TAG_SIGNING_NAME: ${{ inputs.tag_signing_name }}
+        TAG_SIGNING_EMAIL: ${{ inputs.tag_signing_email }}
+      run: |
+        set -euo pipefail
+
+        if [ -z "$TAG_SIGNING_NAME" ] || [ -z "$TAG_SIGNING_EMAIL" ]; then
+          echo "::error::tag_signing_key needs tag_signing_name and tag_signing_email. GitHub verifies a tag against the keys of the account whose verified email the tagger carries, so an unnamed tagger cannot be verified."
+          exit 1
+        fi
+
+        key="${RUNNER_TEMP}/ferrflow-tag-signing-key"
+        umask 077
+        printf '%s\n' "$TAG_SIGNING_KEY" > "$key"
+        if ! ssh-keygen -y -f "$key" > "${key}.pub" 2>/dev/null; then
+          echo "::error::tag_signing_key is not a usable OpenSSH private key. It must be unencrypted (ssh-keygen -t ed25519 -N '')."
+          exit 1
+        fi
+
+        git config gpg.format ssh
+        git config user.signingkey "$key"
+        git config tag.gpgSign true
+        {
+          echo "GIT_COMMITTER_NAME=${TAG_SIGNING_NAME}"
+          echo "GIT_COMMITTER_EMAIL=${TAG_SIGNING_EMAIL}"
+        } >> "$GITHUB_ENV"
 
     - name: Optimize commit-graph
       if: inputs.mode != 'publish'
