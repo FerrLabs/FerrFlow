@@ -48,6 +48,29 @@ Les commits et tags de release utilisent l'identité git du dépôt. Si le job n
 <aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>Vous préférez ne pas gérer de token ? Mettez <code>bot: true</code> pour attribuer les releases à <code>ferrflow[bot]</code> sans aucun secret : voir le guide <a href="/fr/docs/ci/hosted-bot">Bot hébergé</a>.</p>
 </div></aside>
 
+## Signer le tag de release
+
+GitHub signe les commits qu'il crée via son API : c'est pourquoi un commit de release fait avec `bot: true` apparaît vérifié. Il ne signe jamais un objet tag, et une GitHub App ne possède aucune clé, donc le tag poussé par FerrFlow reste non signé tant que vous ne donnez pas de clé de signature à l'action.
+
+```yaml
+- uses: FerrLabs/FerrFlow@v7
+  with:
+    bot: true
+    tag_signing_key: ${{ secrets.TAG_SIGNING_KEY }}
+    tag_signing_name: ${{ vars.TAG_SIGNING_NAME }}
+    tag_signing_email: ${{ vars.TAG_SIGNING_EMAIL }}
+```
+
+La clé est une clé privée OpenSSH non chiffrée, et le tagger avec lequel elle signe doit être un compte auquel GitHub peut rattacher la signature :
+
+```bash
+ssh-keygen -t ed25519 -C "releases" -N "" -f ferrflow-tag-signing
+```
+
+Ajoutez `ferrflow-tag-signing.pub` à ce compte via **Settings > SSH and GPG keys > New SSH key** en choisissant le type **Signing Key**, stockez la moitié privée dans le secret `TAG_SIGNING_KEY`, et mettez dans `tag_signing_email` une des adresses vérifiées du compte. GitHub vérifie un tag contre les clés du compte dont le tagger porte l'adresse vérifiée : en cas de décalage, le tag s'affiche comme non vérifié, la release n'échoue pas.
+
+L'action écrit la clé sous `RUNNER_TEMP`, le temps du job, et elle n'atteint ni le dépôt ni le tag lui-même. Seul le tag est signé : le commit de release porte déjà la signature de GitHub en mode bot, et les archives de release sont signées à part avec cosign.
+
 ## Accéder à la sortie de la release
 
 L'action expose la nouvelle version en output que vous pouvez utiliser dans les étapes suivantes :

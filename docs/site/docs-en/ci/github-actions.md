@@ -48,6 +48,29 @@ Release commits and tags use the repository's git identity. If the job sets none
 <aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>Prefer not to manage a token? Set <code>bot: true</code> to author releases as <code>ferrflow[bot]</code> with zero secrets: see the <a href="/docs/ci/hosted-bot">Hosted bot</a> guide.</p>
 </div></aside>
 
+## Signing the release tag
+
+GitHub signs the commits it creates through its API, which is why a release commit made with `bot: true` shows as verified. It never signs a tag object, and a GitHub App holds no key of its own, so the tag FerrFlow pushes is unsigned unless you give the action a signing key.
+
+```yaml
+- uses: FerrLabs/FerrFlow@v7
+  with:
+    bot: true
+    tag_signing_key: ${{ secrets.TAG_SIGNING_KEY }}
+    tag_signing_name: ${{ vars.TAG_SIGNING_NAME }}
+    tag_signing_email: ${{ vars.TAG_SIGNING_EMAIL }}
+```
+
+The key is an unencrypted OpenSSH private key, and the tagger it signs as has to be an account GitHub can check the signature against:
+
+```bash
+ssh-keygen -t ed25519 -C "releases" -N "" -f ferrflow-tag-signing
+```
+
+Add `ferrflow-tag-signing.pub` to that account under **Settings > SSH and GPG keys > New SSH key** with the key type **Signing Key**, store the private half as the `TAG_SIGNING_KEY` secret, and set `tag_signing_email` to one of the account's verified emails. GitHub verifies a tag against the keys of the account whose verified email the tagger carries, so a mismatch there shows as unverified rather than failing the release.
+
+The action writes the key under `RUNNER_TEMP` for the job only, and it never reaches the repository or the tag itself. Only the tag is signed: the release commit already carries GitHub's own signature in bot mode, and the release archives are signed separately with cosign.
+
 ## Accessing the release output
 
 The action exposes the new version as an output you can use in downstream steps:

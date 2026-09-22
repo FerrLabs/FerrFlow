@@ -686,6 +686,10 @@ jobs:
     permissions:
       contents: write
       id-token: write
+    env:
+      TAG_SIGNING_KEY: ${{ secrets.TAG_SIGNING_KEY }}
+      TAG_SIGNING_NAME: ${{ vars.TAG_SIGNING_NAME }}
+      TAG_SIGNING_EMAIL: ${{ vars.TAG_SIGNING_EMAIL }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -714,6 +718,37 @@ jobs:
           name: hyperfine-baseline
           path: ${{ runner.temp }}/bench
         continue-on-error: true
+
+      # Same setup the published action does for its callers. ferrflow[bot] is
+      # a GitHub App, and an App holds no signing key: GitHub signs the commits
+      # it creates through the API, but never a tag object, so the tag is
+      # signed here with a key belonging to an account GitHub can check it
+      # against.
+      - name: Configure tag signing
+        if: env.TAG_SIGNING_KEY != ''
+        run: |
+          set -euo pipefail
+
+          if [ -z "$TAG_SIGNING_NAME" ] || [ -z "$TAG_SIGNING_EMAIL" ]; then
+            echo "::error::TAG_SIGNING_KEY needs the TAG_SIGNING_NAME and TAG_SIGNING_EMAIL repository variables."
+            exit 1
+          fi
+
+          key="${RUNNER_TEMP}/ferrflow-tag-signing-key"
+          umask 077
+          printf '%s\n' "$TAG_SIGNING_KEY" > "$key"
+          if ! ssh-keygen -y -f "$key" > "${key}.pub" 2>/dev/null; then
+            echo "::error::TAG_SIGNING_KEY is not a usable OpenSSH private key. It must be unencrypted."
+            exit 1
+          fi
+
+          git config gpg.format ssh
+          git config user.signingkey "$key"
+          git config tag.gpgSign true
+          {
+            echo "GIT_COMMITTER_NAME=${TAG_SIGNING_NAME}"
+            echo "GIT_COMMITTER_EMAIL=${TAG_SIGNING_EMAIL}"
+          } >> "$GITHUB_ENV"
 
       - name: Run ferrflow release
         env:
