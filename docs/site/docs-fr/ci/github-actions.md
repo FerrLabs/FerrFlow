@@ -67,7 +67,7 @@ La clé est une clé privée OpenSSH non chiffrée, et le tagger avec lequel ell
 ssh-keygen -t ed25519 -C "releases" -N "" -f ferrflow-tag-signing
 ```
 
-Sous PowerShell, écrivez la passphrase vide `-N '""'`, ou omettez `-N` et appuyez deux fois sur Entrée : PowerShell supprime un `""` nu, et la clé doit être sans passphrase pour que le runner puisse l'utiliser.
+Sous PowerShell, omettez `-N` et appuyez deux fois sur Entrée. Un `-N ""` nu est supprimé par Windows PowerShell 5.1, et `-N '""'` arrive à ssh-keygen comme une passphrase littérale `""` sur PowerShell 7.3 et suivants. La clé doit être sans passphrase, le runner ne pouvant pas en saisir une.
 
 Ajoutez `ferrflow-tag-signing.pub` à ce compte via **Settings > SSH and GPG keys > New SSH key** en choisissant le type **Signing Key**, stockez la moitié privée dans le secret `TAG_SIGNING_KEY`, et mettez dans `tag_signing_email` une des adresses vérifiées du compte. GitHub vérifie un tag contre les clés du compte dont le tagger porte l'adresse vérifiée : en cas de décalage, le tag s'affiche comme non vérifié, la release n'échoue pas.
 
