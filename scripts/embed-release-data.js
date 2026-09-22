@@ -7,6 +7,7 @@ const target = path.join(root, "docs", "site", "data");
 const schemaSource = path.join(root, "schema");
 const schemaTarget = path.join(target, "schema");
 
+fs.rmSync(schemaTarget, { recursive: true, force: true });
 fs.mkdirSync(schemaTarget, { recursive: true });
 
 // The schema is the source of truth for the CLI being released, so the copy
