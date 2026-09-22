@@ -4,6 +4,13 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.23.1] - 2026-09-22
+
+### Bug Fixes
+
+- fix(forge): parse the repo slug with the same remote rule as the host (#1137)
+- fix(forge): parse userless scp remotes like git does and match hosts case-insensitively (#1135)
+
 ## [7.23.0] - 2026-09-22
 
 ### Features
