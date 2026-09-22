@@ -4,6 +4,17 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.23.0] - 2026-09-22
+
+### Features
+
+- feat(docs): ship the package schema in the doc package (#1130)
+- feat(schema): add a standalone schema for included package files (#1127)
+
+### Bug Fixes
+
+- fix(forge): detect SaaS forges from the remote host only, and ignore empty push tokens (#1132)
+
 ## [7.22.1] - 2026-09-22
 
 ### Bug Fixes
