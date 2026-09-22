@@ -73,6 +73,15 @@ pub trait VersionFile {
         self.read_version(file_path)
     }
 
+    fn read_version_from_bytes_with_selector(
+        &self,
+        content: &[u8],
+        filename: &str,
+        _selector: Option<&str>,
+    ) -> Result<String> {
+        self.read_version_from_bytes(content, filename)
+    }
+
     fn write_version_with_selector(
         &self,
         file_path: &Path,

@@ -469,3 +469,45 @@ fn validate_files_reports_missing_versioned_file() {
         result.errors
     );
 }
+
+#[test]
+fn validate_files_honours_a_txt_selector() {
+    let mut pkg = make_package("probe", ".");
+    pkg.versioned_files = vec![
+        VersionedFile {
+            path: "VERSION".to_string(),
+            format: FileFormat::Txt,
+            selector: None,
+        },
+        VersionedFile {
+            path: "Settings.asset".to_string(),
+            format: FileFormat::Txt,
+            selector: Some("(?m)^bundleVersion: (.+)$".to_string()),
+        },
+    ];
+    let config = make_config(vec![pkg]);
+
+    let mut files = BTreeMap::new();
+    files.insert(
+        "VERSION".to_string(),
+        b"1.2.3
+"
+        .to_vec(),
+    );
+    files.insert(
+        "Settings.asset".to_string(),
+        b"a: 1
+bundleVersion: 1.2.3
+b: 2
+"
+        .to_vec(),
+    );
+
+    let result = validate_files(&config, files);
+
+    assert!(
+        result.valid,
+        "the selector picks 1.2.3 out of the file, so nothing mismatches: {:?}",
+        result.errors
+    );
+}
