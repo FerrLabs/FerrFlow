@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.9.22] - 2026-09-22
+
+### Features
+
+- feat(site): serve every FerrFlow schema from the doc package (#994)
+
 ## [2026.9.21] - 2026-09-22
 
 ### Bug Fixes
