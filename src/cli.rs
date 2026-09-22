@@ -166,6 +166,8 @@ pub enum Commands {
     Schema {
         #[arg(long)]
         pretty: bool,
+        #[arg(long)]
+        package: bool,
         #[arg(long, value_name = "FILE")]
         output: Option<PathBuf>,
     },
@@ -354,7 +356,11 @@ impl Cli {
             Commands::Doctor { format, online } => {
                 crate::doctor::run(self.config.as_deref(), format, online)
             }
-            Commands::Schema { pretty, output } => crate::schema::run(pretty, output.as_deref()),
+            Commands::Schema {
+                pretty,
+                package,
+                output,
+            } => crate::schema::run(pretty, package, output.as_deref()),
         }
     }
 }
@@ -388,6 +394,7 @@ mod tests {
             cli.command,
             Commands::Schema {
                 pretty: false,
+                package: false,
                 output: None
             }
         ));
@@ -396,6 +403,7 @@ mod tests {
             cli.command,
             Commands::Schema {
                 pretty: true,
+                package: false,
                 output: Some(_)
             }
         ));

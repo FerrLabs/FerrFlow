@@ -353,10 +353,11 @@ Afficher le schéma JSON du fichier de configuration ferrflow. Le schéma est em
 ferrflow schema [OPTIONS]
 ```
 
-| Option            | Description                                                      |
-| ----------------- | ---------------------------------------------------------------- |
-| `--pretty`        | Formater la sortie au lieu d'un JSON compact sur une seule ligne |
-| `--output <FILE>` | Écrire dans un fichier plutôt que sur la sortie standard         |
+| Option            | Description                                                            |
+| ----------------- | ---------------------------------------------------------------------- |
+| `--pretty`        | Formater la sortie au lieu d'un JSON compact sur une seule ligne       |
+| `--package`       | Afficher plutôt le schéma d'un fichier de package listé sous `include` |
+| `--output <FILE>` | Écrire dans un fichier plutôt que sur la sortie standard               |
 
 Utilisez-la pour pointer un éditeur vers une copie locale, ou pour valider `.ferrflow.json` dans un hook pre-commit sans accès internet :
 
@@ -365,6 +366,8 @@ ferrflow schema --pretty --output ferrflow.schema.json
 ```
 
 Puis renseignez `"$schema": "./ferrflow.schema.json"` dans votre configuration. La commande parse le schéma embarqué avant de l'afficher : elle sort donc avec un code non nul si l'artefact de build est corrompu.
+
+Un fichier de package chargé via `include` a son propre schéma, servi à `ferrflow.com/schema/ferrflow-package.json`. Il accepte les mêmes clés qu'une entrée `package`, avec `path` facultatif. `ferrflow schema --package` écrit ce même schéma en local.
 
 ---
 
