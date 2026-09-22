@@ -51,7 +51,7 @@ pub(super) fn author_on_branch(
     forge: &dyn Forge,
     repo: &Repository,
     root: &Path,
-    remote: &str,
+    remote: crate::git::Remote<'_>,
     branch: &str,
     expected_head_oid: &str,
     files: &[&str],

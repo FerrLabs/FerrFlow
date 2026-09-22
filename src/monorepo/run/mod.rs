@@ -124,7 +124,7 @@ pub(super) fn run_release_logic(
 
     if !dry_run {
         let start = std::time::Instant::now();
-        let fetch = fetch_tags(&repo, &config.workspace.remote);
+        let fetch = fetch_tags(&repo, crate::git::Remote::of(&config.workspace));
         timing.record("fetch_tags", start.elapsed());
         if let Err(e) = fetch
             && verbose

@@ -4,10 +4,15 @@ use super::repo::Repository;
 use super::retry::{is_transient_git_error, retry_transient};
 use super::tags::{find_highest_semver_tag, find_last_tag, is_floating_tag, is_prerelease_tag};
 use super::*;
-use crate::config::OrphanedTagStrategy;
+use crate::config::{ForgeKind, OrphanedTagStrategy};
 use crate::error_code;
 use crate::test_utils::{git, git_with_env, init_repo_at};
 use std::path::{Path, PathBuf};
+
+const ORIGIN: Remote<'static> = Remote {
+    name: "origin",
+    forge: ForgeKind::Auto,
+};
 
 #[test]
 fn is_transient_classifies_network_errors_as_retryable() {
@@ -974,8 +979,8 @@ fn extract_url_password_ssh_url() {
 #[test]
 fn token_for_url_uses_ferrflow_token_when_set() {
     let _guard = EnvGuard::new().set("FERRFLOW_TOKEN", "ff_secret");
-    let (user, token) =
-        token_for_url("https://github.com/owner/repo.git").expect("should find token");
+    let (user, token) = token_for_url("https://github.com/owner/repo.git", ForgeKind::Auto)
+        .expect("should find token");
     assert_eq!(user, "x-access-token");
     assert_eq!(token, "ff_secret");
 }
@@ -983,8 +988,8 @@ fn token_for_url_uses_ferrflow_token_when_set() {
 #[test]
 fn token_for_url_picks_gitlab_user_for_gitlab_urls() {
     let _guard = EnvGuard::new().set("FERRFLOW_TOKEN", "gl_secret");
-    let (user, _) =
-        token_for_url("https://gitlab.com/group/project.git").expect("should find token");
+    let (user, _) = token_for_url("https://gitlab.com/group/project.git", ForgeKind::Auto)
+        .expect("should find token");
     assert_eq!(user, "oauth2");
 }
 
@@ -995,7 +1000,7 @@ fn a_ci_job_token_pushes_as_gitlab_ci_token() {
         .set("CI_JOB_TOKEN", "job_secret")
         .set("GITLAB_TOKEN", "job_secret");
     assert_eq!(
-        token_for_url("https://gitlab.com/group/project.git"),
+        token_for_url("https://gitlab.com/group/project.git", ForgeKind::Auto),
         Some(("gitlab-ci-token".to_string(), "job_secret".to_string()))
     );
 }
@@ -1005,7 +1010,8 @@ fn a_ci_job_token_passed_as_ferrflow_token_pushes_as_gitlab_ci_token() {
     let _guard = EnvGuard::new()
         .set("CI_JOB_TOKEN", "job_secret")
         .set("FERRFLOW_TOKEN", "job_secret");
-    let (user, _) = token_for_url("https://gitlab.com/group/project.git").expect("token");
+    let (user, _) =
+        token_for_url("https://gitlab.com/group/project.git", ForgeKind::Auto).expect("token");
     assert_eq!(user, "gitlab-ci-token");
 }
 
@@ -1015,8 +1021,48 @@ fn a_personal_token_in_a_ci_job_still_pushes_as_oauth2() {
         .unset("FERRFLOW_TOKEN")
         .set("CI_JOB_TOKEN", "job_secret")
         .set("GITLAB_TOKEN", "glpat_secret");
-    let (user, _) = token_for_url("https://gitlab.com/group/project.git").expect("token");
+    let (user, _) =
+        token_for_url("https://gitlab.com/group/project.git", ForgeKind::Auto).expect("token");
     assert_eq!(user, "oauth2");
+}
+
+#[test]
+fn a_configured_gitlab_forge_pushes_with_gitlab_token_whatever_the_host() {
+    let _guard = EnvGuard::new()
+        .unset("FERRFLOW_TOKEN")
+        .unset("CI_JOB_TOKEN")
+        .set("GITHUB_TOKEN", "gh_secret")
+        .set("GITLAB_TOKEN", "gl_secret");
+    assert_eq!(
+        token_for_url("https://git.company.com/team/repo.git", ForgeKind::Gitlab),
+        Some(("oauth2".to_string(), "gl_secret".to_string()))
+    );
+}
+
+#[test]
+fn a_configured_gitlab_forge_pushes_a_job_token_as_gitlab_ci_token() {
+    let _guard = EnvGuard::new()
+        .unset("FERRFLOW_TOKEN")
+        .set("CI_JOB_TOKEN", "job_secret")
+        .set("GITLAB_TOKEN", "job_secret");
+    let (user, _) =
+        token_for_url("https://git.company.com/team/repo.git", ForgeKind::Gitlab).expect("token");
+    assert_eq!(user, "gitlab-ci-token");
+}
+
+#[test]
+fn a_configured_forge_overrides_the_host_name_heuristic() {
+    let _guard = EnvGuard::new()
+        .unset("FERRFLOW_TOKEN")
+        .set("GITHUB_TOKEN", "gh_secret")
+        .set("GITLAB_TOKEN", "gl_secret");
+    assert_eq!(
+        token_for_url(
+            "https://gitlab-mirror.acme.com/team/repo.git",
+            ForgeKind::Github
+        ),
+        Some(("x-access-token".to_string(), "gh_secret".to_string()))
+    );
 }
 
 #[test]
@@ -1024,8 +1070,8 @@ fn token_for_url_falls_back_to_provider_env() {
     let _guard = EnvGuard::new()
         .unset("FERRFLOW_TOKEN")
         .set("GITHUB_TOKEN", "gh_secret");
-    let (user, token) =
-        token_for_url("https://github.com/owner/repo.git").expect("should find token");
+    let (user, token) = token_for_url("https://github.com/owner/repo.git", ForgeKind::Auto)
+        .expect("should find token");
     assert_eq!(user, "x-access-token");
     assert_eq!(token, "gh_secret");
 }
@@ -1036,7 +1082,10 @@ fn token_for_url_returns_none_without_env() {
         .unset("FERRFLOW_TOKEN")
         .unset("GITHUB_TOKEN")
         .unset("GITLAB_TOKEN");
-    assert_eq!(token_for_url("https://github.com/owner/repo.git"), None);
+    assert_eq!(
+        token_for_url("https://github.com/owner/repo.git", ForgeKind::Auto),
+        None
+    );
 }
 
 fn command_env(cmd: &std::process::Command, key: &str) -> Option<String> {
@@ -1063,7 +1112,7 @@ fn a_repository_name_does_not_pick_the_forge() {
         "https://x-access-token:tok@github.com/acme/gitlab-migration-tool.git",
     ] {
         assert_eq!(
-            token_for_url(url),
+            token_for_url(url, ForgeKind::Auto),
             Some(("x-access-token".to_string(), "gh_secret".to_string())),
             "{url} should use the GitHub token"
         );
@@ -1086,7 +1135,7 @@ fn a_gitlab_host_still_picks_gitlab() {
         "ssh://git@gitlab.acme.com:2222/team/repo.git",
     ] {
         assert_eq!(
-            token_for_url(url),
+            token_for_url(url, ForgeKind::Auto),
             Some(("oauth2".to_string(), "gl_secret".to_string())),
             "{url} should use the GitLab token"
         );
@@ -1136,7 +1185,11 @@ fn host_of_handles_the_remote_shapes_git_accepts() {
 fn configure_git_command_passes_the_credential_through_the_environment() {
     let _guard = EnvGuard::new().set("FERRFLOW_TOKEN", "ff_secret");
     let mut cmd = std::process::Command::new("git");
-    configure_git_command(&mut cmd, "https://github.com/owner/repo.git");
+    configure_git_command(
+        &mut cmd,
+        "https://github.com/owner/repo.git",
+        ForgeKind::Auto,
+    );
     let args: Vec<String> = cmd
         .get_args()
         .map(|a| a.to_string_lossy().into_owned())
@@ -1167,7 +1220,11 @@ fn configure_git_command_keeps_the_token_out_of_argv() {
     // any argument is readable by every other process on a shared runner.
     let _guard = EnvGuard::new().set("FERRFLOW_TOKEN", "ff_secret");
     let mut cmd = std::process::Command::new("git");
-    configure_git_command(&mut cmd, "https://github.com/owner/repo.git");
+    configure_git_command(
+        &mut cmd,
+        "https://github.com/owner/repo.git",
+        ForgeKind::Auto,
+    );
 
     for arg in cmd.get_args().map(|a| a.to_string_lossy().into_owned()) {
         assert!(!arg.contains("ff_secret"), "token leaked into argv: {arg}");
@@ -1182,7 +1239,11 @@ fn an_awkward_token_reaches_git_intact_and_never_enters_argv() {
     let awkward = "evil';rm -rf /;# \"quoted\" $VAR";
     let _guard = EnvGuard::new().set("FERRFLOW_TOKEN", awkward);
     let mut cmd = std::process::Command::new("git");
-    configure_git_command(&mut cmd, "https://github.com/owner/repo.git");
+    configure_git_command(
+        &mut cmd,
+        "https://github.com/owner/repo.git",
+        ForgeKind::Auto,
+    );
 
     assert_eq!(
         command_env(&cmd, "FERRFLOW_GIT_PASSWORD").as_deref(),
@@ -1200,7 +1261,11 @@ fn a_running_git_process_does_not_expose_the_token_in_proc() {
     use std::io::Read;
     let _guard = EnvGuard::new().set("FERRFLOW_TOKEN", "ff_proc_secret");
     let mut cmd = std::process::Command::new("git");
-    configure_git_command(&mut cmd, "https://github.com/owner/repo.git");
+    configure_git_command(
+        &mut cmd,
+        "https://github.com/owner/repo.git",
+        ForgeKind::Auto,
+    );
     // `hash-object --stdin` blocks until stdin closes, which gives a real git
     // process to inspect rather than a race against a fast exit.
     let mut child = cmd
@@ -1233,7 +1298,11 @@ fn configure_git_command_strips_git_trace_env() {
     cmd.env("GIT_TRACE", "1");
     cmd.env("GIT_CURL_VERBOSE", "1");
     cmd.env("GIT_TRACE_CURL", "1");
-    configure_git_command(&mut cmd, "https://github.com/owner/repo.git");
+    configure_git_command(
+        &mut cmd,
+        "https://github.com/owner/repo.git",
+        ForgeKind::Auto,
+    );
     let removed: std::collections::HashSet<String> = cmd
         .get_envs()
         .filter(|(_, v)| v.is_none())
@@ -1248,7 +1317,11 @@ fn configure_git_command_strips_git_trace_env() {
 fn configure_git_command_resets_checkout_extraheader_when_authenticated() {
     let _guard = EnvGuard::new().set("FERRFLOW_TOKEN", "ff_secret");
     let mut cmd = std::process::Command::new("git");
-    configure_git_command(&mut cmd, "https://github.com/owner/repo.git");
+    configure_git_command(
+        &mut cmd,
+        "https://github.com/owner/repo.git",
+        ForgeKind::Auto,
+    );
     let args: Vec<String> = cmd
         .get_args()
         .map(|a| a.to_string_lossy().into_owned())
@@ -1267,7 +1340,11 @@ fn configure_git_command_does_not_reset_extraheader_without_token() {
         .unset("GITHUB_TOKEN")
         .unset("GITLAB_TOKEN");
     let mut cmd = std::process::Command::new("git");
-    configure_git_command(&mut cmd, "https://github.com/owner/repo.git");
+    configure_git_command(
+        &mut cmd,
+        "https://github.com/owner/repo.git",
+        ForgeKind::Auto,
+    );
     assert!(
         !cmd.get_args()
             .any(|a| a.to_string_lossy().contains("extraheader")),
@@ -1296,7 +1373,11 @@ fn configure_git_command_skips_helper_without_token() {
         .unset("GITHUB_TOKEN")
         .unset("GITLAB_TOKEN");
     let mut cmd = std::process::Command::new("git");
-    configure_git_command(&mut cmd, "https://github.com/owner/repo.git");
+    configure_git_command(
+        &mut cmd,
+        "https://github.com/owner/repo.git",
+        ForgeKind::Auto,
+    );
     let args: Vec<String> = cmd
         .get_args()
         .map(|a| a.to_string_lossy().into_owned())
@@ -1665,7 +1746,7 @@ fn push_rejects_when_remote_advanced_instead_of_rebasing() {
     let local_head_before = git(&local_path, &["rev-parse", "HEAD"]);
 
     let repo = open_repo(&local_path).unwrap();
-    let err = super::push::push(&repo, "origin", "main")
+    let err = super::push::push(&repo, ORIGIN, "main")
         .expect_err("push onto an advanced remote must be rejected, not rebased");
 
     assert!(
@@ -1730,7 +1811,7 @@ fn reset_branch_to_remote_drops_local_commit_and_dirty_tree() {
     std::fs::write(local_path.join("dirty.txt"), "stale hook output").unwrap();
 
     let repo = open_repo(&local_path).unwrap();
-    reset_branch_to_remote(&repo, "origin", "main").expect("reset must succeed");
+    reset_branch_to_remote(&repo, ORIGIN, "main").expect("reset must succeed");
 
     let new_head = git(&local_path, &["rev-parse", "HEAD"]).trim().to_string();
     assert_eq!(new_head, remote_b_oid, "HEAD must be at remote B");
@@ -2015,7 +2096,7 @@ fn a_tag_the_remote_has_moved_is_left_alone_even_when_the_local_ref_still_matche
         "precondition: the local ref must still look unchanged"
     );
 
-    delete_tag_if_unchanged(&repo, "origin", "v1.0.0", &recorded).unwrap();
+    delete_tag_if_unchanged(&repo, ORIGIN, "v1.0.0", &recorded).unwrap();
 
     let remote_tags = git(&remote, &["tag", "-l"]);
     assert!(
@@ -2047,7 +2128,7 @@ fn a_tag_absent_from_this_checkout_is_not_deleted_from_the_remote() {
 
     delete_tag_if_unchanged(
         &repo,
-        "origin",
+        ORIGIN,
         "theirs-v9.9.9",
         "deadbeefdeadbeefdeadbeefdeadbeef",
     )
@@ -2073,7 +2154,7 @@ fn an_annotated_tag_still_at_its_recorded_commit_is_deleted() {
     let repo = open_repo(&local).unwrap();
     let commit = local_tag_target_sha(&repo, "v1.0.0").unwrap();
 
-    delete_tag_if_unchanged(&repo, "origin", "v1.0.0", &commit).unwrap();
+    delete_tag_if_unchanged(&repo, ORIGIN, "v1.0.0", &commit).unwrap();
 
     let remote_tags = git(&remote, &["tag", "-l"]);
     assert!(
@@ -2092,7 +2173,7 @@ fn a_tag_still_at_the_recorded_sha_on_the_remote_is_deleted() {
     let repo = open_repo(&local).unwrap();
     let sha = local_tag_target_sha(&repo, "v1.0.0").unwrap();
 
-    delete_tag_if_unchanged(&repo, "origin", "v1.0.0", &sha).unwrap();
+    delete_tag_if_unchanged(&repo, ORIGIN, "v1.0.0", &sha).unwrap();
 
     assert!(!tag_exists(&repo, "v1.0.0"), "the local tag should go");
     let remote_tags = git(&remote, &["tag", "-l"]);
@@ -2111,7 +2192,7 @@ fn a_tag_that_never_reached_the_remote_is_cleaned_up_locally() {
     let repo = open_repo(&local).unwrap();
     let sha = local_tag_target_sha(&repo, "v1.0.0").unwrap();
 
-    delete_tag_if_unchanged(&repo, "origin", "v1.0.0", &sha).unwrap();
+    delete_tag_if_unchanged(&repo, ORIGIN, "v1.0.0", &sha).unwrap();
 
     assert!(
         !tag_exists(&repo, "v1.0.0"),
@@ -2179,7 +2260,13 @@ fn remote_tag_shas_peel_an_annotated_tag_to_its_commit() {
         "precondition: an annotated tag's object is not its commit"
     );
 
-    let shas = remote_tag_target_shas(&local, remote.to_str().unwrap(), &["v1.0.0"]).unwrap();
+    let shas = remote_tag_target_shas(
+        &local,
+        remote.to_str().unwrap(),
+        &["v1.0.0"],
+        ForgeKind::Auto,
+    )
+    .unwrap();
 
     assert_eq!(
         shas.get("v1.0.0").map(String::as_str),
@@ -2201,8 +2288,7 @@ fn pushing_an_annotated_tag_already_on_the_remote_is_a_no_op() {
 
     let repo = open_repo(&local).unwrap();
 
-    push_tags(&repo, "origin", &["v1.0.0"])
-        .expect("re-pushing the same annotated tag must succeed");
+    push_tags(&repo, ORIGIN, &["v1.0.0"]).expect("re-pushing the same annotated tag must succeed");
 }
 
 #[test]
@@ -2214,8 +2300,7 @@ fn a_lightweight_tag_already_on_the_remote_is_still_a_no_op() {
 
     let repo = open_repo(&local).unwrap();
 
-    push_tags(&repo, "origin", &["v1.0.0"])
-        .expect("the case that already worked must keep working");
+    push_tags(&repo, ORIGIN, &["v1.0.0"]).expect("the case that already worked must keep working");
 }
 
 #[test]
@@ -2239,7 +2324,7 @@ fn an_annotated_tag_the_remote_holds_at_another_commit_is_still_rejected() {
     git(&local, &["tag", "-a", "v1.0.0", "-m", "Ours"]);
     let repo = open_repo(&local).unwrap();
 
-    let err = push_tags(&repo, "origin", &["v1.0.0"])
+    let err = push_tags(&repo, ORIGIN, &["v1.0.0"])
         .expect_err("a genuinely divergent tag must still be refused");
     let rendered = format!("{err:#}");
     assert!(

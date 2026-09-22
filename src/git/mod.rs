@@ -5,6 +5,7 @@ mod commits;
 mod diff;
 mod fetch;
 mod push;
+mod remote;
 mod repo;
 mod retry;
 mod shell;
@@ -32,6 +33,7 @@ pub use push::{
     delete_tag_if_unchanged, force_push_branch, force_push_tags, push, push_tags,
     release_branch_foreign_commit, reset_branch_to_remote, revert_commit, verify_remote_branch,
 };
+pub use remote::Remote;
 pub use repo::{Repository, get_repo_root, open_repo, resolve_current_branch};
 pub use retry::is_push_rejected_error;
 pub use tags::{

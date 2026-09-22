@@ -112,7 +112,7 @@ fn apply(
     config: &Config,
     config_path: Option<&Path>,
 ) -> Result<()> {
-    let remote = &config.workspace.remote;
+    let remote = crate::git::Remote::of(&config.workspace);
     let forge = crate::monorepo::preview::build_forge_instance(repo, config);
 
     for step in &plan.steps {

@@ -6,9 +6,11 @@ use std::path::Path;
 use crate::error_code::{self, ErrorCodeExt};
 
 use super::auth::{configure_git_command, get_remote_url};
+use super::remote::Remote;
 use super::repo::Repository;
 use super::retry::retry_transient;
 use super::shell::run_git;
+use crate::config::ForgeKind;
 
 pub(super) fn local_tag_target_sha(repo: &Repository, tag: &str) -> Result<String> {
     let reference = repo
@@ -47,13 +49,14 @@ pub(super) fn remote_tag_target_shas(
     workdir: &Path,
     push_url: &str,
     tags: &[&str],
+    forge: ForgeKind,
 ) -> Result<HashMap<String, String>> {
     if tags.is_empty() {
         return Ok(HashMap::new());
     }
     let mut cmd = std::process::Command::new("git");
     cmd.current_dir(workdir);
-    configure_git_command(&mut cmd, push_url);
+    configure_git_command(&mut cmd, push_url, forge);
     cmd.arg("ls-remote").arg("--tags").arg(push_url);
     for tag in tags {
         cmd.arg(format!("refs/tags/{tag}"));
@@ -75,25 +78,29 @@ pub(super) fn remote_tag_target_shas(
     )))
 }
 
-pub fn force_push_tags(repo: &Repository, remote_name: &str, tags: &[&str]) -> Result<()> {
+pub fn force_push_tags(repo: &Repository, remote: Remote<'_>, tags: &[&str]) -> Result<()> {
     if tags.is_empty() {
         return Ok(());
     }
     retry_transient("force-push floating tags", || {
-        try_force_push_tags_once(repo, remote_name, tags)
+        try_force_push_tags_once(repo, remote, tags)
     })
 }
 
-fn try_force_push_tags_once(repo: &Repository, remote_name: &str, tags: &[&str]) -> Result<()> {
-    shell_push_tags(repo, remote_name, tags, true).error_code(error_code::GIT_FLOATING_TAGS)
+fn try_force_push_tags_once(repo: &Repository, remote: Remote<'_>, tags: &[&str]) -> Result<()> {
+    shell_push_tags(repo, remote, tags, true).error_code(error_code::GIT_FLOATING_TAGS)
 }
 
 pub fn verify_remote_branch(
     repo: &Repository,
-    remote_name: &str,
+    remote: Remote<'_>,
     branch: &str,
     expected_oid: ObjectId,
 ) -> Result<()> {
+    let Remote {
+        name: remote_name,
+        forge,
+    } = remote;
     super::validate::ensure_safe_refname_fragment(remote_name, "remote name")?;
     super::validate::ensure_safe_refname_fragment(branch, "branch name")?;
     let workdir = repo
@@ -104,7 +111,7 @@ pub fn verify_remote_branch(
 
     let mut cmd = std::process::Command::new("git");
     cmd.current_dir(workdir);
-    configure_git_command(&mut cmd, &url);
+    configure_git_command(&mut cmd, &url, forge);
     cmd.args([
         "ls-remote",
         "--heads",
@@ -155,15 +162,20 @@ fn resolve_push_source(repo: &Repository, branch: &str) -> String {
     }
 }
 
-pub fn force_push_branch(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
+pub fn force_push_branch(repo: &Repository, remote: Remote<'_>, branch: &str) -> Result<()> {
+    let remote_name = remote.name;
     super::validate::ensure_safe_refname_fragment(remote_name, "remote name")?;
     super::validate::ensure_safe_refname_fragment(branch, "branch name")?;
     retry_transient(&format!("force-push branch '{branch}'"), || {
-        try_force_push_branch_once(repo, remote_name, branch)
+        try_force_push_branch_once(repo, remote, branch)
     })
 }
 
-fn try_force_push_branch_once(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
+fn try_force_push_branch_once(repo: &Repository, remote: Remote<'_>, branch: &str) -> Result<()> {
+    let Remote {
+        name: remote_name,
+        forge,
+    } = remote;
     let workdir = repo
         .workdir()
         .ok_or_else(|| anyhow!("bare repos are not supported"))?;
@@ -174,7 +186,7 @@ fn try_force_push_branch_once(repo: &Repository, remote_name: &str, branch: &str
 
     let mut cmd = std::process::Command::new("git");
     cmd.current_dir(workdir);
-    configure_git_command(&mut cmd, &push_url);
+    configure_git_command(&mut cmd, &push_url, forge);
     cmd.arg("push").arg(&push_url).arg(&refspec);
 
     let output = cmd
@@ -193,10 +205,14 @@ fn try_force_push_branch_once(repo: &Repository, remote_name: &str, branch: &str
 // SAFETY GUARD for the persistent release PR: before force-pushing the
 pub fn release_branch_foreign_commit(
     repo: &Repository,
-    remote_name: &str,
+    remote: Remote<'_>,
     branch: &str,
     base: &str,
 ) -> Result<Option<String>> {
+    let Remote {
+        name: remote_name,
+        forge,
+    } = remote;
     super::validate::ensure_safe_refname_fragment(remote_name, "remote name")?;
     super::validate::ensure_safe_refname_fragment(branch, "branch name")?;
     super::validate::ensure_safe_refname_fragment(base, "target branch")?;
@@ -208,7 +224,7 @@ pub fn release_branch_foreign_commit(
 
     let mut ls = std::process::Command::new("git");
     ls.current_dir(workdir);
-    configure_git_command(&mut ls, &url);
+    configure_git_command(&mut ls, &url, forge);
     ls.args([
         "ls-remote",
         "--heads",
@@ -232,7 +248,7 @@ pub fn release_branch_foreign_commit(
 
     let mut fetch = std::process::Command::new("git");
     fetch.current_dir(workdir);
-    configure_git_command(&mut fetch, &url);
+    configure_git_command(&mut fetch, &url, forge);
     fetch.args(["fetch", "--quiet", &url, &format!("refs/heads/{branch}")]);
     let fetch_out = fetch
         .output()
@@ -269,7 +285,8 @@ pub fn release_branch_foreign_commit(
     Ok(None)
 }
 
-pub fn push_tags(repo: &Repository, remote_name: &str, tags: &[&str]) -> Result<()> {
+pub fn push_tags(repo: &Repository, remote: Remote<'_>, tags: &[&str]) -> Result<()> {
+    let remote_name = remote.name;
     if tags.is_empty() {
         return Ok(());
     }
@@ -277,21 +294,30 @@ pub fn push_tags(repo: &Repository, remote_name: &str, tags: &[&str]) -> Result<
     for tag in tags {
         super::validate::ensure_safe_refname_fragment(tag, "tag name")?;
     }
-    retry_transient("push tags", || try_push_tags_once(repo, remote_name, tags))
+    retry_transient("push tags", || try_push_tags_once(repo, remote, tags))
 }
 
-fn try_push_tags_once(repo: &Repository, remote_name: &str, tags: &[&str]) -> Result<()> {
-    shell_push_tags(repo, remote_name, tags, false).error_code(error_code::GIT_PUSH_TAGS)
+fn try_push_tags_once(repo: &Repository, remote: Remote<'_>, tags: &[&str]) -> Result<()> {
+    shell_push_tags(repo, remote, tags, false).error_code(error_code::GIT_PUSH_TAGS)
 }
 
-fn shell_push_tags(repo: &Repository, remote_name: &str, tags: &[&str], force: bool) -> Result<()> {
+fn shell_push_tags(
+    repo: &Repository,
+    remote: Remote<'_>,
+    tags: &[&str],
+    force: bool,
+) -> Result<()> {
+    let Remote {
+        name: remote_name,
+        forge,
+    } = remote;
     let workdir = repo
         .workdir()
         .ok_or_else(|| anyhow!("bare repos are not supported"))?;
     let push_url = get_remote_url(repo, remote_name)
         .ok_or_else(|| anyhow!("Remote '{remote_name}' has no URL"))?;
 
-    let remote_shas = remote_tag_target_shas(workdir, &push_url, tags).unwrap_or_else(|err| {
+    let remote_shas = remote_tag_target_shas(workdir, &push_url, tags, forge).unwrap_or_else(|err| {
         tracing::warn!(
             "  Warning: could not enumerate remote tag state ({err}); falling back to a plain push"
         );
@@ -343,7 +369,7 @@ fn shell_push_tags(repo: &Repository, remote_name: &str, tags: &[&str], force: b
     let prefix = if force { "+" } else { "" };
     let mut cmd = std::process::Command::new("git");
     cmd.current_dir(workdir);
-    configure_git_command(&mut cmd, &push_url);
+    configure_git_command(&mut cmd, &push_url, forge);
     cmd.arg("push").arg(&push_url);
     for tag in &to_push {
         cmd.arg(format!("{prefix}refs/tags/{tag}:refs/tags/{tag}"));
@@ -367,13 +393,17 @@ fn shell_push_tags(repo: &Repository, remote_name: &str, tags: &[&str], force: b
     Ok(())
 }
 
-fn try_push_branch(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
+fn try_push_branch(repo: &Repository, remote: Remote<'_>, branch: &str) -> Result<()> {
     retry_transient(&format!("push branch '{branch}'"), || {
-        try_push_branch_once(repo, remote_name, branch)
+        try_push_branch_once(repo, remote, branch)
     })
 }
 
-fn try_push_branch_once(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
+fn try_push_branch_once(repo: &Repository, remote: Remote<'_>, branch: &str) -> Result<()> {
+    let Remote {
+        name: remote_name,
+        forge,
+    } = remote;
     let workdir = repo
         .workdir()
         .ok_or_else(|| anyhow!("bare repos are not supported"))?;
@@ -384,7 +414,7 @@ fn try_push_branch_once(repo: &Repository, remote_name: &str, branch: &str) -> R
 
     let mut cmd = std::process::Command::new("git");
     cmd.current_dir(workdir);
-    configure_git_command(&mut cmd, &push_url);
+    configure_git_command(&mut cmd, &push_url, forge);
     cmd.arg("push").arg(&push_url).arg(&refspec);
 
     let output = cmd
@@ -400,7 +430,11 @@ fn try_push_branch_once(repo: &Repository, remote_name: &str, branch: &str) -> R
     Ok(())
 }
 
-pub fn reset_branch_to_remote(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
+pub fn reset_branch_to_remote(repo: &Repository, remote: Remote<'_>, branch: &str) -> Result<()> {
+    let Remote {
+        name: remote_name,
+        forge,
+    } = remote;
     super::validate::ensure_safe_refname_fragment(remote_name, "remote name")?;
     super::validate::ensure_safe_refname_fragment(branch, "branch name")?;
     let workdir = repo
@@ -411,7 +445,7 @@ pub fn reset_branch_to_remote(repo: &Repository, remote_name: &str, branch: &str
 
     let mut fetch_cmd = std::process::Command::new("git");
     fetch_cmd.current_dir(workdir);
-    configure_git_command(&mut fetch_cmd, &push_url);
+    configure_git_command(&mut fetch_cmd, &push_url, forge);
     fetch_cmd.arg("fetch").arg(remote_name).arg(format!(
         "+refs/heads/{branch}:refs/remotes/{remote_name}/{branch}"
     ));
@@ -448,8 +482,8 @@ pub fn reset_branch_to_remote(repo: &Repository, remote_name: &str, branch: &str
     Ok(())
 }
 
-pub fn push(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
-    try_push_branch(repo, remote_name, branch)
+pub fn push(repo: &Repository, remote: Remote<'_>, branch: &str) -> Result<()> {
+    try_push_branch(repo, remote, branch)
         .with_context(|| format!("Failed to push branch '{branch}'"))
         .error_code(error_code::GIT_PUSH_BRANCH)?;
 
@@ -459,7 +493,7 @@ pub fn push(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
     let head_str = run_git(workdir, &["rev-parse", "HEAD"])?.trim().to_string();
     let head_oid = ObjectId::from_hex(head_str.as_bytes())
         .with_context(|| format!("invalid HEAD sha: {head_str}"))?;
-    verify_remote_branch(repo, remote_name, branch, head_oid)
+    verify_remote_branch(repo, remote, branch, head_oid)
         .with_context(|| "Post-push verification failed: release commit not on remote branch")
         .error_code(error_code::GIT_PUSH_VERIFY_FAILED)?;
 
@@ -480,10 +514,14 @@ pub fn push(repo: &Repository, remote_name: &str, branch: &str) -> Result<()> {
 /// is deleting someone else's.
 pub fn delete_tag_if_unchanged(
     repo: &Repository,
-    remote_name: &str,
+    remote: Remote<'_>,
     tag: &str,
     expected_sha: &str,
 ) -> Result<()> {
+    let Remote {
+        name: remote_name,
+        forge,
+    } = remote;
     super::validate::ensure_safe_refname_fragment(remote_name, "remote name")?;
     super::validate::ensure_safe_refname_fragment(tag, "tag name")?;
     let workdir = repo
@@ -496,7 +534,7 @@ pub fn delete_tag_if_unchanged(
     // an annotated tag would come back as its tag object rather than the commit
     // the checkpoint recorded, and every annotated tag would look moved.
     let pattern = format!("{tag}*");
-    let remote_shas = match remote_tag_target_shas(workdir, &url, &[&pattern]) {
+    let remote_shas = match remote_tag_target_shas(workdir, &url, &[&pattern], forge) {
         Ok(shas) => shas,
         Err(err) => {
             tracing::warn!(
@@ -530,7 +568,7 @@ pub fn delete_tag_if_unchanged(
 
     let mut cmd = std::process::Command::new("git");
     cmd.current_dir(workdir);
-    configure_git_command(&mut cmd, &url);
+    configure_git_command(&mut cmd, &url, forge);
     cmd.args(["push", "--delete", &url, &format!("refs/tags/{tag}")]);
     let out = cmd
         .output()

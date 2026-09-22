@@ -1,6 +1,7 @@
 use std::process::Command;
 
 use super::repo::Repository;
+use crate::config::ForgeKind;
 use crate::forge::gitlab::GitLabToken;
 
 #[cfg(test)]
@@ -32,24 +33,36 @@ fn is_gitlab(url: &str) -> bool {
     host_of(url).is_some_and(|host| host.contains("gitlab"))
 }
 
-pub(super) fn token_for_url(url: &str) -> Option<(String, String)> {
-    if let Ok(token) = std::env::var("FERRFLOW_TOKEN") {
-        let user = if is_gitlab(url) {
+fn forge_of(url: &str, configured: ForgeKind) -> Option<ForgeKind> {
+    match configured {
+        ForgeKind::Auto if is_gitlab(url) => Some(ForgeKind::Gitlab),
+        ForgeKind::Auto => crate::forge::detect_forge_with_probe(url),
+        explicit => Some(explicit),
+    }
+}
+
+pub(super) fn token_for_url(url: &str, forge: ForgeKind) -> Option<(String, String)> {
+    let ferrflow_token = std::env::var("FERRFLOW_TOKEN").ok();
+    let gitlab_token = std::env::var("GITLAB_TOKEN").ok();
+    let github_token = std::env::var("GITHUB_TOKEN").ok();
+    if ferrflow_token.is_none() && gitlab_token.is_none() && github_token.is_none() {
+        return None;
+    }
+    let is_gitlab = forge_of(url, forge) == Some(ForgeKind::Gitlab);
+    if let Some(token) = ferrflow_token {
+        let user = if is_gitlab {
             GitLabToken::of(&token).git_username()
         } else {
             "x-access-token"
         };
         return Some((user.to_string(), token));
     }
-    if is_gitlab(url) {
-        if let Ok(token) = std::env::var("GITLAB_TOKEN") {
-            let user = GitLabToken::of(&token).git_username();
-            return Some((user.to_string(), token));
-        }
-    } else if let Ok(token) = std::env::var("GITHUB_TOKEN") {
-        return Some(("x-access-token".to_string(), token));
+    if is_gitlab {
+        let token = gitlab_token?;
+        let user = GitLabToken::of(&token).git_username();
+        return Some((user.to_string(), token));
     }
-    None
+    github_token.map(|token| ("x-access-token".to_string(), token))
 }
 
 /// Where the credential reaches git. `/proc/<pid>/cmdline` is world-readable,
@@ -68,9 +81,9 @@ pub(super) const GIT_PASSWORD_VAR: &str = "FERRFLOW_GIT_PASSWORD";
 const CREDENTIAL_HELPER: &str =
     r#"!f() { echo "username=$FERRFLOW_GIT_USER"; echo "password=$FERRFLOW_GIT_PASSWORD"; }; f"#;
 
-pub(super) fn configure_git_command(cmd: &mut Command, url: &str) {
+pub(super) fn configure_git_command(cmd: &mut Command, url: &str, forge: ForgeKind) {
     scrub_trace_env(cmd);
-    if let Some((user, token)) = token_for_url(url) {
+    if let Some((user, token)) = token_for_url(url, forge) {
         cmd.env(GIT_USER_VAR, user);
         cmd.env(GIT_PASSWORD_VAR, token);
         cmd.arg("-c")

@@ -153,7 +153,11 @@ fn cleanup_failed_release_attempt(
     }
 
     let target_branch = crate::git::resolve_current_branch(&repo, &config.workspace.branch);
-    crate::git::reset_branch_to_remote(&repo, &config.workspace.remote, &target_branch)?;
+    crate::git::reset_branch_to_remote(
+        &repo,
+        crate::git::Remote::of(&config.workspace),
+        &target_branch,
+    )?;
 
     Checkpoint::delete(root)?;
     Ok(())
