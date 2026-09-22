@@ -42,10 +42,14 @@ pub(crate) fn find_unknown_keys<T: DeserializeOwned>(
 ) -> Vec<UnknownKey> {
     let mut paths = Vec::new();
     let _: Result<T, _> = serde_ignored::deserialize(value, |path| paths.push(segments(&path)));
+    if paths.is_empty() {
+        return Vec::new();
+    }
     let schema: Value = serde_json::from_str(BUNDLED_SCHEMA).unwrap_or(Value::Null);
     paths
         .into_iter()
         .filter(|path| !matches!(path.last(), Some(Segment::Key(key)) if key == SCHEMA_KEY))
+        .filter(|path| !documented(&schema, schema_prefix, path))
         .map(|path| {
             let suggestion = suggest(&schema, schema_prefix, &path);
             UnknownKey { path, suggestion }
@@ -102,6 +106,14 @@ fn segments(path: &serde_ignored::Path<'_>) -> Vec<Segment> {
         | Path::NewtypeStruct { parent }
         | Path::NewtypeVariant { parent } => segments(parent),
     }
+}
+
+fn documented(schema: &Value, prefix: &[Segment], path: &[Segment]) -> bool {
+    prefix
+        .iter()
+        .chain(path)
+        .try_fold(schema, |node, segment| child(schema, node, segment))
+        .is_some()
 }
 
 fn suggest(schema: &Value, prefix: &[Segment], path: &[Segment]) -> Option<String> {
@@ -222,6 +234,16 @@ mod tests {
                 "workspace.registries.kellnr.tokenEnvv".to_string(),
                 Some("tokenEnv".to_string())
             )]
+        );
+    }
+
+    #[test]
+    fn retired_keys_the_schema_still_documents_are_not_reported() {
+        assert!(
+            reported(json!({
+                "workspace": { "telemetry": false, "anonymous_telemetry": false }
+            }))
+            .is_empty()
         );
     }
 
