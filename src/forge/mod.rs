@@ -207,19 +207,28 @@ fn kind_from_probe_statuses(
     None
 }
 
-pub fn extract_host(url: &str) -> Option<String> {
-    if let Some((_, rest)) = url.split_once("://") {
-        let authority = rest.split('/').next()?;
-        let host_port = authority.rsplit('@').next()?;
-        let host = host_port.split(':').next()?;
-        valid_host(host)
-    } else {
-        let (authority, _) = url.split_once(':')?;
-        if authority.contains('/') || is_dos_drive(authority) {
-            return None;
+struct RemoteParts<'a> {
+    authority: &'a str,
+    path: &'a str,
+}
+
+fn split_remote(url: &str) -> Option<RemoteParts<'_>> {
+    let (authority, path) = match url.split_once("://") {
+        Some((_, rest)) => rest.split_once('/').unwrap_or((rest, "")),
+        None => {
+            let (authority, path) = url.split_once(':')?;
+            if authority.contains('/') || is_dos_drive(authority) {
+                return None;
+            }
+            (authority, path)
         }
-        valid_host(authority.rsplit('@').next()?)
-    }
+    };
+    Some(RemoteParts { authority, path })
+}
+
+pub fn extract_host(url: &str) -> Option<String> {
+    let host_port = split_remote(url)?.authority.rsplit('@').next()?;
+    valid_host(host_port.split(':').next()?)
 }
 
 fn is_dos_drive(prefix: &str) -> bool {
@@ -236,31 +245,10 @@ fn valid_host(host: &str) -> Option<String> {
 }
 
 pub fn extract_repo_slug(url: &str) -> Option<String> {
-    for host in ["github.com", "gitlab.com"] {
-        let after = if url.contains(&format!("{host}/")) {
-            url.split(&format!("{host}/")).nth(1)
-        } else if url.contains(&format!("{host}:")) {
-            url.split(&format!("{host}:")).nth(1)
-        } else {
-            None
-        };
-        if let Some(slug) = after {
-            return Some(slug.trim_end_matches(".git").to_string());
-        }
-    }
-
-    let path = if let Some(rest) = url
-        .strip_prefix("https://")
-        .or_else(|| url.strip_prefix("http://"))
-    {
-        rest.split_once('/').map(|x| x.1)
-    } else if url.contains('@') && url.contains(':') {
-        url.split_once(':').map(|x| x.1)
-    } else {
-        None
-    };
-    path.map(|p| p.trim_end_matches(".git").to_string())
-        .filter(|s| s.contains('/') && !s.is_empty())
+    extract_host(url)?;
+    let path = split_remote(url)?.path.trim_matches('/');
+    let slug = path.strip_suffix(".git").unwrap_or(path);
+    slug.contains('/').then(|| slug.to_string())
 }
 
 pub fn web_base_url(remote_url: &str) -> Option<String> {
@@ -537,6 +525,42 @@ mod tests {
             extract_repo_slug("git@git.company.com:team/project.git"),
             Some("team/project".to_string())
         );
+    }
+
+    #[test]
+    fn slug_follows_the_same_remote_shapes_as_the_host() {
+        for (url, slug) in [
+            ("ssh://git@github.com:22/owner/repo.git", "owner/repo"),
+            ("codeberg.org:owner/repo.git", "owner/repo"),
+            ("Git.Corp.com:team/app.git", "team/app"),
+            ("git@git.corp.com:/srv/team/app.git", "srv/team/app"),
+            ("https://github.com/owner/repo/", "owner/repo"),
+            (
+                "https://x-access-token:tok@github.com/owner/repo.git",
+                "owner/repo",
+            ),
+        ] {
+            assert_eq!(extract_repo_slug(url).as_deref(), Some(slug), "{url}");
+        }
+    }
+
+    #[test]
+    fn a_forge_host_in_the_path_does_not_cut_the_slug() {
+        assert_eq!(
+            extract_repo_slug("https://git.acme.com/tools/github.com/exporter.git").as_deref(),
+            Some("tools/github.com/exporter")
+        );
+    }
+
+    #[test]
+    fn local_paths_have_no_slug() {
+        for path in [
+            "file:///srv/git/team/app.git",
+            "/srv/git/team/app.git",
+            "C:/repos/team/app.git",
+        ] {
+            assert_eq!(extract_repo_slug(path), None, "{path}");
+        }
     }
 
     #[test]
