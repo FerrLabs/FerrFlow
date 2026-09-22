@@ -4,7 +4,9 @@ use std::process::Command;
 use crate::config::{Config, ForgeKind};
 use crate::formats::lockfiles::{LockfileState, inspect_for_manifest};
 use crate::formats::read_version;
-use crate::git::{Repository, collect_all_tags, get_remote_url};
+use crate::git::{
+    Repository, collect_all_tags, commit_identity, get_remote_url, on_github_actions,
+};
 use crate::validate::ValidationLevel;
 
 use super::report::{Check, Section, Status};
@@ -56,6 +58,8 @@ pub(super) fn repo_section(
             Some("could not read `git status`".into()),
         )),
     }
+
+    checks.push(identity_check(commit_identity(root), on_github_actions()));
 
     let remote = remote_name(config);
     match get_remote_url(repo, remote) {
@@ -420,6 +424,23 @@ fn forge_label(kind: ForgeKind) -> &'static str {
         ForgeKind::Gitea => "Gitea/Forgejo",
         ForgeKind::Bitbucket => "Bitbucket",
         ForgeKind::Auto => "auto",
+    }
+}
+
+pub(super) fn identity_check(identity: Option<String>, on_actions: bool) -> Check {
+    match identity {
+        Some(identity) => Check::ok("git identity", Some(identity)),
+        None if on_actions => Check::info(
+            "git identity",
+            Some("none configured. A release commits as github-actions[bot]".into()),
+        ),
+        None => Check::warn(
+            "git identity",
+            Some(
+                "none configured, so a release cannot commit. Set `git config user.name` and `git config user.email`"
+                    .into(),
+            ),
+        ),
     }
 }
 

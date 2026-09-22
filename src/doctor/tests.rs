@@ -173,6 +173,32 @@ mod end_to_end {
     }
 }
 
+mod identity {
+    use super::super::checks::identity_check;
+    use super::Status;
+
+    #[test]
+    fn a_resolved_identity_is_shown() {
+        let check = identity_check(Some("Jane Dev <jane@example.com>".into()), false);
+        assert_eq!(check.status, Status::Ok);
+        assert_eq!(check.detail.as_deref(), Some("Jane Dev <jane@example.com>"));
+    }
+
+    #[test]
+    fn a_missing_identity_warns_off_actions() {
+        let check = identity_check(None, false);
+        assert_eq!(check.status, Status::Warn);
+        assert!(check.detail.unwrap().contains("git config user.email"));
+    }
+
+    #[test]
+    fn a_missing_identity_on_actions_is_covered_by_the_fallback() {
+        let check = identity_check(None, true);
+        assert_eq!(check.status, Status::Info);
+        assert!(check.detail.unwrap().contains("github-actions[bot]"));
+    }
+}
+
 mod lockfiles {
     use super::super::checks::versioning_section;
     use super::{Check, Status};

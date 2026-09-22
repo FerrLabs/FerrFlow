@@ -4,6 +4,7 @@ mod commit_walk;
 mod commits;
 mod diff;
 mod fetch;
+mod identity;
 mod push;
 mod remote;
 mod repo;
@@ -28,6 +29,7 @@ pub use diff::{
     get_changed_files_since_oid, get_changed_files_since_tag,
 };
 pub use fetch::fetch_tags;
+pub use identity::{commit_identity, ensure_commit_identity, on_github_actions};
 #[allow(unused_imports)]
 pub use push::{
     delete_tag_if_unchanged, force_push_branch, force_push_tags, push, push_tags,

@@ -128,11 +128,11 @@ runs:
         rm -rf "$DOWNLOAD_DIR"
         echo "$INSTALL_DIR" >> "$GITHUB_PATH"
 
-    # Git identity (`user.name` / `user.email`) is now set by the
-    # binary itself in `ensure_bot_token`, so the action no longer
-    # configures it. Self-hosters running their own App can override
-    # via `FERRFLOW_BOT_LOGIN` and `FERRFLOW_BOT_USER_ID` env vars on
-    # the calling job.
+    # Git identity (`user.name` / `user.email`) is set by the binary
+    # itself: `ensure_bot_token` in bot mode, otherwise
+    # `ensure_commit_identity` falls back to github-actions[bot]. Self-hosters
+    # running their own App can override via `FERRFLOW_BOT_LOGIN` and
+    # `FERRFLOW_BOT_USER_ID` env vars on the calling job.
 
     - name: Optimize commit-graph
       if: inputs.mode != 'publish'
