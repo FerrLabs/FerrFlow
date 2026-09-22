@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.24.4] - 2026-09-22
+
+### Bug Fixes
+
+- fix(doctor): report the token the push actually uses, and say the Gitea fallback is push-only (#1155)
+
 ## [7.24.3] - 2026-09-22
 
 ### Bug Fixes
