@@ -213,13 +213,17 @@ pub fn extract_host(url: &str) -> Option<String> {
         let host_port = authority.rsplit('@').next()?;
         let host = host_port.split(':').next()?;
         valid_host(host)
-    } else if url.contains('@') && url.contains(':') {
-        let after_at = url.rsplit('@').next()?;
-        let host = after_at.split(':').next()?;
-        valid_host(host)
     } else {
-        None
+        let (authority, _) = url.split_once(':')?;
+        if authority.contains('/') || is_dos_drive(authority) {
+            return None;
+        }
+        valid_host(authority.rsplit('@').next()?)
     }
+}
+
+fn is_dos_drive(prefix: &str) -> bool {
+    prefix.len() == 1 && prefix.bytes().all(|b| b.is_ascii_alphabetic())
 }
 
 fn valid_host(host: &str) -> Option<String> {
@@ -228,7 +232,7 @@ fn valid_host(host: &str) -> Option<String> {
         && host
             .bytes()
             .all(|b| b.is_ascii_alphanumeric() || b == b'.' || b == b'-');
-    ok.then(|| host.to_string())
+    ok.then(|| host.to_ascii_lowercase())
 }
 
 pub fn extract_repo_slug(url: &str) -> Option<String> {
@@ -775,6 +779,52 @@ mod tests {
     #[test]
     fn extract_host_empty() {
         assert_eq!(extract_host(""), None);
+    }
+
+    #[test]
+    fn scp_remotes_without_a_user_still_have_a_host() {
+        assert_eq!(
+            extract_host("github.com:owner/repo.git").as_deref(),
+            Some("github.com")
+        );
+        assert_eq!(
+            detect_forge_from_url("github.com:owner/repo.git"),
+            Some(ForgeKind::Github)
+        );
+    }
+
+    #[test]
+    fn an_at_sign_in_the_scp_path_does_not_move_the_host() {
+        assert_eq!(
+            extract_host("git@gitlab.com:group/app@v2.git").as_deref(),
+            Some("gitlab.com")
+        );
+    }
+
+    #[test]
+    fn local_paths_have_no_host() {
+        for path in [
+            r"C:\repos\app.git",
+            "C:/repos/app.git",
+            "/srv/git/app.git",
+            "../app.git",
+            "./dir:with-colon/app.git",
+            "file:///srv/git/app.git",
+        ] {
+            assert_eq!(extract_host(path), None, "{path}");
+        }
+    }
+
+    #[test]
+    fn hosts_are_matched_case_insensitively() {
+        assert_eq!(
+            detect_forge_from_url("https://GitHub.com/o/r.git"),
+            Some(ForgeKind::Github)
+        );
+        assert_eq!(
+            extract_host("git@GITLAB.example.com:o/r.git").as_deref(),
+            Some("gitlab.example.com")
+        );
     }
 
     #[test]
