@@ -169,9 +169,13 @@ pub(crate) fn load_js_ts_config(path: &Path) -> Result<Config> {
         .with_context(|| format!("{filename} produced invalid UTF-8 output"))
         .error_code(error_code::CONFIG_INVALID_OUTPUT)?;
 
-    serde_json::from_str::<Config>(&stdout)
+    let config = serde_json::from_str::<Config>(&stdout)
         .with_context(|| format!("{filename} did not produce valid JSON config"))
-        .error_code(error_code::CONFIG_INVALID_JSON)
+        .error_code(error_code::CONFIG_INVALID_JSON)?;
+    if let Ok(value) = serde_json::from_str(&stdout) {
+        super::unknown_keys::warn_unknown_keys::<Config>(value, path, &[]);
+    }
+    Ok(config)
 }
 
 #[cfg(test)]
