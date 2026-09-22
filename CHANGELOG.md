@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.25.0] - 2026-09-22
+
+### Features
+
+- feat(action): sign the release tag with a configured SSH key (#1168)
+
 ## [7.24.7] - 2026-09-22
 
 ### Bug Fixes
