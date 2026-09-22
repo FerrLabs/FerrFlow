@@ -169,6 +169,27 @@ pub fn detect_forge_with_probe(url: &str) -> Option<ForgeKind> {
     detected
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Probe {
+    Allowed,
+    Skipped,
+}
+
+pub fn resolve_forge(url: &str, configured: ForgeKind, probe: Probe) -> Option<ForgeKind> {
+    match configured {
+        ForgeKind::Auto if host_names_gitlab(url) => Some(ForgeKind::Gitlab),
+        ForgeKind::Auto => match probe {
+            Probe::Allowed => detect_forge_with_probe(url),
+            Probe::Skipped => detect_forge_from_url(url),
+        },
+        explicit => Some(explicit),
+    }
+}
+
+fn host_names_gitlab(url: &str) -> bool {
+    extract_host(url).is_some_and(|host| host.contains("gitlab"))
+}
+
 fn probe_host(host: &str) -> Option<ForgeKind> {
     let agent: ureq::Agent = ureq::Agent::config_builder()
         .timeout_global(Some(PROBE_TIMEOUT))
@@ -899,6 +920,46 @@ mod tests {
             assert_eq!(extract_host(url).as_deref(), Some(host), "{url}");
             assert_eq!(detect_forge_from_url(url), forge, "{url}");
         }
+    }
+
+    #[test]
+    fn a_configured_forge_wins_over_the_host_name() {
+        assert_eq!(
+            resolve_forge(
+                "https://gitlab.corp.example/o/r.git",
+                ForgeKind::Gitea,
+                Probe::Skipped
+            ),
+            Some(ForgeKind::Gitea)
+        );
+    }
+
+    #[test]
+    fn a_host_naming_gitlab_resolves_without_a_probe() {
+        assert_eq!(
+            resolve_forge(
+                "https://gitlab.corp.example/o/r.git",
+                ForgeKind::Auto,
+                Probe::Skipped
+            ),
+            Some(ForgeKind::Gitlab)
+        );
+    }
+
+    #[test]
+    fn an_unknown_host_stays_unresolved_when_probing_is_skipped() {
+        assert_eq!(
+            resolve_forge(
+                "https://git.corp.example/o/r.git",
+                ForgeKind::Auto,
+                Probe::Skipped
+            ),
+            None
+        );
+        assert_eq!(
+            resolve_forge("git@github.com:o/r.git", ForgeKind::Auto, Probe::Skipped),
+            Some(ForgeKind::Github)
+        );
     }
 
     #[test]

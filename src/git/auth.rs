@@ -4,7 +4,7 @@ use std::sync::Once;
 use super::repo::Repository;
 use crate::config::{ForgeKind, GENERIC_TOKEN_ENV_VAR, all_token_env_vars};
 use crate::forge::gitlab::GitLabToken;
-use crate::forge::{AUTHORITY_END, extract_host};
+use crate::forge::{AUTHORITY_END, Probe, extract_host, resolve_forge};
 
 #[cfg(test)]
 pub(super) fn extract_url_password(url: &str) -> Option<(String, String)> {
@@ -15,18 +15,6 @@ pub(super) fn extract_url_password(url: &str) -> Option<(String, String)> {
         return None;
     }
     Some((user.to_string(), password.to_string()))
-}
-
-fn is_gitlab(url: &str) -> bool {
-    extract_host(url).is_some_and(|host| host.contains("gitlab"))
-}
-
-fn forge_of(url: &str, configured: ForgeKind) -> Option<ForgeKind> {
-    match configured {
-        ForgeKind::Auto if is_gitlab(url) => Some(ForgeKind::Gitlab),
-        ForgeKind::Auto => crate::forge::detect_forge_with_probe(url),
-        explicit => Some(explicit),
-    }
 }
 
 fn non_empty_env(var: &str) -> Option<String> {
@@ -42,7 +30,7 @@ pub(super) fn token_for_url(url: &str, forge: ForgeKind) -> Option<(String, Stri
     if !all_token_env_vars().any(|var| non_empty_env(var).is_some()) {
         return None;
     }
-    select_credential(url, forge_of(url, forge))
+    select_credential(url, resolve_forge(url, forge, Probe::Allowed))
 }
 
 pub(super) fn select_credential(url: &str, forge: Option<ForgeKind>) -> Option<(String, String)> {

@@ -2,6 +2,7 @@ use std::path::Path;
 use std::process::Command;
 
 use crate::config::{Config, ForgeKind, GENERIC_TOKEN_ENV_VAR};
+use crate::forge::{Probe, resolve_forge};
 use crate::formats::lockfiles::{LockfileState, inspect_for_manifest};
 use crate::formats::read_version;
 use crate::git::{
@@ -259,16 +260,14 @@ pub(super) fn forge_section(
     let remote = remote_name(config);
     let url = repo.and_then(|r| get_remote_url(r, remote));
     let configured = config.map(|c| c.workspace.forge).unwrap_or(ForgeKind::Auto);
-    let detected = url.as_deref().and_then(|url| {
-        if online {
-            crate::forge::detect_forge_with_probe(url)
-        } else {
-            crate::forge::detect_forge_from_url(url)
-        }
-    });
-    let forge = match configured {
-        ForgeKind::Auto => detected,
-        explicit => Some(explicit),
+    let probe = if online {
+        Probe::Allowed
+    } else {
+        Probe::Skipped
+    };
+    let forge = match url.as_deref() {
+        Some(url) => resolve_forge(url, configured, probe),
+        None => (configured != ForgeKind::Auto).then_some(configured),
     };
 
     match forge {
