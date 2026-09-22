@@ -219,7 +219,11 @@ pub(super) fn check_versioned_files(
             };
 
             let handler = get_handler(&vf.format);
-            match handler.read_version_from_bytes(&content, &vf.path) {
+            match handler.read_version_from_bytes_with_selector(
+                &content,
+                &vf.path,
+                vf.selector.as_deref(),
+            ) {
                 Ok(version) => {
                     versions
                         .entry(pkg.name.clone())

@@ -5,6 +5,18 @@ use std::path::Path;
 
 pub struct TxtVersionFile;
 
+fn select_version(text: &str, selector: &str, origin: &str) -> Result<String> {
+    let re = compile_selector(selector)?;
+    let cap = re
+        .captures(text)
+        .ok_or_else(|| anyhow::anyhow!("selector {selector:?} did not match anything in {origin}"))
+        .error_code(error_code::TXT_VERSION_NOT_FOUND)?;
+    let m = cap.get(1).ok_or_else(|| {
+        anyhow::anyhow!("selector {selector:?} matched but capture group 1 is empty")
+    })?;
+    Ok(m.as_str().to_string())
+}
+
 fn compile_selector(selector: &str) -> Result<Regex> {
     let re = Regex::new(selector)
         .with_context(|| format!("invalid regex selector: {selector:?}"))
@@ -95,6 +107,42 @@ mod tests {
         let result = TxtVersionFile.read_version_with_selector(f.path(), Some(r"(VERSION)=(.+)"));
         assert!(result.is_err());
     }
+
+    #[test]
+    fn read_bytes_uses_the_selector() {
+        let content = b"a: 1\nbundleVersion: 1.2.3\nb: 2\n";
+        let v = TxtVersionFile
+            .read_version_from_bytes_with_selector(
+                content,
+                "Settings.asset",
+                Some("(?m)^bundleVersion: (.+)$"),
+            )
+            .unwrap();
+        assert_eq!(v, "1.2.3");
+    }
+
+    #[test]
+    fn read_bytes_reports_a_selector_that_matches_nothing() {
+        let err = TxtVersionFile
+            .read_version_from_bytes_with_selector(
+                b"a: 1\n",
+                "Settings.asset",
+                Some("(?m)^bundleVersion: (.+)$"),
+            )
+            .unwrap_err();
+        assert!(
+            format!("{err:#}").contains("did not match anything"),
+            "{err:#}"
+        );
+    }
+
+    #[test]
+    fn read_bytes_without_a_selector_still_reads_the_whole_file() {
+        let v = TxtVersionFile
+            .read_version_from_bytes_with_selector(b"  1.2.3\n", "VERSION", None)
+            .unwrap();
+        assert_eq!(v, "1.2.3");
+    }
 }
 
 impl super::VersionFile for TxtVersionFile {
@@ -132,6 +180,21 @@ impl super::VersionFile for TxtVersionFile {
         Ok(version.to_string())
     }
 
+    fn read_version_from_bytes_with_selector(
+        &self,
+        content: &[u8],
+        filename: &str,
+        selector: Option<&str>,
+    ) -> Result<String> {
+        let Some(sel) = selector else {
+            return self.read_version_from_bytes(content, filename);
+        };
+        let text = std::str::from_utf8(content)
+            .with_context(|| format!("Invalid UTF-8 in {filename}"))
+            .error_code(error_code::TXT_INVALID_UTF8)?;
+        select_version(text, sel, filename)
+    }
+
     fn read_version_with_selector(
         &self,
         file_path: &Path,
@@ -140,23 +203,10 @@ impl super::VersionFile for TxtVersionFile {
         let Some(sel) = selector else {
             return self.read_version(file_path);
         };
-        let re = compile_selector(sel)?;
         let content = std::fs::read_to_string(file_path)
             .with_context(|| format!("failed to read {}", file_path.display()))
             .error_code(error_code::TXT_READ)?;
-        let cap = re
-            .captures(&content)
-            .ok_or_else(|| {
-                anyhow::anyhow!(
-                    "selector {sel:?} did not match anything in {}",
-                    file_path.display()
-                )
-            })
-            .error_code(error_code::TXT_VERSION_NOT_FOUND)?;
-        let m = cap.get(1).ok_or_else(|| {
-            anyhow::anyhow!("selector {sel:?} matched but capture group 1 is empty")
-        })?;
-        Ok(m.as_str().to_string())
+        select_version(&content, sel, &file_path.display().to_string())
     }
 
     fn write_version_with_selector(

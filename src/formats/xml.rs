@@ -367,11 +367,24 @@ impl VersionFile for XmlVersionFile {
     }
 
     fn read_version_from_bytes(&self, content: &[u8], filename: &str) -> Result<String> {
+        self.read_version_from_bytes_with_selector(content, filename, None)
+    }
+
+    fn read_version_from_bytes_with_selector(
+        &self,
+        content: &[u8],
+        filename: &str,
+        selector: Option<&str>,
+    ) -> Result<String> {
         let text = std::str::from_utf8(content)
             .with_context(|| format!("Invalid UTF-8 in {filename}"))
             .error_code(error_code::XML_INVALID_UTF8)?;
-        let range = find_target(text, None)
-            .ok_or_else(|| anyhow::anyhow!("No <version> tag found in {filename}"))
+        let range = find_target(text, selector)
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "No matching version tag found in {filename} (selector: {selector:?})"
+                )
+            })
             .error_code(error_code::XML_VERSION_NOT_FOUND)?;
         Ok(text[range.start..range.end].trim().to_string())
     }
@@ -503,5 +516,14 @@ mod tests {
             .read_version_from_bytes(SPRING_BOOT_POM.as_bytes(), "pom.xml")
             .unwrap();
         assert_eq!(v, "3.6.0");
+    }
+
+    #[test]
+    fn read_bytes_uses_the_selector() {
+        let content = br#"<Project><PropertyGroup><AssemblyVersion>9.9.9</AssemblyVersion><Version>1.2.3</Version></PropertyGroup></Project>"#;
+        let v = XmlVersionFile
+            .read_version_from_bytes_with_selector(content, "app.csproj", Some("//AssemblyVersion"))
+            .unwrap();
+        assert_eq!(v, "9.9.9");
     }
 }
