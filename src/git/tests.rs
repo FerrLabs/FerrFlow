@@ -1155,45 +1155,6 @@ fn a_gitlab_host_still_picks_gitlab() {
 }
 
 #[test]
-fn host_of_handles_the_remote_shapes_git_accepts() {
-    use super::auth::host_of;
-    assert_eq!(
-        host_of("https://github.com/acme/repo.git"),
-        Some("github.com")
-    );
-    assert_eq!(
-        host_of("https://user@github.com/acme/repo"),
-        Some("github.com")
-    );
-    assert_eq!(
-        host_of("https://github.com:8443/acme/repo"),
-        Some("github.com")
-    );
-    assert_eq!(
-        host_of("https://gitlab-ci-token:tok@gitlab.com/acme/repo.git"),
-        Some("gitlab.com")
-    );
-    assert_eq!(
-        host_of("https://x-access-token:tok@github.com/acme/repo.git"),
-        Some("github.com")
-    );
-    assert_eq!(
-        host_of("https://oauth2:tok@gitlab.acme.com:8443/team/repo.git"),
-        Some("gitlab.acme.com")
-    );
-    assert_eq!(
-        host_of(r"https://github.com\@gitlab.com/acme/repo.git"),
-        Some("github.com")
-    );
-    assert_eq!(host_of("git@gitlab.com:acme/repo.git"), Some("gitlab.com"));
-    assert_eq!(
-        host_of("ssh://git@gitlab.acme.com:2222/team/repo.git"),
-        Some("gitlab.acme.com")
-    );
-    assert_eq!(host_of(""), None);
-}
-
-#[test]
 fn configure_git_command_passes_the_credential_through_the_environment() {
     let _guard = EnvGuard::new().set("FERRFLOW_TOKEN", "ff_secret");
     let mut cmd = std::process::Command::new("git");

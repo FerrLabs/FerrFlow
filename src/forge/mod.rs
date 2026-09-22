@@ -215,7 +215,11 @@ struct RemoteParts<'a> {
 fn split_remote(url: &str) -> Option<RemoteParts<'_>> {
     let (authority, path) = match url.split_once("://") {
         Some((scheme, _)) if scheme.eq_ignore_ascii_case("file") => return None,
-        Some((_, rest)) => rest.split_once('/').unwrap_or((rest, "")),
+        Some((_, rest)) => {
+            let end = rest.find(['/', '\\', '?', '#']).unwrap_or(rest.len());
+            let (authority, tail) = rest.split_at(end);
+            (authority, tail.strip_prefix('/').unwrap_or(""))
+        }
         None => {
             let (authority, path) = url.split_once(':')?;
             if authority.contains('/') || is_dos_drive(authority) {
@@ -841,6 +845,59 @@ mod tests {
         ] {
             assert_eq!(extract_host(path), None, "{path}");
         }
+    }
+
+    #[test]
+    fn extract_host_handles_the_remote_shapes_git_accepts() {
+        for (url, host) in [
+            ("https://github.com/acme/repo.git", "github.com"),
+            ("https://user@github.com/acme/repo", "github.com"),
+            ("https://github.com:8443/acme/repo", "github.com"),
+            (
+                "https://gitlab-ci-token:tok@gitlab.com/acme/repo.git",
+                "gitlab.com",
+            ),
+            (
+                "https://x-access-token:tok@github.com/acme/repo.git",
+                "github.com",
+            ),
+            (
+                "https://oauth2:tok@gitlab.acme.com:8443/team/repo.git",
+                "gitlab.acme.com",
+            ),
+            ("git@gitlab.com:acme/repo.git", "gitlab.com"),
+            (
+                "ssh://git@gitlab.acme.com:2222/team/repo.git",
+                "gitlab.acme.com",
+            ),
+        ] {
+            assert_eq!(extract_host(url).as_deref(), Some(host), "{url}");
+        }
+    }
+
+    #[test]
+    fn the_host_ends_where_git_ends_it_not_at_the_last_at_sign() {
+        for (url, host) in [
+            (
+                r"https://github.com\@gitlab.com/acme/repo.git",
+                "github.com",
+            ),
+            (
+                "https://evil.example?@github.com/acme/repo.git",
+                "evil.example",
+            ),
+            (
+                "https://evil.example#@github.com/acme/repo.git",
+                "evil.example",
+            ),
+        ] {
+            assert_eq!(extract_host(url).as_deref(), Some(host), "{url}");
+            assert_ne!(detect_forge_from_url(url), Some(ForgeKind::Gitlab), "{url}");
+        }
+        assert_eq!(
+            detect_forge_from_url("https://evil.example?@github.com/acme/repo.git"),
+            None
+        );
     }
 
     #[test]
