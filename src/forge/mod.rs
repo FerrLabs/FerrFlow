@@ -214,6 +214,7 @@ struct RemoteParts<'a> {
 
 fn split_remote(url: &str) -> Option<RemoteParts<'_>> {
     let (authority, path) = match url.split_once("://") {
+        Some((scheme, _)) if scheme.eq_ignore_ascii_case("file") => return None,
         Some((_, rest)) => rest.split_once('/').unwrap_or((rest, "")),
         None => {
             let (authority, path) = url.split_once(':')?;
@@ -556,6 +557,7 @@ mod tests {
     fn local_paths_have_no_slug() {
         for path in [
             "file:///srv/git/team/app.git",
+            "file://C:/repos/team/app.git",
             "/srv/git/team/app.git",
             "C:/repos/team/app.git",
         ] {
@@ -834,6 +836,8 @@ mod tests {
             "../app.git",
             "./dir:with-colon/app.git",
             "file:///srv/git/app.git",
+            "file://C:/repos/app.git",
+            "FILE://server/share/app.git",
         ] {
             assert_eq!(extract_host(path), None, "{path}");
         }
