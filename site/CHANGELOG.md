@@ -1,5 +1,12 @@
 # Changelog
 
+## [2026.9.24] - 2026-09-22
+
+### Bug Fixes
+
+- fix(deps): update dependency @ferrflow/doc to v7.24.1 (#999)
+- fix(site): only clear directory destinations in the docs sync (#998)
+
 ## [2026.9.22] - 2026-09-22
 
 ### Features
