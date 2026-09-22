@@ -1099,6 +1099,18 @@ fn command_env(cmd: &std::process::Command, key: &str) -> Option<String> {
 }
 
 #[test]
+fn an_empty_token_variable_is_no_credential() {
+    let _guard = EnvGuard::new()
+        .set("FERRFLOW_TOKEN", "")
+        .set("GITLAB_TOKEN", "")
+        .set("GITHUB_TOKEN", "");
+    assert_eq!(
+        token_for_url("https://github.com/owner/repo.git", ForgeKind::Auto),
+        None
+    );
+}
+
+#[test]
 fn a_repository_name_does_not_pick_the_forge() {
     let _guard = EnvGuard::new()
         .unset("FERRFLOW_TOKEN")

@@ -41,10 +41,14 @@ fn forge_of(url: &str, configured: ForgeKind) -> Option<ForgeKind> {
     }
 }
 
+fn non_empty_env(var: &str) -> Option<String> {
+    std::env::var(var).ok().filter(|value| !value.is_empty())
+}
+
 pub(super) fn token_for_url(url: &str, forge: ForgeKind) -> Option<(String, String)> {
-    let ferrflow_token = std::env::var("FERRFLOW_TOKEN").ok();
-    let gitlab_token = std::env::var("GITLAB_TOKEN").ok();
-    let github_token = std::env::var("GITHUB_TOKEN").ok();
+    let ferrflow_token = non_empty_env("FERRFLOW_TOKEN");
+    let gitlab_token = non_empty_env("GITLAB_TOKEN");
+    let github_token = non_empty_env("GITHUB_TOKEN");
     if ferrflow_token.is_none() && gitlab_token.is_none() && github_token.is_none() {
         return None;
     }
