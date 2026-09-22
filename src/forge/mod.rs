@@ -119,18 +119,25 @@ pub fn detect_pr_number() -> Option<u64> {
     None
 }
 
+const SAAS_HOSTS: &[(&str, ForgeKind)] = &[
+    ("github.com", ForgeKind::Github),
+    ("gitlab.com", ForgeKind::Gitlab),
+    ("codeberg.org", ForgeKind::Gitea),
+    ("gitea.io", ForgeKind::Gitea),
+    ("bitbucket.org", ForgeKind::Bitbucket),
+];
+
 pub fn detect_forge_from_url(url: &str) -> Option<ForgeKind> {
-    if url.contains("github.com") {
-        Some(ForgeKind::Github)
-    } else if url.contains("gitlab.com") {
-        Some(ForgeKind::Gitlab)
-    } else if url.contains("codeberg.org") || url.contains("gitea.io") {
-        Some(ForgeKind::Gitea)
-    } else if url.contains("bitbucket.org") {
-        Some(ForgeKind::Bitbucket)
-    } else {
-        None
-    }
+    let host = extract_host(url)?;
+    SAAS_HOSTS
+        .iter()
+        .find(|(saas, _)| {
+            host == *saas
+                || host
+                    .strip_suffix(saas)
+                    .is_some_and(|sub| sub.ends_with('.'))
+        })
+        .map(|(_, kind)| *kind)
 }
 
 const PROBE_TIMEOUT: Duration = Duration::from_secs(2);
@@ -201,10 +208,7 @@ fn kind_from_probe_statuses(
 }
 
 pub fn extract_host(url: &str) -> Option<String> {
-    if let Some(rest) = url
-        .strip_prefix("https://")
-        .or_else(|| url.strip_prefix("http://"))
-    {
+    if let Some((_, rest)) = url.split_once("://") {
         let authority = rest.split('/').next()?;
         let host_port = authority.rsplit('@').next()?;
         let host = host_port.split(':').next()?;
@@ -694,6 +698,38 @@ mod tests {
     #[test]
     fn detect_forge_empty_string() {
         assert_eq!(detect_forge_from_url(""), None);
+    }
+
+    #[test]
+    fn a_saas_domain_in_the_path_does_not_pick_the_forge() {
+        for url in [
+            "https://git.acme.com/tools/gitlab.com-exporter.git",
+            "git@git.acme.com:mirrors/github.com.git",
+            "https://git.acme.com/codeberg.org/backup.git",
+        ] {
+            assert_eq!(detect_forge_from_url(url), None, "{url}");
+        }
+    }
+
+    #[test]
+    fn a_lookalike_host_is_not_a_saas_forge() {
+        assert_eq!(detect_forge_from_url("https://notgithub.com/o/r.git"), None);
+        assert_eq!(
+            detect_forge_from_url("https://gitlab.com.evil.io/o/r.git"),
+            None
+        );
+    }
+
+    #[test]
+    fn saas_subdomains_and_ssh_urls_still_resolve() {
+        assert_eq!(
+            detect_forge_from_url("https://ssh.github.com/o/r.git"),
+            Some(ForgeKind::Github)
+        );
+        assert_eq!(
+            detect_forge_from_url("ssh://git@gitlab.com:22/o/r.git"),
+            Some(ForgeKind::Gitlab)
+        );
     }
 
     #[test]
