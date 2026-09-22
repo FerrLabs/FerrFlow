@@ -86,7 +86,7 @@ mod tests {
         .expect("schema/ferrflow-package.json must exist");
         assert_eq!(
             BUNDLED_PACKAGE_SCHEMA, on_disk,
-            "the embedded package schema drifted from schema/ferrflow-package.json — rebuild the binary"
+            "the embedded package schema drifted from schema/ferrflow-package.json, rebuild the binary"
         );
     }
 

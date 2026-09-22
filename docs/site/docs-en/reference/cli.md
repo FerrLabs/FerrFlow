@@ -429,10 +429,11 @@ Print the JSON schema for the ferrflow config file. The schema is bundled into t
 ferrflow schema [OPTIONS]
 ```
 
-| Flag              | Description                                           |
-| ----------------- | ----------------------------------------------------- |
-| `--pretty`        | Format the output instead of compact single-line JSON |
-| `--output <FILE>` | Write to a file instead of stdout                     |
+| Flag              | Description                                                        |
+| ----------------- | ------------------------------------------------------------------ |
+| `--pretty`        | Format the output instead of compact single-line JSON              |
+| `--package`       | Print the schema for a package file listed under `include` instead |
+| `--output <FILE>` | Write to a file instead of stdout                                  |
 
 Use it to point an editor at a local copy, or to validate `.ferrflow.json` in a pre-commit hook with no internet access:
 
@@ -441,6 +442,8 @@ ferrflow schema --pretty --output ferrflow.schema.json
 ```
 
 Then set `"$schema": "./ferrflow.schema.json"` in your config. The command parses the bundled schema before printing, so it exits non-zero if the build artefact is somehow corrupt.
+
+A package file pulled in through `include` has its own schema, served at `ferrflow.com/schema/ferrflow-package.json`. It accepts the same keys as a `package` entry, with `path` optional. `ferrflow schema --package` writes the same schema locally.
 
 ---
 

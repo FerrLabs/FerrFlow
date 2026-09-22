@@ -54,6 +54,7 @@
               "helm",
               "chartyaml",
               "pubspecyaml",
+              "galaxyyml",
               "mixexs",
               "gemspec",
               "packageswift",
@@ -119,6 +120,7 @@
         "calver",
         "calver-short",
         "calver-seq",
+        "calver-short-seq",
         "sequential",
         "zerover"
       ]
@@ -161,6 +163,28 @@
         "latest",
         "{name}@latest"
       ]
+    },
+    "buildMetadata": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "boolean"
+        }
+      ],
+      "description": "Overrides `workspace.buildMetadata` for this package. A command replaces the workspace one, `true` inherits it, and `false` releases this package with a plain version while the rest of the workspace stays stamped."
+    },
+    "build_metadata": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "boolean"
+        }
+      ],
+      "description": "Snake_case form of `buildMetadata` — both spellings are accepted. Overrides `workspace.buildMetadata` for this package. A command replaces the workspace one, `true` inherits it, and `false` releases this package with a plain version while the rest of the workspace stays stamped."
     },
     "hooks": {
       "$ref": "#/$defs/hooks"
@@ -213,9 +237,12 @@
               "helm",
               "chartyaml",
               "pubspecyaml",
+              "galaxyyml",
               "mixexs",
               "gemspec",
               "packageswift",
+              "cabal",
+              "cmake",
               "txt"
             ]
           },
@@ -511,6 +538,16 @@
               "default": true,
               "description": "Run python -m build in the package directory before uploading. Set false when the distributions in dist/ are produced earlier in the pipeline."
             },
+            "trustedPublishing": {
+              "type": "boolean",
+              "default": false,
+              "description": "Mint a short-lived upload token from PyPI trusted publishing instead of reading a stored token. Requires a GitHub Actions job with permissions: id-token: write, and this repository registered as a trusted publisher for the project. Mutually exclusive with the registry's tokenEnv."
+            },
+            "trusted_publishing": {
+              "type": "boolean",
+              "default": false,
+              "description": "Snake_case form of `trustedPublishing` — both spellings are accepted. Mint a short-lived upload token from PyPI trusted publishing instead of reading a stored token. Requires a GitHub Actions job with permissions: id-token: write, and this repository registered as a trusted publisher for the project. Mutually exclusive with the registry's tokenEnv."
+            },
             "args": {
               "type": "array",
               "items": {
@@ -556,7 +593,7 @@
         },
         "postBump": {
           "type": "string",
-          "description": "Run after writing version files, before changelog generation."
+          "description": "Run after writing version files and generating the changelog. The generated section is in FERRFLOW_CHANGELOG, and anything the hook writes is staged into the release commit."
         },
         "preCommit": {
           "type": "string",
@@ -609,7 +646,7 @@
         },
         "post_bump": {
           "type": "string",
-          "description": "Snake_case form of `postBump` — both spellings are accepted. Run after writing version files, before changelog generation."
+          "description": "Snake_case form of `postBump` — both spellings are accepted. Run after writing version files and generating the changelog. The generated section is in FERRFLOW_CHANGELOG, and anything the hook writes is staged into the release commit."
         },
         "pre_commit": {
           "type": "string",
