@@ -13,6 +13,10 @@ fs.copyFileSync(
   path.join(root, "schema", "ferrflow.json"),
   path.join(target, "schema.json"),
 );
+fs.copyFileSync(
+  path.join(root, "schema", "ferrflow-package.json"),
+  path.join(target, "package-schema.json"),
+);
 
 // Written by the release job before ferrflow runs, from the hyperfine-baseline
 // artifact of the benchmark matrix this commit already waited on. Absent on a
