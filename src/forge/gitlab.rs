@@ -154,14 +154,23 @@ impl Forge for GitLabForge {
             "description": body,
         });
 
-        let response: serde_json::Value = self
+        let mut raw = self
             .agent
             .post(&url)
+            .config()
+            .http_status_as_error(false)
+            .build()
             .header(self.token_kind.header(), &self.token)
             .header("User-Agent", "ferrflow")
             .send_json(payload)
             .with_context(|| format!("Failed to create MR from {head} to {base}"))
-            .error_code(error_code::GITLAB_CREATE_MR)?
+            .error_code(error_code::GITLAB_CREATE_MR)?;
+        super::check_status(
+            &mut raw,
+            &format!("Failed to create MR from {head} to {base}"),
+        )
+        .error_code(error_code::GITLAB_CREATE_MR)?;
+        let response: serde_json::Value = raw
             .body_mut()
             .read_json()
             .with_context(|| "Failed to parse MR response")
@@ -305,12 +314,18 @@ impl Forge for GitLabForge {
     fn update_merge_request(&self, id: u64, title: &str, body: &str) -> Result<MergeRequestResult> {
         let project = self.encoded_project_id();
         let url = format!("{}/projects/{project}/merge_requests/{id}", self.api_base);
-        self.agent
+        let mut raw = self
+            .agent
             .put(&url)
+            .config()
+            .http_status_as_error(false)
+            .build()
             .header(self.token_kind.header(), &self.token)
             .header("User-Agent", "ferrflow")
             .send_json(serde_json::json!({ "title": title, "description": body }))
             .with_context(|| format!("Failed to update MR !{id}"))
+            .error_code(error_code::GITLAB_UPDATE_MR)?;
+        super::check_status(&mut raw, &format!("Failed to update MR !{id}"))
             .error_code(error_code::GITLAB_UPDATE_MR)?;
 
         Ok(MergeRequestResult {

@@ -11,7 +11,7 @@ use crate::git::{Repository, open_repo};
 use crate::hooks::HookContext;
 
 use super::checkpoint::{Checkpoint, Phase};
-use super::execute::{ReleasePlan, execute_release};
+use super::execute::{ReleasePlan, execute_release, release_pr_title};
 use super::summary::PlannedTag;
 
 fn git(dir: &Path, args: &[&str]) -> String {
@@ -115,6 +115,9 @@ impl Harness {
 #[derive(Default)]
 struct RecordingForge {
     create_calls: Mutex<Vec<String>>,
+    mr_titles: Mutex<Vec<String>>,
+    mr_failure: Option<String>,
+    lookup_failure: Option<String>,
 }
 
 impl Forge for RecordingForge {
@@ -144,14 +147,21 @@ impl Forge for RecordingForge {
         &self,
         _head: &str,
         _base: &str,
-        _title: &str,
+        title: &str,
         _body: &str,
     ) -> Result<MergeRequestResult> {
-        unreachable!("release execution does not open merge requests in commit mode")
+        self.mr_titles.lock().unwrap().push(title.to_string());
+        match &self.mr_failure {
+            Some(message) => anyhow::bail!("{message}"),
+            None => Ok(MergeRequestResult {
+                id: 7,
+                auto_merge_key: "7".to_string(),
+            }),
+        }
     }
 
     fn enable_auto_merge(&self, _mr: &MergeRequestResult) -> Result<()> {
-        unreachable!("not exercised")
+        Ok(())
     }
 
     fn mr_noun(&self) -> &'static str {
@@ -175,7 +185,10 @@ impl Forge for RecordingForge {
     }
 
     fn find_open_pr(&self, _head: &str, _base: &str) -> Result<Option<u64>> {
-        unreachable!("not exercised")
+        match &self.lookup_failure {
+            Some(message) => anyhow::bail!("{message}"),
+            None => Ok(None),
+        }
     }
 
     fn update_merge_request(
@@ -450,4 +463,177 @@ fn commit_mode_still_tags_and_publishes_in_one_pass() {
     assert!(result.is_ok(), "{:?}", result.err());
     assert_eq!(harness.remote_tags(), vec!["v1.1.0".to_string()]);
     assert_eq!(releases.len(), 1);
+}
+
+const REPORTED_PACKAGES: &[&str] = &[
+    "AvailabilityZoneImpairment-SqlAlwaysOnCluster",
+    "AvailabilityZoneImpairment",
+    "AvailabilityZoneImpairment-LaunchDRSRecoveryInstance",
+    "AvailabilityZoneImpairment-RemediateRecoveryGroup",
+    "AvailabilityZoneImpairment-FailoverRdsCluster",
+];
+
+fn parts(names: &[&str]) -> Vec<String> {
+    names.iter().map(|n| format!("{n} v1.2.3")).collect()
+}
+
+#[test]
+fn a_short_release_keeps_every_package_in_the_title() {
+    assert_eq!(
+        release_pr_title(&parts(&["api", "web"]), 255),
+        "chore(release): api v1.2.3, web v1.2.3"
+    );
+}
+
+#[test]
+fn a_monorepo_release_title_fits_the_forge_limit() {
+    let title = release_pr_title(&parts(REPORTED_PACKAGES), 255);
+    assert!(
+        title.chars().count() <= 255,
+        "{} chars: {title}",
+        title.chars().count()
+    );
+    assert!(title.ends_with(" and 1 more"), "{title}");
+    assert!(
+        title.starts_with("chore(release): AvailabilityZoneImpairment-SqlAlwaysOnCluster v1.2.3"),
+        "{title}"
+    );
+}
+
+#[test]
+fn a_title_over_the_limit_drops_as_few_packages_as_it_can() {
+    let all = parts(REPORTED_PACKAGES);
+    let title = release_pr_title(&all, 255);
+    let kept = title.matches(" v1.2.3").count();
+    assert_eq!(kept, all.len() - 1, "{title}");
+}
+
+#[test]
+fn one_package_longer_than_the_limit_is_cut_to_the_limit() {
+    let title = release_pr_title(&parts(&["x".repeat(400).as_str()]), 255);
+    assert_eq!(title.chars().count(), 255);
+    assert!(title.ends_with('\u{2026}'), "{title}");
+}
+
+#[test]
+fn the_title_is_cut_on_characters_not_bytes() {
+    let title = release_pr_title(&parts(&["é".repeat(400).as_str()]), 255);
+    assert_eq!(title.chars().count(), 255);
+}
+
+#[test]
+fn pr_mode_sends_a_title_the_forge_will_accept() {
+    let mut harness = Harness::new();
+    harness.config.workspace.release_commit_mode = crate::config::ReleaseCommitMode::Pr;
+    commit_file(&harness.root, "a.txt", "a", "feat: a feature");
+
+    let forge = RecordingForge::default();
+    let tags: Vec<PlannedTag> = REPORTED_PACKAGES
+        .iter()
+        .map(|pkg| tag_to_create(&format!("{pkg}@v1.2.3"), pkg, "1.2.3"))
+        .collect();
+    let (result, _) = run_phase(&harness, &tags, &forge, false);
+
+    assert!(result.is_ok(), "{:?}", result.err());
+    let titles = forge.mr_titles.lock().unwrap();
+    let title = titles.first().expect("the release MR was opened");
+    assert!(
+        title.chars().count() <= 255,
+        "{} chars: {title}",
+        title.chars().count()
+    );
+}
+
+#[test]
+fn pr_mode_fails_the_release_when_the_forge_rejects_the_mr() {
+    let mut harness = Harness::new();
+    harness.config.workspace.release_commit_mode = crate::config::ReleaseCommitMode::Pr;
+    commit_file(&harness.root, "a.txt", "a", "feat: a feature");
+
+    let forge = RecordingForge {
+        mr_failure: Some("http status 400: Title is too long".to_string()),
+        ..Default::default()
+    };
+    let tags = vec![tag_to_create("v1.1.0", "app", "1.1.0")];
+    let (result, _) = run_phase(&harness, &tags, &forge, false);
+
+    let err = result.expect_err("a release with no MR is not a release");
+    let rendered = format!("{err:#}");
+    assert!(
+        rendered.contains("failed to create the release"),
+        "{rendered}"
+    );
+    assert!(rendered.contains("Title is too long"), "{rendered}");
+}
+
+#[test]
+fn pr_mode_fails_when_no_forge_can_be_reached() {
+    let mut harness = Harness::new();
+    harness.config.workspace.release_commit_mode = crate::config::ReleaseCommitMode::Pr;
+    commit_file(&harness.root, "a.txt", "a", "feat: a feature");
+
+    let hook_contexts: Vec<(HookContext, usize)> = Vec::new();
+    let mut files_to_commit: Vec<String> = vec!["README.md".to_string()];
+    let mut files_per_package: HashMap<String, Vec<String>> = HashMap::new();
+    let mut pkg_outputs: Vec<(String, Vec<String>)> = Vec::new();
+    let mut shared_outputs: Vec<String> = Vec::new();
+    let mut forge_results: Vec<(String, ReleaseResult)> = Vec::new();
+    let tags = vec![tag_to_create("v1.1.0", "app", "1.1.0")];
+
+    let result = {
+        let mut plan = ReleasePlan {
+            finalizing: false,
+            repo: &harness.repo,
+            config: &harness.config,
+            root: &harness.root,
+            target_branch: "main",
+            dry_run: false,
+            verbose: false,
+            force: false,
+            draft: false,
+            tags_to_create: &tags,
+            hook_contexts: &hook_contexts,
+            files_to_commit: &mut files_to_commit,
+            files_per_package: &mut files_per_package,
+            pkg_outputs: &mut pkg_outputs,
+            shared_outputs: &mut shared_outputs,
+            forge_results: &mut forge_results,
+            checkpoint: None,
+            forge: None,
+        };
+        execute_release(&mut plan)
+    };
+
+    let err = result.expect_err("a pushed branch with no forge has released nothing");
+    let rendered = format!("{err:#}");
+    assert!(
+        rendered.contains("cannot open the release pull request"),
+        "{rendered}"
+    );
+}
+
+#[test]
+fn pr_mode_blames_the_lookup_when_the_lookup_is_what_broke() {
+    let mut harness = Harness::new();
+    harness.config.workspace.release_commit_mode = crate::config::ReleaseCommitMode::Pr;
+    commit_file(&harness.root, "a.txt", "a", "feat: a feature");
+
+    let forge = RecordingForge {
+        lookup_failure: Some("http status 502: Bad Gateway".to_string()),
+        ..Default::default()
+    };
+    let tags = vec![tag_to_create("v1.1.0", "app", "1.1.0")];
+    let (result, _) = run_phase(&harness, &tags, &forge, false);
+
+    let err = result.expect_err("a release cannot proceed on an unknown PR state");
+    let rendered = format!("{err:#}");
+    assert!(
+        rendered.contains("could not look up the release"),
+        "{rendered}"
+    );
+    assert!(rendered.contains("Bad Gateway"), "{rendered}");
+    assert!(
+        forge.mr_titles.lock().unwrap().is_empty(),
+        "a failed lookup must not be retried as a create"
+    );
 }

@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use colored::Colorize;
 use rayon::prelude::*;
 use std::collections::HashMap;
@@ -16,8 +16,8 @@ use crate::versioning::truncate_version;
 
 use super::checkpoint::{Checkpoint, Phase};
 use super::summary::{PlannedTag, write_github_step_summary};
-use crate::forge::{Forge, ReleaseResult};
-use crate::monorepo::preview::build_forge_instance;
+use crate::forge::{Forge, MR_TITLE_MAX_CHARS, ReleaseResult};
+use crate::monorepo::preview::{build_forge_instance, try_build_forge_instance};
 use crate::monorepo::util::{auto_stage_new_files, collect_dirty_files};
 
 pub(super) struct ReleasePlan<'a> {
@@ -317,84 +317,126 @@ fn run_commit_or_pr(
             plan.shared_outputs
                 .push(format!("✓ Pushed branch {}", branch_name.cyan()));
 
-            if let Some(forge_instance) = build_forge_instance(plan.repo, plan.config) {
-                let pr_title = format!("chore(release): {}", release_parts.join(", "));
-                let pr_body = format!(
-                    "Automated release commit.\n\n{}",
-                    plan.tags_to_create
-                        .iter()
-                        .map(|t| format!("- `{}`", t.tag))
-                        .collect::<Vec<_>>()
-                        .join("\n")
-                );
-
-                let existing = match forge_instance.find_open_pr(&branch_name, plan.target_branch) {
-                    Ok(found) => found,
-                    Err(err) => {
-                        tracing::warn!(
-                            "{}",
-                            format!(
-                                "  Warning: could not look up existing {}: {err}",
-                                forge_instance.mr_noun()
+            match plan.forge {
+                Some(forge) => open_or_update_release_mr(plan, forge, &branch_name, release_parts)?,
+                None => {
+                    let instance = try_build_forge_instance(plan.repo, plan.config).map_err(
+                        |reason| {
+                            anyhow::anyhow!(
+                                "cannot open the release pull request for branch                                  {branch_name}: {reason}"
                             )
-                            .yellow()
-                        );
-                        None
-                    }
-                };
-
-                let (result, verb) = match existing {
-                    Some(id) => (
-                        forge_instance.update_merge_request(id, &pr_title, &pr_body),
-                        "Updated",
-                    ),
-                    None => (
-                        forge_instance.create_merge_request(
-                            &branch_name,
-                            plan.target_branch,
-                            &pr_title,
-                            &pr_body,
-                        ),
-                        "Created",
-                    ),
-                };
-
-                match result {
-                    Ok(mr) => {
-                        plan.shared_outputs.push(format!(
-                            "✓ {verb} {} #{}",
-                            forge_instance.mr_noun(),
-                            mr.id.to_string().cyan()
-                        ));
-                        run_release_summary_hook(plan, HookPoint::PreRelease)?;
-                        if plan.config.workspace.auto_merge_releases {
-                            match forge_instance.enable_auto_merge(&mr) {
-                                Ok(()) => {
-                                    plan.shared_outputs.push("✓ Auto-merge enabled".to_string())
-                                }
-                                Err(err) => tracing::warn!(
-                                    "{}",
-                                    format!("  Warning: failed to enable auto-merge: {err}")
-                                        .yellow()
-                                ),
-                            }
-                        }
-                    }
-                    Err(err) => tracing::warn!(
-                        "{}",
-                        format!(
-                            "  Warning: failed to {} {}: {err}",
-                            verb.to_lowercase(),
-                            forge_instance.mr_noun()
-                        )
-                        .yellow()
-                    ),
+                        },
+                    )?;
+                    open_or_update_release_mr(
+                        plan,
+                        instance.as_ref(),
+                        &branch_name,
+                        release_parts,
+                    )?;
                 }
             }
         }
         ReleaseCommitMode::None => {}
     }
     Ok(())
+}
+
+fn open_or_update_release_mr(
+    plan: &mut ReleasePlan<'_>,
+    forge: &dyn Forge,
+    branch_name: &str,
+    release_parts: &[String],
+) -> Result<()> {
+    let pr_title = release_pr_title(release_parts, MR_TITLE_MAX_CHARS);
+    let pr_body = format!(
+        "Automated release commit.\n\n{}",
+        plan.tags_to_create
+            .iter()
+            .map(|t| format!("- `{}`", t.tag))
+            .collect::<Vec<_>>()
+            .join("\n")
+    );
+
+    let existing = forge
+        .find_open_pr(branch_name, plan.target_branch)
+        .with_context(|| {
+            format!(
+                "could not look up the release {} for branch {branch_name}",
+                forge.mr_noun()
+            )
+        })?;
+
+    let (result, verb, action) = match existing {
+        Some(id) => (
+            forge.update_merge_request(id, &pr_title, &pr_body),
+            "Updated",
+            "update",
+        ),
+        None => (
+            forge.create_merge_request(branch_name, plan.target_branch, &pr_title, &pr_body),
+            "Created",
+            "create",
+        ),
+    };
+
+    match result {
+        Ok(mr) => {
+            plan.shared_outputs.push(format!(
+                "✓ {verb} {} #{}",
+                forge.mr_noun(),
+                mr.id.to_string().cyan()
+            ));
+            run_release_summary_hook(plan, HookPoint::PreRelease)?;
+            if plan.config.workspace.auto_merge_releases {
+                match forge.enable_auto_merge(&mr) {
+                    Ok(()) => plan.shared_outputs.push("✓ Auto-merge enabled".to_string()),
+                    Err(err) => tracing::warn!(
+                        "{}",
+                        format!("  Warning: failed to enable auto-merge: {err}").yellow()
+                    ),
+                }
+            }
+        }
+        Err(err) if !forge.supports_merge_requests() => tracing::warn!(
+            "{}",
+            format!(
+                "  Warning: could not {action} the release {}: {err}",
+                forge.mr_noun()
+            )
+            .yellow()
+        ),
+        Err(err) => {
+            return Err(err).with_context(|| {
+                format!(
+                    "failed to {action} the release {} for branch {branch_name}",
+                    forge.mr_noun()
+                )
+            });
+        }
+    }
+    Ok(())
+}
+
+pub(super) fn release_pr_title(parts: &[String], limit: usize) -> String {
+    let full = format!("chore(release): {}", parts.join(", "));
+    if full.chars().count() <= limit {
+        return full;
+    }
+
+    for kept in (1..parts.len()).rev() {
+        let candidate = format!(
+            "chore(release): {} and {} more",
+            parts[..kept].join(", "),
+            parts.len() - kept
+        );
+        if candidate.chars().count() <= limit {
+            return candidate;
+        }
+    }
+
+    let mut cut: String = full.chars().take(limit.saturating_sub(1)).collect();
+    cut.push('\u{2026}');
+    cut
 }
 
 fn create_release_tags(plan: &mut ReleasePlan<'_>) -> Result<()> {

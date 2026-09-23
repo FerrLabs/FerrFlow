@@ -102,6 +102,35 @@ pub trait Forge: Send + Sync {
     fn find_open_pr(&self, head: &str, base: &str) -> Result<Option<u64>>;
 
     fn update_merge_request(&self, id: u64, title: &str, body: &str) -> Result<MergeRequestResult>;
+
+    fn supports_merge_requests(&self) -> bool {
+        true
+    }
+}
+
+pub const MR_TITLE_MAX_CHARS: usize = 255;
+
+const MAX_ERROR_BODY_CHARS: usize = 400;
+
+pub(crate) fn check_status(
+    response: &mut ureq::http::Response<ureq::Body>,
+    what: &str,
+) -> Result<()> {
+    let status = response.status().as_u16();
+    if response.status().is_success() {
+        return Ok(());
+    }
+    let body = response.body_mut().read_to_string().unwrap_or_default();
+    Err(anyhow::anyhow!(api_failure(what, status, &body)))
+}
+
+fn api_failure(what: &str, status: u16, body: &str) -> String {
+    let detail: String = body.trim().chars().take(MAX_ERROR_BODY_CHARS).collect();
+    if detail.is_empty() {
+        format!("{what}: http status {status}")
+    } else {
+        format!("{what}: http status {status}: {detail}")
+    }
 }
 
 pub fn detect_pr_number() -> Option<u64> {
@@ -1039,5 +1068,38 @@ mod tests {
             "gitlab.internal".into(),
         );
         assert_eq!(forge.mr_noun(), "MR");
+    }
+
+    #[test]
+    fn an_api_failure_carries_the_response_body() {
+        let msg = api_failure(
+            "Failed to create MR from a to b",
+            400,
+            "{\"message\":\"Title is too long (maximum is 255 characters)\"}",
+        );
+        assert!(msg.contains("http status 400"), "{msg}");
+        assert!(msg.contains("Title is too long"), "{msg}");
+    }
+
+    #[test]
+    fn an_api_failure_without_a_body_still_names_the_status() {
+        assert_eq!(
+            api_failure(
+                "Failed to update MR !7",
+                403,
+                "   
+ "
+            ),
+            "Failed to update MR !7: http status 403"
+        );
+    }
+
+    #[test]
+    fn an_api_failure_caps_a_huge_body() {
+        let msg = api_failure("boom", 500, &"x".repeat(MAX_ERROR_BODY_CHARS * 3));
+        assert_eq!(
+            msg.chars().count(),
+            "boom: http status 500: ".len() + MAX_ERROR_BODY_CHARS
+        );
     }
 }

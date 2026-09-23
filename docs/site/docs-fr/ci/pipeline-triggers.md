@@ -203,6 +203,10 @@ jobs:
 
 **Quand l'utiliser :** Quand vous voulez reviewer les bumps de version, ou quand la protection de branche empeche les push directs sur main.
 
+Le titre de la pull request liste les packages publies, et les forges le plafonnent : 255 caracteres sur GitLab, Gitea et Forgejo, 256 sur GitHub. Un monorepo qui publie beaucoup de packages d'un coup obtient donc un titre qui se termine par `and N more`. Rien n'est perdu, la description porte toujours la liste complete, une ligne par tag.
+
+Si la pull request de release ne peut pas etre ouverte ou mise a jour, l'execution echoue au lieu d'avertir. Cela couvre le refus de la forge, l'echec de la recherche d'une PR existante, et le cas ou FerrFlow ne peut joindre aucune forge, en general un token manquant ou expire. Une release en mode PR qui n'a ouvert aucune pull request n'a rien publie, elle ne doit pas laisser le pipeline au vert.
+
 ## Securite de concurrence
 
 Depuis la v5.2, `ferrflow release` acquiert `ferrflow.lock` de maniere atomique (`O_CREAT|O_EXCL`) au debut de chaque execution mutante. Le lockfile se trouve dans le git dir commun du depot, c'est-a-dire `.git/` dans un checkout ordinaire et le `.git/` du checkout principal quand vous lancez depuis un worktree lie, si bien que tous les worktrees d'un depot partagent un seul verrou. C'est le comportement voulu : ils poussent vers le meme remote et se disputent les memes refs, donc un verrou par worktree n'empecherait rien. Une seconde invocation concurrente sur le meme depot echoue immediatement avec une erreur claire au lieu de courir contre les refs git. Le scenario classique est une release declenchee manuellement qui demarre en meme temps qu'un `auto-release` planifie en cron, ce qui produit des jeux de tags poussés à moitié, des refus non fast-forward ou des draft releases dupliquees.
