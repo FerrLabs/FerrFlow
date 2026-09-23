@@ -4,6 +4,13 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.25.2] - 2026-09-23
+
+### Bug Fixes
+
+- fix(release): cap the release PR title to what forges accept (#1175)
+- fix(deps): bump faster-hex to 0.10.1 for RUSTSEC-2026-0306 (#1177)
+
 ## [7.25.1] - 2026-09-22
 
 ### Bug Fixes
