@@ -11,7 +11,7 @@ use crate::git::{Repository, open_repo};
 use crate::hooks::HookContext;
 
 use super::checkpoint::{Checkpoint, Phase};
-use super::execute::{ReleasePlan, execute_release, release_pr_title};
+use super::execute::{ReleasePlan, execute_release, forge_unavailable, release_pr_title};
 use super::summary::PlannedTag;
 
 fn git(dir: &Path, args: &[&str]) -> String {
@@ -607,7 +607,7 @@ fn pr_mode_fails_when_no_forge_can_be_reached() {
     let err = result.expect_err("a pushed branch with no forge has released nothing");
     let rendered = format!("{err:#}");
     assert!(
-        rendered.contains("cannot open the release pull request"),
+        rendered.contains("cannot open the release pull request for branch ferrflow/release-main:"),
         "{rendered}"
     );
 }
@@ -636,4 +636,23 @@ fn pr_mode_blames_the_lookup_when_the_lookup_is_what_broke() {
         forge.mr_titles.lock().unwrap().is_empty(),
         "a failed lookup must not be retried as a create"
     );
+}
+
+#[test]
+fn the_unreachable_forge_message_reads_as_one_sentence() {
+    use crate::forge::ForgeKind;
+    use crate::monorepo::preview::ForgeUnavailable;
+
+    let rendered = forge_unavailable(
+        "ferrflow/release-main",
+        ForgeUnavailable::NoToken(ForgeKind::Github),
+    )
+    .to_string();
+
+    assert!(
+        rendered
+            .starts_with("cannot open the release pull request for branch ferrflow/release-main: "),
+        "{rendered}"
+    );
+    assert!(!rendered.contains("  "), "{rendered}");
 }

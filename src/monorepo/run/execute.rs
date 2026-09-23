@@ -17,7 +17,7 @@ use crate::versioning::truncate_version;
 use super::checkpoint::{Checkpoint, Phase};
 use super::summary::{PlannedTag, write_github_step_summary};
 use crate::forge::{Forge, MR_TITLE_MAX_CHARS, ReleaseResult};
-use crate::monorepo::preview::{build_forge_instance, try_build_forge_instance};
+use crate::monorepo::preview::{ForgeUnavailable, build_forge_instance, try_build_forge_instance};
 use crate::monorepo::util::{auto_stage_new_files, collect_dirty_files};
 
 pub(super) struct ReleasePlan<'a> {
@@ -320,13 +320,8 @@ fn run_commit_or_pr(
             match plan.forge {
                 Some(forge) => open_or_update_release_mr(plan, forge, &branch_name, release_parts)?,
                 None => {
-                    let instance = try_build_forge_instance(plan.repo, plan.config).map_err(
-                        |reason| {
-                            anyhow::anyhow!(
-                                "cannot open the release pull request for branch                                  {branch_name}: {reason}"
-                            )
-                        },
-                    )?;
+                    let instance = try_build_forge_instance(plan.repo, plan.config)
+                        .map_err(|reason| forge_unavailable(&branch_name, reason))?;
                     open_or_update_release_mr(
                         plan,
                         instance.as_ref(),
@@ -415,6 +410,10 @@ fn open_or_update_release_mr(
         }
     }
     Ok(())
+}
+
+pub(super) fn forge_unavailable(branch: &str, reason: ForgeUnavailable) -> anyhow::Error {
+    anyhow::anyhow!("cannot open the release pull request for branch {branch}: {reason}")
 }
 
 pub(super) fn release_pr_title(parts: &[String], limit: usize) -> String {
