@@ -214,7 +214,7 @@ jobs:
 
 The pull request title lists the packages being released, and forges cap it: 255 characters on GitLab, Gitea and Forgejo, 256 on GitHub. A monorepo releasing many packages at once therefore gets a title that ends in `and N more`. Nothing is lost, the description always carries the full list, one line per tag.
 
-If the forge refuses to open or update the release pull request, the run fails rather than warning. A PR-mode release that opened no pull request has released nothing, so it must not leave the pipeline green.
+If the release pull request cannot be opened or updated, the run fails rather than warning. That covers the forge refusing it, the lookup for an existing one failing, and FerrFlow not being able to reach a forge at all, which is usually a missing or expired token. A PR-mode release that opened no pull request has released nothing, so it must not leave the pipeline green.
 
 ## Combining strategies
 

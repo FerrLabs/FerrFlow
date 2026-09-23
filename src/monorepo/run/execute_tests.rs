@@ -117,6 +117,7 @@ struct RecordingForge {
     create_calls: Mutex<Vec<String>>,
     mr_titles: Mutex<Vec<String>>,
     mr_failure: Option<String>,
+    lookup_failure: Option<String>,
 }
 
 impl Forge for RecordingForge {
@@ -184,7 +185,10 @@ impl Forge for RecordingForge {
     }
 
     fn find_open_pr(&self, _head: &str, _base: &str) -> Result<Option<u64>> {
-        Ok(None)
+        match &self.lookup_failure {
+            Some(message) => anyhow::bail!("{message}"),
+            None => Ok(None),
+        }
     }
 
     fn update_merge_request(
@@ -560,4 +564,76 @@ fn pr_mode_fails_the_release_when_the_forge_rejects_the_mr() {
         "{rendered}"
     );
     assert!(rendered.contains("Title is too long"), "{rendered}");
+}
+
+#[test]
+fn pr_mode_fails_when_no_forge_can_be_reached() {
+    let mut harness = Harness::new();
+    harness.config.workspace.release_commit_mode = crate::config::ReleaseCommitMode::Pr;
+    commit_file(&harness.root, "a.txt", "a", "feat: a feature");
+
+    let hook_contexts: Vec<(HookContext, usize)> = Vec::new();
+    let mut files_to_commit: Vec<String> = vec!["README.md".to_string()];
+    let mut files_per_package: HashMap<String, Vec<String>> = HashMap::new();
+    let mut pkg_outputs: Vec<(String, Vec<String>)> = Vec::new();
+    let mut shared_outputs: Vec<String> = Vec::new();
+    let mut forge_results: Vec<(String, ReleaseResult)> = Vec::new();
+    let tags = vec![tag_to_create("v1.1.0", "app", "1.1.0")];
+
+    let result = {
+        let mut plan = ReleasePlan {
+            finalizing: false,
+            repo: &harness.repo,
+            config: &harness.config,
+            root: &harness.root,
+            target_branch: "main",
+            dry_run: false,
+            verbose: false,
+            force: false,
+            draft: false,
+            tags_to_create: &tags,
+            hook_contexts: &hook_contexts,
+            files_to_commit: &mut files_to_commit,
+            files_per_package: &mut files_per_package,
+            pkg_outputs: &mut pkg_outputs,
+            shared_outputs: &mut shared_outputs,
+            forge_results: &mut forge_results,
+            checkpoint: None,
+            forge: None,
+        };
+        execute_release(&mut plan)
+    };
+
+    let err = result.expect_err("a pushed branch with no forge has released nothing");
+    let rendered = format!("{err:#}");
+    assert!(
+        rendered.contains("cannot open the release pull request"),
+        "{rendered}"
+    );
+}
+
+#[test]
+fn pr_mode_blames_the_lookup_when_the_lookup_is_what_broke() {
+    let mut harness = Harness::new();
+    harness.config.workspace.release_commit_mode = crate::config::ReleaseCommitMode::Pr;
+    commit_file(&harness.root, "a.txt", "a", "feat: a feature");
+
+    let forge = RecordingForge {
+        lookup_failure: Some("http status 502: Bad Gateway".to_string()),
+        ..Default::default()
+    };
+    let tags = vec![tag_to_create("v1.1.0", "app", "1.1.0")];
+    let (result, _) = run_phase(&harness, &tags, &forge, false);
+
+    let err = result.expect_err("a release cannot proceed on an unknown PR state");
+    let rendered = format!("{err:#}");
+    assert!(
+        rendered.contains("could not look up the release"),
+        "{rendered}"
+    );
+    assert!(rendered.contains("Bad Gateway"), "{rendered}");
+    assert!(
+        forge.mr_titles.lock().unwrap().is_empty(),
+        "a failed lookup must not be retried as a create"
+    );
 }

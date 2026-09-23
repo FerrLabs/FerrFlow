@@ -17,7 +17,7 @@ use crate::versioning::truncate_version;
 use super::checkpoint::{Checkpoint, Phase};
 use super::summary::{PlannedTag, write_github_step_summary};
 use crate::forge::{Forge, MR_TITLE_MAX_CHARS, ReleaseResult};
-use crate::monorepo::preview::build_forge_instance;
+use crate::monorepo::preview::{build_forge_instance, try_build_forge_instance};
 use crate::monorepo::util::{auto_stage_new_files, collect_dirty_files};
 
 pub(super) struct ReleasePlan<'a> {
@@ -320,14 +320,19 @@ fn run_commit_or_pr(
             match plan.forge {
                 Some(forge) => open_or_update_release_mr(plan, forge, &branch_name, release_parts)?,
                 None => {
-                    if let Some(instance) = build_forge_instance(plan.repo, plan.config) {
-                        open_or_update_release_mr(
-                            plan,
-                            instance.as_ref(),
-                            &branch_name,
-                            release_parts,
-                        )?;
-                    }
+                    let instance = try_build_forge_instance(plan.repo, plan.config).map_err(
+                        |reason| {
+                            anyhow::anyhow!(
+                                "cannot open the release pull request for branch                                  {branch_name}: {reason}"
+                            )
+                        },
+                    )?;
+                    open_or_update_release_mr(
+                        plan,
+                        instance.as_ref(),
+                        &branch_name,
+                        release_parts,
+                    )?;
                 }
             }
         }
@@ -352,20 +357,14 @@ fn open_or_update_release_mr(
             .join("\n")
     );
 
-    let existing = match forge.find_open_pr(branch_name, plan.target_branch) {
-        Ok(found) => found,
-        Err(err) => {
-            tracing::warn!(
-                "{}",
-                format!(
-                    "  Warning: could not look up existing {}: {err}",
-                    forge.mr_noun()
-                )
-                .yellow()
-            );
-            None
-        }
-    };
+    let existing = forge
+        .find_open_pr(branch_name, plan.target_branch)
+        .with_context(|| {
+            format!(
+                "could not look up the release {} for branch {branch_name}",
+                forge.mr_noun()
+            )
+        })?;
 
     let (result, verb, action) = match existing {
         Some(id) => (

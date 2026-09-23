@@ -205,7 +205,7 @@ jobs:
 
 Le titre de la pull request liste les packages publies, et les forges le plafonnent : 255 caracteres sur GitLab, Gitea et Forgejo, 256 sur GitHub. Un monorepo qui publie beaucoup de packages d'un coup obtient donc un titre qui se termine par `and N more`. Rien n'est perdu, la description porte toujours la liste complete, une ligne par tag.
 
-Si la forge refuse d'ouvrir ou de mettre a jour la pull request de release, l'execution echoue au lieu d'avertir. Une release en mode PR qui n'a ouvert aucune pull request n'a rien publie, elle ne doit pas laisser le pipeline au vert.
+Si la pull request de release ne peut pas etre ouverte ou mise a jour, l'execution echoue au lieu d'avertir. Cela couvre le refus de la forge, l'echec de la recherche d'une PR existante, et le cas ou FerrFlow ne peut joindre aucune forge, en general un token manquant ou expire. Une release en mode PR qui n'a ouvert aucune pull request n'a rien publie, elle ne doit pas laisser le pipeline au vert.
 
 ## Securite de concurrence
 
