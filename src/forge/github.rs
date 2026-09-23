@@ -286,16 +286,25 @@ impl Forge for GitHubForge {
             "base": base,
         });
 
-        let response: serde_json::Value = self
+        let mut raw = self
             .agent
             .post(&url)
+            .config()
+            .http_status_as_error(false)
+            .build()
             .header("Authorization", &format!("Bearer {}", self.token))
             .header("Accept", "application/vnd.github+json")
             .header("X-GitHub-Api-Version", "2022-11-28")
             .header("User-Agent", "ferrflow")
             .send_json(payload)
             .with_context(|| format!("Failed to create PR from {head} to {base}"))
-            .error_code(error_code::GITHUB_CREATE_PR)?
+            .error_code(error_code::GITHUB_CREATE_PR)?;
+        super::check_status(
+            &mut raw,
+            &format!("Failed to create PR from {head} to {base}"),
+        )
+        .error_code(error_code::GITHUB_CREATE_PR)?;
+        let response: serde_json::Value = raw
             .body_mut()
             .read_json()
             .with_context(|| "Failed to parse PR response")
@@ -433,16 +442,22 @@ impl Forge for GitHubForge {
 
     fn update_merge_request(&self, id: u64, title: &str, body: &str) -> Result<MergeRequestResult> {
         let url = format!("{}/repos/{}/pulls/{}", self.api_base, self.slug, id);
-        let response: serde_json::Value = self
+        let mut raw = self
             .agent
             .patch(&url)
+            .config()
+            .http_status_as_error(false)
+            .build()
             .header("Authorization", &format!("Bearer {}", self.token))
             .header("Accept", "application/vnd.github+json")
             .header("X-GitHub-Api-Version", "2022-11-28")
             .header("User-Agent", "ferrflow")
             .send_json(serde_json::json!({ "title": title, "body": body }))
             .with_context(|| format!("Failed to update PR #{id}"))
-            .error_code(error_code::GITHUB_UPDATE_PR)?
+            .error_code(error_code::GITHUB_UPDATE_PR)?;
+        super::check_status(&mut raw, &format!("Failed to update PR #{id}"))
+            .error_code(error_code::GITHUB_UPDATE_PR)?;
+        let response: serde_json::Value = raw
             .body_mut()
             .read_json()
             .with_context(|| "Failed to parse PR update response")

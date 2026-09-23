@@ -94,6 +94,10 @@ impl Forge for BitbucketForge {
         Ok(None)
     }
 
+    fn supports_merge_requests(&self) -> bool {
+        false
+    }
+
     fn update_merge_request(
         &self,
         _id: u64,
