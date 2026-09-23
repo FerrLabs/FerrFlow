@@ -132,6 +132,10 @@ version = "0.2.2"
 criteria = "safe-to-deploy"
 
 [[exemptions.defmt]]
+version = "0.3.100"
+criteria = "safe-to-deploy"
+
+[[exemptions.defmt]]
 version = "1.1.1"
 criteria = "safe-to-deploy"
 
@@ -152,7 +156,7 @@ version = "0.11.3"
 criteria = "safe-to-deploy"
 
 [[exemptions.faster-hex]]
-version = "0.10.0"
+version = "0.10.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.fastrand]]
