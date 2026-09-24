@@ -40,16 +40,19 @@ fuzz_target!(|input: Input| {
     };
 
     assert!(!next.is_empty(), "a computed version is never empty");
-
-    if input.template.is_some() {
-        return;
-    }
-
     assert_eq!(
         next.trim(),
         next,
         "a computed version carries no whitespace"
     );
+    assert!(
+        !next.chars().any(char::is_control),
+        "a computed version carries a control character: {next:?}"
+    );
+
+    if input.template.is_some() {
+        return;
+    }
 
     if strategy == VersioningStrategy::Semver {
         assert!(
