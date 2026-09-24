@@ -14,7 +14,7 @@ fn select_version(text: &str, selector: &str, origin: &str) -> Result<String> {
     let m = cap.get(1).ok_or_else(|| {
         anyhow::anyhow!("selector {selector:?} matched but capture group 1 is empty")
     })?;
-    Ok(m.as_str().to_string())
+    Ok(m.as_str().trim().to_string())
 }
 
 fn compile_selector(selector: &str) -> Result<Regex> {
@@ -142,6 +142,19 @@ mod tests {
             .read_version_from_bytes_with_selector(b"  1.2.3\n", "VERSION", None)
             .unwrap();
         assert_eq!(v, "1.2.3");
+    }
+
+    #[test]
+    fn a_selector_capture_is_trimmed_on_both_sides() {
+        let content = b"version = 1.2.3   
+";
+        let v = TxtVersionFile
+            .read_version_from_bytes_with_selector(content, "VERSION", Some("(?m)^version =(.+)$"))
+            .unwrap();
+        assert_eq!(
+            v, "1.2.3",
+            "a selector that captures the padding must not ship it"
+        );
     }
 }
 

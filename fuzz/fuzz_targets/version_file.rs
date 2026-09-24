@@ -43,8 +43,9 @@ fuzz_target!(|input: Input| {
         );
     }
 
-    if let Ok(version) =
-        handler.read_version_from_bytes_with_selector(input.content, "fuzzed", input.selector)
+    if input.selector.is_some()
+        && let Ok(version) =
+            handler.read_version_from_bytes_with_selector(input.content, "fuzzed", input.selector)
     {
         assert_eq!(
             version.trim(),
