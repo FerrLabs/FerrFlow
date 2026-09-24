@@ -34,11 +34,13 @@ publish_if_new() {
 download_with_retry() {
   local archive="$1" attempt
   for attempt in 1 2 3; do
-    if gh release download "v${VERSION}" -p "$archive" -D "$WORK_DIR"; then
+    if gh release download "v${VERSION}" -p "$archive" -D "$WORK_DIR" --clobber; then
       return 0
     fi
     echo "  download of ${archive} failed (attempt ${attempt}/3)" >&2
-    sleep $((attempt * 10))
+    if ((attempt < 3)); then
+      sleep $((attempt * 10))
+    fi
   done
   echo "could not download ${archive} from v${VERSION} after 3 attempts" >&2
   return 1
