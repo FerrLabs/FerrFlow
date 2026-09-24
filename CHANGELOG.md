@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.26.6] - 2026-09-24
+
+### Bug Fixes
+
+- fix(versioning): stop a v-prefixed versionTemplate resetting every release (#1199)
+
 ## [7.26.5] - 2026-09-24
 
 ### Bug Fixes
