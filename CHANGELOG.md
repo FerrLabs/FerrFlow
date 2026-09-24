@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.26.2] - 2026-09-24
+
+### Bug Fixes
+
+- fix(formats): give the selector capture-group error its code (#1189)
+
 ## [7.26.1] - 2026-09-24
 
 ### Bug Fixes
