@@ -1,11 +1,12 @@
 use crate::error_code::{self, ErrorCodeExt};
 use anyhow::{Context, Result};
 use regex::Regex;
+use std::ops::Range;
 use std::path::Path;
 
 pub struct TxtVersionFile;
 
-fn select_version(text: &str, selector: &str, origin: &str) -> Result<String> {
+fn select_span(text: &str, selector: &str, origin: &str) -> Result<Range<usize>> {
     let re = compile_selector(selector)?;
     let cap = re
         .captures(text)
@@ -17,14 +18,22 @@ fn select_version(text: &str, selector: &str, origin: &str) -> Result<String> {
             anyhow::anyhow!("selector {selector:?} matched but capture group 1 did not participate")
         })
         .error_code(error_code::TXT_VERSION_NOT_FOUND)?;
-    let version = m.as_str().trim();
-    if version.is_empty() {
+
+    let raw = m.as_str();
+    let leading = raw.len() - raw.trim_start().len();
+    let trailing = raw.len() - raw.trim_end().len();
+    if leading + trailing >= raw.len() {
         Err(anyhow::anyhow!(
             "selector {selector:?} captured only whitespace in {origin}"
         ))
         .error_code(error_code::TXT_VERSION_NOT_FOUND)?;
     }
-    Ok(version.to_string())
+
+    Ok(m.start() + leading..m.end() - trailing)
+}
+
+fn select_version(text: &str, selector: &str, origin: &str) -> Result<String> {
+    Ok(text[select_span(text, selector, origin)?].to_string())
 }
 
 fn compile_selector(selector: &str) -> Result<Regex> {
@@ -210,6 +219,110 @@ other = 1
             "every other error on this path carries its code: {rendered}"
         );
     }
+
+    #[test]
+    fn a_write_keeps_the_padding_the_read_ignored() {
+        const PADDING: &str = "   ";
+        let mut f = NamedTempFile::new().unwrap();
+        writeln!(f, "version = 1.2.3{PADDING}").unwrap();
+        writeln!(f, "other = 1").unwrap();
+
+        let selector = Some("(?m)^version =(.+)$");
+        let read = TxtVersionFile
+            .read_version_with_selector(f.path(), selector)
+            .unwrap();
+        assert_eq!(read, "1.2.3");
+
+        TxtVersionFile
+            .write_version_with_selector(f.path(), "2.0.0", selector)
+            .unwrap();
+
+        assert_eq!(
+            std::fs::read_to_string(f.path()).unwrap(),
+            format!("version = 2.0.0{PADDING}\nother = 1\n"),
+            "the write may only replace what the read returned"
+        );
+    }
+
+    #[test]
+    fn a_release_through_a_padded_selector_is_idempotent_on_the_padding() {
+        const PADDING: &str = "  ";
+        let mut f = NamedTempFile::new().unwrap();
+        writeln!(f, "v ={PADDING}1.0.0{PADDING}").unwrap();
+
+        let selector = Some("(?m)^v =(.+)$");
+        for version in ["1.1.0", "1.2.0", "1.3.0"] {
+            TxtVersionFile
+                .write_version_with_selector(f.path(), version, selector)
+                .unwrap();
+        }
+
+        assert_eq!(
+            std::fs::read_to_string(f.path()).unwrap(),
+            format!("v ={PADDING}1.3.0{PADDING}\n"),
+            "three releases must not erode the padding one character at a time"
+        );
+    }
+
+    #[test]
+    fn the_span_is_cut_on_character_boundaries_not_bytes() {
+        const WIDE: &str = "\u{3000}\u{3000}";
+        let mut f = NamedTempFile::new().unwrap();
+        writeln!(f, "v ={WIDE}1.0.0{WIDE}").unwrap();
+
+        let selector = Some("(?m)^v =(.+)$");
+        assert_eq!(
+            TxtVersionFile
+                .read_version_with_selector(f.path(), selector)
+                .unwrap(),
+            "1.0.0"
+        );
+
+        TxtVersionFile
+            .write_version_with_selector(f.path(), "2.0.0", selector)
+            .unwrap();
+
+        assert_eq!(
+            std::fs::read_to_string(f.path()).unwrap(),
+            format!("v ={WIDE}2.0.0{WIDE}\n"),
+            "three-byte whitespace must not be counted as one"
+        );
+    }
+
+    #[test]
+    fn a_write_whose_group_never_participates_carries_a_code() {
+        let mut f = NamedTempFile::new().unwrap();
+        writeln!(f, "version").unwrap();
+        let err = TxtVersionFile
+            .write_version_with_selector(f.path(), "2.0.0", Some("(?m)^version(?: =(.*))?$"))
+            .unwrap_err();
+        let rendered = format!("{err:#}");
+        assert!(rendered.contains("did not participate"), "{rendered}");
+        assert!(
+            rendered.contains(&error_code::TXT_VERSION_NOT_FOUND.to_string()),
+            "the write path must fail like the read path: {rendered}"
+        );
+    }
+
+    #[test]
+    fn a_write_onto_a_whitespace_only_capture_is_an_error() {
+        const BLANK: &str = " ";
+        let mut f = NamedTempFile::new().unwrap();
+        writeln!(f, "version ={BLANK}").unwrap();
+        writeln!(f, "other = 1").unwrap();
+        let before = std::fs::read_to_string(f.path()).unwrap();
+
+        let err = TxtVersionFile
+            .write_version_with_selector(f.path(), "2.0.0", Some("(?m)^version =(.*)$"))
+            .unwrap_err();
+
+        assert!(format!("{err:#}").contains("only whitespace"), "{err:#}");
+        assert_eq!(
+            std::fs::read_to_string(f.path()).unwrap(),
+            before,
+            "a refused write leaves the file alone"
+        );
+    }
 }
 
 impl super::VersionFile for TxtVersionFile {
@@ -285,26 +398,14 @@ impl super::VersionFile for TxtVersionFile {
         let Some(sel) = selector else {
             return self.write_version(file_path, version);
         };
-        let re = compile_selector(sel)?;
         let content = std::fs::read_to_string(file_path)
             .with_context(|| format!("failed to read {}", file_path.display()))
             .error_code(error_code::TXT_READ)?;
-        let cap = re
-            .captures(&content)
-            .ok_or_else(|| {
-                anyhow::anyhow!(
-                    "selector {sel:?} did not match anything in {}",
-                    file_path.display()
-                )
-            })
-            .error_code(error_code::TXT_VERSION_NOT_FOUND)?;
-        let m = cap.get(1).ok_or_else(|| {
-            anyhow::anyhow!("selector {sel:?} matched but capture group 1 is empty")
-        })?;
+        let span = select_span(&content, sel, &file_path.display().to_string())?;
         let mut new_content = String::with_capacity(content.len() + version.len());
-        new_content.push_str(&content[..m.start()]);
+        new_content.push_str(&content[..span.start]);
         new_content.push_str(version);
-        new_content.push_str(&content[m.end()..]);
+        new_content.push_str(&content[span.end..]);
         std::fs::write(file_path, new_content)
             .with_context(|| format!("failed to write {}", file_path.display()))
             .error_code(error_code::TXT_WRITE)?;

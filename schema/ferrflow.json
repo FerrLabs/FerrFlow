@@ -555,7 +555,7 @@
                 },
                 "selector": {
                   "type": "string",
-                  "description": "Optional selector to disambiguate which version is bumped. xml: a slash-delimited tag path like '/project/version' (or '//tag' for first-anywhere); txt: a regex with one capture group around the version. Without a selector, xml uses a Maven-aware default (first <version> direct child of root)."
+                  "description": "Optional selector to disambiguate which version is bumped. xml: a slash-delimited tag path like '/project/version' (or '//tag' for first-anywhere); txt: a regex with one capture group around the version. Whitespace inside the capture is trimmed from the version and left in the file, so a padded line keeps its padding across releases; a capture that is only whitespace is an error. Without a selector, xml uses a Maven-aware default (first <version> direct child of root)."
                 }
               },
               "additionalProperties": false
@@ -713,7 +713,7 @@
                 },
                 "selector": {
                   "type": "string",
-                  "description": "Optional selector to disambiguate which version is bumped. xml: a slash-delimited tag path like '/project/version' (or '//tag' for first-anywhere); txt: a regex with one capture group around the version. Without a selector, xml uses a Maven-aware default (first <version> direct child of root)."
+                  "description": "Optional selector to disambiguate which version is bumped. xml: a slash-delimited tag path like '/project/version' (or '//tag' for first-anywhere); txt: a regex with one capture group around the version. Whitespace inside the capture is trimmed from the version and left in the file, so a padded line keeps its padding across releases; a capture that is only whitespace is an error. Without a selector, xml uses a Maven-aware default (first <version> direct child of root)."
                 }
               },
               "additionalProperties": false
