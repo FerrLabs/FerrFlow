@@ -4,6 +4,13 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.26.5] - 2026-09-24
+
+### Bug Fixes
+
+- fix(npm): retry a release asset download instead of losing the publish (#1197)
+- fix(versioning): refuse the three refname sequences a template can still produce (#1198)
+
 ## [7.26.4] - 2026-09-24
 
 ### Bug Fixes
