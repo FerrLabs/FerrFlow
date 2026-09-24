@@ -1,0 +1,1 @@
+{ package: [{ name: "web", path: "." }], workspace: { tagTemplate: "v{version}" } }

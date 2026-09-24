@@ -1,0 +1,2 @@
+feat!: drop the legacy flag
+BREAKING CHANGE: tagTemplate was renamed

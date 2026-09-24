@@ -1,0 +1,6 @@
+[workspace]
+branch = "main"
+
+[[package]]
+name = "cli"
+path = "."
