@@ -14,7 +14,14 @@ fn select_version(text: &str, selector: &str, origin: &str) -> Result<String> {
     let m = cap.get(1).ok_or_else(|| {
         anyhow::anyhow!("selector {selector:?} matched but capture group 1 is empty")
     })?;
-    Ok(m.as_str().trim().to_string())
+    let version = m.as_str().trim();
+    if version.is_empty() {
+        Err(anyhow::anyhow!(
+            "selector {selector:?} captured only whitespace in {origin}"
+        ))
+        .error_code(error_code::TXT_VERSION_NOT_FOUND)?;
+    }
+    Ok(version.to_string())
 }
 
 fn compile_selector(selector: &str) -> Result<Regex> {
@@ -146,15 +153,41 @@ mod tests {
 
     #[test]
     fn a_selector_capture_is_trimmed_on_both_sides() {
-        let content = b"version = 1.2.3   
-";
+        const PADDING: &str = "   ";
+        let content = format!(
+            "version = 1.2.3{PADDING}
+"
+        );
         let v = TxtVersionFile
-            .read_version_from_bytes_with_selector(content, "VERSION", Some("(?m)^version =(.+)$"))
+            .read_version_from_bytes_with_selector(
+                content.as_bytes(),
+                "VERSION",
+                Some("(?m)^version =(.+)$"),
+            )
             .unwrap();
         assert_eq!(
             v, "1.2.3",
             "a selector that captures the padding must not ship it"
         );
+    }
+
+    #[test]
+    fn a_selector_that_captures_only_whitespace_is_an_error() {
+        const BLANK: &str = " ";
+        let content = format!(
+            "version ={BLANK}
+other = 1
+"
+        );
+        let err = TxtVersionFile
+            .read_version_from_bytes_with_selector(
+                content.as_bytes(),
+                "VERSION",
+                Some("(?m)^version =(.*)$"),
+            )
+            .unwrap_err();
+        let rendered = format!("{err:#}");
+        assert!(rendered.contains("only whitespace"), "{rendered}");
     }
 }
 

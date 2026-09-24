@@ -16,6 +16,7 @@ struct Input<'a> {
     include_compare_link: bool,
     forge_base: Option<&'a str>,
     last_tag: Option<&'a str>,
+    new_tag: Option<&'a str>,
     messages: Vec<&'a str>,
 }
 
@@ -47,7 +48,7 @@ fuzz_target!(|input: Input| {
         formats: Some(&formats),
         forge_base: input.forge_base.map(str::to_string),
         last_tag: input.last_tag.map(str::to_string),
-        ..Default::default()
+        new_tag: input.new_tag.map(str::to_string),
     };
 
     let section = changelog::build_section_with(VERSION, &commits, &render);
