@@ -64,6 +64,27 @@ impl Var {
 const VALID_VARS: &str = "year, short_year, month, padded_month, day, padded_day, \
 week, padded_week, quarter, seq, major, minor, patch";
 
+const GIT_RESERVED: &[char] = &['~', '^', ':', '?', '*', '[', '\\'];
+
+fn check_literal(literal: &str, template: &str) -> Result<()> {
+    for c in literal.chars() {
+        let what = if c.is_control() {
+            "a control character"
+        } else if c.is_whitespace() {
+            "whitespace"
+        } else if GIT_RESERVED.contains(&c) {
+            "a character git reserves in a ref name"
+        } else {
+            continue;
+        };
+        bail!(
+            "versionTemplate {template:?} has {what} ({c:?}) in a literal. \
+             The version becomes a git tag, which cannot carry it."
+        );
+    }
+    Ok(())
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Segment {
     Literal(String),
@@ -120,6 +141,12 @@ impl VersionTemplate {
             > 1
         {
             bail!("versionTemplate uses {{seq}} more than once");
+        }
+
+        for segment in &segments {
+            if let Segment::Literal(text) = segment {
+                check_literal(text, template)?;
+            }
         }
 
         Ok(Self { segments })
@@ -324,5 +351,63 @@ mod tests {
     #[test]
     fn rejects_an_empty_template() {
         assert!(VersionTemplate::parse("   ").is_err());
+    }
+
+    #[test]
+    fn a_control_character_in_a_literal_is_refused() {
+        for template in ["\t{patch}.21", "{major}.{minor}\u{0}", "{year}\n.{seq}"] {
+            let err = validate(template).unwrap_err().to_string();
+            assert!(err.contains("a control character"), "{template:?}: {err}");
+        }
+    }
+
+    #[test]
+    fn whitespace_in_a_literal_is_refused() {
+        let err = validate(" {major}.{minor}.{patch}")
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("whitespace"), "{err}");
+        assert!(
+            err.contains("git tag"),
+            "the message must say why it cannot be there: {err}"
+        );
+    }
+
+    #[test]
+    fn a_character_git_reserves_in_a_ref_is_refused() {
+        for template in ["{major}:{minor}", "{major}^{minor}", "{major}?{minor}"] {
+            let err = validate(template).unwrap_err().to_string();
+            assert!(err.contains("git reserves"), "{template:?}: {err}");
+        }
+    }
+
+    #[test]
+    fn the_message_names_the_offending_character() {
+        let err = validate("{major}.{minor}\t").unwrap_err().to_string();
+        assert!(err.contains(r"'\t'"), "{err}");
+    }
+
+    #[test]
+    fn the_templates_people_actually_write_still_parse() {
+        for template in [
+            "v{major}.{minor}.{patch}",
+            "{year}.{padded_month}.{seq}",
+            "{major}.{minor}.{patch}-rc{seq}",
+            "{major}.{minor}.{patch}+build",
+            "{short_year}.{quarter}_{seq}",
+        ] {
+            assert!(validate(template).is_ok(), "{template:?} must stay valid");
+        }
+    }
+
+    #[test]
+    fn a_validated_template_cannot_render_a_version_a_tag_would_refuse() {
+        let rendered = render("1.2.3", BumpType::Patch, "{major}.{minor}.{patch}").unwrap();
+        assert_eq!(rendered, "1.2.4");
+        assert!(
+            !rendered
+                .chars()
+                .any(|c| c.is_control() || c.is_whitespace())
+        );
     }
 }
