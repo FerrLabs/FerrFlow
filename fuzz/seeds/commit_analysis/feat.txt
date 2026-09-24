@@ -1,0 +1,1 @@
+feat(api): add the events endpoint

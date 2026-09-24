@@ -26,6 +26,30 @@ cargo clippy
 cargo fmt --check
 ```
 
+### Fuzzing
+
+The parsers read files and commit messages that come from someone else's
+repository, so they are fuzzed. The targets live in `fuzz/`, which is its own
+crate outside the workspace.
+
+```bash
+cargo install cargo-fuzz
+cargo +nightly fuzz list
+cargo +nightly fuzz run config_parse fuzz/corpus/config_parse fuzz/seeds/config_parse -- -max_total_time=60
+```
+
+`cargo-fuzz` needs a nightly toolchain, and `rust-toolchain.toml` pins stable,
+so the `+nightly` is not optional. On Windows there is no libFuzzer runtime to
+link against; use WSL, a container, or let CI do it.
+
+An input that breaks a target is written to `fuzz/artifacts/<target>/`. Replay
+it with `cargo +nightly fuzz run <target> <that file>`, and commit it under
+`fuzz/seeds/<target>/` with the fix so it stays covered.
+
+CI fuzzes every target for 45 seconds on a pull request that touches `src/` or
+`fuzz/`, and for ten minutes a night on `main`. The corpus is cached between
+runs, so the nightly run starts where the last one left off.
+
 ## Git hooks
 
 Run once after cloning:

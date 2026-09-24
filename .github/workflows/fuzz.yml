@@ -1,0 +1,41 @@
+name: Fuzz
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'fuzz/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/fuzz.yml'
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fuzz-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Smoke
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+    uses: FerrLabs/.github/.github/workflows/reusable-fuzz-rust.yml@1a21d234ca6b171eaccf47d029520724e15e406c # main
+    with:
+      max-total-time: 45
+      timeout-minutes: 20
+
+  nightly:
+    name: Nightly
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+    uses: FerrLabs/.github/.github/workflows/reusable-fuzz-rust.yml@1a21d234ca6b171eaccf47d029520724e15e406c # main
+    with:
+      max-total-time: 600
+      timeout-minutes: 60

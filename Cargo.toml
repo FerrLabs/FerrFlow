@@ -1,6 +1,6 @@
 [workspace]
 members = [".", "ferrflow-wasm"]
-exclude = ["__fixtures__"]
+exclude = ["__fixtures__", "fuzz"]
 resolver = "3"
 
 # The codebase keeps unit tests inline before the impl block in formats/*.rs
