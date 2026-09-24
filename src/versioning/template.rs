@@ -82,6 +82,14 @@ fn check_literal(literal: &str, template: &str) -> Result<()> {
              The version becomes a git tag, which cannot carry it."
         );
     }
+
+    if literal.contains("..") {
+        bail!(
+            "versionTemplate {template:?} has \"..\" in a literal. \
+             The version becomes a git tag, which cannot carry two consecutive dots."
+        );
+    }
+
     Ok(())
 }
 
@@ -146,6 +154,21 @@ impl VersionTemplate {
         for segment in &segments {
             if let Segment::Literal(text) = segment {
                 check_literal(text, template)?;
+            }
+        }
+
+        if let Some(Segment::Literal(last)) = segments.last() {
+            if last.ends_with(".lock") {
+                bail!(
+                    "versionTemplate {template:?} ends with \".lock\". \
+                     The version becomes a git tag, which cannot end with it."
+                );
+            }
+            if last.ends_with('.') {
+                bail!(
+                    "versionTemplate {template:?} ends with a dot. \
+                     The version becomes a git tag, which cannot end with one."
+                );
             }
         }
 
@@ -409,5 +432,30 @@ mod tests {
                 .chars()
                 .any(|c| c.is_control() || c.is_whitespace())
         );
+    }
+
+    #[test]
+    fn consecutive_dots_in_a_literal_are_refused() {
+        let err = validate("{major}..{minor}").unwrap_err().to_string();
+        assert!(err.contains("two consecutive dots"), "{err}");
+    }
+
+    #[test]
+    fn a_template_ending_in_a_dot_is_refused() {
+        let err = validate("{major}.{minor}.").unwrap_err().to_string();
+        assert!(err.contains("ends with a dot"), "{err}");
+    }
+
+    #[test]
+    fn a_template_ending_in_dot_lock_is_refused() {
+        let err = validate("{major}.{minor}.lock").unwrap_err().to_string();
+        assert!(err.contains(".lock"), "{err}");
+    }
+
+    #[test]
+    fn a_dot_that_is_not_last_and_not_doubled_is_fine() {
+        assert!(validate("{major}.{minor}.{patch}").is_ok());
+        assert!(validate("v{major}.{minor}.{patch}-rc{seq}").is_ok());
+        assert!(validate("{year}.{padded_month}.{seq}").is_ok());
     }
 }
