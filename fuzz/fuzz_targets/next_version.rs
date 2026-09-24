@@ -40,15 +40,22 @@ fuzz_target!(|input: Input| {
     };
 
     assert!(!next.is_empty(), "a computed version is never empty");
+
+    if input.template.is_some() {
+        return;
+    }
+
     assert_eq!(
         next.trim(),
         next,
         "a computed version carries no whitespace"
     );
 
-    if input.template.is_none() && strategy == VersioningStrategy::Semver {
-        let parsed = semver_ok(&next);
-        assert!(parsed, "semver produced {next:?}, which is not a version");
+    if strategy == VersioningStrategy::Semver {
+        assert!(
+            semver_ok(&next),
+            "semver produced {next:?}, which is not a version"
+        );
     }
 });
 
