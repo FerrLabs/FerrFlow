@@ -4,6 +4,13 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.26.1] - 2026-09-24
+
+### Bug Fixes
+
+- fix(formats): reject a selector capture that is only whitespace (#1187)
+- fix(formats): trim a txt selector capture, and make two fuzz targets falsifiable (#1185)
+
 ## [7.26.0] - 2026-09-24
 
 ### Features
