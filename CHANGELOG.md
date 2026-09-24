@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.26.4] - 2026-09-24
+
+### Bug Fixes
+
+- fix(versioning): refuse a versionTemplate literal a git tag cannot carry (#1194)
+
 ## [7.26.3] - 2026-09-24
 
 ### Bug Fixes
