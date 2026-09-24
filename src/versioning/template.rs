@@ -193,7 +193,9 @@ impl VersionTemplate {
         pattern.push('$');
 
         let re = Regex::new(&pattern).ok()?;
-        let caps = re.captures(current.trim_start_matches('v'))?;
+        let caps = re
+            .captures(current)
+            .or_else(|| re.captures(current.trim_start_matches('v')))?;
         self.vars()
             .enumerate()
             .map(|(i, var)| caps.get(i + 1)?.as_str().parse().ok().map(|n| (var, n)))
@@ -457,5 +459,39 @@ mod tests {
         assert!(validate("{major}.{minor}.{patch}").is_ok());
         assert!(validate("v{major}.{minor}.{patch}-rc{seq}").is_ok());
         assert!(validate("{year}.{padded_month}.{seq}").is_ok());
+    }
+
+    #[test]
+    fn a_v_in_the_template_reads_the_previous_version_back() {
+        assert_eq!(
+            render("v1.2.3", BumpType::Patch, "v{major}.{minor}.{patch}").unwrap(),
+            "v1.2.4"
+        );
+        assert_eq!(
+            render("v1.2.3", BumpType::Minor, "v{major}.{minor}.{patch}").unwrap(),
+            "v1.3.0"
+        );
+        assert_eq!(
+            render("v1.2.3", BumpType::Major, "v{major}.{minor}.{patch}").unwrap(),
+            "v2.0.0"
+        );
+    }
+
+    #[test]
+    fn a_v_template_advances_release_after_release() {
+        let mut current = "v1.0.0".to_string();
+        for expected in ["v1.0.1", "v1.0.2", "v1.0.3"] {
+            current = render(&current, BumpType::Patch, "v{major}.{minor}.{patch}").unwrap();
+            assert_eq!(current, expected, "a v-prefixed template must not reset");
+        }
+    }
+
+    #[test]
+    fn a_v_template_rolls_its_seq_like_a_bare_one() {
+        let now = at(2026, 8, 20);
+        assert_eq!(
+            render_at("v{year}.{month}.{seq}", "v2026.8.3", BumpType::None, now),
+            "v2026.8.4"
+        );
     }
 }
