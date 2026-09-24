@@ -11,9 +11,12 @@ fn select_version(text: &str, selector: &str, origin: &str) -> Result<String> {
         .captures(text)
         .ok_or_else(|| anyhow::anyhow!("selector {selector:?} did not match anything in {origin}"))
         .error_code(error_code::TXT_VERSION_NOT_FOUND)?;
-    let m = cap.get(1).ok_or_else(|| {
-        anyhow::anyhow!("selector {selector:?} matched but capture group 1 is empty")
-    })?;
+    let m = cap
+        .get(1)
+        .ok_or_else(|| {
+            anyhow::anyhow!("selector {selector:?} matched but capture group 1 did not participate")
+        })
+        .error_code(error_code::TXT_VERSION_NOT_FOUND)?;
     let version = m.as_str().trim();
     if version.is_empty() {
         Err(anyhow::anyhow!(
@@ -188,6 +191,24 @@ other = 1
             .unwrap_err();
         let rendered = format!("{err:#}");
         assert!(rendered.contains("only whitespace"), "{rendered}");
+    }
+
+    #[test]
+    fn a_selector_whose_group_never_participates_carries_a_code() {
+        let err = TxtVersionFile
+            .read_version_from_bytes_with_selector(
+                b"version
+",
+                "VERSION",
+                Some("(?m)^version(?: =(.*))?$"),
+            )
+            .unwrap_err();
+        let rendered = format!("{err:#}");
+        assert!(rendered.contains("did not participate"), "{rendered}");
+        assert!(
+            rendered.contains(&error_code::TXT_VERSION_NOT_FOUND.to_string()),
+            "every other error on this path carries its code: {rendered}"
+        );
     }
 }
 
