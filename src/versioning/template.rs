@@ -193,9 +193,12 @@ impl VersionTemplate {
         pattern.push('$');
 
         let re = Regex::new(&pattern).ok()?;
+        let bare = current.trim_start_matches('v');
+        let prefixed = format!("v{bare}");
         let caps = re
             .captures(current)
-            .or_else(|| re.captures(current.trim_start_matches('v')))?;
+            .or_else(|| re.captures(bare))
+            .or_else(|| re.captures(&prefixed))?;
         self.vars()
             .enumerate()
             .map(|(i, var)| caps.get(i + 1)?.as_str().parse().ok().map(|n| (var, n)))
@@ -491,6 +494,24 @@ mod tests {
         let now = at(2026, 8, 20);
         assert_eq!(
             render_at("v{year}.{month}.{seq}", "v2026.8.3", BumpType::None, now),
+            "v2026.8.4"
+        );
+    }
+
+    #[test]
+    fn a_bare_current_version_reads_back_into_a_v_template() {
+        assert_eq!(
+            render("1.2.3", BumpType::Patch, "v{major}.{minor}.{patch}").unwrap(),
+            "v1.2.4",
+            "a version file holding a bare version must not cost one reset tag"
+        );
+    }
+
+    #[test]
+    fn a_bare_current_version_reads_back_into_a_v_seq_template() {
+        let now = at(2026, 8, 20);
+        assert_eq!(
+            render_at("v{year}.{month}.{seq}", "2026.8.3", BumpType::None, now),
             "v2026.8.4"
         );
     }
