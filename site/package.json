@@ -1,7 +1,7 @@
 {
   "name": "@ferrflow/site",
   "private": true,
-  "version": "2026.9.30",
+  "version": "2026.9.31",
   "type": "module",
   "engines": {
     "node": ">=22.0.0",
