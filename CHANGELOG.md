@@ -4,6 +4,13 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.26.8] - 2026-09-27
+
+### Bug Fixes
+
+- fix(scripts): keep a frontmatter field whose value ends in a line terminator (#1208)
+- fix(scripts): stop the frontmatter field regex backtracking quadratically (#1206)
+
 ## [7.26.7] - 2026-09-24
 
 ### Bug Fixes
