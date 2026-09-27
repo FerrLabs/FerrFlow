@@ -146,5 +146,12 @@
   "changelog.metaDesc": "Chaque fonctionnalité, correctif et amélioration de FerrFlow, la CLI de versioning et le site autour.",
   "changelog.titleSuffix": "| Changelog FerrFlow",
   "nav.changelog": "Changelog",
-  "footer.changelog": "Changelog"
+  "footer.changelog": "Changelog",
+  "footer.contact": "Contact",
+  "contact.metaTitle": "Contact : FerrFlow",
+  "contact.metaDescription": "Écrivez à l'équipe FerrFlow : questions, facturation, signalements de sécurité ou demandes sur vos données personnelles.",
+  "contact.eyebrow": "Contact",
+  "contact.h1": "Parler à l'équipe",
+  "contact.lead": "Une question sur FerrFlow, un souci de facturation ou vos données : écrivez-nous ici, une personne de l'équipe vous répondra.",
+  "contact.emailPrompt": "Vous préférez l'e-mail ? Écrivez à"
 }

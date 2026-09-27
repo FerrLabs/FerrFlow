@@ -90,6 +90,7 @@ const prerenderRoutes = [
   '/404',
   '/performance/',
   '/changelog/',
+  '/contact/',
   ...LEGAL.map((p) => `/${p}/`),
   ...changelogRoutes,
   ...docRoutes,

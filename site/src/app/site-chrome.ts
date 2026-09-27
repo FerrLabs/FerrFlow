@@ -38,6 +38,7 @@ export function ferrflowChrome(): SiteChromeConfig {
             { label: $localize`:@@footer.documentation:Documentation`, href: '/docs/introduction' },
             { label: $localize`:@@footer.performance:Performance`, href: '/performance' },
             { label: $localize`:@@footer.changelog:Changelog`, href: '/changelog/' },
+            { label: $localize`:@@footer.contact:Contact`, href: '/contact/' },
             {
               label: $localize`:@@footer.releases:Releases`,
               href: 'https://github.com/FerrLabs/FerrFlow/releases',

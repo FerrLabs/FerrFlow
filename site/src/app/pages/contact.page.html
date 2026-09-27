@@ -1,0 +1,21 @@
+<flr-site-shell [title]="title" [description]="description">
+  <main class="contact-main">
+    <header class="contact-header">
+      <p class="mono contact-eyebrow">{{ eyebrow }}</p>
+      <h1 class="contact-title">{{ heading }}</h1>
+      <p class="contact-lead">{{ lead }}</p>
+      <p class="contact-email">
+        {{ emailPrompt }}
+        <a class="mono" href="mailto:contact&#64;ferrlabs.com">contact&#64;ferrlabs.com</a>
+      </p>
+    </header>
+    <flr-contact-form
+      [endpoint]="endpoint"
+      [product]="prefill().product ?? 'ferrflow'"
+      [kind]="prefill().kind ?? 'question'"
+      [fromUrl]="prefill().fromUrl ?? null"
+      [locale]="locale"
+      [labels]="labels"
+    />
+  </main>
+</flr-site-shell>

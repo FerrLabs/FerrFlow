@@ -72,6 +72,8 @@ const paths = [
   ...LEGAL.map((p) => `/fr/${p}/`),
   '/changelog/',
   '/fr/changelog/',
+  '/contact/',
+  '/fr/contact/',
   ...changelogPaths,
   ...docPaths,
 ];
