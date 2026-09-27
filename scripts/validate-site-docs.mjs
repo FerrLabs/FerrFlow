@@ -6,7 +6,7 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 const contentDir = join(root, 'docs/site');
 
 const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n---\r?\n/;
-const FIELD = /^([A-Za-z_][A-Za-z0-9_]*):\s*(.*?)\s*$/;
+const FIELD = /^([A-Za-z_]\w*):(.*)$/;
 
 function walk(dir) {
   return readdirSync(dir).flatMap((name) => {
@@ -24,7 +24,7 @@ function frontmatter(raw) {
   for (const line of block[1].split(/\r?\n/)) {
     const field = FIELD.exec(line);
     if (field) {
-      fields.set(field[1], field[2].replace(/^['"]|['"]$/g, ''));
+      fields.set(field[1], field[2].trim().replace(/^['"]|['"]$/g, ''));
     }
   }
   return fields;
