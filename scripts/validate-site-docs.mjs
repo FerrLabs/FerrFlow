@@ -6,7 +6,7 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 const contentDir = join(root, 'docs/site');
 
 const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n---\r?\n/;
-const FIELD = /^([A-Za-z_]\w*):(.*)$/;
+const FIELD = /^([A-Za-z_]\w*):([\s\S]*)$/;
 
 function walk(dir) {
   return readdirSync(dir).flatMap((name) => {
