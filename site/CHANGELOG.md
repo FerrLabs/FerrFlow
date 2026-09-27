@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.9.33] - 2026-09-27
+
+### Features
+
+- feat(site): contact page and footer link (#1014)
+
 ## [2026.9.31] - 2026-09-25
 
 ### Bug Fixes
