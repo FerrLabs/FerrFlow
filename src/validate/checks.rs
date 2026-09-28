@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::config::{Config, FileFormat};
+use crate::config::{Config, FileFormat, PackageConfig};
 use crate::formats::get_handler;
 
 use super::result::{ValidationEntry, ValidationLevel};
@@ -69,65 +69,87 @@ pub(super) fn check_version_templates(config: &Config) -> Vec<ValidationEntry> {
 }
 
 pub(super) fn check_tag_templates(config: &Config) -> Vec<ValidationEntry> {
-    let mut entries = Vec::new();
     let is_monorepo = config.packages.len() > 1;
+    let mut entries = Vec::new();
 
-    let mut check_template = |template: &str, context: &str| {
-        if !template.contains("{version}") {
-            entries.push(ValidationEntry {
-                level: ValidationLevel::Error,
-                path: context.to_string(),
-                message: format!("tag template \"{template}\" must contain {{version}}"),
-            });
-        }
-        if is_monorepo && !template.contains("{name}") {
-            entries.push(ValidationEntry {
-                level: ValidationLevel::Warning,
-                path: context.to_string(),
-                message: format!(
-                    "tag template \"{template}\" does not contain {{name}} — tags will collide in monorepo"
-                ),
-            });
-        }
-    };
-
-    if let Some(ref tmpl) = config.workspace.tag_template {
-        check_template(tmpl, "workspace.tagTemplate");
-    }
-    for pkg in &config.packages {
-        if let Some(ref tmpl) = pkg.tag_template {
-            check_template(tmpl, &format!("{}.tagTemplate", pkg.name));
-        }
+    let tag_templates = configured_templates(
+        config,
+        "tagTemplate",
+        config.workspace.tag_template.as_deref(),
+        |pkg| pkg.tag_template.as_deref(),
+    );
+    for (template, context) in tag_templates {
+        entries.extend(tag_template_issues(template, context, is_monorepo));
     }
 
-    let mut check_latest = |template: &str, context: &str| {
-        if template.contains("{version}") {
-            entries.push(ValidationEntry {
-                level: ValidationLevel::Error,
-                path: context.to_string(),
-                message: format!(
-                    "latest tag template \"{template}\" contains {{version}}, which is not substituted: the alias is a name, not a version"
-                ),
-            });
-        }
-        if is_monorepo && !template.contains("{name}") {
-            entries.push(ValidationEntry {
-                level: ValidationLevel::Warning,
-                path: context.to_string(),
-                message: format!(
-                    "latest tag template \"{template}\" does not contain {{name}}: every package would overwrite the same ref"
-                ),
-            });
-        }
-    };
-
-    if let Some(ref tmpl) = config.workspace.latest_tag {
-        check_latest(tmpl, "workspace.latestTag");
+    let latest_tags = configured_templates(
+        config,
+        "latestTag",
+        config.workspace.latest_tag.as_deref(),
+        |pkg| pkg.latest_tag.as_deref(),
+    );
+    for (template, context) in latest_tags {
+        entries.extend(latest_tag_issues(template, context, is_monorepo));
     }
-    for pkg in &config.packages {
-        if let Some(ref tmpl) = pkg.latest_tag {
-            check_latest(tmpl, &format!("{}.latestTag", pkg.name));
-        }
+
+    entries
+}
+
+fn configured_templates<'a>(
+    config: &'a Config,
+    key: &str,
+    workspace: Option<&'a str>,
+    of_package: impl Fn(&'a PackageConfig) -> Option<&'a str>,
+) -> Vec<(&'a str, String)> {
+    workspace
+        .map(|template| (template, format!("workspace.{key}")))
+        .into_iter()
+        .chain(config.packages.iter().filter_map(|pkg| {
+            of_package(pkg).map(|template| (template, format!("{}.{key}", pkg.name)))
+        }))
+        .collect()
+}
+
+fn tag_template_issues(template: &str, context: String, is_monorepo: bool) -> Vec<ValidationEntry> {
+    let mut entries = Vec::new();
+    if !template.contains("{version}") {
+        entries.push(ValidationEntry {
+            level: ValidationLevel::Error,
+            path: context.clone(),
+            message: format!("tag template \"{template}\" must contain {{version}}"),
+        });
+    }
+    if is_monorepo && !template.contains("{name}") {
+        entries.push(ValidationEntry {
+            level: ValidationLevel::Warning,
+            path: context,
+            message: format!(
+                "tag template \"{template}\" does not contain {{name}} — tags will collide in monorepo"
+            ),
+        });
+    }
+    entries
+}
+
+fn latest_tag_issues(template: &str, context: String, is_monorepo: bool) -> Vec<ValidationEntry> {
+    let mut entries = Vec::new();
+    if template.contains("{version}") {
+        entries.push(ValidationEntry {
+            level: ValidationLevel::Error,
+            path: context.clone(),
+            message: format!(
+                "latest tag template \"{template}\" contains {{version}}, which is not substituted: the alias is a name, not a version"
+            ),
+        });
+    }
+    if is_monorepo && !template.contains("{name}") {
+        entries.push(ValidationEntry {
+            level: ValidationLevel::Warning,
+            path: context,
+            message: format!(
+                "latest tag template \"{template}\" does not contain {{name}}: every package would overwrite the same ref"
+            ),
+        });
     }
     entries
 }

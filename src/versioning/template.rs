@@ -99,6 +99,74 @@ enum Segment {
     Var(Var),
 }
 
+fn split_segments(template: &str) -> Result<Vec<Segment>> {
+    let mut segments = Vec::new();
+    let mut literal = String::new();
+    let mut rest = template;
+
+    while let Some(open) = rest.find('{') {
+        literal.push_str(&rest[..open]);
+        let after = &rest[open + 1..];
+        let Some(close) = after.find('}') else {
+            bail!("versionTemplate has an unclosed '{{' in {template:?}");
+        };
+        let name = &after[..close];
+        let Some(var) = Var::from_name(name) else {
+            bail!("versionTemplate uses unknown variable {{{name}}}. Valid: {VALID_VARS}");
+        };
+        if !literal.is_empty() {
+            segments.push(Segment::Literal(std::mem::take(&mut literal)));
+        } else if matches!(segments.last(), Some(Segment::Var(_))) {
+            bail!(
+                "versionTemplate puts {{{name}}} directly after another variable, which cannot be read back. Separate them with a literal, e.g. '.'"
+            );
+        }
+        segments.push(Segment::Var(var));
+        rest = &after[close + 1..];
+    }
+    literal.push_str(rest);
+    if !literal.is_empty() {
+        segments.push(Segment::Literal(literal));
+    }
+    Ok(segments)
+}
+
+fn validate_segments(segments: &[Segment], template: &str) -> Result<()> {
+    if !segments.iter().any(|s| matches!(s, Segment::Var(_))) {
+        bail!("versionTemplate {template:?} contains no variables");
+    }
+    if segments
+        .iter()
+        .filter(|s| matches!(s, Segment::Var(Var::Seq)))
+        .count()
+        > 1
+    {
+        bail!("versionTemplate uses {{seq}} more than once");
+    }
+
+    for segment in segments {
+        if let Segment::Literal(text) = segment {
+            check_literal(text, template)?;
+        }
+    }
+
+    if let Some(Segment::Literal(last)) = segments.last() {
+        if last.ends_with(".lock") {
+            bail!(
+                "versionTemplate {template:?} ends with \".lock\". \
+                 The version becomes a git tag, which cannot end with it."
+            );
+        }
+        if last.ends_with('.') {
+            bail!(
+                "versionTemplate {template:?} ends with a dot. \
+                 The version becomes a git tag, which cannot end with one."
+            );
+        }
+    }
+    Ok(())
+}
+
 #[derive(Debug, Clone)]
 pub struct VersionTemplate {
     segments: Vec<Segment>,
@@ -110,68 +178,8 @@ impl VersionTemplate {
             bail!("versionTemplate is empty");
         }
 
-        let mut segments = Vec::new();
-        let mut literal = String::new();
-        let mut rest = template;
-
-        while let Some(open) = rest.find('{') {
-            literal.push_str(&rest[..open]);
-            let after = &rest[open + 1..];
-            let Some(close) = after.find('}') else {
-                bail!("versionTemplate has an unclosed '{{' in {template:?}");
-            };
-            let name = &after[..close];
-            let Some(var) = Var::from_name(name) else {
-                bail!("versionTemplate uses unknown variable {{{name}}}. Valid: {VALID_VARS}");
-            };
-            if !literal.is_empty() {
-                segments.push(Segment::Literal(std::mem::take(&mut literal)));
-            } else if matches!(segments.last(), Some(Segment::Var(_))) {
-                bail!(
-                    "versionTemplate puts {{{name}}} directly after another variable, which cannot be read back. Separate them with a literal, e.g. '.'"
-                );
-            }
-            segments.push(Segment::Var(var));
-            rest = &after[close + 1..];
-        }
-        literal.push_str(rest);
-        if !literal.is_empty() {
-            segments.push(Segment::Literal(literal));
-        }
-
-        if !segments.iter().any(|s| matches!(s, Segment::Var(_))) {
-            bail!("versionTemplate {template:?} contains no variables");
-        }
-        if segments
-            .iter()
-            .filter(|s| matches!(s, Segment::Var(Var::Seq)))
-            .count()
-            > 1
-        {
-            bail!("versionTemplate uses {{seq}} more than once");
-        }
-
-        for segment in &segments {
-            if let Segment::Literal(text) = segment {
-                check_literal(text, template)?;
-            }
-        }
-
-        if let Some(Segment::Literal(last)) = segments.last() {
-            if last.ends_with(".lock") {
-                bail!(
-                    "versionTemplate {template:?} ends with \".lock\". \
-                     The version becomes a git tag, which cannot end with it."
-                );
-            }
-            if last.ends_with('.') {
-                bail!(
-                    "versionTemplate {template:?} ends with a dot. \
-                     The version becomes a git tag, which cannot end with one."
-                );
-            }
-        }
-
+        let segments = split_segments(template)?;
+        validate_segments(&segments, template)?;
         Ok(Self { segments })
     }
 
