@@ -427,6 +427,135 @@ mod tests {
     }
 
     #[test]
+    fn only_registries_that_refuse_to_unpublish_block_a_rollback() {
+        for (json, immutable) in [
+            (r#"{"kind":"cargo"}"#, true),
+            (r#"{"kind":"npm"}"#, true),
+            (r#"{"kind":"pypi"}"#, true),
+            (r#"{"kind":"docker","image":"ghcr.io/acme/app"}"#, false),
+            (r#"{"kind":"helm","registry":"oci://ghcr.io/acme"}"#, false),
+            (
+                r#"{"kind":"github-release-asset","path":"dist/app.tgz"}"#,
+                false,
+            ),
+            (
+                r#"{"kind":"webhook","url":"https://example.com/hook"}"#,
+                false,
+            ),
+        ] {
+            assert_eq!(parse(json).is_immutable_publish(), immutable, "{json}");
+        }
+    }
+
+    #[test]
+    fn a_docker_publisher_defaults_to_the_version_tag_and_the_repo_root() {
+        let PublisherConfig::Docker {
+            tags,
+            context,
+            dockerfile,
+            ..
+        } = parse(r#"{"kind":"docker","image":"ghcr.io/acme/app"}"#)
+        else {
+            panic!("expected a docker publisher");
+        };
+        assert_eq!(tags, ["{version}"]);
+        assert_eq!(context, ".");
+        assert_eq!(dockerfile, "Dockerfile");
+    }
+
+    #[test]
+    fn pypi_builds_before_uploading_unless_told_not_to() {
+        let PublisherConfig::Pypi { build, .. } = parse(r#"{"kind":"pypi"}"#) else {
+            panic!("expected a pypi publisher");
+        };
+        assert!(build);
+        let PublisherConfig::Pypi { build, .. } = parse(r#"{"kind":"pypi","build":false}"#) else {
+            panic!("expected a pypi publisher");
+        };
+        assert!(!build);
+    }
+
+    #[test]
+    fn describe_names_the_default_registry_when_none_is_set() {
+        assert_eq!(
+            parse(r#"{"kind":"npm"}"#).describe("app", "1.2.0"),
+            "npm publish app@1.2.0 → npmjs.org (tag=latest)"
+        );
+        assert_eq!(
+            parse(r#"{"kind":"npm","registry":"https://npm.acme.dev","tag":"next"}"#)
+                .describe("app", "1.2.0"),
+            "npm publish app@1.2.0 → https://npm.acme.dev (tag=next)"
+        );
+        assert_eq!(
+            parse(r#"{"kind":"pypi"}"#).describe("app", "1.2.0"),
+            "twine upload app@1.2.0 → pypi.org"
+        );
+        assert_eq!(
+            parse(r#"{"kind":"helm","registry":"oci://ghcr.io/acme"}"#).describe("app", "1.2.0"),
+            "helm push . 1.2.0 → oci://ghcr.io/acme"
+        );
+    }
+
+    #[test]
+    fn a_release_asset_is_described_by_its_display_name_when_it_has_one() {
+        assert_eq!(
+            parse(r#"{"kind":"github-release-asset","path":"dist/app.tgz"}"#)
+                .describe("app", "1.2.0"),
+            "upload dist/app.tgz → GitHub Release 1.2.0"
+        );
+        assert_eq!(
+            parse(r#"{"kind":"github-release-asset","path":"dist/app.tgz","displayName":"App"}"#)
+                .describe("app", "1.2.0"),
+            "upload App → GitHub Release 1.2.0"
+        );
+    }
+
+    #[test]
+    fn a_signed_multi_platform_docker_push_says_so() {
+        let line = parse(
+            r#"{"kind":"docker","image":"ghcr.io/acme/app","tags":["{version}","latest"],"platforms":["linux/amd64","linux/arm64"],"sign":"sigstore"}"#,
+        )
+        .describe("app", "1.2.0");
+        assert_eq!(
+            line,
+            "docker push ghcr.io/acme/app:[1.2.0, latest] platforms=linux/amd64,linux/arm64 +sigstore"
+        );
+    }
+
+    #[test]
+    fn forgejo_and_capitalised_forge_names_are_accepted() {
+        use super::ForgeKind;
+        for (raw, kind) in [
+            ("\"forgejo\"", ForgeKind::Gitea),
+            ("\"Forgejo\"", ForgeKind::Gitea),
+            ("\"Gitea\"", ForgeKind::Gitea),
+            ("\"GitHub\"", ForgeKind::Github),
+            ("\"GitLab\"", ForgeKind::Gitlab),
+            ("\"Bitbucket\"", ForgeKind::Bitbucket),
+            ("\"auto\"", ForgeKind::Auto),
+        ] {
+            assert_eq!(
+                serde_json::from_str::<ForgeKind>(raw).unwrap(),
+                kind,
+                "{raw}"
+            );
+        }
+        assert!(serde_json::from_str::<ForgeKind>("\"sourcehut\"").is_err());
+    }
+
+    #[test]
+    fn a_channel_is_either_a_stable_flag_or_a_prerelease_name() {
+        use super::{BranchChannelConfig, ChannelValue};
+        let branches: Vec<BranchChannelConfig> = serde_json::from_str(
+            r#"[{"name":"main","channel":true},{"name":"next","channel":"beta"},{"name":"dev"}]"#,
+        )
+        .unwrap();
+        assert!(matches!(branches[0].channel, ChannelValue::Stable(true)));
+        assert!(matches!(&branches[1].channel, ChannelValue::Named(n) if n == "beta"));
+        assert!(matches!(branches[2].channel, ChannelValue::Stable(false)));
+    }
+
+    #[test]
     fn publishers_still_serialize_in_camel_case() {
         let json = serde_json::to_string(&parse(r#"{"kind":"cargo","allow_dirty":true}"#)).unwrap();
         assert!(json.contains("allowDirty"), "got: {json}");

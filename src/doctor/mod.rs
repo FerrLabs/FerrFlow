@@ -16,6 +16,20 @@ pub enum DoctorFormat {
 }
 
 pub fn run(config_path: Option<&Path>, format: DoctorFormat, online: bool) -> Result<()> {
+    let report = build_report(config_path, online)?;
+
+    match format {
+        DoctorFormat::Json => println!("{}", report.to_json()?),
+        DoctorFormat::Human => report.print_human(),
+    }
+
+    if report.exit_code != 0 {
+        std::process::exit(report.exit_code);
+    }
+    Ok(())
+}
+
+fn build_report(config_path: Option<&Path>, online: bool) -> Result<Report> {
     let cwd = std::env::current_dir()?;
     let repo = open_repo(&cwd).ok();
     let root = repo
@@ -29,23 +43,13 @@ pub fn run(config_path: Option<&Path>, format: DoctorFormat, online: bool) -> Re
         Err(err) => (None, Some(format!("{err:#}"))),
     };
 
-    let report = Report::build(vec![
+    Ok(Report::build(vec![
         checks::repo_section(repo.as_ref(), config.as_ref(), &root),
         checks::config_section(config.as_ref(), config_error.as_deref(), &discovered, &root),
         checks::versioning_section(config.as_ref(), &root),
         checks::forge_section(repo.as_ref(), config.as_ref(), online),
         checks::ci_section(&root),
-    ]);
-
-    match format {
-        DoctorFormat::Json => println!("{}", report.to_json()?),
-        DoctorFormat::Human => report.print_human(),
-    }
-
-    if report.exit_code != 0 {
-        std::process::exit(report.exit_code);
-    }
-    Ok(())
+    ]))
 }
 
 #[cfg(test)]

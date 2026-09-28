@@ -139,3 +139,6 @@ fn apply(
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests;

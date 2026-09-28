@@ -328,3 +328,6 @@ fn is_semver_metadata(value: &str) -> bool {
             !part.is_empty() && part.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
         })
 }
+
+#[cfg(test)]
+mod process_tests;

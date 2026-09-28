@@ -2,6 +2,9 @@ use super::*;
 use crate::config::types::{ChannelValue, ForgeKind};
 
 fn build(raw: &str) -> (Config, MigrationReport) {
+    let _cwd = crate::test_utils::CWD_LOCK
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
     build_config_from_releaserc(raw).expect("valid releaserc")
 }
 
@@ -273,4 +276,209 @@ fn a_migrated_tag_format_renders_the_same_tags_semantic_release_created() {
         "release-1.2.0"
     );
     assert_eq!(pkg.tag_prefix(&cfg.workspace, false), "release-");
+}
+
+mod end_to_end {
+    use super::super::{Source, migrate};
+    use crate::config::Config;
+    use crate::error_code::code_from_error;
+    use crate::test_utils::with_cwd;
+    use std::path::Path;
+
+    fn write(dir: &Path, rel: &str, content: &str) {
+        let path = dir.join(rel);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, content).unwrap();
+    }
+
+    fn run(dir: &Path, from: Option<Source>, dry_run: bool) -> anyhow::Result<()> {
+        let mut outcome = None;
+        with_cwd(dir, || {
+            outcome = Some(migrate(from, dry_run));
+            Ok(())
+        })
+        .unwrap();
+        outcome.unwrap()
+    }
+
+    fn migrated(dir: &Path) -> Config {
+        Config::load(dir, Some(&dir.join("ferrflow.json"))).expect("migration output must load")
+    }
+
+    #[test]
+    fn a_yaml_releaserc_is_detected_and_written_as_a_loadable_config() {
+        let dir = tempfile::tempdir().unwrap();
+        write(
+            dir.path(),
+            ".releaserc.yml",
+            "tagFormat: \"v${version}\"\nbranches:\n  - main\n  - name: next\n    prerelease: true\n",
+        );
+        write(dir.path(), "package.json", r#"{"name":"my-lib"}"#);
+
+        run(dir.path(), None, false).unwrap();
+
+        let cfg = migrated(dir.path());
+        assert_eq!(cfg.workspace.tag_template.as_deref(), Some("v{version}"));
+        assert_eq!(cfg.packages[0].name, "my-lib");
+        let branches: Vec<&str> = cfg
+            .workspace
+            .branches
+            .as_ref()
+            .unwrap()
+            .iter()
+            .map(|b| b.name.as_str())
+            .collect();
+        assert_eq!(branches, ["main", "next"]);
+    }
+
+    #[test]
+    fn a_releaserc_without_extension_is_read_as_json5() {
+        let dir = tempfile::tempdir().unwrap();
+        write(
+            dir.path(),
+            ".releaserc",
+            "{\n  // comment\n  tagFormat: 'r${version}',\n}\n",
+        );
+
+        run(dir.path(), None, false).unwrap();
+
+        assert_eq!(
+            migrated(dir.path()).workspace.tag_template.as_deref(),
+            Some("r{version}")
+        );
+    }
+
+    #[test]
+    fn a_dry_run_writes_nothing() {
+        let dir = tempfile::tempdir().unwrap();
+        write(
+            dir.path(),
+            ".releaserc.json",
+            r#"{"tagFormat":"v${version}"}"#,
+        );
+
+        run(dir.path(), None, true).unwrap();
+
+        assert!(!dir.path().join("ferrflow.json").exists());
+    }
+
+    #[test]
+    fn semantic_release_wins_detection_over_other_tools() {
+        let dir = tempfile::tempdir().unwrap();
+        write(
+            dir.path(),
+            ".releaserc.json",
+            r#"{"tagFormat":"sr-${version}"}"#,
+        );
+        write(dir.path(), ".versionrc.json", r#"{"tagPrefix":"sv-"}"#);
+
+        run(dir.path(), None, false).unwrap();
+
+        assert_eq!(
+            migrated(dir.path()).workspace.tag_template.as_deref(),
+            Some("sr-{version}")
+        );
+    }
+
+    #[test]
+    fn from_overrides_detection() {
+        let dir = tempfile::tempdir().unwrap();
+        write(
+            dir.path(),
+            ".releaserc.json",
+            r#"{"tagFormat":"sr-${version}"}"#,
+        );
+        write(dir.path(), ".versionrc.json", r#"{"tagPrefix":"sv-"}"#);
+
+        run(dir.path(), Some(Source::StandardVersion), false).unwrap();
+
+        assert_eq!(
+            migrated(dir.path()).workspace.tag_template.as_deref(),
+            Some("sv-{version}")
+        );
+    }
+
+    #[test]
+    fn a_yaml_versionrc_is_detected_when_nothing_else_is_there() {
+        let dir = tempfile::tempdir().unwrap();
+        write(dir.path(), ".versionrc.yaml", "tagPrefix: rel-\n");
+
+        run(dir.path(), None, false).unwrap();
+
+        assert_eq!(
+            migrated(dir.path()).workspace.tag_template.as_deref(),
+            Some("rel-{version}")
+        );
+    }
+
+    #[test]
+    fn forcing_a_source_whose_config_is_missing_fails() {
+        let dir = tempfile::tempdir().unwrap();
+
+        let err = run(dir.path(), Some(Source::SemanticRelease), false).unwrap_err();
+
+        assert!(
+            format!("{err:#}").contains("no semantic-release config found"),
+            "{err:#}"
+        );
+        assert!(!dir.path().join("ferrflow.json").exists());
+    }
+
+    #[test]
+    fn no_known_config_is_a_not_found_error_naming_what_was_looked_for() {
+        let dir = tempfile::tempdir().unwrap();
+
+        let err = run(dir.path(), None, false).unwrap_err();
+
+        assert_eq!(code_from_error(&err).as_deref(), Some("E1001"));
+        let msg = format!("{err:#}");
+        for looked_for in [
+            ".releaserc.json",
+            ".changeset/config.json",
+            "release-please-config.json",
+            ".versionrc",
+            "--from",
+        ] {
+            assert!(msg.contains(looked_for), "missing {looked_for}: {msg}");
+        }
+    }
+
+    #[test]
+    fn an_existing_ferrflow_config_is_never_overwritten() {
+        for existing in ["ferrflow.json", "ferrflow.toml", ".ferrflow", "ferrflow.ts"] {
+            let dir = tempfile::tempdir().unwrap();
+            write(
+                dir.path(),
+                ".releaserc.json",
+                r#"{"tagFormat":"v${version}"}"#,
+            );
+            write(dir.path(), existing, "original");
+
+            let err = run(dir.path(), None, false).unwrap_err();
+
+            assert_eq!(
+                code_from_error(&err).as_deref(),
+                Some("E1017"),
+                "{existing}: {err:#}"
+            );
+            assert_eq!(
+                std::fs::read_to_string(dir.path().join(existing)).unwrap(),
+                "original"
+            );
+            if existing != "ferrflow.json" {
+                assert!(!dir.path().join("ferrflow.json").exists(), "{existing}");
+            }
+        }
+    }
+
+    #[test]
+    fn an_unparseable_releaserc_fails_without_writing() {
+        let dir = tempfile::tempdir().unwrap();
+        write(dir.path(), ".releaserc.json", "{ not json");
+
+        let err = run(dir.path(), None, false).unwrap_err();
+
+        assert_eq!(code_from_error(&err).as_deref(), Some("E1014"));
+        assert!(!dir.path().join("ferrflow.json").exists());
+    }
 }
