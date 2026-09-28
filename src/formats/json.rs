@@ -286,7 +286,7 @@ impl VersionFile for JsonVersionFile {
             .error_code(error_code::JSON_PARSE)?;
         v["version"]
             .as_str()
-            .map(|s| s.to_string())
+            .map(|s| s.trim().to_string())
             .ok_or_else(|| anyhow::anyhow!("No 'version' field in {}", file_path.display()))
             .error_code(error_code::JSON_VERSION_NOT_FOUND)
     }
@@ -335,7 +335,7 @@ impl VersionFile for JsonVersionFile {
             .error_code(error_code::JSON_PARSE)?;
         v["version"]
             .as_str()
-            .map(|s| s.to_string())
+            .map(|s| s.trim().to_string())
             .ok_or_else(|| anyhow::anyhow!("No 'version' field in {filename}"))
             .error_code(error_code::JSON_VERSION_NOT_FOUND)
     }

@@ -7,6 +7,10 @@ use toml_edit::{DocumentMut, Item};
 pub struct TomlVersionFile;
 
 fn read_toml_version(doc: &DocumentMut, location: &str) -> Result<String> {
+    raw_toml_version(doc, location).map(|v| v.trim().to_string())
+}
+
+fn raw_toml_version(doc: &DocumentMut, location: &str) -> Result<String> {
     if let Some(pkg) = doc.get("package")
         && let Some(version) = pkg.get("version")
     {

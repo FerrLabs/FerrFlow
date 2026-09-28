@@ -13,7 +13,7 @@ impl VersionFile for HelmVersionFile {
 
         for line in content.lines() {
             if let Some(v) = line.strip_prefix("version:") {
-                let v = v.trim().trim_matches('"').trim_matches('\'');
+                let v = v.trim().trim_matches('"').trim_matches('\'').trim();
                 if !v.is_empty() {
                     return Ok(v.to_string());
                 }
@@ -78,7 +78,7 @@ impl VersionFile for HelmVersionFile {
             .error_code(error_code::HELM_INVALID_UTF8)?;
         for line in text.lines() {
             if let Some(v) = line.strip_prefix("version:") {
-                let v = v.trim().trim_matches('"').trim_matches('\'');
+                let v = v.trim().trim_matches('"').trim_matches('\'').trim();
                 if !v.is_empty() {
                     return Ok(v.to_string());
                 }
