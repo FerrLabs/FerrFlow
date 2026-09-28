@@ -2,6 +2,7 @@ use anyhow::Result;
 use colored::{ColoredString, Colorize};
 use gix::ObjectId;
 use serde::Serialize;
+use std::io::Write;
 use std::path::Path;
 
 use crate::changelog::{ChangelogRender, build_section_with};
@@ -78,9 +79,9 @@ pub fn run(spec: &[String], json: bool, config_path: Option<&Path>) -> Result<()
         formats: &config.workspace.commit_formats,
     };
     if json {
-        print_json(&report)?;
+        println!("{}", serde_json::to_string_pretty(&json_report(&report))?);
     } else {
-        print_human(&report);
+        write_human(&mut std::io::stdout().lock(), &report)?;
     }
     Ok(())
 }
@@ -204,7 +205,7 @@ fn bump_label(bump: BumpType) -> ColoredString {
     }
 }
 
-fn print_human(r: &DiffReport<'_>) {
+fn write_human(out: &mut impl Write, r: &DiffReport<'_>) -> std::io::Result<()> {
     let DiffReport {
         pkg,
         from,
@@ -216,25 +217,27 @@ fn print_human(r: &DiffReport<'_>) {
         formats,
     } = *r;
 
-    println!(
+    writeln!(
+        out,
         "{}  {} → {}  ({})\n",
         pkg.name.bold(),
         from.cyan(),
         to.green().bold(),
         bump_label(overall)
-    );
+    )?;
 
-    println!("{}", format!("Commits ({})", commits.len()).bold());
+    writeln!(out, "{}", format!("Commits ({})", commits.len()).bold())?;
     if commits.is_empty() {
-        println!("  {}", "(none)".dimmed());
+        writeln!(out, "  {}", "(none)".dimmed())?;
     }
     for c in commits {
-        println!(
+        writeln!(
+            out,
             "  {:<5}  {}  {}",
             bump_label(determine_bump(&c.message, formats)),
             c.hash.dimmed(),
             parse_subject(&c.message)
-        );
+        )?;
     }
 
     let breaking: Vec<&crate::git::GitLog> = commits
@@ -242,32 +245,39 @@ fn print_human(r: &DiffReport<'_>) {
         .filter(|c| is_breaking(&c.message, formats))
         .collect();
     if !breaking.is_empty() {
-        println!(
+        writeln!(
+            out,
             "\n{}",
             format!("Breaking changes ({})", breaking.len())
                 .red()
                 .bold()
-        );
+        )?;
         for c in &breaking {
-            println!("  {} {}", "!".red().bold(), parse_subject(&c.message));
+            writeln!(out, "  {} {}", "!".red().bold(), parse_subject(&c.message))?;
         }
     }
 
-    println!("\n{}", format!("Files changed ({})", files.len()).bold());
+    writeln!(
+        out,
+        "\n{}",
+        format!("Files changed ({})", files.len()).bold()
+    )?;
     for f in files.iter().take(MAX_FILES_SHOWN) {
-        println!("  {f}");
+        writeln!(out, "  {f}")?;
     }
     if files.len() > MAX_FILES_SHOWN {
-        println!(
+        writeln!(
+            out,
             "  {}",
             format!("… and {} more", files.len() - MAX_FILES_SHOWN).dimmed()
-        );
+        )?;
     }
 
-    println!("\n{}", "Changelog".bold());
+    writeln!(out, "\n{}", "Changelog".bold())?;
     for line in changelog.trim_end().lines() {
-        println!("  {line}");
+        writeln!(out, "  {line}")?;
     }
+    Ok(())
 }
 
 #[derive(Serialize)]
@@ -294,7 +304,7 @@ struct DiffJson<'a> {
     changelog: &'a str,
 }
 
-fn print_json(r: &DiffReport<'_>) -> Result<()> {
+fn json_report<'a>(r: &DiffReport<'a>) -> DiffJson<'a> {
     let DiffReport {
         pkg,
         from,
@@ -326,7 +336,7 @@ fn print_json(r: &DiffReport<'_>) -> Result<()> {
         .map(|c| parse_subject(&c.message).to_string())
         .collect();
 
-    let out = DiffJson {
+    DiffJson {
         package: &pkg.name,
         from,
         to,
@@ -335,68 +345,8 @@ fn print_json(r: &DiffReport<'_>) -> Result<()> {
         breaking,
         files_changed: files,
         changelog,
-    };
-    println!("{}", serde_json::to_string_pretty(&out)?);
-    Ok(())
+    }
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn parse_spec_finds_range_and_optional_package() {
-        let two = vec!["api".to_string(), "v1.0.0..v2.0.0".to_string()];
-        assert_eq!(parse_spec(&two).unwrap(), (Some("api"), "v1.0.0..v2.0.0"));
-
-        let one = vec!["v1.0.0..v2.0.0".to_string()];
-        assert_eq!(parse_spec(&one).unwrap(), (None, "v1.0.0..v2.0.0"));
-
-        let rev = vec!["v1.0.0..v2.0.0".to_string(), "api".to_string()];
-        assert_eq!(parse_spec(&rev).unwrap(), (Some("api"), "v1.0.0..v2.0.0"));
-    }
-
-    #[test]
-    fn parse_spec_requires_a_range() {
-        let no_range = vec!["api".to_string(), "v1.0.0".to_string()];
-        assert!(parse_spec(&no_range).is_err());
-    }
-
-    #[test]
-    fn split_range_rejects_empty_sides() {
-        assert_eq!(split_range("v1.0.0..v2.0.0").unwrap(), ("v1.0.0", "v2.0.0"));
-        assert!(split_range("..v2.0.0").is_err());
-        assert!(split_range("v1.0.0..").is_err());
-        assert!(split_range("v1.0.0").is_err());
-    }
-
-    fn scoped_pkg() -> PackageConfig {
-        serde_json::from_str(r#"{"name":"api","path":"packages/api","sharedPaths":["proto"]}"#)
-            .expect("valid package json")
-    }
-
-    #[test]
-    fn file_list_is_scoped_to_the_package_in_a_monorepo() {
-        let files = vec![
-            "packages/api/src/main.rs".to_string(),
-            "packages/web/app.ts".to_string(),
-            "proto/schema.proto".to_string(),
-        ];
-        let scoped = scope_files_to_package(&scoped_pkg(), true, files);
-        assert_eq!(
-            scoped,
-            vec![
-                "packages/api/src/main.rs".to_string(),
-                "proto/schema.proto".to_string()
-            ],
-            "the sibling package's file must be dropped, the shared path kept"
-        );
-    }
-
-    #[test]
-    fn file_list_is_untouched_in_a_single_package_repo() {
-        let files = vec!["anything/at/all.rs".to_string()];
-        let scoped = scope_files_to_package(&scoped_pkg(), false, files.clone());
-        assert_eq!(scoped, files);
-    }
-}
+mod tests;

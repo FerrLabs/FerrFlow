@@ -16,37 +16,44 @@ pub(super) fn output_result(result: &ValidationResult, json: bool) -> Result<()>
 }
 
 fn print_text_result(result: &ValidationResult) {
-    tracing::info!("");
-    tracing::info!("{}", "ferrflow validate".bold());
-    tracing::info!("");
+    for line in text_lines(result) {
+        tracing::info!("{line}");
+    }
+}
+
+fn text_lines(result: &ValidationResult) -> Vec<String> {
+    let mut out = Vec::new();
+    out.push(String::new());
+    out.push("ferrflow validate".bold().to_string());
+    out.push(String::new());
 
     if let Some(ref cf) = result.config_file {
-        tracing::info!("  {} config parsed ({})", "✓".green(), cf);
+        out.push(format!("  {} config parsed ({})", "✓".green(), cf));
     }
     if result.package_count > 0 {
-        tracing::info!(
+        out.push(format!(
             "  {} {} package{} found",
             "✓".green(),
             result.package_count,
             if result.package_count == 1 { "" } else { "s" }
-        );
+        ));
     }
 
     for e in &result.errors {
-        tracing::info!("  {} {}: {}", "✗".red(), e.path, e.message);
+        out.push(format!("  {} {}: {}", "✗".red(), e.path, e.message));
     }
     for w in &result.warnings {
-        tracing::info!("  {} {}: {}", "⚠".yellow(), w.path, w.message);
+        out.push(format!("  {} {}: {}", "⚠".yellow(), w.path, w.message));
     }
     for s in &result.suggestions {
-        tracing::info!("  {} {}: {}", "◆".cyan(), s.path, s.message);
+        out.push(format!("  {} {}: {}", "◆".cyan(), s.path, s.message));
     }
 
     if result.errors.is_empty() && result.warnings.is_empty() && result.suggestions.is_empty() {
-        tracing::info!("  {} no issues found", "✓".green());
+        out.push(format!("  {} no issues found", "✓".green()));
     }
 
-    tracing::info!("");
+    out.push(String::new());
     let parts: Vec<String> = [
         (result.errors.len(), "error"),
         (result.warnings.len(), "warning"),
@@ -58,9 +65,13 @@ fn print_text_result(result: &ValidationResult) {
     .collect();
 
     if parts.is_empty() {
-        tracing::info!("  {}", "all checks passed".green().bold());
+        out.push(format!("  {}", "all checks passed".green().bold()));
     } else {
-        tracing::info!("  {}", parts.join(", "));
+        out.push(format!("  {}", parts.join(", ")));
     }
-    tracing::info!("");
+    out.push(String::new());
+    out
 }
+
+#[cfg(test)]
+mod tests;

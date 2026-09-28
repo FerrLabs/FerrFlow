@@ -51,8 +51,14 @@ impl Timing {
     }
 
     pub fn report(&self) {
+        for line in self.report_lines() {
+            tracing::info!("{line}");
+        }
+    }
+
+    fn report_lines(&self) -> Vec<String> {
         if !self.enabled || self.stages.is_empty() {
-            return;
+            return Vec::new();
         }
 
         let label_width = self
@@ -65,25 +71,23 @@ impl Timing {
             .max()
             .unwrap_or(0);
 
-        tracing::info!("");
-        tracing::info!("Timing breakdown:");
+        let mut out = vec![String::new(), "Timing breakdown:".to_string()];
         for stage in &self.stages {
-            match stage {
+            out.push(match stage {
                 Stage::Measured(name, d) => {
-                    tracing::info!("  {name:<label_width$}  {:>6} ms", d.as_millis());
+                    format!("  {name:<label_width$}  {:>6} ms", d.as_millis())
                 }
-                Stage::Skipped(name, reason) => {
-                    tracing::info!("  {name:<label_width$}  — ({reason})");
-                }
-            }
+                Stage::Skipped(name, reason) => format!("  {name:<label_width$}  — ({reason})"),
+            });
         }
         let rule = "─".repeat(label_width + 12);
-        tracing::info!("  {rule}");
-        tracing::info!(
+        out.push(format!("  {rule}"));
+        out.push(format!(
             "  {:<label_width$}  {:>6} ms",
             "total",
             self.total().as_millis()
-        );
+        ));
+        out
     }
 }
 
@@ -119,5 +123,44 @@ mod tests {
         assert_eq!(out, 42);
         assert_eq!(t.stages.len(), 1);
         assert!(t.total() < Duration::from_secs(1));
+    }
+
+    #[test]
+    fn nothing_is_reported_when_disabled_or_empty() {
+        let mut off = Timing::new(false);
+        off.record("scan", Duration::from_millis(5));
+        assert!(off.report_lines().is_empty());
+        assert!(Timing::new(true).report_lines().is_empty());
+    }
+
+    #[test]
+    fn the_report_aligns_stages_skips_and_the_total() {
+        let mut t = Timing::new(true);
+        t.record("collect_commits", Duration::from_millis(1234));
+        t.skip("git", "dry-run");
+        t.record("bump", Duration::from_millis(7));
+        let lines = t.report_lines();
+
+        assert_eq!(
+            lines,
+            vec![
+                String::new(),
+                "Timing breakdown:".to_string(),
+                "  collect_commits    1234 ms".to_string(),
+                "  git              — (dry-run)".to_string(),
+                "  bump                  7 ms".to_string(),
+                format!("  {}", "─".repeat("collect_commits".len() + 12)),
+                "  total              1241 ms".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn short_stage_names_are_padded_to_the_total_label() {
+        let mut t = Timing::new(true);
+        t.record("a", Duration::from_millis(3));
+        let lines = t.report_lines();
+        assert_eq!(lines[2], "  a           3 ms");
+        assert_eq!(lines[4], "  total       3 ms");
     }
 }
