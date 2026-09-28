@@ -4,6 +4,19 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.26.10] - 2026-09-28
+
+### Bug Fixes
+
+- fix(formats): keep whitespace out of quoted version literals (#1218)
+
+### Refactoring
+
+- refactor(monorepo): split run_release_logic into phases (#1220)
+- refactor(monorepo): split release execution, dependency cascade and floating tags (#1219)
+- refactor(monorepo): split plan computation, cascade upgrades and tarjan scc walk (#1217)
+- refactor: split query, tag template checks, version template parsing and pypi publish (#1215)
+
 ## [7.26.9] - 2026-09-28
 
 ### Refactoring
