@@ -413,17 +413,6 @@ impl<'a> TagWalk<'a> {
         }
     }
 
-    fn reaches(&self, raw_oid: ObjectId) -> bool {
-        let Some(commit_oid) = resolve_tag_to_commit(self.repo, raw_oid) else {
-            return false;
-        };
-        let Ok(commit) = self.repo.find_commit(commit_oid) else {
-            return false;
-        };
-        is_reachable(self.repo, self.head, commit_oid, self.ancestors)
-            || find_matching_commit(self.repo, &commit, &self.strategy).is_some()
-    }
-
     fn warn_missing_commit(&self, tag_name: &str, oid: ObjectId) {
         if self.report {
             tracing::warn!(
@@ -581,7 +570,7 @@ pub fn find_highest_semver_tag_with_cache(
         let Some(parsed) = parse_tag_semver(&tag_name, prefix) else {
             continue;
         };
-        if !walk.reaches(raw_oid) {
+        if !matches!(walk.place(&tag_name, raw_oid), Placement::At { .. }) {
             continue;
         }
         if highest
