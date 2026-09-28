@@ -4,6 +4,15 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.26.9] - 2026-09-28
+
+### Refactoring
+
+- refactor(git): let the semver walk ask place instead of a second resolver (#1214)
+- refactor(config): turn format detection into a table and split init and the JS loader (#1213)
+- refactor(git): walk tags once instead of three near-copies (#1212)
+- refactor(formats): share the member and tag walkers instead of copying them (#1211)
+
 ## [7.26.8] - 2026-09-27
 
 ### Bug Fixes
