@@ -4,6 +4,14 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.26.11] - 2026-09-28
+
+### Bug Fixes
+
+- fix(publish): read the helm chart name from the top-level key only (#1231)
+- fix(migrate): keep semantic-release tags matching after migration (#1229)
+- fix(release): refuse to move a floating tag backward on a hotfix (#1226)
+
 ## [7.26.10] - 2026-09-28
 
 ### Bug Fixes
