@@ -511,3 +511,190 @@ b: 2
         result.errors
     );
 }
+
+fn code(err: &anyhow::Error) -> Option<String> {
+    crate::error_code::code_from_error(err)
+}
+
+fn memory(files: &[(&str, &str)]) -> MemorySource {
+    MemorySource::new(
+        files
+            .iter()
+            .map(|(path, body)| (path.to_string(), body.as_bytes().to_vec()))
+            .collect(),
+    )
+}
+
+#[test]
+fn toml_and_json5_configs_are_read_by_their_extension() {
+    let source = memory(&[(
+        "ferrflow.toml",
+        "[[package]]\nname = \"from-toml\"\npath = \".\"\n",
+    )]);
+    let (config, file) = load_config_from_source(&source, None).unwrap();
+    assert_eq!(file, "ferrflow.toml");
+    assert_eq!(config.packages[0].name, "from-toml");
+
+    let source = memory(&[(
+        "ferrflow.json5",
+        "{ package: [{ name: \"from-json5\", path: \".\", },], }",
+    )]);
+    let (config, file) = load_config_from_source(&source, None).unwrap();
+    assert_eq!(file, "ferrflow.json5");
+    assert_eq!(config.packages[0].name, "from-json5");
+}
+
+#[test]
+fn json5_wins_over_toml_when_there_is_no_plain_json() {
+    let source = memory(&[
+        (
+            "ferrflow.toml",
+            "[[package]]\nname = \"toml\"\npath = \".\"\n",
+        ),
+        (
+            "ferrflow.json5",
+            "{ package: [{ name: \"json5\", path: \".\" }] }",
+        ),
+    ]);
+    let (config, _) = load_config_from_source(&source, None).unwrap();
+    assert_eq!(config.packages[0].name, "json5");
+}
+
+#[test]
+fn a_broken_config_is_a_parse_error_not_a_missing_one() {
+    let source = memory(&[("ferrflow.json", "{ not json")]);
+    let err = load_config_from_source(&source, None).unwrap_err();
+    assert_eq!(code(&err).as_deref(), Some("E1104"));
+    assert!(format!("{err:#}").contains("ferrflow.json"), "{err:#}");
+}
+
+#[test]
+fn a_config_that_is_not_utf8_is_rejected_with_its_own_code() {
+    let mut files = BTreeMap::new();
+    files.insert("ferrflow.json".to_string(), vec![0xff, 0xfe, b'{']);
+    let err = load_config_from_source(&MemorySource::new(files), None).unwrap_err();
+    assert_eq!(code(&err).as_deref(), Some("E1103"));
+}
+
+#[test]
+fn missing_config_codes_differ_for_explicit_and_discovered_paths() {
+    let empty = memory(&[]);
+    let explicit = load_config_from_source(&empty, Some("custom.json")).unwrap_err();
+    assert_eq!(code(&explicit).as_deref(), Some("E1105"));
+    assert!(
+        format!("{explicit:#}").contains("custom.json"),
+        "{explicit:#}"
+    );
+
+    let discovered = load_config_from_source(&empty, None).unwrap_err();
+    assert_eq!(code(&discovered).as_deref(), Some("E1106"));
+    let message = format!("{discovered:#}");
+    for name in [
+        "ferrflow.json",
+        "ferrflow.json5",
+        "ferrflow.toml",
+        ".ferrflow",
+    ] {
+        assert!(message.contains(name), "{message}");
+    }
+}
+
+#[test]
+fn an_explicit_path_is_used_even_when_a_default_config_exists() {
+    let source = memory(&[
+        (
+            "ferrflow.json",
+            r#"{"package": [{"name": "default", "path": "."}]}"#,
+        ),
+        (
+            "ci/release.toml",
+            "[[package]]\nname = \"ci\"\npath = \".\"\n",
+        ),
+    ]);
+    let (config, file) = load_config_from_source(&source, Some("ci/release.toml")).unwrap();
+    assert_eq!(file, "ci/release.toml");
+    assert_eq!(config.packages[0].name, "ci");
+}
+
+#[test]
+fn memory_source_treats_only_real_path_prefixes_as_directories() {
+    let source = memory(&[("pkg/src/lib.rs", ""), ("pkg-other/file", "")]);
+    assert!(source.path_exists("pkg").unwrap());
+    assert!(source.path_exists("pkg/").unwrap());
+    assert!(source.path_exists("pkg/src/lib.rs").unwrap());
+    assert!(
+        !source.path_exists("pk").unwrap(),
+        "a name prefix is not a directory"
+    );
+    assert!(!source.path_exists("pkg/src/lib").unwrap());
+    assert_eq!(
+        source.read_file("pkg").unwrap(),
+        None,
+        "a directory has no content"
+    );
+}
+
+#[test]
+fn local_source_surfaces_read_errors_other_than_not_found() {
+    let tmp = TempDir::new().unwrap();
+    fs::create_dir(tmp.path().join("adir")).unwrap();
+    let source = LocalSource {
+        root: tmp.path().to_path_buf(),
+    };
+    assert!(
+        source.read_file("adir").is_err(),
+        "reading a directory must fail loudly, not look like a missing file"
+    );
+}
+
+#[test]
+fn local_entries_flag_a_package_path_missing_on_disk() {
+    let tmp = TempDir::new().unwrap();
+    fs::create_dir(tmp.path().join("present")).unwrap();
+    let config = make_config(vec![
+        make_package("present", "present"),
+        make_package("gone", "gone"),
+    ]);
+    let entries = local_entries(&config, tmp.path());
+    let errors: Vec<&ValidationEntry> = entries
+        .iter()
+        .filter(|e| e.level == ValidationLevel::Error)
+        .collect();
+    assert_eq!(errors.len(), 1, "{entries:?}");
+    assert!(errors[0].message.contains("gone"), "{:?}", errors[0]);
+}
+
+#[test]
+fn an_invalid_repo_spec_fails_before_any_request() {
+    let err = run(None, true, Some("a/b/c/d"), None).unwrap_err();
+    assert_eq!(code(&err).as_deref(), Some("E1100"));
+}
+
+#[test]
+fn ref_without_repo_carries_its_error_code() {
+    let err = run(None, false, None, Some("main")).unwrap_err();
+    assert_eq!(code(&err).as_deref(), Some("E1107"));
+}
+
+#[test]
+fn run_validates_the_local_repo_config_in_both_output_modes() {
+    use crate::test_utils::{commit_file, init_repo, with_cwd};
+
+    let (dir, _repo) = init_repo();
+    let root = dir.path();
+    fs::write(
+        root.join("ferrflow.json"),
+        r#"{"package": [{"name": "app", "path": ".",
+            "versionedFiles": [{"path": "Cargo.toml", "format": "toml"}]}]}"#,
+    )
+    .unwrap();
+    fs::write(
+        root.join("Cargo.toml"),
+        "[package]\nname = \"app\"\nversion = \"1.0.0\"\n",
+    )
+    .unwrap();
+    commit_file(root, "seed.txt", "x", "chore: seed", 1_940_000_000);
+
+    with_cwd(root, || run(None, true, None, None)).unwrap();
+    with_cwd(root, || run(None, false, None, None)).unwrap();
+}

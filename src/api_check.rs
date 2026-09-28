@@ -1,6 +1,7 @@
 use anyhow::Result;
 use colored::Colorize;
 use serde::Serialize;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -108,7 +109,29 @@ pub fn run(config_path: Option<&Path>, package: Option<&str>, json: bool) -> Res
     let repo = open_repo(&std::env::current_dir()?)?;
     let root = get_repo_root(&repo)?;
     let config = Config::load(&root, config_path)?;
+    let report = build_report(&repo, &root, &config, package)?;
 
+    if json {
+        println!("{}", serde_json::to_string_pretty(&report)?);
+    } else {
+        write_text(&mut std::io::stdout().lock(), &report)?;
+    }
+
+    if report.disagreements > 0 {
+        anyhow::bail!(
+            "{} package(s) have breaking API changes the commits did not ask for",
+            report.disagreements
+        );
+    }
+    Ok(())
+}
+
+fn build_report(
+    repo: &crate::git::Repository,
+    root: &Path,
+    config: &Config,
+    package: Option<&str>,
+) -> Result<Report> {
     if config.packages.is_empty() {
         Err(anyhow::anyhow!(
             "No packages configured. Run `ferrflow init` to create a config."
@@ -134,11 +157,11 @@ pub fn run(config_path: Option<&Path>, package: Option<&str>, json: bool) -> Res
 
     for pkg in selected {
         let prefix = pkg.tag_prefix(&config.workspace, is_monorepo);
-        let baseline = find_last_tag_name(&repo, &prefix, strategy)?;
+        let baseline = find_last_tag_name(repo, &prefix, strategy)?;
 
         let commit_bump = match &baseline {
             Some(_) => get_commits_since_last_tag(
-                &repo,
+                repo,
                 &prefix,
                 strategy,
                 &config.workspace.effective_commit_skip_markers(),
@@ -153,7 +176,7 @@ pub fn run(config_path: Option<&Path>, package: Option<&str>, json: bool) -> Res
         };
 
         let api = match &baseline {
-            Some(tag) => check_rust_api(&pkg.name, &root, &PathBuf::from(&pkg.path), tag),
+            Some(tag) => check_rust_api(&pkg.name, root, &PathBuf::from(&pkg.path), tag),
             None => ApiVerdict::NotChecked("no baseline tag to compare against".to_string()),
         };
 
@@ -167,28 +190,15 @@ pub fn run(config_path: Option<&Path>, package: Option<&str>, json: bool) -> Res
     }
 
     let disagreements = packages.iter().filter(|p| p.disagrees).count();
-    let report = Report {
+    Ok(Report {
         packages,
         disagreements,
-    };
-
-    if json {
-        println!("{}", serde_json::to_string_pretty(&report)?);
-    } else {
-        print_text(&report);
-    }
-
-    if disagreements > 0 {
-        anyhow::bail!(
-            "{disagreements} package(s) have breaking API changes the commits did not ask for"
-        );
-    }
-    Ok(())
+    })
 }
 
-fn print_text(report: &Report) {
-    println!("{}", "FerrFlow — API compatibility".bold());
-    println!();
+fn write_text(out: &mut impl Write, report: &Report) -> std::io::Result<()> {
+    writeln!(out, "{}", "FerrFlow — API compatibility".bold())?;
+    writeln!(out)?;
 
     for p in &report.packages {
         let verdict = match &p.api {
@@ -197,86 +207,41 @@ fn print_text(report: &Report) {
             ApiVerdict::Inconclusive(why) => format!("{} ({why})", "inconclusive".yellow()),
             ApiVerdict::NotChecked(why) => format!("{} ({why})", "not checked".dimmed()),
         };
-        println!("  {}", p.package.bold());
-        println!(
+        writeln!(out, "  {}", p.package.bold())?;
+        writeln!(
+            out,
             "    baseline     {}",
             p.baseline.as_deref().unwrap_or("none").dimmed()
-        );
-        println!("    commits say  {}", p.commit_bump);
-        println!("    api says     {verdict}");
+        )?;
+        writeln!(out, "    commits say  {}", p.commit_bump)?;
+        writeln!(out, "    api says     {verdict}")?;
         if p.disagrees {
-            println!(
+            writeln!(
+                out,
                 "    {} the API broke but the commits ask for {}, not major",
                 "✗".red(),
                 p.commit_bump
-            );
+            )?;
         }
     }
 
-    println!();
+    writeln!(out)?;
     if report.disagreements == 0 {
-        println!("  {} no disagreement between commits and API", "✓".green());
+        writeln!(
+            out,
+            "  {} no disagreement between commits and API",
+            "✓".green()
+        )?;
     } else {
-        println!(
+        writeln!(
+            out,
             "  {} {} package(s) where the commits understate the change",
             "✗".red(),
             report.disagreements
-        );
+        )?;
     }
+    Ok(())
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn breaking_only_disagrees_when_the_commits_asked_for_less_than_major() {
-        assert!(disagrees(BumpType::Patch, &ApiVerdict::Breaking));
-        assert!(disagrees(BumpType::Minor, &ApiVerdict::Breaking));
-        assert!(disagrees(BumpType::None, &ApiVerdict::Breaking));
-        assert!(!disagrees(BumpType::Major, &ApiVerdict::Breaking));
-    }
-
-    #[test]
-    fn a_verdict_other_than_breaking_never_disagrees() {
-        for verdict in [
-            ApiVerdict::Compatible,
-            ApiVerdict::Inconclusive("build failed".into()),
-            ApiVerdict::NotChecked("not installed".into()),
-        ] {
-            assert!(
-                !disagrees(BumpType::Patch, &verdict),
-                "{verdict:?} should not disagree"
-            );
-        }
-    }
-
-    #[test]
-    fn an_absent_analyser_is_not_checked_rather_than_compatible() {
-        let dir = tempfile::tempdir().unwrap();
-        let verdict = check_rust_api("x", dir.path(), &PathBuf::from("."), "v1.0.0");
-        assert!(
-            matches!(verdict, ApiVerdict::NotChecked(_)),
-            "a package with no Cargo.toml must not read as compatible, got {verdict:?}"
-        );
-    }
-
-    #[test]
-    fn an_unknown_cargo_subcommand_reads_as_not_installed_not_inconclusive() {
-        assert!(is_missing_subcommand(
-            b"error: no such command: `semver-checks`"
-        ));
-        assert!(!is_missing_subcommand(
-            b"error: failed to build rustdoc JSON"
-        ));
-    }
-
-    #[test]
-    fn the_last_meaningful_line_skips_trailing_blanks() {
-        assert_eq!(
-            last_meaningful_line(b"first\nerror: boom\n\n  \n"),
-            "error: boom"
-        );
-        assert_eq!(last_meaningful_line(b""), "(no output)");
-    }
-}
+mod tests;

@@ -85,7 +85,8 @@ pub fn run(config_path: Option<&Path>, channel: Option<&str>) -> Result<()> {
         return Ok(());
     }
 
-    let Some(overrides) = collect_overrides(&rows, &config)? else {
+    let Some(overrides) = collect_overrides(&rows, &config, std::io::stdin().lock().lines())?
+    else {
         println!("{}", "no command emitted".dimmed());
         return Ok(());
     };
@@ -125,10 +126,12 @@ fn parse_command<'a>(words: &[&'a str]) -> Command<'a> {
     }
 }
 
-fn collect_overrides(rows: &[Row], config: &Config) -> Result<Option<BTreeMap<String, Override>>> {
+fn collect_overrides(
+    rows: &[Row],
+    config: &Config,
+    mut lines: impl Iterator<Item = std::io::Result<String>>,
+) -> Result<Option<BTreeMap<String, Override>>> {
     let mut overrides: BTreeMap<String, Override> = BTreeMap::new();
-    let stdin = std::io::stdin();
-    let mut lines = stdin.lock().lines();
 
     loop {
         render(rows, &overrides, config)?;
@@ -174,6 +177,24 @@ fn apply_choice(
 }
 
 fn print_command(config: &Config, rows: &[Row], overrides: &BTreeMap<String, Override>) {
+    println!();
+    match changed_command(config, rows, overrides) {
+        None => {
+            println!("  {} plan unchanged, run:", "→".cyan());
+            println!("    ferrflow release");
+        }
+        Some(command) => {
+            println!("  {} run:", "→".cyan());
+            println!("    {}", command.bold());
+        }
+    }
+}
+
+fn changed_command(
+    config: &Config,
+    rows: &[Row],
+    overrides: &BTreeMap<String, Override>,
+) -> Option<String> {
     let mut forced = BTreeMap::new();
     let mut excluded = Vec::new();
     for (pkg, ov) in overrides {
@@ -187,14 +208,7 @@ fn print_command(config: &Config, rows: &[Row], overrides: &BTreeMap<String, Ove
         }
     }
 
-    println!();
-    if forced.is_empty() && excluded.is_empty() {
-        println!("  {} plan unchanged, run:", "→".cyan());
-        println!("    ferrflow release");
-    } else {
-        println!("  {} run:", "→".cyan());
-        println!("    {}", command_for(&forced, &excluded).bold());
-    }
+    (!forced.is_empty() || !excluded.is_empty()).then(|| command_for(&forced, &excluded))
 }
 
 fn index(rows: &[Row], n: &str) -> Option<String> {
@@ -263,60 +277,4 @@ fn render(rows: &[Row], overrides: &BTreeMap<String, Override>, config: &Config)
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn rows() -> Vec<Row> {
-        vec![
-            Row {
-                package: "api".into(),
-                current: "1.0.0".into(),
-                planned: Some("1.1.0".into()),
-                reason: "minor".into(),
-            },
-            Row {
-                package: "core".into(),
-                current: "2.3.4".into(),
-                planned: Some("2.3.5".into()),
-                reason: "patch".into(),
-            },
-        ]
-    }
-
-    #[test]
-    fn the_emitted_command_carries_every_decision() {
-        let mut forced = BTreeMap::new();
-        forced.insert("api".to_string(), "2.0.0".to_string());
-        forced.insert("core".to_string(), "3.0.0".to_string());
-        let cmd = command_for(&forced, &["web".to_string(), "docs".to_string()]);
-        assert_eq!(
-            cmd,
-            "ferrflow release --force-version api@2.0.0 --force-version core@3.0.0 \
-             --exclude web --exclude docs"
-        );
-    }
-
-    #[test]
-    fn no_decisions_emit_no_flags() {
-        assert_eq!(command_for(&BTreeMap::new(), &[]), "ferrflow release");
-    }
-
-    #[test]
-    fn indices_are_one_based_and_reject_anything_outside_the_list() {
-        let r = rows();
-        assert_eq!(index(&r, "1").as_deref(), Some("api"));
-        assert_eq!(index(&r, "2").as_deref(), Some("core"));
-        assert_eq!(index(&r, "0"), None, "0 must not wrap to the last row");
-        assert_eq!(index(&r, "3"), None);
-        assert_eq!(index(&r, "x"), None);
-    }
-
-    #[test]
-    fn only_the_three_bump_words_parse() {
-        assert_eq!(parse_bump("major"), Some(BumpType::Major));
-        assert_eq!(parse_bump("minor"), Some(BumpType::Minor));
-        assert_eq!(parse_bump("patch"), Some(BumpType::Patch));
-        assert_eq!(parse_bump("Major"), None);
-        assert_eq!(parse_bump("none"), None);
-    }
-}
+mod tests;

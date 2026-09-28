@@ -185,19 +185,4 @@ fn truncate(text: &str, width: usize) -> String {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::truncate;
-
-    #[test]
-    fn truncate_keeps_short_subjects_intact() {
-        assert_eq!(truncate("feat: short", 52), "feat: short");
-    }
-
-    #[test]
-    fn truncate_cuts_on_characters_not_bytes() {
-        let subject = "féat: ".repeat(20);
-        let cut = truncate(&subject, 10);
-        assert_eq!(cut.chars().count(), 10);
-        assert!(cut.ends_with('…'));
-    }
-}
+mod tests;
