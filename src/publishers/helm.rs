@@ -165,17 +165,6 @@ mod tests {
     }
 
     #[test]
-    fn read_chart_name_errors_when_name_missing() {
-        let dir = tempfile::tempdir().unwrap();
-        std::fs::write(
-            dir.path().join("Chart.yaml"),
-            "apiVersion: v2\nversion: 0.1.0\n",
-        )
-        .unwrap();
-        assert!(read_chart_name(dir.path()).is_err());
-    }
-
-    #[test]
     fn read_chart_name_ignores_a_nested_name_before_the_chart_one() {
         let dir = tempfile::tempdir().unwrap();
         std::fs::write(
@@ -195,5 +184,26 @@ mod tests {
         )
         .unwrap();
         assert_eq!(read_chart_name(dir.path()).unwrap(), "win-chart");
+    }
+
+    #[test]
+    fn a_chart_directory_without_chart_yaml_fails_before_any_spawn() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("chart")).unwrap();
+        let registries = BTreeMap::new();
+        let c = ctx(&registries, dir.path(), true);
+        let err = run("chart", "oci://ghcr.io/x", &[], &c).expect_err("must error");
+        assert!(format!("{err:#}").contains("Chart.yaml"), "{err:#}");
+    }
+
+    #[test]
+    fn read_chart_name_errors_when_name_missing() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("Chart.yaml"),
+            "apiVersion: v2\nversion: 0.1.0\n",
+        )
+        .unwrap();
+        assert!(read_chart_name(dir.path()).is_err());
     }
 }

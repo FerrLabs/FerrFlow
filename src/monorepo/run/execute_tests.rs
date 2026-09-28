@@ -14,6 +14,9 @@ use super::checkpoint::{Checkpoint, Phase};
 use super::execute::{ReleasePlan, execute_release, forge_unavailable, release_pr_title};
 use super::summary::PlannedTag;
 
+mod floating_tags;
+mod release_commit;
+
 fn git(dir: &Path, args: &[&str]) -> String {
     let out = Command::new("git")
         .current_dir(dir)
@@ -116,8 +119,14 @@ impl Harness {
 struct RecordingForge {
     create_calls: Mutex<Vec<String>>,
     mr_titles: Mutex<Vec<String>>,
+    mr_requests: Mutex<Vec<(String, String, String)>>,
+    updated_mrs: Mutex<Vec<u64>>,
+    auto_merge_calls: Mutex<usize>,
     mr_failure: Option<String>,
     lookup_failure: Option<String>,
+    open_pr: Option<u64>,
+    auto_merge_failure: Option<String>,
+    no_merge_requests: bool,
 }
 
 impl Forge for RecordingForge {
@@ -145,12 +154,17 @@ impl Forge for RecordingForge {
 
     fn create_merge_request(
         &self,
-        _head: &str,
-        _base: &str,
+        head: &str,
+        base: &str,
         title: &str,
-        _body: &str,
+        body: &str,
     ) -> Result<MergeRequestResult> {
         self.mr_titles.lock().unwrap().push(title.to_string());
+        self.mr_requests.lock().unwrap().push((
+            head.to_string(),
+            base.to_string(),
+            body.to_string(),
+        ));
         match &self.mr_failure {
             Some(message) => anyhow::bail!("{message}"),
             None => Ok(MergeRequestResult {
@@ -161,7 +175,11 @@ impl Forge for RecordingForge {
     }
 
     fn enable_auto_merge(&self, _mr: &MergeRequestResult) -> Result<()> {
-        Ok(())
+        *self.auto_merge_calls.lock().unwrap() += 1;
+        match &self.auto_merge_failure {
+            Some(message) => anyhow::bail!("{message}"),
+            None => Ok(()),
+        }
     }
 
     fn mr_noun(&self) -> &'static str {
@@ -170,6 +188,10 @@ impl Forge for RecordingForge {
 
     fn release_noun(&self) -> &'static str {
         "release"
+    }
+
+    fn supports_merge_requests(&self) -> bool {
+        !self.no_merge_requests
     }
 
     fn find_comment(&self, _pr_id: u64, _marker: &str) -> Result<Option<u64>> {
@@ -187,17 +209,67 @@ impl Forge for RecordingForge {
     fn find_open_pr(&self, _head: &str, _base: &str) -> Result<Option<u64>> {
         match &self.lookup_failure {
             Some(message) => anyhow::bail!("{message}"),
-            None => Ok(None),
+            None => Ok(self.open_pr),
         }
     }
 
     fn update_merge_request(
         &self,
-        _id: u64,
-        _title: &str,
+        id: u64,
+        title: &str,
         _body: &str,
     ) -> Result<MergeRequestResult> {
-        unreachable!("not exercised")
+        self.mr_titles.lock().unwrap().push(title.to_string());
+        self.updated_mrs.lock().unwrap().push(id);
+        Ok(MergeRequestResult {
+            id,
+            auto_merge_key: id.to_string(),
+        })
+    }
+}
+
+#[derive(Default)]
+struct PlanRun {
+    force: bool,
+    files_to_commit: Vec<String>,
+    files_per_package: HashMap<String, Vec<String>>,
+    pkg_outputs: Vec<(String, Vec<String>)>,
+    shared_outputs: Vec<String>,
+    forge_results: Vec<(String, ReleaseResult)>,
+}
+
+impl PlanRun {
+    fn execute(&mut self, harness: &Harness, tags: &[PlannedTag], forge: &dyn Forge) -> Result<()> {
+        let hook_contexts: Vec<(HookContext, usize)> = Vec::new();
+        let mut plan = ReleasePlan {
+            finalizing: false,
+            repo: &harness.repo,
+            config: &harness.config,
+            root: &harness.root,
+            target_branch: "main",
+            dry_run: false,
+            verbose: false,
+            force: self.force,
+            draft: false,
+            tags_to_create: tags,
+            hook_contexts: &hook_contexts,
+            files_to_commit: &mut self.files_to_commit,
+            files_per_package: &mut self.files_per_package,
+            pkg_outputs: &mut self.pkg_outputs,
+            shared_outputs: &mut self.shared_outputs,
+            forge_results: &mut self.forge_results,
+            checkpoint: None,
+            forge: Some(forge),
+        };
+        execute_release(&mut plan)
+    }
+
+    fn package_lines(&self, package: &str) -> Vec<String> {
+        self.pkg_outputs
+            .iter()
+            .filter(|(name, _)| name == package)
+            .flat_map(|(_, lines)| lines.iter().cloned())
+            .collect()
     }
 }
 

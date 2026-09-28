@@ -107,3 +107,6 @@ pub(super) fn text(mut state: ReleaseState, config: &Config, flags: RunFlags) ->
         text_lines,
     }
 }
+
+#[cfg(test)]
+mod tests;

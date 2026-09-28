@@ -40,18 +40,7 @@ pub fn run(
         return Ok(PublishOutcome::DryRun);
     }
 
-    let mut cmd = Command::new("cargo");
-    cmd.current_dir(ctx.package_path).arg("publish");
-    if let Some(name) = registry {
-        cmd.arg("--registry").arg(name);
-    }
-    if allow_dirty {
-        cmd.arg("--allow-dirty");
-    }
-    if no_verify {
-        cmd.arg("--no-verify");
-    }
-    cmd.args(extra_args);
+    let mut cmd = publish_command(registry, allow_dirty, no_verify, extra_args, ctx);
 
     let mut attempt: u32 = 0;
     loop {
@@ -105,6 +94,28 @@ pub fn run(
         ))
         .error_code(error_code::CONFIG_INVALID_PATH);
     }
+}
+
+fn publish_command(
+    registry: Option<&str>,
+    allow_dirty: bool,
+    no_verify: bool,
+    extra_args: &[String],
+    ctx: &PublishContext<'_>,
+) -> Command {
+    let mut cmd = Command::new("cargo");
+    cmd.current_dir(ctx.package_path).arg("publish");
+    if let Some(name) = registry {
+        cmd.arg("--registry").arg(name);
+    }
+    if allow_dirty {
+        cmd.arg("--allow-dirty");
+    }
+    if no_verify {
+        cmd.arg("--no-verify");
+    }
+    cmd.args(extra_args);
+    cmd
 }
 
 fn classify_already_published(stderr: &str) -> bool {
@@ -404,6 +415,66 @@ mod tests {
         let name = published_name(&ctx_at(&registries, dir.path(), "ferrflow"));
 
         assert_eq!(name, "ferrflow");
+    }
+
+    fn args_of(cmd: &Command) -> Vec<String> {
+        cmd.get_args()
+            .map(|a| a.to_string_lossy().into_owned())
+            .collect()
+    }
+
+    #[test]
+    fn a_private_registry_publish_passes_every_flag_to_cargo() {
+        let registries = BTreeMap::new();
+        let dir = tempfile::tempdir().unwrap();
+        let c = ctx_at(&registries, dir.path(), "bridge");
+
+        let cmd = publish_command(Some("kellnr"), true, true, &["--locked".to_string()], &c);
+
+        assert_eq!(cmd.get_program(), "cargo");
+        assert_eq!(
+            args_of(&cmd),
+            vec![
+                "publish",
+                "--registry",
+                "kellnr",
+                "--allow-dirty",
+                "--no-verify",
+                "--locked"
+            ]
+        );
+        assert_eq!(cmd.get_current_dir(), Some(dir.path()));
+    }
+
+    #[test]
+    fn a_default_publish_adds_no_optional_flags() {
+        let registries = BTreeMap::new();
+        let dir = tempfile::tempdir().unwrap();
+        let c = ctx_at(&registries, dir.path(), "bridge");
+
+        let cmd = publish_command(None, false, false, &[], &c);
+
+        assert_eq!(args_of(&cmd), vec!["publish"]);
+    }
+
+    #[test]
+    fn first_meaningful_line_prefers_the_last_error_or_warning() {
+        let stderr =
+            "   Packaging foo v1.0.0\nerror: first problem\n   Uploading\nwarning: last word\n";
+        assert_eq!(first_meaningful_line(stderr, ""), "warning: last word");
+    }
+
+    #[test]
+    fn first_meaningful_line_falls_back_to_stdout_then_the_last_stderr_line() {
+        assert_eq!(
+            first_meaningful_line("   Updating index\n", "error: from stdout\n"),
+            "error: from stdout"
+        );
+        assert_eq!(
+            first_meaningful_line("   Updating index\n   Uploading foo\n\n", "done\n"),
+            "   Uploading foo"
+        );
+        assert_eq!(first_meaningful_line("", ""), "(no output)");
     }
 
     #[test]

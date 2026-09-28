@@ -138,3 +138,6 @@ pub fn run(p: &PublisherConfig, ctx: &PublishContext<'_>) -> Result<PublishOutco
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

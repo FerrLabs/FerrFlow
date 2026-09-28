@@ -84,6 +84,9 @@ fn carries_release_commit(commits: &[GitLog]) -> bool {
 }
 
 #[cfg(test)]
+mod merged_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 

@@ -149,3 +149,6 @@ fn skip_output(reason: &SkipReason, package: &str) -> Option<String> {
         ),
     }
 }
+
+#[cfg(test)]
+mod tests;

@@ -48,21 +48,16 @@ pub fn run(
         .error_code(error_code::CONFIG_INVALID_PATH);
     }
 
-    let mut cmd = Command::new("docker");
-    cmd.arg("buildx").arg("build").arg("--push");
-    if !platforms.is_empty() {
-        cmd.arg(format!("--platform={}", platforms.join(",")));
-    }
-    cmd.arg(format!("--file={dockerfile}"));
-    for r in &image_refs {
-        cmd.arg("--tag").arg(r);
-    }
-    cmd.arg("--metadata-file")
-        .arg(metadata_path(ctx.package_path));
-    cmd.args(extra_args);
-    cmd.arg(&context_path);
-
-    let output = cmd.output().with_context(|| {
+    let output = buildx_command(
+        &image_refs,
+        platforms,
+        dockerfile,
+        extra_args,
+        &context_path,
+        ctx.package_path,
+    )
+    .output()
+    .with_context(|| {
         format!(
             "spawn `docker buildx build` failed for {} (is docker buildx in PATH?)",
             ctx.package_name
@@ -104,6 +99,29 @@ pub fn run(
     Ok(PublishOutcome::Published {
         url: Some(image_refs[0].clone()),
     })
+}
+
+fn buildx_command(
+    image_refs: &[String],
+    platforms: &[String],
+    dockerfile: &str,
+    extra_args: &[String],
+    context_path: &Path,
+    package_path: &Path,
+) -> Command {
+    let mut cmd = Command::new("docker");
+    cmd.arg("buildx").arg("build").arg("--push");
+    if !platforms.is_empty() {
+        cmd.arg(format!("--platform={}", platforms.join(",")));
+    }
+    cmd.arg(format!("--file={dockerfile}"));
+    for r in image_refs {
+        cmd.arg("--tag").arg(r);
+    }
+    cmd.arg("--metadata-file").arg(metadata_path(package_path));
+    cmd.args(extra_args);
+    cmd.arg(context_path);
+    cmd
 }
 
 fn metadata_path(package_path: &Path) -> std::path::PathBuf {
@@ -246,6 +264,102 @@ mod tests {
         let (maj, min) = split_major_minor("2026.06");
         assert_eq!(maj, Some("2026"));
         assert_eq!(min, Some("2026.06"));
+    }
+
+    fn args_of(cmd: &Command) -> Vec<String> {
+        cmd.get_args()
+            .map(|a| a.to_string_lossy().into_owned())
+            .collect()
+    }
+
+    #[test]
+    fn buildx_pushes_every_tag_for_every_platform_and_builds_the_context_last() {
+        let pkg = Path::new("pkg");
+        let context = pkg.join("docker");
+        let refs = vec![
+            "ghcr.io/x/auth:1.2.3".to_string(),
+            "ghcr.io/x/auth:1".to_string(),
+        ];
+
+        let cmd = buildx_command(
+            &refs,
+            &["linux/amd64".to_string(), "linux/arm64".to_string()],
+            "Dockerfile.prod",
+            &["--build-arg=MODE=release".to_string()],
+            &context,
+            pkg,
+        );
+
+        assert_eq!(cmd.get_program(), "docker");
+        assert_eq!(
+            args_of(&cmd),
+            vec![
+                "buildx".to_string(),
+                "build".to_string(),
+                "--push".to_string(),
+                "--platform=linux/amd64,linux/arm64".to_string(),
+                "--file=Dockerfile.prod".to_string(),
+                "--tag".to_string(),
+                "ghcr.io/x/auth:1.2.3".to_string(),
+                "--tag".to_string(),
+                "ghcr.io/x/auth:1".to_string(),
+                "--metadata-file".to_string(),
+                metadata_path(pkg).to_string_lossy().into_owned(),
+                "--build-arg=MODE=release".to_string(),
+                context.to_string_lossy().into_owned(),
+            ]
+        );
+    }
+
+    #[test]
+    fn buildx_without_platforms_lets_docker_pick_the_host_one() {
+        let pkg = Path::new("pkg");
+        let cmd = buildx_command(&["img:1".to_string()], &[], "Dockerfile", &[], pkg, pkg);
+
+        assert!(
+            !args_of(&cmd).iter().any(|a| a.starts_with("--platform")),
+            "{:?}",
+            args_of(&cmd)
+        );
+    }
+
+    #[test]
+    fn the_manifest_digest_is_read_from_buildx_metadata() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("meta.json");
+        std::fs::write(
+            &path,
+            r#"{"containerimage.config.digest":"sha256:config","containerimage.digest":"sha256:image"}"#,
+        )
+        .unwrap();
+
+        assert_eq!(read_manifest_digest(&path).unwrap(), "sha256:image");
+    }
+
+    #[test]
+    fn the_config_digest_is_the_fallback() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("meta.json");
+        std::fs::write(&path, r#"{"containerimage.config.digest":"sha256:config"}"#).unwrap();
+
+        assert_eq!(read_manifest_digest(&path).unwrap(), "sha256:config");
+    }
+
+    #[test]
+    fn metadata_without_a_digest_or_unparseable_metadata_is_an_error() {
+        let dir = tempfile::tempdir().unwrap();
+        let empty = dir.path().join("empty.json");
+        std::fs::write(&empty, r#"{"buildx.build.ref":"x"}"#).unwrap();
+        let broken = dir.path().join("broken.json");
+        std::fs::write(&broken, "{not json").unwrap();
+
+        let err = read_manifest_digest(&empty).expect_err("no digest");
+        assert!(
+            format!("{err:#}").contains("containerimage.digest"),
+            "{err:#}"
+        );
+        assert!(read_manifest_digest(&broken).is_err());
+        assert!(read_manifest_digest(&dir.path().join("absent.json")).is_err());
     }
 
     #[test]
