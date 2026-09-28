@@ -2,6 +2,7 @@ use anyhow::{Context, Result, anyhow};
 use std::process::Command;
 
 use super::{PublishContext, PublishOutcome};
+use crate::config::RegistryConfig;
 use crate::error_code::{self, ErrorCodeExt};
 
 const MAX_PUBLISH_ATTEMPTS: u32 = 3;
@@ -15,83 +16,114 @@ pub fn run(
     extra_args: &[String],
     ctx: &PublishContext<'_>,
 ) -> Result<PublishOutcome> {
-    let registry_label = registry.unwrap_or("pypi.org");
-
-    let resolved = match registry {
-        Some(name) => {
-            let r = ctx
-                .registries
-                .get(name)
-                .ok_or_else(|| anyhow!(
-                    "publisher pypi: registry `{name}` is not declared under `workspace.registries`"
-                ))
-                .error_code(error_code::CONFIG_INVALID_PATH)?;
-            if let Some(env_name) = &r.token_env {
-                if trusted_publishing {
-                    return Err(anyhow!(
-                        "publisher pypi:{name}: `trustedPublishing` and the registry `tokenEnv` \
-                         (`{env_name}`) both configure authentication; keep one"
-                    ))
-                    .error_code(error_code::CONFIG_INVALID_PATH);
-                }
-                if std::env::var(env_name).is_err() {
-                    return Err(anyhow!(
-                        "publisher pypi:{name}: env var `{env_name}` is not set; \
-                         export the registry token before running `ferrflow release`"
-                    ))
-                    .error_code(error_code::CONFIG_INVALID_PATH);
-                }
-            }
-            Some(r)
-        }
-        None => None,
-    };
+    let resolved = registry
+        .map(|name| resolve_registry(name, trusted_publishing, ctx))
+        .transpose()?;
 
     if ctx.dry_run {
         return Ok(PublishOutcome::DryRun);
     }
 
     if build {
-        let output = Command::new("python")
-            .current_dir(ctx.package_path)
-            .args(["-m", "build"])
-            .output()
-            .with_context(|| {
-                format!(
-                    "spawn `python -m build` failed (is python with the `build` module in PATH?) for {}",
-                    ctx.package_name
-                )
-            })?;
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
-            let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
-            return Err(anyhow!(
-                "python -m build failed for {}: {}",
-                ctx.package_name,
-                first_meaningful_line(&stderr, &stdout)
-            ))
-            .error_code(error_code::CONFIG_INVALID_PATH);
-        }
+        build_dist(ctx)?;
     }
 
+    let mut cmd = twine_command(resolved, trusted_publishing, extra_args, ctx)?;
+    upload_with_retry(&mut cmd, registry, ctx)
+}
+
+fn resolve_registry<'a>(
+    name: &str,
+    trusted_publishing: bool,
+    ctx: &PublishContext<'a>,
+) -> Result<&'a RegistryConfig> {
+    let r = ctx
+        .registries
+        .get(name)
+        .ok_or_else(|| {
+            anyhow!(
+                "publisher pypi: registry `{name}` is not declared under `workspace.registries`"
+            )
+        })
+        .error_code(error_code::CONFIG_INVALID_PATH)?;
+    let Some(env_name) = &r.token_env else {
+        return Ok(r);
+    };
+    if trusted_publishing {
+        return Err(anyhow!(
+            "publisher pypi:{name}: `trustedPublishing` and the registry `tokenEnv` \
+             (`{env_name}`) both configure authentication; keep one"
+        ))
+        .error_code(error_code::CONFIG_INVALID_PATH);
+    }
+    if std::env::var(env_name).is_err() {
+        return Err(anyhow!(
+            "publisher pypi:{name}: env var `{env_name}` is not set; \
+             export the registry token before running `ferrflow release`"
+        ))
+        .error_code(error_code::CONFIG_INVALID_PATH);
+    }
+    Ok(r)
+}
+
+fn build_dist(ctx: &PublishContext<'_>) -> Result<()> {
+    let output = Command::new("python")
+        .current_dir(ctx.package_path)
+        .args(["-m", "build"])
+        .output()
+        .with_context(|| {
+            format!(
+                "spawn `python -m build` failed (is python with the `build` module in PATH?) for {}",
+                ctx.package_name
+            )
+        })?;
+    if output.status.success() {
+        return Ok(());
+    }
+    let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
+    let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
+    Err(anyhow!(
+        "python -m build failed for {}: {}",
+        ctx.package_name,
+        first_meaningful_line(&stderr, &stdout)
+    ))
+    .error_code(error_code::CONFIG_INVALID_PATH)
+}
+
+fn twine_command(
+    resolved: Option<&RegistryConfig>,
+    trusted_publishing: bool,
+    extra_args: &[String],
+    ctx: &PublishContext<'_>,
+) -> Result<Command> {
+    let url = resolved.and_then(|r| r.url.as_deref());
     let mut cmd = Command::new("twine");
     cmd.current_dir(ctx.package_path).arg("upload");
-    if let Some(url) = resolved.and_then(|r| r.url.as_deref()) {
+    if let Some(url) = url {
         cmd.arg("--repository-url").arg(url);
     }
-    if trusted_publishing {
-        let token = super::pypi_oidc::mint(resolved.and_then(|r| r.url.as_deref()))?;
-        cmd.env("TWINE_USERNAME", "__token__");
-        cmd.env("TWINE_PASSWORD", token);
-    } else if let Some(env_name) = resolved.and_then(|r| r.token_env.as_deref())
-        && let Ok(token) = std::env::var(env_name)
-    {
+    let token = if trusted_publishing {
+        Some(super::pypi_oidc::mint(url)?)
+    } else {
+        resolved
+            .and_then(|r| r.token_env.as_deref())
+            .and_then(|env_name| std::env::var(env_name).ok())
+    };
+    if let Some(token) = token {
         cmd.env("TWINE_USERNAME", "__token__");
         cmd.env("TWINE_PASSWORD", token);
     }
     cmd.args(extra_args);
     cmd.arg("dist/*");
+    Ok(cmd)
+}
 
+fn upload_with_retry(
+    cmd: &mut Command,
+    registry: Option<&str>,
+    ctx: &PublishContext<'_>,
+) -> Result<PublishOutcome> {
+    let registry_label = registry.unwrap_or("pypi.org");
     let mut attempt: u32 = 0;
     loop {
         attempt += 1;

@@ -1,4 +1,4 @@
-use crate::config::Config;
+use crate::config::{Config, OrphanedTagStrategy, PackageConfig};
 use crate::error_code::{self, ErrorCodeExt};
 use crate::formats::read_version;
 use crate::git::{
@@ -60,82 +60,61 @@ pub fn version(
     let repo = open_repo(&std::env::current_dir()?)?;
     let root = get_repo_root(&repo)?;
     let config = Config::load(&root, config_path)?;
+    ensure_packages(&config)?;
 
+    let manifest = crate::manifest::manifest_path(&config, &root)
+        .and_then(|path| crate::manifest::read_if_present(&path).ok().flatten());
+    let entry = |pkg: &PackageConfig| VersionEntry {
+        name: pkg.name.clone(),
+        version: resolve_version(&repo, pkg, &config, &root, manifest.as_ref())
+            .unwrap_or_else(|| "unknown".to_string()),
+    };
+
+    if let Some(pkg) = single_package(&config, package)? {
+        let entry = entry(pkg);
+        if json {
+            println!("{}", serde_json::to_string(&entry)?);
+        } else {
+            println!("{}", entry.version);
+        }
+        return Ok(());
+    }
+
+    let entries: Vec<VersionEntry> = config.packages.iter().map(entry).collect();
+    if json {
+        println!("{}", serde_json::to_string(&entries)?);
+    } else {
+        for e in &entries {
+            println!("{}\t{}", e.name, e.version);
+        }
+    }
+    Ok(())
+}
+
+fn ensure_packages(config: &Config) -> Result<()> {
     if config.packages.is_empty() {
         Err(anyhow::anyhow!(
             "No packages configured. Run `ferrflow init` to create a config."
         ))
         .error_code(error_code::QUERY_NO_PACKAGES)?;
     }
-
-    let manifest = crate::manifest::manifest_path(&config, &root)
-        .and_then(|path| crate::manifest::read_if_present(&path).ok().flatten());
-
-    if let Some(name) = package {
-        let pkg = config
-            .packages
-            .iter()
-            .find(|p| p.name == name)
-            .ok_or_else(|| anyhow::anyhow!("package '{}' not found", name))
-            .error_code(error_code::QUERY_PACKAGE_NOT_FOUND)?;
-
-        let version = resolve_version(&repo, pkg, &config, &root, manifest.as_ref())
-            .unwrap_or_else(|| "unknown".to_string());
-
-        if json {
-            println!(
-                "{}",
-                serde_json::to_string(&VersionEntry {
-                    name: pkg.name.clone(),
-                    version,
-                })?
-            );
-        } else {
-            println!("{version}");
-        }
-        return Ok(());
-    }
-
-    if config.packages.len() == 1 {
-        let pkg = &config.packages[0];
-        let version = resolve_version(&repo, pkg, &config, &root, manifest.as_ref())
-            .unwrap_or_else(|| "unknown".to_string());
-
-        if json {
-            println!(
-                "{}",
-                serde_json::to_string(&VersionEntry {
-                    name: pkg.name.clone(),
-                    version,
-                })?
-            );
-        } else {
-            println!("{version}");
-        }
-    } else {
-        let entries: Vec<VersionEntry> = config
-            .packages
-            .iter()
-            .map(|pkg| {
-                let version = resolve_version(&repo, pkg, &config, &root, manifest.as_ref())
-                    .unwrap_or_else(|| "unknown".to_string());
-                VersionEntry {
-                    name: pkg.name.clone(),
-                    version,
-                }
-            })
-            .collect();
-
-        if json {
-            println!("{}", serde_json::to_string(&entries)?);
-        } else {
-            for e in &entries {
-                println!("{}\t{}", e.name, e.version);
-            }
-        }
-    }
-
     Ok(())
+}
+
+fn single_package<'a>(
+    config: &'a Config,
+    package: Option<&str>,
+) -> Result<Option<&'a PackageConfig>> {
+    let Some(name) = package else {
+        return Ok((config.packages.len() == 1).then(|| &config.packages[0]));
+    };
+    let pkg = config
+        .packages
+        .iter()
+        .find(|p| p.name == name)
+        .ok_or_else(|| anyhow::anyhow!("package '{}' not found", name))
+        .error_code(error_code::QUERY_PACKAGE_NOT_FOUND)?;
+    Ok(Some(pkg))
 }
 
 pub fn tag(
@@ -147,25 +126,11 @@ pub fn tag(
     let repo = timing.stage("open_repo", || open_repo(&std::env::current_dir()?))?;
     let root = get_repo_root(&repo)?;
     let config = timing.stage("load config", || Config::load(&root, config_path))?;
+    ensure_packages(&config)?;
 
-    if config.packages.is_empty() {
-        Err(anyhow::anyhow!(
-            "No packages configured. Run `ferrflow init` to create a config."
-        ))
-        .error_code(error_code::QUERY_NO_PACKAGES)?;
-    }
-
-    if let Some(name) = package {
-        let pkg = config
-            .packages
-            .iter()
-            .find(|p| p.name == name)
-            .ok_or_else(|| anyhow::anyhow!("package '{}' not found", name))
-            .error_code(error_code::QUERY_PACKAGE_NOT_FOUND)?;
-
+    if let Some(pkg) = single_package(&config, package)? {
         let prefix = pkg.tag_prefix(&config.workspace, config.is_monorepo());
         let last_tag = find_last_tag_name(&repo, &prefix, config.workspace.orphaned_tag_strategy)?;
-
         if json {
             println!(
                 "{}",
@@ -180,65 +145,50 @@ pub fn tag(
         return Ok(());
     }
 
-    if config.packages.len() == 1 {
-        let pkg = &config.packages[0];
-        let prefix = pkg.tag_prefix(&config.workspace, config.is_monorepo());
-        let last_tag = find_last_tag_name(&repo, &prefix, config.workspace.orphaned_tag_strategy)?;
-
-        if json {
-            println!(
-                "{}",
-                serde_json::to_string(&TagEntry {
-                    name: pkg.name.clone(),
-                    tag: last_tag,
-                })?
-            );
-        } else {
-            println!("{}", last_tag.unwrap_or_else(|| "none".to_string()));
-        }
+    let entries = all_tags(&repo, &config, timing);
+    if json {
+        println!("{}", serde_json::to_string(&entries)?);
     } else {
-        let strategy = config.workspace.orphaned_tag_strategy;
-        let index = timing.stage("build TagIndex", || TagIndex::build(&repo).ok());
-        let resolve_start = std::time::Instant::now();
-        let entries: Vec<TagEntry> = config
-            .packages
-            .iter()
-            .map(|pkg| {
-                let prefix = pkg.tag_prefix(&config.workspace, config.is_monorepo());
-                let tag = match index.as_ref().and_then(|idx| {
-                    idx.find_last_tag_name(&prefix, strategy)
-                        .map(Some)
-                        .or_else(|| {
-                            find_last_tag_name_with_cache(
-                                &repo,
-                                &prefix,
-                                strategy,
-                                Some(&idx.ancestors),
-                            )
-                            .ok()
-                        })
-                }) {
-                    Some(t) => t,
-                    None => find_last_tag_name(&repo, &prefix, strategy).unwrap_or(None),
-                };
-                TagEntry {
-                    name: pkg.name.clone(),
-                    tag,
-                }
-            })
-            .collect();
-        timing.record("per-package tag lookup", resolve_start.elapsed());
-
-        if json {
-            println!("{}", serde_json::to_string(&entries)?);
-        } else {
-            for e in &entries {
-                println!("{}\t{}", e.name, e.tag.as_deref().unwrap_or("none"));
-            }
+        for e in &entries {
+            println!("{}\t{}", e.name, e.tag.as_deref().unwrap_or("none"));
         }
     }
-
     Ok(())
+}
+
+fn all_tags(repo: &Repository, config: &Config, timing: &mut Timing) -> Vec<TagEntry> {
+    let strategy = config.workspace.orphaned_tag_strategy;
+    let index = timing.stage("build TagIndex", || TagIndex::build(repo).ok());
+    let resolve_start = std::time::Instant::now();
+    let entries = config
+        .packages
+        .iter()
+        .map(|pkg| {
+            let prefix = pkg.tag_prefix(&config.workspace, config.is_monorepo());
+            TagEntry {
+                name: pkg.name.clone(),
+                tag: last_tag_for(repo, index.as_ref(), &prefix, strategy),
+            }
+        })
+        .collect();
+    timing.record("per-package tag lookup", resolve_start.elapsed());
+    entries
+}
+
+fn last_tag_for(
+    repo: &Repository,
+    index: Option<&TagIndex>,
+    prefix: &str,
+    strategy: OrphanedTagStrategy,
+) -> Option<String> {
+    let indexed = index.and_then(|idx| {
+        idx.find_last_tag_name(prefix, strategy)
+            .map(Some)
+            .or_else(|| {
+                find_last_tag_name_with_cache(repo, prefix, strategy, Some(&idx.ancestors)).ok()
+            })
+    });
+    indexed.unwrap_or_else(|| find_last_tag_name(repo, prefix, strategy).unwrap_or(None))
 }
 
 #[cfg(test)]
