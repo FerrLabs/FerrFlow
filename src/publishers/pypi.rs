@@ -311,6 +311,120 @@ mod tests {
         ));
     }
 
+    fn args_of(cmd: &Command) -> Vec<String> {
+        cmd.get_args()
+            .map(|a| a.to_string_lossy().into_owned())
+            .collect()
+    }
+
+    fn env_of(cmd: &Command, key: &str) -> Option<String> {
+        cmd.get_envs()
+            .find(|(k, _)| *k == key)
+            .and_then(|(_, v)| v.map(|v| v.to_string_lossy().into_owned()))
+    }
+
+    #[test]
+    fn a_default_upload_targets_dist_with_no_credentials_injected() {
+        let registries = BTreeMap::new();
+        let cmd = twine_command(None, false, &[], &ctx(&registries, false)).unwrap();
+
+        assert_eq!(cmd.get_program(), "twine");
+        assert_eq!(args_of(&cmd), vec!["upload", "dist/*"]);
+        assert_eq!(env_of(&cmd, "TWINE_USERNAME"), None);
+        assert_eq!(env_of(&cmd, "TWINE_PASSWORD"), None);
+    }
+
+    #[test]
+    fn a_declared_registry_sets_its_url_and_token_before_the_dist_glob() {
+        let registries = BTreeMap::new();
+        let registry = RegistryConfig {
+            url: Some("https://pypi.internal/legacy/".to_string()),
+            token_env: Some("PATH".to_string()),
+        };
+        let cmd = twine_command(
+            Some(&registry),
+            false,
+            &["--skip-existing".to_string()],
+            &ctx(&registries, false),
+        )
+        .unwrap();
+
+        assert_eq!(
+            args_of(&cmd),
+            vec![
+                "upload",
+                "--repository-url",
+                "https://pypi.internal/legacy/",
+                "--skip-existing",
+                "dist/*"
+            ]
+        );
+        assert_eq!(env_of(&cmd, "TWINE_USERNAME").as_deref(), Some("__token__"));
+        assert_eq!(env_of(&cmd, "TWINE_PASSWORD"), std::env::var("PATH").ok());
+    }
+
+    #[test]
+    fn a_registry_without_a_token_env_leaves_twine_to_its_own_config() {
+        let registries = BTreeMap::new();
+        let registry = RegistryConfig {
+            url: Some("https://pypi.internal/legacy/".to_string()),
+            token_env: None,
+        };
+        let cmd = twine_command(Some(&registry), false, &[], &ctx(&registries, false)).unwrap();
+
+        assert_eq!(env_of(&cmd, "TWINE_PASSWORD"), None);
+    }
+
+    #[test]
+    fn a_declared_registry_without_a_token_env_passes_validation() {
+        let mut registries = BTreeMap::new();
+        registries.insert(
+            "internal".to_string(),
+            RegistryConfig {
+                url: Some("https://pypi.internal/legacy/".to_string()),
+                token_env: None,
+            },
+        );
+
+        let outcome = run(Some("internal"), true, true, &[], &ctx(&registries, true))
+            .expect("trusted publishing alone is a valid registry setup");
+
+        assert!(matches!(outcome, PublishOutcome::DryRun));
+    }
+
+    #[test]
+    fn a_conflict_reported_on_stdout_still_reads_as_already_published() {
+        assert!(classify_already_published(
+            "",
+            "HTTPError: 409 Conflict from https://pypi.internal/legacy/"
+        ));
+    }
+
+    #[test]
+    fn first_meaningful_line_prefers_the_last_error_line() {
+        let stderr = "Uploading distributions to https://upload.pypi.org/legacy/\n\
+                      ERROR    HTTPError: 403 Forbidden\n\
+                      \u{1b}[2K\n\
+                      Invalid or non-existent authentication information.\n";
+        assert_eq!(
+            first_meaningful_line(stderr, ""),
+            "ERROR    HTTPError: 403 Forbidden"
+        );
+    }
+
+    #[test]
+    fn first_meaningful_line_falls_back_to_stdout_then_the_last_stderr_line() {
+        assert_eq!(
+            first_meaningful_line("Uploading\n", "ERROR from stdout\n"),
+            "ERROR from stdout"
+        );
+        assert_eq!(
+            first_meaningful_line("Uploading\nChecking dist\n\n", ""),
+            "Checking dist"
+        );
+        assert_eq!(first_meaningful_line("", ""), "(no output)");
+    }
+
     #[test]
     fn the_project_url_is_only_emitted_for_the_default_index() {
         assert_eq!(

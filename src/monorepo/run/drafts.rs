@@ -4,6 +4,7 @@ use colored::Colorize;
 use std::path::Path;
 
 use crate::config::Config;
+use crate::forge::Forge;
 use crate::formats::read_version;
 
 use super::super::preview::build_forge_instance;
@@ -18,6 +19,23 @@ pub(super) fn publish_pending_drafts(
     let Some(forge_instance) = build_forge_instance(repo, config) else {
         return Ok(());
     };
+    publish_drafts_with(
+        forge_instance.as_ref(),
+        config,
+        root,
+        verbose,
+        shared_outputs,
+    );
+    Ok(())
+}
+
+fn publish_drafts_with(
+    forge_instance: &dyn Forge,
+    config: &Config,
+    root: &Path,
+    verbose: bool,
+    shared_outputs: &mut Vec<String>,
+) {
     for pkg in &config.packages {
         let Some(vf) = pkg.versioned_files.first() else {
             continue;
@@ -51,5 +69,7 @@ pub(super) fn publish_pending_drafts(
             }
         }
     }
-    Ok(())
 }
+
+#[cfg(test)]
+mod tests;
