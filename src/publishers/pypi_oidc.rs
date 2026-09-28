@@ -130,6 +130,97 @@ mod tests {
         assert!(format!("{err:?}").contains("https registry url"));
     }
 
+    fn mint_with_runner(request_url: Option<&str>, repository_url: &str) -> Result<String> {
+        let _guard = crate::test_utils::ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        let saved = [
+            std::env::var(REQUEST_URL_ENV).ok(),
+            std::env::var(REQUEST_TOKEN_ENV).ok(),
+        ];
+        unsafe {
+            match request_url {
+                Some(url) => std::env::set_var(REQUEST_URL_ENV, url),
+                None => std::env::remove_var(REQUEST_URL_ENV),
+            }
+            std::env::set_var(REQUEST_TOKEN_ENV, "runner-secret");
+        }
+        let result = mint(Some(repository_url));
+        for (name, value) in [REQUEST_URL_ENV, REQUEST_TOKEN_ENV].into_iter().zip(saved) {
+            unsafe {
+                match value {
+                    Some(v) => std::env::set_var(name, v),
+                    None => std::env::remove_var(name),
+                }
+            }
+        }
+        result
+    }
+
+    fn unreachable_https_index() -> String {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        drop(listener);
+        format!("https://127.0.0.1:{port}/legacy/")
+    }
+
+    #[test]
+    fn a_missing_runner_request_url_names_the_permission_to_add() {
+        let err = mint_with_runner(None, &unreachable_https_index()).unwrap_err();
+        let msg = format!("{err:#}");
+        assert!(msg.contains(REQUEST_URL_ENV), "{msg}");
+        assert!(msg.contains("id-token: write"), "{msg}");
+    }
+
+    #[test]
+    fn the_oidc_request_asks_for_the_pypi_audience_then_exchanges_on_the_index_host() {
+        use crate::forge::test_server::{FakeServer, Reply};
+        let server = FakeServer::start(vec![Reply::json(
+            200,
+            serde_json::json!({ "value": "oidc-jwt" }),
+        )]);
+        let index = unreachable_https_index();
+
+        let err = mint_with_runner(Some(&format!("{}/oidc", server.url())), &index).unwrap_err();
+
+        let req = server.only_request();
+        assert_eq!(req.path, "/oidc?audience=pypi");
+        assert_eq!(req.header("authorization"), Some("Bearer runner-secret"));
+        let host = index
+            .strip_prefix("https://")
+            .and_then(|r| r.split('/').next())
+            .unwrap();
+        let msg = format!("{err:#}");
+        assert!(
+            msg.contains(&format!("https://{host}/_/oidc/mint-token")),
+            "{msg}"
+        );
+        assert!(msg.contains("trusted publisher"), "{msg}");
+    }
+
+    #[test]
+    fn a_refused_or_garbled_oidc_token_stops_before_the_exchange() {
+        use crate::forge::test_server::{FakeServer, Reply};
+        let server = FakeServer::start(vec![
+            Reply::json(403, serde_json::json!({})),
+            Reply::raw(200, "not json"),
+        ]);
+        let request_url = format!("{}/oidc", server.url());
+        let index = unreachable_https_index();
+
+        let refused = mint_with_runner(Some(&request_url), &index).unwrap_err();
+        let garbled = mint_with_runner(Some(&request_url), &index).unwrap_err();
+
+        assert!(
+            format!("{refused:#}").contains("requesting a GitHub OIDC token failed"),
+            "{refused:#}"
+        );
+        assert!(
+            format!("{garbled:#}").contains("not the expected JSON"),
+            "{garbled:#}"
+        );
+    }
+
     #[test]
     fn a_url_without_a_host_is_refused() {
         assert!(mint_endpoint(Some("https:///legacy/")).is_err());

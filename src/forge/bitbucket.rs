@@ -115,6 +115,9 @@ fn tag_html_url(response: &serde_json::Value) -> Option<String> {
 }
 
 #[cfg(test)]
+mod api_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 

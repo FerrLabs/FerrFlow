@@ -165,6 +165,126 @@ mod tests {
         assert_eq!(body["tag"], "v5.3.0");
     }
 
+    fn live_ctx<'a>(registries: &'a BTreeMap<String, RegistryConfig>) -> PublishContext<'a> {
+        PublishContext {
+            dry_run: false,
+            ..make_ctx(registries)
+        }
+    }
+
+    #[test]
+    fn posts_the_default_body_to_the_interpolated_url_as_json() {
+        use crate::forge::test_server::{FakeServer, Reply};
+        let server = FakeServer::start(vec![Reply::json(204, serde_json::json!({}))]);
+        let registries = BTreeMap::new();
+        let url = format!("{}/hooks/{{name}}/{{version}}", server.url());
+
+        let outcome = run(&url, None, &BTreeMap::new(), &live_ctx(&registries)).unwrap();
+
+        let expected_url = format!("{}/hooks/ferrflow/5.3.0", server.url());
+        assert!(
+            matches!(&outcome, PublishOutcome::Published { url: Some(u) } if *u == expected_url),
+            "{outcome:?}"
+        );
+        let req = server.only_request();
+        assert_eq!(req.method, "POST");
+        assert_eq!(req.path, "/hooks/ferrflow/5.3.0");
+        assert_eq!(req.header("content-type"), Some("application/json"));
+        assert_eq!(
+            req.json(),
+            serde_json::json!({ "package": "ferrflow", "version": "5.3.0", "tag": "v5.3.0" })
+        );
+    }
+
+    #[test]
+    fn a_body_template_and_headers_are_interpolated_before_sending() {
+        use crate::forge::test_server::{FakeServer, Reply};
+        let server = FakeServer::start(vec![Reply::json(200, serde_json::json!({}))]);
+        let registries = BTreeMap::new();
+        let template = serde_json::json!({
+            "text": "released {name} {tag}",
+            "meta": { "versions": ["{version}", 3, true] },
+        });
+        let headers = BTreeMap::from([
+            (
+                "Authorization".to_string(),
+                "Bearer {env:FERRFLOW_TEST_WEBHOOK_LIVE_TOKEN}".to_string(),
+            ),
+            (
+                "content-type".to_string(),
+                "application/x-custom".to_string(),
+            ),
+        ]);
+
+        {
+            let _guard = crate::test_utils::ENV_LOCK
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
+            unsafe {
+                std::env::set_var("FERRFLOW_TEST_WEBHOOK_LIVE_TOKEN", "hook-secret");
+            }
+            run(
+                &format!("{}/hook", server.url()),
+                Some(&template),
+                &headers,
+                &live_ctx(&registries),
+            )
+            .unwrap();
+            unsafe {
+                std::env::remove_var("FERRFLOW_TEST_WEBHOOK_LIVE_TOKEN");
+            }
+        }
+
+        let req = server.only_request();
+        assert_eq!(req.header("authorization"), Some("Bearer hook-secret"));
+        assert_eq!(req.header("content-type"), Some("application/x-custom"));
+        assert_eq!(
+            req.json(),
+            serde_json::json!({
+                "text": "released ferrflow v5.3.0",
+                "meta": { "versions": ["5.3.0", 3, true] },
+            })
+        );
+    }
+
+    #[test]
+    fn a_failing_endpoint_is_an_error_naming_the_url() {
+        use crate::forge::test_server::{FakeServer, Reply};
+        let server = FakeServer::start(vec![Reply::json(500, serde_json::json!({}))]);
+        let registries = BTreeMap::new();
+        let url = format!("{}/hook", server.url());
+
+        let err = run(&url, None, &BTreeMap::new(), &live_ctx(&registries)).unwrap_err();
+
+        assert!(format!("{err:#}").contains(&url), "{err:#}");
+        assert_eq!(
+            crate::error_code::code_from_error(&err).as_deref(),
+            Some("E1018")
+        );
+    }
+
+    #[test]
+    fn an_unresolvable_header_aborts_before_anything_is_sent() {
+        use crate::forge::test_server::{FakeServer, Reply};
+        let server = FakeServer::start(vec![Reply::json(200, serde_json::json!({}))]);
+        let registries = BTreeMap::new();
+        let headers = BTreeMap::from([(
+            "Authorization".to_string(),
+            "Bearer {env:__FERRFLOW_NEVER_SET_WEBHOOK_HEADER}".to_string(),
+        )]);
+
+        let err = run(
+            &format!("{}/hook", server.url()),
+            None,
+            &headers,
+            &live_ctx(&registries),
+        )
+        .unwrap_err();
+
+        assert!(format!("{err:#}").contains("is not set"), "{err:#}");
+        assert!(server.requests().is_empty());
+    }
+
     #[test]
     fn dry_run_short_circuits() {
         let registries = BTreeMap::new();

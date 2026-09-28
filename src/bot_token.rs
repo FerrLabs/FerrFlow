@@ -105,6 +105,12 @@ impl BotTokenExchange {
             self.audience
         );
 
+        let agent = crate::http::agent();
+        let oidc_token = self.request_oidc_token(&agent)?;
+        self.exchange(&agent, &oidc_token)
+    }
+
+    fn request_oidc_token(&self, agent: &ureq::Agent) -> Result<String> {
         let req_url = std::env::var("ACTIONS_ID_TOKEN_REQUEST_URL").map_err(|_| {
             anyhow::anyhow!(
                 "bot mode requires `permissions: id-token: write` in your workflow: ACTIONS_ID_TOKEN_REQUEST_URL not set"
@@ -121,8 +127,6 @@ impl BotTokenExchange {
             "{req_url}{separator}audience={}",
             encode_query_component(&self.audience)
         );
-
-        let agent = crate::http::agent();
 
         let oidc_body: OidcResponse = agent
             .get(&oidc_url)
@@ -141,8 +145,11 @@ impl BotTokenExchange {
         if oidc_body.value.is_empty() {
             bail!("OIDC response from GitHub Actions runner was missing the `value` field");
         }
+        Ok(oidc_body.value)
+    }
 
-        let payload = serde_json::json!({ "token": oidc_body.value });
+    fn exchange(&self, agent: &ureq::Agent, oidc_token: &str) -> Result<IssuedToken> {
+        let payload = serde_json::json!({ "token": oidc_token });
         let mut attempt = 0u32;
         let mut response = loop {
             attempt += 1;
@@ -320,6 +327,9 @@ fn configure_bot_git_identity_in(repo_dir: &std::path::Path) {
         .current_dir(repo_dir)
         .status();
 }
+
+#[cfg(test)]
+mod exchange_tests;
 
 #[cfg(test)]
 mod tests {

@@ -2,6 +2,8 @@ pub mod bitbucket;
 pub mod gitea;
 pub mod github;
 pub mod gitlab;
+#[cfg(test)]
+pub(crate) mod test_server;
 
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
@@ -11,12 +13,13 @@ use anyhow::Result;
 
 pub use crate::config::ForgeKind;
 
+#[derive(Debug)]
 pub struct MergeRequestResult {
     pub id: u64,
     pub auto_merge_key: String,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct ReleaseResult {
     pub id: Option<u64>,
     pub url: Option<String>,
@@ -1092,6 +1095,49 @@ mod tests {
             ),
             "Failed to update MR !7: http status 403"
         );
+    }
+
+    fn pr_number_with(github_ref: Option<&str>, mr_iid: Option<&str>) -> Option<u64> {
+        let _lock = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let saved = [
+            ("GITHUB_REF", std::env::var("GITHUB_REF").ok()),
+            (
+                "CI_MERGE_REQUEST_IID",
+                std::env::var("CI_MERGE_REQUEST_IID").ok(),
+            ),
+        ];
+        let apply = |name: &str, value: Option<&str>| unsafe {
+            match value {
+                Some(v) => std::env::set_var(name, v),
+                None => std::env::remove_var(name),
+            }
+        };
+        apply("GITHUB_REF", github_ref);
+        apply("CI_MERGE_REQUEST_IID", mr_iid);
+        let detected = detect_pr_number();
+        for (name, value) in &saved {
+            apply(name, value.as_deref());
+        }
+        detected
+    }
+
+    #[test]
+    fn a_github_pull_request_ref_yields_its_number() {
+        assert_eq!(pr_number_with(Some("refs/pull/42/merge"), None), Some(42));
+    }
+
+    #[test]
+    fn a_branch_ref_falls_through_to_the_gitlab_merge_request_iid() {
+        assert_eq!(pr_number_with(Some("refs/heads/main"), Some("7")), Some(7));
+        assert_eq!(pr_number_with(None, Some("7")), Some(7));
+    }
+
+    #[test]
+    fn no_pull_request_context_means_no_number() {
+        assert_eq!(pr_number_with(Some("refs/heads/main"), None), None);
+        assert_eq!(pr_number_with(Some("refs/pull/abc/merge"), None), None);
+        assert_eq!(pr_number_with(Some("refs/pull/42/head"), None), None);
+        assert_eq!(pr_number_with(None, Some("not-a-number")), None);
     }
 
     #[test]
