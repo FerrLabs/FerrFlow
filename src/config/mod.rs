@@ -179,79 +179,7 @@ impl Config {
     }
 
     fn auto_detect(root: &Path) -> Self {
-        let mut versioned_files = Vec::new();
-
-        if root.join("Cargo.toml").exists() {
-            versioned_files.push(VersionedFile {
-                path: "Cargo.toml".to_string(),
-                format: FileFormat::Toml,
-                selector: None,
-            });
-        }
-        if root.join("build.gradle").exists() || root.join("build.gradle.kts").exists() {
-            let path = if root.join("build.gradle.kts").exists() {
-                "build.gradle.kts"
-            } else {
-                "build.gradle"
-            };
-            versioned_files.push(VersionedFile {
-                path: path.to_string(),
-                format: FileFormat::Gradle,
-                selector: None,
-            });
-        }
-        if root.join("Chart.yaml").exists() {
-            versioned_files.push(VersionedFile {
-                path: "Chart.yaml".to_string(),
-                format: FileFormat::Helm,
-                selector: None,
-            });
-        }
-        if root.join("galaxy.yml").exists() {
-            versioned_files.push(VersionedFile {
-                path: "galaxy.yml".to_string(),
-                format: FileFormat::GalaxyYaml,
-                selector: None,
-            });
-        }
-        if root.join("go.mod").exists() {
-            versioned_files.push(VersionedFile {
-                path: "go.mod".to_string(),
-                format: FileFormat::GoMod,
-                selector: None,
-            });
-        }
-        if root.join("package.json").exists() {
-            versioned_files.push(VersionedFile {
-                path: "package.json".to_string(),
-                format: FileFormat::Json,
-                selector: None,
-            });
-        }
-        if root.join("pom.xml").exists() {
-            versioned_files.push(VersionedFile {
-                path: "pom.xml".to_string(),
-                format: FileFormat::Xml,
-                selector: None,
-            });
-        }
-        for name in &["VERSION", "VERSION.txt"] {
-            if root.join(name).exists() {
-                versioned_files.push(VersionedFile {
-                    path: name.to_string(),
-                    format: FileFormat::Txt,
-                    selector: None,
-                });
-                break;
-            }
-        }
-        if root.join("pyproject.toml").exists() {
-            versioned_files.push(VersionedFile {
-                path: "pyproject.toml".to_string(),
-                format: FileFormat::Toml,
-                selector: None,
-            });
-        }
+        let versioned_files = detect_versioned_files(root);
 
         let name = root
             .file_name()
@@ -302,6 +230,32 @@ impl Config {
                 .iter()
                 .any(|pkg| pkg.hooks.is_some() || !pkg.publishers.is_empty())
     }
+}
+
+const DETECTED_VERSION_FILES: [(&[&str], FileFormat); 9] = [
+    (&["Cargo.toml"], FileFormat::Toml),
+    (&["build.gradle.kts", "build.gradle"], FileFormat::Gradle),
+    (&["Chart.yaml"], FileFormat::Helm),
+    (&["galaxy.yml"], FileFormat::GalaxyYaml),
+    (&["go.mod"], FileFormat::GoMod),
+    (&["package.json"], FileFormat::Json),
+    (&["pom.xml"], FileFormat::Xml),
+    (&["VERSION", "VERSION.txt"], FileFormat::Txt),
+    (&["pyproject.toml"], FileFormat::Toml),
+];
+
+fn detect_versioned_files(root: &Path) -> Vec<VersionedFile> {
+    DETECTED_VERSION_FILES
+        .iter()
+        .filter_map(|(candidates, format)| {
+            let found = candidates.iter().find(|name| root.join(name).exists())?;
+            Some(VersionedFile {
+                path: (*found).to_string(),
+                format: format.clone(),
+                selector: None,
+            })
+        })
+        .collect()
 }
 
 #[cfg(test)]
