@@ -2,6 +2,7 @@ use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::sync::{Arc, Mutex};
 
+#[derive(Clone)]
 pub struct Recorded {
     pub method: String,
     pub path: String,
@@ -75,9 +76,9 @@ impl FakeServer {
     }
 
     pub fn only_request(&self) -> Recorded {
-        let mut requests = self.requests();
+        let requests = self.requests();
         assert_eq!(requests.len(), 1, "expected exactly one request");
-        requests.remove(0)
+        requests[0].clone()
     }
 }
 

@@ -134,6 +134,9 @@ mod tests {
 
     #[test]
     fn env_placeholder_resolves_when_set() {
+        let _guard = crate::test_utils::ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         // SAFETY: This is a test-only var name that's never used elsewhere; the
         unsafe {
             std::env::set_var("FERRFLOW_TEST_WEBHOOK_TOKEN", "secret-123");
