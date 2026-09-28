@@ -393,7 +393,7 @@ pub(super) fn default_package_name() -> String {
 }
 
 fn convert_tag_format(tag_format: &str) -> String {
-    tag_format.replace("${version}", "{{version}}")
+    tag_format.replace("${version}", "{version}")
 }
 
 fn convert_branches(branches: &Branches, report: &mut MigrationReport) -> Vec<BranchChannelConfig> {

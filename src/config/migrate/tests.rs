@@ -18,7 +18,7 @@ fn branch<'a>(cfg: &'a Config, name: &str) -> &'a BranchChannelConfig {
 #[test]
 fn tag_format_version_token_is_rewritten() {
     let (cfg, report) = build(r#"{"tagFormat": "v${version}"}"#);
-    assert_eq!(cfg.workspace.tag_template.as_deref(), Some("v{{version}}"));
+    assert_eq!(cfg.workspace.tag_template.as_deref(), Some("v{version}"));
     assert!(report.mapped.iter().any(|m| m.contains("tagTemplate")));
 }
 
@@ -27,7 +27,7 @@ fn tag_format_with_prefix_and_suffix() {
     let (cfg, _) = build(r#"{"tagFormat": "release-${version}-stable"}"#);
     assert_eq!(
         cfg.workspace.tag_template.as_deref(),
-        Some("release-{{version}}-stable")
+        Some("release-{version}-stable")
     );
 }
 
@@ -186,7 +186,7 @@ fn json5_features_are_tolerated() {
             "tagFormat": "v${version}",
         }"#,
     );
-    assert_eq!(cfg.workspace.tag_template.as_deref(), Some("v{{version}}"));
+    assert_eq!(cfg.workspace.tag_template.as_deref(), Some("v{version}"));
 }
 
 #[test]
@@ -207,7 +207,7 @@ plugins:
 ";
     let json = yaml_to_json(yaml).expect("yaml converts to json");
     let (cfg, _) = build_config_from_releaserc(&json).expect("converted json is valid");
-    assert_eq!(cfg.workspace.tag_template.as_deref(), Some("v{{version}}"));
+    assert_eq!(cfg.workspace.tag_template.as_deref(), Some("v{version}"));
     assert!(matches!(cfg.workspace.forge, ForgeKind::Github));
     let beta = cfg
         .workspace
@@ -248,7 +248,7 @@ fn dry_run_returns_the_config_without_writing_it() {
     let dir = tempfile::tempdir().unwrap();
     let (filename, content) = emit(&sample_migration(), dir.path(), true).unwrap();
     assert_eq!(filename, "ferrflow.json");
-    assert!(content.contains("v{{version}}"));
+    assert!(content.contains("v{version}"));
     assert!(!dir.path().join(&filename).exists());
 }
 
@@ -262,4 +262,15 @@ fn real_run_writes_exactly_what_the_dry_run_shows() {
         std::fs::read_to_string(dir.path().join(filename)).unwrap(),
         content
     );
+}
+
+#[test]
+fn a_migrated_tag_format_renders_the_same_tags_semantic_release_created() {
+    let (cfg, _) = build(r#"{"tagFormat": "release-${version}"}"#);
+    let pkg = &cfg.packages[0];
+    assert_eq!(
+        pkg.tag_for_version(&cfg.workspace, false, "1.2.0"),
+        "release-1.2.0"
+    );
+    assert_eq!(pkg.tag_prefix(&cfg.workspace, false), "release-");
 }

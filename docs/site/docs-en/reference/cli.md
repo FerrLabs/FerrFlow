@@ -176,7 +176,7 @@ semantic-release plugin mapping:
 
 | semantic-release                      | FerrFlow                                                                                                                                                  |
 | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tagFormat: "v${version}"`            | `tagTemplate: "v{{version}}"`                                                                                                                             |
+| `tagFormat: "v${version}"`            | `tagTemplate: "v{version}"`                                                                                                                               |
 | `branches`                            | `branches` — `main`/`master` become the stable line, a `prerelease: true` (or named) branch becomes a channel                                             |
 | `@semantic-release/changelog`         | the package's `changelog` path                                                                                                                            |
 | `@semantic-release/exec`              | `hooks` (`prepareCmd` → `preBump`, `publishCmd` → `postPublish`, `successCmd` → `onSuccess`, `failCmd` → `onError`, `verifyConditionsCmd` → `preRelease`) |
