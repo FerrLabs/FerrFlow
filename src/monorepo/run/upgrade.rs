@@ -5,7 +5,7 @@ use crate::conventional_commits::BumpType;
 use crate::versioning::compute_next_version;
 
 use super::super::util::tags_for_package;
-use super::plan::PackagePlan;
+use super::plan::{PackageBump, PackagePlan};
 
 /// Raise a package's own bump when a dependency it declares moves further than
 /// its commits did.
@@ -27,21 +27,43 @@ pub(super) fn apply_cascade_upgrades(
         return;
     }
 
-    let mut state: HashMap<String, BumpType> = HashMap::new();
-    for (idx, plan) in plans.iter().enumerate() {
-        if let Some(PackagePlan::Bump(bump)) = plan {
-            state.insert(config.packages[idx].name.clone(), bump.bump);
-        }
-    }
+    let mut state = planned_bumps(config, plans);
     if state.is_empty() {
         return;
     }
 
+    let raised = settle_raises(config, all_tags, plans, &mut state);
+
+    for (idx, (bump, new_version)) in raised {
+        let Some(PackagePlan::Bump(plan)) = plans[idx].as_mut() else {
+            continue;
+        };
+        raise_plan(config, idx, plan, bump, new_version);
+    }
+}
+
+fn planned_bumps(config: &Config, plans: &[Option<PackagePlan>]) -> HashMap<String, BumpType> {
+    plans
+        .iter()
+        .enumerate()
+        .filter_map(|(idx, plan)| match plan {
+            Some(PackagePlan::Bump(bump)) => Some((config.packages[idx].name.clone(), bump.bump)),
+            _ => None,
+        })
+        .collect()
+}
+
+fn settle_raises(
+    config: &Config,
+    all_tags: &[String],
+    plans: &[Option<PackagePlan>],
+    state: &mut HashMap<String, BumpType>,
+) -> HashMap<usize, (BumpType, String)> {
     let mut raised: HashMap<usize, (BumpType, String)> = HashMap::new();
     let mut blocked: HashSet<usize> = HashSet::new();
 
     for _ in 0..config.packages.len().saturating_mul(4) {
-        let moved: Vec<(usize, BumpType)> = super::graph::cascade_round(&config.packages, &state)
+        let moved: Vec<(usize, BumpType)> = super::graph::cascade_round(&config.packages, state)
             .into_iter()
             .filter(|(idx, _)| !blocked.contains(idx))
             .collect();
@@ -70,21 +92,24 @@ pub(super) fn apply_cascade_upgrades(
             break;
         }
     }
+    raised
+}
 
-    for (idx, (bump, new_version)) in raised {
-        let pkg = &config.packages[idx];
-        let Some(PackagePlan::Bump(plan)) = plans[idx].as_mut() else {
-            continue;
-        };
-        // The label is the bump for semver, but a calendar strategy name or
-        // "forced" otherwise, and those must survive the raise untouched.
-        if plan.strategy_label == plan.bump.to_string() {
-            plan.strategy_label = bump.to_string();
-        }
-        plan.bump = bump;
-        plan.tag = pkg.tag_for_version(&config.workspace, true, &new_version);
-        plan.new_version = new_version;
+fn raise_plan(
+    config: &Config,
+    idx: usize,
+    plan: &mut PackageBump,
+    bump: BumpType,
+    new_version: String,
+) {
+    // The label is the bump for semver, but a calendar strategy name or
+    // "forced" otherwise, and those must survive the raise untouched.
+    if plan.strategy_label == plan.bump.to_string() {
+        plan.strategy_label = bump.to_string();
     }
+    plan.bump = bump;
+    plan.tag = config.packages[idx].tag_for_version(&config.workspace, true, &new_version);
+    plan.new_version = new_version;
 }
 
 /// The version a package would take at `bump`, or `None` when the strategy

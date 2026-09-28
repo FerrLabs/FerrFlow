@@ -85,12 +85,53 @@ pub fn run(config_path: Option<&Path>, channel: Option<&str>) -> Result<()> {
         return Ok(());
     }
 
+    let Some(overrides) = collect_overrides(&rows, &config)? else {
+        println!("{}", "no command emitted".dimmed());
+        return Ok(());
+    };
+    print_command(&config, &rows, &overrides);
+    Ok(())
+}
+
+enum Command<'a> {
+    Skip,
+    Done,
+    Quit,
+    Set {
+        n: &'a str,
+        choice: Option<Override>,
+    },
+    Unknown,
+}
+
+fn parse_command<'a>(words: &[&'a str]) -> Command<'a> {
+    match words {
+        [] => Command::Skip,
+        ["done"] => Command::Done,
+        ["quit"] | ["q"] => Command::Quit,
+        ["exclude", n] => Command::Set {
+            n,
+            choice: Some(Override::Excluded),
+        },
+        ["include", n] => Command::Set { n, choice: None },
+        [n, bump] => match (n.parse::<usize>(), parse_bump(bump)) {
+            (Ok(_), Some(bump)) => Command::Set {
+                n,
+                choice: Some(Override::Bump(bump)),
+            },
+            _ => Command::Unknown,
+        },
+        _ => Command::Unknown,
+    }
+}
+
+fn collect_overrides(rows: &[Row], config: &Config) -> Result<Option<BTreeMap<String, Override>>> {
     let mut overrides: BTreeMap<String, Override> = BTreeMap::new();
     let stdin = std::io::stdin();
     let mut lines = stdin.lock().lines();
 
     loop {
-        render(&rows, &overrides, &config)?;
+        render(rows, &overrides, config)?;
         print!("{} ", ">".cyan());
         std::io::stdout().flush()?;
 
@@ -98,47 +139,48 @@ pub fn run(config_path: Option<&Path>, channel: Option<&str>) -> Result<()> {
         let line = line?;
         let words: Vec<&str> = line.split_whitespace().collect();
 
-        match words.as_slice() {
-            [] => continue,
-            ["done"] => break,
-            ["quit"] | ["q"] => {
-                println!("{}", "no command emitted".dimmed());
-                return Ok(());
-            }
-            [n, bump] if n.parse::<usize>().is_ok() && parse_bump(bump).is_some() => {
-                match index(&rows, n) {
-                    Some(pkg) => {
-                        overrides.insert(pkg, Override::Bump(parse_bump(bump).unwrap()));
-                    }
-                    None => println!("  {} no package {n}", "✗".red()),
-                }
-            }
-            ["exclude", n] => match index(&rows, n) {
-                Some(pkg) => {
-                    overrides.insert(pkg, Override::Excluded);
-                }
-                None => println!("  {} no package {n}", "✗".red()),
-            },
-            ["include", n] => match index(&rows, n) {
-                Some(pkg) => {
-                    overrides.remove(&pkg);
-                }
-                None => println!("  {} no package {n}", "✗".red()),
-            },
-            _ => println!(
+        match parse_command(&words) {
+            Command::Skip => continue,
+            Command::Done => break,
+            Command::Quit => return Ok(None),
+            Command::Set { n, choice } => apply_choice(rows, &mut overrides, n, choice),
+            Command::Unknown => println!(
                 "  {} commands: <n> major|minor|patch, exclude <n>, include <n>, done, quit",
                 "?".yellow()
             ),
         }
     }
+    Ok(Some(overrides))
+}
 
+fn apply_choice(
+    rows: &[Row],
+    overrides: &mut BTreeMap<String, Override>,
+    n: &str,
+    choice: Option<Override>,
+) {
+    let Some(pkg) = index(rows, n) else {
+        println!("  {} no package {n}", "✗".red());
+        return;
+    };
+    match choice {
+        Some(ov) => {
+            overrides.insert(pkg, ov);
+        }
+        None => {
+            overrides.remove(&pkg);
+        }
+    }
+}
+
+fn print_command(config: &Config, rows: &[Row], overrides: &BTreeMap<String, Override>) {
     let mut forced = BTreeMap::new();
     let mut excluded = Vec::new();
-    for (pkg, ov) in &overrides {
+    for (pkg, ov) in overrides {
         match ov {
             Override::Excluded => excluded.push(pkg.clone()),
             Override::Bump(bump) => {
-                if let Some(version) = resolved_version(&config, &rows, pkg, *bump) {
+                if let Some(version) = resolved_version(config, rows, pkg, *bump) {
                     forced.insert(pkg.clone(), version);
                 }
             }
@@ -153,7 +195,6 @@ pub fn run(config_path: Option<&Path>, channel: Option<&str>) -> Result<()> {
         println!("  {} run:", "→".cyan());
         println!("    {}", command_for(&forced, &excluded).bold());
     }
-    Ok(())
 }
 
 fn index(rows: &[Row], n: &str) -> Option<String> {

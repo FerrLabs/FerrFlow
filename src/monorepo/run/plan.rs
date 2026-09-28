@@ -371,33 +371,9 @@ pub(super) fn compute_plan(
         tags_for_package(inputs.all_tags, &tag_search_prefix)
     });
 
-    let file_source = pkg.versioned_files.first().and_then(|vf| {
-        read_version(vf, inputs.root)
-            .ok()
-            .map(|version| (vf.path.clone(), version))
-    });
-    let strategy = config.workspace.orphaned_tag_strategy;
-    let highest_tag = if let (Some(idx), OrphanedTagStrategy::Warn) = (inputs.tag_index, strategy) {
-        idx.find_highest_semver_tag(&tag_search_prefix, strategy)
-    } else {
-        find_highest_semver_tag_with_cache(
-            repo,
-            &tag_search_prefix,
-            strategy,
-            inputs.head_ancestors,
-        )?
-    };
-    let last_tag = highest_tag.as_ref().map(|(tag, _version)| tag.clone());
-    let (resolved, source) = VersionSource::resolve(
-        highest_tag,
-        file_source,
-        pkg.effective_version_source(&config.workspace),
-    );
-    let current_version =
-        resolved.unwrap_or_else(|| crate::versioning::bootstrap_version(pkg_strategy));
+    let (current_version, last_tag, source) =
+        resolve_current_version(repo, pkg, inputs, &tag_search_prefix, pkg_strategy)?;
     let version_source = Some(source);
-
-    let prerelease = inputs.prerelease_ctx.is_prerelease();
 
     let (new_version, is_prerelease, commits, bump) = if let Some(fv) = forced_ver_for_pkg {
         let clean = fv.strip_prefix('v').unwrap_or(fv);
@@ -430,22 +406,7 @@ pub(super) fn compute_plan(
 
         let base_version =
             compute_next_version(&current_version, bump, pkg_strategy, version_template)?;
-
-        let (new_version, is_prerelease) = if prerelease {
-            let tag_prefix = pkg.tag_prefix(&config.workspace, is_monorepo);
-            if let Some(resolved) = inputs.prerelease_ctx.compute_identifier(
-                &base_version,
-                &tag_prefix,
-                inputs.all_tags,
-                inputs.short_hash,
-            ) {
-                (format!("{base_version}{}", resolved.full_suffix), true)
-            } else {
-                (base_version, false)
-            }
-        } else {
-            (base_version, false)
-        };
+        let (new_version, is_prerelease) = with_prerelease_suffix(pkg, inputs, base_version);
 
         (new_version, is_prerelease, commits, bump)
     };
@@ -459,15 +420,7 @@ pub(super) fn compute_plan(
         });
     }
 
-    let strategy_label = if forced_ver_for_pkg.is_some() {
-        "forced".to_string()
-    } else {
-        if is_date_or_seq(pkg_strategy) {
-            format!("{pkg_strategy:?}").to_lowercase()
-        } else {
-            bump.to_string()
-        }
-    };
+    let strategy_label = strategy_label(forced_ver_for_pkg.is_some(), pkg_strategy, bump);
 
     let tag = pkg.tag_for_version(&config.workspace, is_monorepo, &new_version);
 
@@ -485,6 +438,72 @@ pub(super) fn compute_plan(
         tag,
         version_source,
     })))
+}
+
+fn resolve_current_version(
+    repo: &Repository,
+    pkg: &PackageConfig,
+    inputs: &PlanInputs<'_>,
+    tag_search_prefix: &str,
+    pkg_strategy: VersioningStrategy,
+) -> Result<(String, Option<String>, VersionSource)> {
+    let config = inputs.config;
+    let file_source = pkg.versioned_files.first().and_then(|vf| {
+        read_version(vf, inputs.root)
+            .ok()
+            .map(|version| (vf.path.clone(), version))
+    });
+    let strategy = config.workspace.orphaned_tag_strategy;
+    let highest_tag = if let (Some(idx), OrphanedTagStrategy::Warn) = (inputs.tag_index, strategy) {
+        idx.find_highest_semver_tag(tag_search_prefix, strategy)
+    } else {
+        find_highest_semver_tag_with_cache(
+            repo,
+            tag_search_prefix,
+            strategy,
+            inputs.head_ancestors,
+        )?
+    };
+    let last_tag = highest_tag.as_ref().map(|(tag, _version)| tag.clone());
+    let (resolved, source) = VersionSource::resolve(
+        highest_tag,
+        file_source,
+        pkg.effective_version_source(&config.workspace),
+    );
+    let current_version =
+        resolved.unwrap_or_else(|| crate::versioning::bootstrap_version(pkg_strategy));
+    Ok((current_version, last_tag, source))
+}
+
+fn with_prerelease_suffix(
+    pkg: &PackageConfig,
+    inputs: &PlanInputs<'_>,
+    base_version: String,
+) -> (String, bool) {
+    if !inputs.prerelease_ctx.is_prerelease() {
+        return (base_version, false);
+    }
+    let config = inputs.config;
+    let tag_prefix = pkg.tag_prefix(&config.workspace, config.is_monorepo());
+    match inputs.prerelease_ctx.compute_identifier(
+        &base_version,
+        &tag_prefix,
+        inputs.all_tags,
+        inputs.short_hash,
+    ) {
+        Some(resolved) => (format!("{base_version}{}", resolved.full_suffix), true),
+        None => (base_version, false),
+    }
+}
+
+fn strategy_label(forced: bool, pkg_strategy: VersioningStrategy, bump: BumpType) -> String {
+    if forced {
+        "forced".to_string()
+    } else if is_date_or_seq(pkg_strategy) {
+        format!("{pkg_strategy:?}").to_lowercase()
+    } else {
+        bump.to_string()
+    }
 }
 
 fn is_date_or_seq(strategy: VersioningStrategy) -> bool {

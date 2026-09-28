@@ -36,21 +36,10 @@ pub fn release(
     }
 
     if !json {
-        if dry_run {
-            tracing::info!("{}", "FerrFlow — Release (dry run)".bold().blue());
-        } else {
-            tracing::info!("{}", "FerrFlow — Release".bold().green());
-        }
-        tracing::info!("");
+        print_banner(dry_run);
     }
 
-    let single_shot = dry_run
-        || matches!(
-            config.workspace.release_commit_mode,
-            crate::config::ReleaseCommitMode::Pr | crate::config::ReleaseCommitMode::None
-        );
-
-    if single_shot {
+    if is_single_shot(&config, dry_run) {
         let out = run_release_logic(
             &root,
             &config,
@@ -106,22 +95,7 @@ pub fn release(
                 if attempt < MAX_RELEASE_REGENERATE_ATTEMPTS
                     && crate::git::is_push_rejected_error(&e) =>
             {
-                tracing::warn!("");
-                tracing::warn!(
-                    "{}",
-                    format!(
-                        "Release attempt {attempt}/{MAX_RELEASE_REGENERATE_ATTEMPTS} \
-                         pushed onto a stale '{}': {e:#}",
-                        config.workspace.branch,
-                    )
-                    .yellow()
-                );
-                tracing::warn!(
-                    "{}",
-                    "Resetting working tree to remote tip and regenerating the release commit \
-                     against the latest history…"
-                        .dimmed()
-                );
+                warn_stale_attempt(attempt, &config, &e);
 
                 cleanup_failed_release_attempt(&root, &config, &pre_attempt_tags)?;
                 last_err = Some(e);
@@ -134,6 +108,42 @@ pub fn release(
             "release failed after {MAX_RELEASE_REGENERATE_ATTEMPTS} regenerate attempts"
         )
     }))
+}
+
+fn print_banner(dry_run: bool) {
+    if dry_run {
+        tracing::info!("{}", "FerrFlow — Release (dry run)".bold().blue());
+    } else {
+        tracing::info!("{}", "FerrFlow — Release".bold().green());
+    }
+    tracing::info!("");
+}
+
+fn is_single_shot(config: &Config, dry_run: bool) -> bool {
+    dry_run
+        || matches!(
+            config.workspace.release_commit_mode,
+            crate::config::ReleaseCommitMode::Pr | crate::config::ReleaseCommitMode::None
+        )
+}
+
+fn warn_stale_attempt(attempt: usize, config: &Config, e: &anyhow::Error) {
+    tracing::warn!("");
+    tracing::warn!(
+        "{}",
+        format!(
+            "Release attempt {attempt}/{MAX_RELEASE_REGENERATE_ATTEMPTS} \
+             pushed onto a stale '{}': {e:#}",
+            config.workspace.branch,
+        )
+        .yellow()
+    );
+    tracing::warn!(
+        "{}",
+        "Resetting working tree to remote tip and regenerating the release commit \
+         against the latest history…"
+            .dimmed()
+    );
 }
 
 fn cleanup_failed_release_attempt(

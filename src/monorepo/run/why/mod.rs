@@ -295,47 +295,66 @@ fn cascade_bumps(
     }
 
     for _ in 0..config.packages.len() {
-        let mut added = false;
-        for other in &config.packages {
-            if bumped.contains_key(&other.name) {
-                continue;
-            }
-            let bump = other
-                .depends_on
-                .iter()
-                .filter_map(|dep| Some(dep.propagate().resolve(*bumped.get(dep.name())?)))
-                .max()
-                .unwrap_or(BumpType::None);
-            if bump == BumpType::None {
-                continue;
-            }
-            let unchanged = other
-                .versioned_files
-                .first()
-                .and_then(|vf| read_version(vf, root).ok())
-                .is_some_and(|current| {
-                    let strategy = other.effective_versioning(&config.workspace, || {
-                        tags_for_package(
-                            inputs.all_tags,
-                            &other.tag_prefix(&config.workspace, true),
-                        )
-                    });
-                    let version_template = other.effective_version_template(&config.workspace);
-                    compute_next_version(&current, bump, strategy, version_template)
-                        .is_ok_and(|next| next == current)
-                });
-            if unchanged {
-                continue;
-            }
-            bumped.insert(other.name.clone(), bump);
-            added = true;
-        }
-        if !added {
+        if !cascade_one_round(root, config, inputs, &mut bumped) {
             break;
         }
     }
 
     Ok(bumped)
+}
+
+fn cascade_one_round(
+    root: &Path,
+    config: &Config,
+    inputs: &PlanInputs<'_>,
+    bumped: &mut std::collections::HashMap<String, BumpType>,
+) -> bool {
+    let mut added = false;
+    for other in &config.packages {
+        if bumped.contains_key(&other.name) {
+            continue;
+        }
+        let bump = inherited_bump(other, bumped);
+        if bump == BumpType::None
+            || bump_leaves_version_unchanged(other, root, config, inputs, bump)
+        {
+            continue;
+        }
+        bumped.insert(other.name.clone(), bump);
+        added = true;
+    }
+    added
+}
+
+fn inherited_bump(
+    pkg: &PackageConfig,
+    bumped: &std::collections::HashMap<String, BumpType>,
+) -> BumpType {
+    pkg.depends_on
+        .iter()
+        .filter_map(|dep| Some(dep.propagate().resolve(*bumped.get(dep.name())?)))
+        .max()
+        .unwrap_or(BumpType::None)
+}
+
+fn bump_leaves_version_unchanged(
+    pkg: &PackageConfig,
+    root: &Path,
+    config: &Config,
+    inputs: &PlanInputs<'_>,
+    bump: BumpType,
+) -> bool {
+    pkg.versioned_files
+        .first()
+        .and_then(|vf| read_version(vf, root).ok())
+        .is_some_and(|current| {
+            let strategy = pkg.effective_versioning(&config.workspace, || {
+                tags_for_package(inputs.all_tags, &pkg.tag_prefix(&config.workspace, true))
+            });
+            let version_template = pkg.effective_version_template(&config.workspace);
+            compute_next_version(&current, bump, strategy, version_template)
+                .is_ok_and(|next| next == current)
+        })
 }
 
 fn dependency_reports(

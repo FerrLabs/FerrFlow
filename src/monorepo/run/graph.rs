@@ -90,64 +90,76 @@ pub(crate) fn release_order(packages: &[PackageConfig]) -> Result<Vec<usize>, Cy
     Ok(order)
 }
 
-fn tarjan_sccs(adjacency: &[Vec<usize>]) -> Vec<Vec<usize>> {
-    struct Walk<'a> {
-        adjacency: &'a [Vec<usize>],
-        next_index: usize,
-        index: Vec<Option<usize>>,
-        lowlink: Vec<usize>,
-        on_stack: Vec<bool>,
-        stack: Vec<usize>,
-        components: Vec<Vec<usize>>,
-    }
+struct TarjanWalk<'a> {
+    adjacency: &'a [Vec<usize>],
+    next_index: usize,
+    index: Vec<Option<usize>>,
+    lowlink: Vec<usize>,
+    on_stack: Vec<bool>,
+    stack: Vec<usize>,
+    components: Vec<Vec<usize>>,
+}
 
-    impl Walk<'_> {
-        fn connect(&mut self, v: usize) {
-            self.index[v] = Some(self.next_index);
-            self.lowlink[v] = self.next_index;
-            self.next_index += 1;
-            self.stack.push(v);
-            self.on_stack[v] = true;
-
-            for w in self.adjacency[v].clone() {
-                match self.index[w] {
-                    None => {
-                        self.connect(w);
-                        self.lowlink[v] = self.lowlink[v].min(self.lowlink[w]);
-                    }
-                    Some(w_index) if self.on_stack[w] => {
-                        self.lowlink[v] = self.lowlink[v].min(w_index);
-                    }
-                    Some(_) => {}
-                }
-            }
-
-            if self.lowlink[v] == self.index[v].expect("v was just indexed") {
-                let mut component = Vec::new();
-                loop {
-                    let w = self.stack.pop().expect("stack holds at least v");
-                    self.on_stack[w] = false;
-                    component.push(w);
-                    if w == v {
-                        break;
-                    }
-                }
-                self.components.push(component);
-            }
+impl<'a> TarjanWalk<'a> {
+    fn new(adjacency: &'a [Vec<usize>]) -> Self {
+        let n = adjacency.len();
+        Self {
+            adjacency,
+            next_index: 0,
+            index: vec![None; n],
+            lowlink: vec![0; n],
+            on_stack: vec![false; n],
+            stack: Vec::new(),
+            components: Vec::new(),
         }
     }
 
-    let n = adjacency.len();
-    let mut walk = Walk {
-        adjacency,
-        next_index: 0,
-        index: vec![None; n],
-        lowlink: vec![0; n],
-        on_stack: vec![false; n],
-        stack: Vec::new(),
-        components: Vec::new(),
-    };
-    for v in 0..n {
+    fn connect(&mut self, v: usize) {
+        self.index[v] = Some(self.next_index);
+        self.lowlink[v] = self.next_index;
+        self.next_index += 1;
+        self.stack.push(v);
+        self.on_stack[v] = true;
+
+        for w in self.adjacency[v].clone() {
+            self.follow_edge(v, w);
+        }
+
+        if self.lowlink[v] == self.index[v].expect("v was just indexed") {
+            self.pop_component(v);
+        }
+    }
+
+    fn follow_edge(&mut self, v: usize, w: usize) {
+        match self.index[w] {
+            None => {
+                self.connect(w);
+                self.lowlink[v] = self.lowlink[v].min(self.lowlink[w]);
+            }
+            Some(w_index) if self.on_stack[w] => {
+                self.lowlink[v] = self.lowlink[v].min(w_index);
+            }
+            Some(_) => {}
+        }
+    }
+
+    fn pop_component(&mut self, v: usize) {
+        let mut component = Vec::new();
+        loop {
+            let w = self.stack.pop().expect("stack holds at least v");
+            self.on_stack[w] = false;
+            component.push(w);
+            if w == v {
+                break;
+            }
+        }
+        self.components.push(component);
+    }
+}
+
+fn tarjan_sccs(adjacency: &[Vec<usize>]) -> Vec<Vec<usize>> {
+    let mut walk = TarjanWalk::new(adjacency);
+    for v in 0..adjacency.len() {
         if walk.index[v].is_none() {
             walk.connect(v);
         }
