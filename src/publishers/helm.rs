@@ -82,7 +82,6 @@ fn read_chart_name(chart_dir: &std::path::Path) -> Result<String> {
     let raw = std::fs::read_to_string(&chart_yaml)
         .with_context(|| format!("read {}", chart_yaml.display()))?;
     for line in raw.lines() {
-        let line = line.trim();
         if let Some(rest) = line.strip_prefix("name:") {
             let value = rest.trim().trim_matches(|c| c == '"' || c == '\'');
             if !value.is_empty() {
@@ -174,5 +173,27 @@ mod tests {
         )
         .unwrap();
         assert!(read_chart_name(dir.path()).is_err());
+    }
+
+    #[test]
+    fn read_chart_name_ignores_a_nested_name_before_the_chart_one() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("Chart.yaml"),
+            "apiVersion: v2\ndependencies:\n  - repository: oci://ghcr.io/x\n    name: common\n    version: 1.0.0\nmaintainers:\n  - name: Ops\nname: my-chart\nversion: 0.1.0\n",
+        )
+        .unwrap();
+        assert_eq!(read_chart_name(dir.path()).unwrap(), "my-chart");
+    }
+
+    #[test]
+    fn read_chart_name_handles_crlf_and_single_quotes() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("Chart.yaml"),
+            "apiVersion: v2\r\nname: 'win-chart'  \r\nversion: 0.1.0\r\n",
+        )
+        .unwrap();
+        assert_eq!(read_chart_name(dir.path()).unwrap(), "win-chart");
     }
 }
