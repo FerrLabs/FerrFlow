@@ -11,7 +11,7 @@ static VERSION_RE: OnceLock<Regex> = OnceLock::new();
 
 fn version_re() -> &'static Regex {
     VERSION_RE.get_or_init(|| {
-        Regex::new(r#"(?m)^(\s*let\s+(?:[A-Za-z_][A-Za-z0-9_]*[Vv]ersion|version)\s*=\s*)(["'])([^"']+)(["'])"#).unwrap()
+        Regex::new(r#"(?m)^(\s*let\s+(?:[A-Za-z_][A-Za-z0-9_]*[Vv]ersion|version)\s*=\s*)(["'])([^"'\s]+)(["'])"#).unwrap()
     })
 }
 

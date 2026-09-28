@@ -371,4 +371,58 @@ mod tests {
         };
         assert_eq!(read_version(&vf, dir.path()).unwrap(), "5.0.0");
     }
+
+    #[test]
+    fn quoted_versions_never_carry_whitespace() {
+        let cases: &[(FileFormat, &str)] = &[
+            (FileFormat::MixExs, "version: \"1.2.6\n\""),
+            (FileFormat::Gemspec, "s.version = ' 1.2.6'"),
+            (FileFormat::Gradle, "version = \"1.2.6 \""),
+            (FileFormat::PackageSwift, "let version = \"1.2.6\t\""),
+        ];
+        for (format, content) in cases {
+            let result = get_handler(format).read_version_from_bytes(content.as_bytes(), "f");
+            assert!(
+                result.is_err(),
+                "{format:?} accepted {content:?}: {result:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn no_format_returns_a_padded_version() {
+        let cases: &[(FileFormat, &str)] = &[
+            (FileFormat::Cabal, "version:  1.2.6  \n"),
+            (FileFormat::ChartYaml, "version: \" 1.2.6 \"\n"),
+            (FileFormat::Cmake, "project(x VERSION  1.2.6 )\n"),
+            (FileFormat::Csproj, "<Version> 1.2.6 </Version>"),
+            (FileFormat::GalaxyYaml, "version: ' 1.2.6 '\n"),
+            (FileFormat::Gemspec, "s.version = ' 1.2.6 '"),
+            (FileFormat::GoMod, "module x\n"),
+            (FileFormat::Gradle, "version = \" 1.2.6 \""),
+            (FileFormat::Helm, "version: \" 1.2.6 \"\n"),
+            (FileFormat::Json, "{\"version\": \" 1.2.6 \"}"),
+            (FileFormat::MixExs, "version: \" 1.2.6 \""),
+            (FileFormat::PackageSwift, "let version = \" 1.2.6 \""),
+            (FileFormat::PubspecYaml, "version:  1.2.6 \n"),
+            (FileFormat::Toml, "[package]\nversion = \" 1.2.6 \"\n"),
+            (
+                FileFormat::Toml,
+                "[package]\nversion.workspace = true\n[workspace.package]\nversion = \"\t1.2.6\"\n",
+            ),
+            (FileFormat::Toml, "[project]\nversion = \"1.2.6 \"\n"),
+            (FileFormat::Txt, "  1.2.6 \n"),
+            (
+                FileFormat::Xml,
+                "<project><version> 1.2.6 </version></project>",
+            ),
+        ];
+        for (format, content) in cases {
+            if let Ok(version) =
+                get_handler(format).read_version_from_bytes(content.as_bytes(), "f")
+            {
+                assert_eq!(version.trim(), version, "{format:?} on {content:?}");
+            }
+        }
+    }
 }
