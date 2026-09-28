@@ -1,5 +1,5 @@
 # Build stage
-FROM rustlang/rust:nightly-alpine AS builder
+FROM rust:1.98-alpine@sha256:7cc1c22d77d9432f7fe012a70e6d3e555af54c2a6832700ed7d553f1769ae89f AS builder
 RUN apk add --no-cache musl-dev openssl-dev openssl-libs-static pkgconfig cmake make
 ENV OPENSSL_NO_VENDOR=1
 WORKDIR /app
@@ -24,7 +24,7 @@ RUN mkdir -p benches && echo 'fn main() {}' > benches/ferrflow_benchmarks.rs \
     && cargo build --release --package ferrflow
 
 # Runtime stage
-FROM alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
+FROM alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
 RUN apk add --no-cache ca-certificates git \
     && git config --system --add safe.directory '*' \
     && git config --system user.name FerrFlow \
