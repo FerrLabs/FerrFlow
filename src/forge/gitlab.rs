@@ -336,6 +336,9 @@ impl Forge for GitLabForge {
 }
 
 #[cfg(test)]
+mod api_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 

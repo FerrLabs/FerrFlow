@@ -477,6 +477,9 @@ impl Forge for GitHubForge {
 }
 
 #[cfg(test)]
+mod api_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 

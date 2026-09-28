@@ -205,6 +205,9 @@ impl Forge for GiteaForge {
 }
 
 #[cfg(test)]
+mod api_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
