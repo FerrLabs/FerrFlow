@@ -102,6 +102,22 @@ fn parse_file_format(s: &str) -> FileFormat {
     }
 }
 
+fn question(text: &str, indented: bool) -> String {
+    if indented {
+        format!("  {text}")
+    } else {
+        text.to_string()
+    }
+}
+
+fn under(dir: &str, file: &str) -> String {
+    if dir == "." {
+        file.to_string()
+    } else {
+        format!("{dir}/{file}")
+    }
+}
+
 fn collect_package(path_default: &str, monorepo: bool) -> PackageConfig {
     let dir_name = std::env::current_dir()
         .ok()
@@ -112,49 +128,21 @@ fn collect_package(path_default: &str, monorepo: bool) -> PackageConfig {
         })
         .unwrap_or_else(|| "project".to_string());
 
-    let name = if monorepo {
-        prompt("  Package name", "")
-    } else {
-        prompt("Package name", &dir_name)
-    };
+    let name_default = if monorepo { "" } else { dir_name.as_str() };
+    let name = prompt(&question("Package name", monorepo), name_default);
 
-    let path = prompt(if monorepo { "  Path" } else { "Path" }, path_default);
+    let path = prompt(&question("Path", monorepo), path_default);
 
     let format_str = prompt_format(monorepo);
 
-    let version_file_default = default_version_file(&format_str);
-    let version_file_path = if path == "." {
-        prompt(
-            if monorepo {
-                "  Version file path"
-            } else {
-                "Version file path"
-            },
-            version_file_default,
-        )
-    } else {
-        prompt(
-            if monorepo {
-                "  Version file path"
-            } else {
-                "Version file path"
-            },
-            &format!("{path}/{version_file_default}"),
-        )
-    };
+    let version_file_path = prompt(
+        &question("Version file path", monorepo),
+        &under(&path, default_version_file(&format_str)),
+    );
 
-    let changelog_default = if path == "." {
-        "CHANGELOG.md".to_string()
-    } else {
-        format!("{path}/CHANGELOG.md")
-    };
     let changelog = prompt(
-        if monorepo {
-            "  Changelog path"
-        } else {
-            "Changelog path"
-        },
-        &changelog_default,
+        &question("Changelog path", monorepo),
+        &under(&path, "CHANGELOG.md"),
     );
 
     PackageConfig {
@@ -183,45 +171,46 @@ fn collect_package(path_default: &str, monorepo: bool) -> PackageConfig {
 
 const DEFAULT_MANIFEST_FILE: &str = ".ferrflow.manifest.json";
 
+fn ensure_no_config_exists() -> Result<()> {
+    let existing = CONFIG_FORMATS
+        .iter()
+        .map(|handler| handler.filename())
+        .chain([TS_CONFIG_FILENAME, JS_CONFIG_FILENAME])
+        .find(|filename| PathBuf::from(filename).exists());
+    if let Some(filename) = existing {
+        Err(anyhow::anyhow!("{filename} already exists"))
+            .error_code(error_code::CONFIG_ALREADY_EXISTS)?;
+    }
+    Ok(())
+}
+
+fn collect_packages(monorepo: bool) -> Vec<PackageConfig> {
+    if !monorepo {
+        return vec![collect_package(".", false)];
+    }
+    println!("Add packages (leave name empty to finish):");
+    let mut pkgs = Vec::new();
+    loop {
+        let pkg = collect_package("", true);
+        if !pkg.name.is_empty() {
+            pkgs.push(pkg);
+        } else if pkgs.is_empty() {
+            eprintln!("At least one package is required.");
+        } else {
+            return pkgs;
+        }
+    }
+}
+
 pub fn init(format: Option<ConfigFileFormat>, manifest: bool) -> Result<()> {
-    for handler in CONFIG_FORMATS {
-        let path = PathBuf::from(handler.filename());
-        if path.exists() {
-            Err(anyhow::anyhow!("{} already exists", handler.filename()))
-                .error_code(error_code::CONFIG_ALREADY_EXISTS)?;
-        }
-    }
-    for filename in [TS_CONFIG_FILENAME, JS_CONFIG_FILENAME] {
-        let path = PathBuf::from(filename);
-        if path.exists() {
-            Err(anyhow::anyhow!("{filename} already exists"))
-                .error_code(error_code::CONFIG_ALREADY_EXISTS)?;
-        }
-    }
+    ensure_no_config_exists()?;
 
     let fmt = format.unwrap_or_else(prompt_config_format);
     let handler = format_handler(fmt);
 
     let monorepo = prompt_bool("Is this a monorepo?", false);
 
-    let packages = if monorepo {
-        println!("Add packages (leave name empty to finish):");
-        let mut pkgs = Vec::new();
-        loop {
-            let pkg = collect_package("", true);
-            if pkg.name.is_empty() {
-                if pkgs.is_empty() {
-                    eprintln!("At least one package is required.");
-                    continue;
-                }
-                break;
-            }
-            pkgs.push(pkg);
-        }
-        pkgs
-    } else {
-        vec![collect_package(".", false)]
-    };
+    let packages = collect_packages(monorepo);
 
     let mut workspace = WorkspaceConfig::default();
     if manifest {

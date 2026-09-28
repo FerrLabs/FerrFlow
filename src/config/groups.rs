@@ -47,38 +47,45 @@ impl Config {
         let mut assigned: HashSet<&str> = HashSet::new();
 
         for group in &groups {
-            let kind = group.kind.label();
-            if group.members.len() < 2 {
-                errors.push(format!(
-                    "{kind} group {:?} must list at least two packages",
-                    group.members
-                ));
-            }
-            let mut seen_in_group: HashSet<&str> = HashSet::new();
-            for member in &group.members {
-                if !known.contains(member.as_str()) {
-                    errors.push(format!(
-                        "package '{member}' in a {kind} group is not defined in package[]"
-                    ));
-                }
-                if !seen_in_group.insert(member.as_str()) {
-                    errors.push(format!(
-                        "package '{member}' is listed twice in the same {kind} group"
-                    ));
-                    continue;
-                }
-                if !assigned.insert(member.as_str()) {
-                    errors.push(format!(
-                        "package '{member}' appears in more than one linked/fixed group"
-                    ));
-                }
-            }
+            check_group(group, &known, &mut assigned, &mut errors);
         }
 
         if errors.is_empty() {
             Ok(())
         } else {
             Err(errors)
+        }
+    }
+}
+
+fn check_group<'a>(
+    group: &'a PackageGroup,
+    known: &HashSet<&str>,
+    assigned: &mut HashSet<&'a str>,
+    errors: &mut Vec<String>,
+) {
+    let kind = group.kind.label();
+    if group.members.len() < 2 {
+        errors.push(format!(
+            "{kind} group {:?} must list at least two packages",
+            group.members
+        ));
+    }
+    let mut seen_in_group: HashSet<&str> = HashSet::new();
+    for member in &group.members {
+        if !known.contains(member.as_str()) {
+            errors.push(format!(
+                "package '{member}' in a {kind} group is not defined in package[]"
+            ));
+        }
+        if !seen_in_group.insert(member.as_str()) {
+            errors.push(format!(
+                "package '{member}' is listed twice in the same {kind} group"
+            ));
+        } else if !assigned.insert(member.as_str()) {
+            errors.push(format!(
+                "package '{member}' appears in more than one linked/fixed group"
+            ));
         }
     }
 }
