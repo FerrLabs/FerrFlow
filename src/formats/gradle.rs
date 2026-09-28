@@ -63,7 +63,7 @@ static VERSION_RE: OnceLock<Regex> = OnceLock::new();
 
 fn version_re() -> &'static Regex {
     VERSION_RE
-        .get_or_init(|| Regex::new(r#"(?m)^(\s*version\s*=\s*)(["'])([^"']+)(["'])"#).unwrap())
+        .get_or_init(|| Regex::new(r#"(?m)^(\s*version\s*=\s*)(["'])([^"'\s]+)(["'])"#).unwrap())
 }
 
 impl VersionFile for GradleVersionFile {

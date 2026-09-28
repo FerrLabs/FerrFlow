@@ -371,4 +371,21 @@ mod tests {
         };
         assert_eq!(read_version(&vf, dir.path()).unwrap(), "5.0.0");
     }
+
+    #[test]
+    fn quoted_versions_never_carry_whitespace() {
+        let cases: &[(FileFormat, &str)] = &[
+            (FileFormat::MixExs, "version: \"1.2.6\n\""),
+            (FileFormat::Gemspec, "s.version = ' 1.2.6'"),
+            (FileFormat::Gradle, "version = \"1.2.6 \""),
+            (FileFormat::PackageSwift, "let version = \"1.2.6\t\""),
+        ];
+        for (format, content) in cases {
+            let result = get_handler(format).read_version_from_bytes(content.as_bytes(), "f");
+            assert!(
+                result.is_err(),
+                "{format:?} accepted {content:?}: {result:?}"
+            );
+        }
+    }
 }

@@ -10,7 +10,7 @@ pub struct GemspecVersionFile;
 static VERSION_RE: OnceLock<Regex> = OnceLock::new();
 
 fn version_re() -> &'static Regex {
-    VERSION_RE.get_or_init(|| Regex::new(r#"(\.version\s*=\s*)(["'])([^"']+)(["'])"#).unwrap())
+    VERSION_RE.get_or_init(|| Regex::new(r#"(\.version\s*=\s*)(["'])([^"'\s]+)(["'])"#).unwrap())
 }
 
 impl VersionFile for GemspecVersionFile {
