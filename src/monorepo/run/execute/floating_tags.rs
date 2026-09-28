@@ -93,9 +93,44 @@ fn backward_from(repo: &Repository, float_tag: &str, version: &str) -> Option<St
     if !tag_exists(repo, float_tag) {
         return None;
     }
-    let old_msg = get_tag_message(repo, float_tag)?;
-    let old_ver = old_msg.strip_prefix("Release ")?;
+    release_ahead_of(&get_tag_message(repo, float_tag)?, version)
+}
+
+fn release_ahead_of(tag_message: &str, version: &str) -> Option<String> {
+    let old_ver = tag_message.trim().strip_prefix("Release ")?;
     let old = semver::Version::parse(old_ver.trim_start_matches('v')).ok()?;
     let new = semver::Version::parse(version.trim_start_matches('v')).ok()?;
     (new < old).then(|| old_ver.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::release_ahead_of;
+
+    #[test]
+    fn a_tag_message_with_a_trailing_newline_still_blocks_a_backward_move() {
+        assert_eq!(
+            release_ahead_of("Release 1.5.0\n", "1.4.2").as_deref(),
+            Some("1.5.0")
+        );
+    }
+
+    #[test]
+    fn a_forward_or_equal_move_is_not_backward() {
+        assert_eq!(release_ahead_of("Release 1.5.0\n", "1.6.0"), None);
+        assert_eq!(release_ahead_of("Release 1.5.0", "1.5.0"), None);
+    }
+
+    #[test]
+    fn a_v_prefixed_release_is_compared_by_version() {
+        assert_eq!(
+            release_ahead_of("Release v2.0.0\n", "v1.9.9").as_deref(),
+            Some("v2.0.0")
+        );
+    }
+
+    #[test]
+    fn a_message_ferrflow_did_not_write_never_blocks() {
+        assert_eq!(release_ahead_of("hand-made alias", "0.1.0"), None);
+    }
 }
