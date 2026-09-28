@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-import { spawnSync } from "child_process";
-import { existsSync } from "fs";
-import { join, dirname } from "path";
-import { fileURLToPath } from "url";
-import { createRequire } from "module";
-import { constants } from "os";
+import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
+import { constants } from "node:os";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);

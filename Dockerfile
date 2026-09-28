@@ -28,8 +28,8 @@ FROM alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec4
 RUN apk add --no-cache ca-certificates git \
     && git config --system --add safe.directory '*' \
     && git config --system user.name FerrFlow \
-    && git config --system user.email bot@ferrflow.com
-RUN adduser -D -u 1000 ferrflow
+    && git config --system user.email bot@ferrflow.com \
+    && adduser -D -u 1000 ferrflow
 COPY --from=builder /app/target/release/ferrflow /usr/local/bin/ferrflow
 USER ferrflow
 WORKDIR /repo
