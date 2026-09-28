@@ -1,24 +1,24 @@
-use anyhow::{Context, Result};
+mod floating_tags;
+mod release_commit;
+
+use anyhow::Result;
 use colored::Colorize;
 use rayon::prelude::*;
 use std::collections::HashMap;
 use std::path::Path;
 
-use crate::config::{Config, ReleaseCommitMode, ReleaseCommitScope};
+use crate::config::{Config, ReleaseCommitMode};
 use crate::error_code::{self, ErrorCodeExt};
-use crate::git::{
-    Remote, Repository, create_branch_and_commit, create_branch_and_commits, create_commit,
-    create_or_move_tag, create_tag, force_push_branch, force_push_tags, get_tag_message, push,
-    push_tags, release_branch_foreign_commit, tag_exists,
-};
+use crate::git::{Remote, Repository, create_tag, force_push_tags, push, push_tags};
 use crate::hooks::{HookContext, HookPoint, resolve_hook, resolve_on_failure, run_hook};
-use crate::versioning::truncate_version;
 
 use super::checkpoint::{Checkpoint, Phase};
 use super::summary::{PlannedTag, write_github_step_summary};
-use crate::forge::{Forge, MR_TITLE_MAX_CHARS, ReleaseResult};
-use crate::monorepo::preview::{ForgeUnavailable, build_forge_instance, try_build_forge_instance};
+use crate::forge::{Forge, ReleaseResult};
+use crate::monorepo::preview::{ForgeUnavailable, build_forge_instance};
 use crate::monorepo::util::{auto_stage_new_files, collect_dirty_files};
+use floating_tags::create_and_move_floating_tags;
+use release_commit::{ReleaseCommit, run_commit_or_pr};
 
 pub(super) struct ReleasePlan<'a> {
     pub repo: &'a Repository,
@@ -45,94 +45,137 @@ pub(super) fn execute_release(plan: &mut ReleasePlan<'_>) -> Result<()> {
     run_pre_commit_hooks(plan)?;
 
     let files_snapshot: Vec<String> = plan.files_to_commit.clone();
-    let mode = if plan.finalizing {
-        ReleaseCommitMode::None
-    } else {
-        plan.config.workspace.release_commit_mode
-    };
-    let scope = plan.config.workspace.release_commit_scope;
-
     let release_parts: Vec<String> = plan
         .tags_to_create
         .iter()
         .map(|t| format!("{} v{}", t.package, t.version))
         .collect();
-    let skip_ci = if plan.config.workspace.effective_skip_ci() {
-        " [skip ci]"
-    } else {
-        ""
-    };
+    let skip_ci = skip_ci_marker(plan.config);
     let commit_msg = super::commit_body::build_commit_message(
         &format!("chore(release): {}{skip_ci}", release_parts.join(", ")),
         plan.tags_to_create,
         plan.config.workspace.release_commit_body,
     );
+    let file_refs: Vec<&str> = files_snapshot.iter().map(String::as_str).collect();
+    let commit = ReleaseCommit {
+        mode: release_commit_mode(plan),
+        scope: plan.config.workspace.release_commit_scope,
+        file_refs: &file_refs,
+        message: &commit_msg,
+        release_parts: &release_parts,
+        skip_ci,
+    };
     let mut floating_tag_names: Vec<String> = Vec::new();
 
     if !plan.dry_run {
-        let file_refs: Vec<&str> = files_snapshot.iter().map(String::as_str).collect();
-        if !checkpoint_is_done(plan, Phase::CommitDone) {
-            run_commit_or_pr(
-                plan,
-                mode,
-                scope,
-                &file_refs,
-                &commit_msg,
-                &release_parts,
-                skip_ci,
-            )?;
-            if let (Some(cp), Some(id)) = (plan.checkpoint.as_mut(), plan.repo.head_id().ok()) {
-                cp.commit_sha = Some(id.to_string());
-            }
-            checkpoint_advance(plan, Phase::CommitDone)?;
-        } else if plan.verbose {
-            tracing::info!("  ↻ Resumed: skipping commit (already done)");
-        }
-        run_package_hooks(plan, HookPoint::PostCommit)?;
-        run_package_hooks(plan, HookPoint::PreTag)?;
-        if mode == ReleaseCommitMode::Pr {
-            // The release is only proposed at this point. Tagging here would
-            // label the pre-bump commit and make later runs report "nothing to
-            // release", which is what froze the PR before #934. Tags and
-            // releases are produced by the finalising run, once the release
-            // commit has landed on the target branch.
-        } else if !checkpoint_is_done(plan, Phase::TagsCreated) {
-            create_release_tags(plan)?;
-            create_and_move_floating_tags(plan, &mut floating_tag_names)?;
-            checkpoint_advance(plan, Phase::TagsCreated)?;
-        } else if plan.verbose {
-            tracing::info!("  ↻ Resumed: skipping tag creation (already done)");
-        }
-        run_package_hooks(plan, HookPoint::PostTag)?;
+        commit_and_tag(plan, &commit, &mut floating_tag_names)?;
     }
 
     run_package_hooks(plan, HookPoint::PrePublish)?;
 
     if !plan.dry_run {
-        if !checkpoint_is_done(plan, Phase::Pushed) {
-            push_refs(plan, mode, &floating_tag_names)?;
-            checkpoint_advance(plan, Phase::Pushed)?;
-        } else if plan.verbose {
-            tracing::info!("  ↻ Resumed: skipping push (already done)");
-        }
-        if mode == ReleaseCommitMode::Pr {
-            // Same reason as the tags above.
-        } else if !checkpoint_is_done(plan, Phase::ReleasesCreated) {
-            publish_releases(plan)?;
-            checkpoint_advance(plan, Phase::ReleasesCreated)?;
-        } else if plan.verbose {
-            tracing::info!("  ↻ Resumed: skipping publish (already done)");
-        }
+        push_and_publish(plan, commit.mode, &floating_tag_names)?;
     }
 
-    if !checkpoint_is_done(plan, Phase::PostPublishDone) {
-        run_post_publish_hooks(plan)?;
-        checkpoint_advance(plan, Phase::PostPublishDone)?;
-    } else if plan.verbose {
-        tracing::info!("  ↻ Resumed: skipping post-publish hooks (already done)");
-    }
+    run_phase(
+        plan,
+        Phase::PostPublishDone,
+        "  ↻ Resumed: skipping post-publish hooks (already done)",
+        run_post_publish_hooks,
+    )
+}
 
-    Ok(())
+fn release_commit_mode(plan: &ReleasePlan<'_>) -> ReleaseCommitMode {
+    if plan.finalizing {
+        ReleaseCommitMode::None
+    } else {
+        plan.config.workspace.release_commit_mode
+    }
+}
+
+fn skip_ci_marker(config: &Config) -> &'static str {
+    if config.workspace.effective_skip_ci() {
+        " [skip ci]"
+    } else {
+        ""
+    }
+}
+
+fn commit_and_tag(
+    plan: &mut ReleasePlan<'_>,
+    commit: &ReleaseCommit<'_>,
+    floating_tag_names: &mut Vec<String>,
+) -> Result<()> {
+    run_phase(
+        plan,
+        Phase::CommitDone,
+        "  ↻ Resumed: skipping commit (already done)",
+        |plan| {
+            run_commit_or_pr(plan, commit)?;
+            if let (Some(cp), Some(id)) = (plan.checkpoint.as_mut(), plan.repo.head_id().ok()) {
+                cp.commit_sha = Some(id.to_string());
+            }
+            Ok(())
+        },
+    )?;
+    run_package_hooks(plan, HookPoint::PostCommit)?;
+    run_package_hooks(plan, HookPoint::PreTag)?;
+    // The release is only proposed at this point. Tagging here would
+    // label the pre-bump commit and make later runs report "nothing to
+    // release", which is what froze the PR before #934. Tags and
+    // releases are produced by the finalising run, once the release
+    // commit has landed on the target branch.
+    if commit.mode != ReleaseCommitMode::Pr {
+        run_phase(
+            plan,
+            Phase::TagsCreated,
+            "  ↻ Resumed: skipping tag creation (already done)",
+            |plan| {
+                create_release_tags(plan)?;
+                create_and_move_floating_tags(plan, floating_tag_names)
+            },
+        )?;
+    }
+    run_package_hooks(plan, HookPoint::PostTag)
+}
+
+fn push_and_publish(
+    plan: &mut ReleasePlan<'_>,
+    mode: ReleaseCommitMode,
+    floating_tag_names: &[String],
+) -> Result<()> {
+    run_phase(
+        plan,
+        Phase::Pushed,
+        "  ↻ Resumed: skipping push (already done)",
+        |plan| push_refs(plan, mode, floating_tag_names),
+    )?;
+    // Same reason as the tags above.
+    if mode == ReleaseCommitMode::Pr {
+        return Ok(());
+    }
+    run_phase(
+        plan,
+        Phase::ReleasesCreated,
+        "  ↻ Resumed: skipping publish (already done)",
+        publish_releases,
+    )
+}
+
+fn run_phase<'a>(
+    plan: &mut ReleasePlan<'a>,
+    phase: Phase,
+    resumed: &str,
+    step: impl FnOnce(&mut ReleasePlan<'a>) -> Result<()>,
+) -> Result<()> {
+    if checkpoint_is_done(plan, phase) {
+        if plan.verbose {
+            tracing::info!("{resumed}");
+        }
+        return Ok(());
+    }
+    step(plan)?;
+    checkpoint_advance(plan, phase)
 }
 
 fn checkpoint_is_done(plan: &ReleasePlan<'_>, phase: Phase) -> bool {
@@ -184,234 +227,6 @@ fn release_branch_name(target_branch: &str) -> String {
     format!("ferrflow/release-{}", target_branch.replace('/', "-"))
 }
 
-fn authoring_forge(plan: &ReleasePlan<'_>) -> Option<Box<dyn crate::forge::Forge>> {
-    if !crate::bot_token::bot_mode_enabled() {
-        return None;
-    }
-    let forge = build_forge_instance(plan.repo, plan.config)?;
-    forge.authors_verified_commits().then_some(forge)
-}
-
-fn run_commit_or_pr(
-    plan: &mut ReleasePlan<'_>,
-    mode: ReleaseCommitMode,
-    scope: ReleaseCommitScope,
-    file_refs: &[&str],
-    commit_msg: &str,
-    release_parts: &[String],
-    skip_ci: &str,
-) -> Result<()> {
-    match mode {
-        ReleaseCommitMode::Commit => {
-            if scope == ReleaseCommitScope::PerPackage && plan.tags_to_create.len() > 1 {
-                for tag in plan.tags_to_create.iter() {
-                    if let Some(pkg_files) = plan.files_per_package.get(&tag.package) {
-                        let refs: Vec<&str> = pkg_files.iter().map(String::as_str).collect();
-                        let msg = super::commit_body::build_commit_message(
-                            &format!("chore(release): {} v{}{skip_ci}", tag.package, tag.version),
-                            std::slice::from_ref(tag),
-                            plan.config.workspace.release_commit_body,
-                        );
-                        create_commit(plan.repo, &refs, &msg)?;
-                    }
-                }
-                plan.shared_outputs
-                    .push("✓ Committed release changes (per-package)".to_string());
-            } else if let Some(forge) = authoring_forge(plan) {
-                let head = plan.repo.head_id()?.to_string();
-                super::authored_commit::author_on_branch(
-                    forge.as_ref(),
-                    plan.repo,
-                    plan.root,
-                    Remote::of(&plan.config.workspace),
-                    plan.target_branch,
-                    &head,
-                    file_refs,
-                    commit_msg,
-                )?;
-                plan.shared_outputs
-                    .push("✓ Committed release changes as ferrflow[bot] (verified)".to_string());
-            } else {
-                create_commit(plan.repo, file_refs, commit_msg)?;
-                plan.shared_outputs
-                    .push("✓ Committed release changes".to_string());
-            }
-        }
-        ReleaseCommitMode::Pr => {
-            let branch_name = release_branch_name(plan.target_branch);
-            let remote = Remote::of(&plan.config.workspace);
-
-            match release_branch_foreign_commit(plan.repo, remote, &branch_name, plan.target_branch)
-            {
-                Ok(Some(subject)) => {
-                    tracing::warn!(
-                        "{}",
-                        format!(
-                            "  Warning: release branch {branch_name} has a commit FerrFlow didn't \
-                             author (\"{subject}\"); leaving it and the existing release PR untouched."
-                        )
-                        .yellow()
-                    );
-                    return Ok(());
-                }
-                Ok(None) => {}
-                Err(err) => tracing::warn!(
-                    "{}",
-                    format!("  Warning: could not inspect release branch {branch_name}: {err}")
-                        .yellow()
-                ),
-            }
-
-            let authored;
-            if scope == ReleaseCommitScope::PerPackage && plan.tags_to_create.len() > 1 {
-                let commit_list: Vec<(Vec<&str>, String)> = plan
-                    .tags_to_create
-                    .iter()
-                    .filter_map(|tag| {
-                        plan.files_per_package.get(&tag.package).map(|pf| {
-                            let refs: Vec<&str> = pf.iter().map(String::as_str).collect();
-                            let msg = super::commit_body::build_commit_message(
-                                &format!(
-                                    "chore(release): {} v{}{skip_ci}",
-                                    tag.package, tag.version
-                                ),
-                                std::slice::from_ref(tag),
-                                plan.config.workspace.release_commit_body,
-                            );
-                            (refs, msg)
-                        })
-                    })
-                    .collect();
-                let commit_refs: Vec<(&[&str], &str)> = commit_list
-                    .iter()
-                    .map(|(f, m)| (f.as_slice(), m.as_str()))
-                    .collect();
-                create_branch_and_commits(plan.repo, &branch_name, &commit_refs)?;
-                authored = false;
-            } else if let Some(forge) = authoring_forge(plan) {
-                // The branch has to exist before the mutation can commit onto
-                // it, and it is recreated from the target branch on every run.
-                let head = plan.repo.head_id()?.to_string();
-                forge.set_branch(&branch_name, &head)?;
-                super::authored_commit::author_on_branch(
-                    forge.as_ref(),
-                    plan.repo,
-                    plan.root,
-                    remote,
-                    &branch_name,
-                    &head,
-                    file_refs,
-                    commit_msg,
-                )?;
-                // author_on_branch leaves the checkout on the release branch;
-                // the rest of the run expects the target branch.
-                crate::git::reset_branch_to_remote(plan.repo, remote, plan.target_branch)?;
-                authored = true;
-            } else {
-                create_branch_and_commit(plan.repo, &branch_name, file_refs, commit_msg)?;
-                authored = false;
-            }
-            if !authored {
-                force_push_branch(plan.repo, remote, &branch_name)?;
-            }
-            plan.shared_outputs
-                .push(format!("✓ Pushed branch {}", branch_name.cyan()));
-
-            match plan.forge {
-                Some(forge) => open_or_update_release_mr(plan, forge, &branch_name, release_parts)?,
-                None => {
-                    let instance = try_build_forge_instance(plan.repo, plan.config)
-                        .map_err(|reason| forge_unavailable(&branch_name, reason))?;
-                    open_or_update_release_mr(
-                        plan,
-                        instance.as_ref(),
-                        &branch_name,
-                        release_parts,
-                    )?;
-                }
-            }
-        }
-        ReleaseCommitMode::None => {}
-    }
-    Ok(())
-}
-
-fn open_or_update_release_mr(
-    plan: &mut ReleasePlan<'_>,
-    forge: &dyn Forge,
-    branch_name: &str,
-    release_parts: &[String],
-) -> Result<()> {
-    let pr_title = release_pr_title(release_parts, MR_TITLE_MAX_CHARS);
-    let pr_body = format!(
-        "Automated release commit.\n\n{}",
-        plan.tags_to_create
-            .iter()
-            .map(|t| format!("- `{}`", t.tag))
-            .collect::<Vec<_>>()
-            .join("\n")
-    );
-
-    let existing = forge
-        .find_open_pr(branch_name, plan.target_branch)
-        .with_context(|| {
-            format!(
-                "could not look up the release {} for branch {branch_name}",
-                forge.mr_noun()
-            )
-        })?;
-
-    let (result, verb, action) = match existing {
-        Some(id) => (
-            forge.update_merge_request(id, &pr_title, &pr_body),
-            "Updated",
-            "update",
-        ),
-        None => (
-            forge.create_merge_request(branch_name, plan.target_branch, &pr_title, &pr_body),
-            "Created",
-            "create",
-        ),
-    };
-
-    match result {
-        Ok(mr) => {
-            plan.shared_outputs.push(format!(
-                "✓ {verb} {} #{}",
-                forge.mr_noun(),
-                mr.id.to_string().cyan()
-            ));
-            run_release_summary_hook(plan, HookPoint::PreRelease)?;
-            if plan.config.workspace.auto_merge_releases {
-                match forge.enable_auto_merge(&mr) {
-                    Ok(()) => plan.shared_outputs.push("✓ Auto-merge enabled".to_string()),
-                    Err(err) => tracing::warn!(
-                        "{}",
-                        format!("  Warning: failed to enable auto-merge: {err}").yellow()
-                    ),
-                }
-            }
-        }
-        Err(err) if !forge.supports_merge_requests() => tracing::warn!(
-            "{}",
-            format!(
-                "  Warning: could not {action} the release {}: {err}",
-                forge.mr_noun()
-            )
-            .yellow()
-        ),
-        Err(err) => {
-            return Err(err).with_context(|| {
-                format!(
-                    "failed to {action} the release {} for branch {branch_name}",
-                    forge.mr_noun()
-                )
-            });
-        }
-    }
-    Ok(())
-}
-
 pub(super) fn forge_unavailable(branch: &str, reason: ForgeUnavailable) -> anyhow::Error {
     anyhow::anyhow!("cannot open the release pull request for branch {branch}: {reason}")
 }
@@ -459,87 +274,6 @@ fn create_release_tags(plan: &mut ReleasePlan<'_>) -> Result<()> {
             .find(|(n, _)| n == &t.package)
         {
             lines.push(format!("  ✓ Created tag {}", t.tag.cyan()));
-        }
-    }
-    Ok(())
-}
-
-fn create_and_move_floating_tags(
-    plan: &mut ReleasePlan<'_>,
-    floating_tag_names: &mut Vec<String>,
-) -> Result<()> {
-    for t in plan.tags_to_create {
-        if t.is_prerelease {
-            continue;
-        }
-        let pkg = plan
-            .config
-            .packages
-            .iter()
-            .find(|p| p.name == t.package)
-            .ok_or_else(|| anyhow::anyhow!("package '{}' not found in config", t.package))
-            .error_code(error_code::MONOREPO_PACKAGE_NOT_FOUND)?;
-        if let Some(alias) = pkg.latest_tag_name(&plan.config.workspace) {
-            let msg = format!("Release {}", t.version);
-            let moved = create_or_move_tag(plan.repo, &alias, &msg)?;
-            let verb = if moved { "Moved" } else { "Created" };
-            if let Some((_, lines)) = plan
-                .pkg_outputs
-                .iter_mut()
-                .rev()
-                .find(|(n, _)| n == &t.package)
-            {
-                lines.push(format!("  ✓ {} floating tag {}", verb, alias.cyan()));
-            }
-            floating_tag_names.push(alias);
-        }
-        let levels = pkg.effective_floating_tags(&plan.config.workspace);
-        for level in levels {
-            if let Some(truncated) = truncate_version(&t.version, *level) {
-                let float_tag = pkg.tag_for_version(
-                    &plan.config.workspace,
-                    plan.config.is_monorepo(),
-                    &truncated,
-                );
-                if tag_exists(plan.repo, &float_tag)
-                    && let Some(old_msg) = get_tag_message(plan.repo, &float_tag)
-                    && let Some(old_ver) = old_msg.strip_prefix("Release ")
-                    && semver::Version::parse(old_ver.trim_start_matches('v'))
-                        .ok()
-                        .zip(semver::Version::parse(t.version.trim_start_matches('v')).ok())
-                        .is_some_and(|(old, new)| new < old)
-                {
-                    if !plan.force {
-                        Err(anyhow::anyhow!(
-                            "Floating tag {} would move backward ({} → {}). Use --force to override.",
-                            float_tag,
-                            old_ver,
-                            t.version,
-                        ))
-                        .error_code(error_code::MONOREPO_PUSH_FAILED)?;
-                    }
-                    tracing::warn!(
-                        "{}",
-                        format!(
-                            "  ⚠ Floating tag {} moves backward ({} → {})",
-                            float_tag, old_ver, t.version,
-                        )
-                        .yellow()
-                    );
-                }
-                let msg = format!("Release {}", t.version);
-                let moved = create_or_move_tag(plan.repo, &float_tag, &msg)?;
-                let verb = if moved { "Moved" } else { "Created" };
-                if let Some((_, lines)) = plan
-                    .pkg_outputs
-                    .iter_mut()
-                    .rev()
-                    .find(|(n, _)| n == &t.package)
-                {
-                    lines.push(format!("  ✓ {} floating tag {}", verb, float_tag.cyan()));
-                }
-                floating_tag_names.push(float_tag);
-            }
         }
     }
     Ok(())
