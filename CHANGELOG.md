@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.26.12] - 2026-09-28
+
+### Bug Fixes
+
+- fix(docker): build the real ferrflow binary instead of the cache stub (#1240)
+
 ## [7.26.11] - 2026-09-28
 
 ### Bug Fixes
