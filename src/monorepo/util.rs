@@ -81,3 +81,6 @@ pub(super) fn is_package_touched(
 ) -> bool {
     pkg.is_touched_by(changed_files, is_monorepo)
 }
+
+#[cfg(test)]
+mod tests;

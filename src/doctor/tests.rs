@@ -365,3 +365,408 @@ fn a_known_forge_without_its_token_warns() {
         Status::Ok
     );
 }
+
+mod sections {
+    use super::{Check, Section, Status};
+    use crate::config::Config;
+    use crate::doctor::checks;
+    use crate::git::open_repo;
+    use crate::test_utils::{commit_file, git, init_repo, with_cwd};
+    use std::path::Path;
+
+    fn write(dir: &Path, rel: &str, content: &str) {
+        let path = dir.join(rel);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, content).unwrap();
+    }
+
+    fn find<'a>(section: &'a Section, name: &str) -> &'a Check {
+        section
+            .checks
+            .iter()
+            .find(|c| c.name == name)
+            .unwrap_or_else(|| panic!("missing check '{name}' in {:?}", section.checks))
+    }
+
+    fn detail(check: &Check) -> &str {
+        check.detail.as_deref().unwrap_or_default()
+    }
+
+    fn config_from(root: &Path, json: &str) -> Config {
+        write(root, ".ferrflow", json);
+        Config::load(root, Some(&root.join(".ferrflow"))).unwrap()
+    }
+
+    fn repo_section(root: &Path, config: Option<&Config>) -> Section {
+        let repo = open_repo(root).unwrap();
+        checks::repo_section(Some(&repo), config, root)
+    }
+
+    #[test]
+    fn a_missing_repository_is_the_only_repo_check() {
+        let dir = tempfile::tempdir().unwrap();
+        let section = checks::repo_section(None, None, dir.path());
+        assert_eq!(section.checks.len(), 1);
+        assert_eq!(section.checks[0].status, Status::Error);
+        assert!(detail(&section.checks[0]).contains("git init"));
+    }
+
+    #[test]
+    fn uncommitted_changes_are_counted_and_warned_about() {
+        let (dir, _repo) = init_repo();
+        let root = dir.path();
+        commit_file(root, "a.txt", "x", "chore: seed", 1_900_000_000);
+
+        assert_eq!(
+            find(&repo_section(root, None), "working tree clean").status,
+            Status::Ok
+        );
+
+        write(root, "b.txt", "new");
+        let one = repo_section(root, None);
+        let check = find(&one, "working tree clean");
+        assert_eq!(check.status, Status::Warn);
+        assert!(
+            detail(check).starts_with("1 uncommitted change;"),
+            "{check:?}"
+        );
+
+        write(root, "a.txt", "changed");
+        let two = repo_section(root, None);
+        assert!(
+            detail(find(&two, "working tree clean")).starts_with("2 uncommitted changes;"),
+            "{:?}",
+            two.checks
+        );
+    }
+
+    #[test]
+    fn a_committed_head_is_shown_abbreviated() {
+        let (dir, _repo) = init_repo();
+        let root = dir.path();
+        commit_file(root, "a.txt", "x", "chore: seed", 1_900_000_000);
+        let head = git(root, &["rev-parse", "HEAD"]);
+
+        let section = repo_section(root, None);
+        let check = find(&section, "commit history");
+        assert_eq!(check.status, Status::Ok);
+        assert_eq!(detail(check), format!("HEAD at {}", &head[..7]));
+    }
+
+    #[test]
+    fn credentials_in_the_remote_url_are_never_printed() {
+        let (dir, _repo) = init_repo();
+        let root = dir.path();
+        git(
+            root,
+            &[
+                "remote",
+                "add",
+                "origin",
+                "https://bot:s3cr3t@github.com/acme/app.git",
+            ],
+        );
+
+        let section = repo_section(root, None);
+        let check = find(&section, "remote configured");
+        assert_eq!(check.status, Status::Ok);
+        assert_eq!(detail(check), "origin → https://github.com/acme/app.git");
+    }
+
+    #[test]
+    fn the_configured_remote_name_is_the_one_checked() {
+        let (dir, _repo) = init_repo();
+        let root = dir.path();
+        git(
+            root,
+            &["remote", "add", "origin", "https://github.com/acme/app.git"],
+        );
+        let config = config_from(
+            root,
+            r#"{"workspace":{"remote":"upstream"},"package":[{"name":"app","path":".","versionedFiles":[{"path":"Cargo.toml","format":"toml"}]}]}"#,
+        );
+
+        let section = repo_section(root, Some(&config));
+        let check = find(&section, "remote configured");
+        assert_eq!(check.status, Status::Warn);
+        assert!(detail(check).contains("no 'upstream' remote"), "{check:?}");
+    }
+
+    #[test]
+    fn tags_are_counted_and_their_absence_is_only_informational() {
+        let (dir, _repo) = init_repo();
+        let root = dir.path();
+        commit_file(root, "a.txt", "x", "chore: seed", 1_900_000_000);
+
+        assert_eq!(
+            find(&repo_section(root, None), "tags present").status,
+            Status::Info
+        );
+
+        git(root, &["tag", "v1.0.0"]);
+        assert_eq!(
+            detail(find(&repo_section(root, None), "tags present")),
+            "1 local tag"
+        );
+
+        git(root, &["tag", "v1.1.0"]);
+        assert_eq!(
+            detail(find(&repo_section(root, None), "tags present")),
+            "2 local tags"
+        );
+    }
+
+    #[test]
+    fn no_config_file_warns_that_versions_are_auto_detected() {
+        let dir = tempfile::tempdir().unwrap();
+        let section = checks::config_section(None, None, &[], dir.path());
+        let check = find(&section, "config file");
+        assert_eq!(check.status, Status::Warn);
+        assert!(detail(check).contains("ferrflow init"));
+    }
+
+    #[test]
+    fn a_config_that_fails_to_load_is_an_error_carrying_the_reason() {
+        let dir = tempfile::tempdir().unwrap();
+        let discovered = vec![dir.path().join("ferrflow.json")];
+        let section = checks::config_section(
+            None,
+            Some("expected value at line 1"),
+            &discovered,
+            dir.path(),
+        );
+
+        assert_eq!(find(&section, "config file").status, Status::Ok);
+        let parses = find(&section, "config parses");
+        assert_eq!(parses.status, Status::Error);
+        assert_eq!(detail(parses), "expected value at line 1");
+        assert_eq!(section.checks.len(), 2);
+    }
+
+    #[test]
+    fn versioning_is_skipped_without_a_parsed_config() {
+        let dir = tempfile::tempdir().unwrap();
+        let section = checks::versioning_section(None, dir.path());
+        assert_eq!(section.checks.len(), 1);
+        assert!(detail(&section.checks[0]).contains("skipped"));
+    }
+
+    #[test]
+    fn versioning_reports_each_package_current_version_and_the_declared_strategy() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        write(
+            root,
+            "api/Cargo.toml",
+            "[package]\nname = \"api\"\nversion = \"2.3.4\"\n",
+        );
+        let config = config_from(
+            root,
+            r#"{"workspace":{"versioning":"calver"},"package":[
+                {"name":"api","path":"api","versionedFiles":[{"path":"api/Cargo.toml","format":"toml"}]},
+                {"name":"web","path":"web","versionedFiles":[{"path":"web/package.json","format":"json"}]}
+            ]}"#,
+        );
+
+        let section = checks::versioning_section(Some(&config), root);
+
+        assert_eq!(detail(find(&section, "strategy")), "declared: calver");
+        assert_eq!(detail(find(&section, "api")), "v2.3.4");
+        assert_eq!(
+            detail(find(&section, "web")),
+            "vunknown",
+            "a missing version file must not abort the report"
+        );
+    }
+
+    #[test]
+    fn an_undeclared_strategy_is_reported_as_auto_detected() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = config_from(
+            dir.path(),
+            r#"{"package":[{"name":"app","path":".","versionedFiles":[{"path":"Cargo.toml","format":"toml"}]}]}"#,
+        );
+        let section = checks::versioning_section(Some(&config), dir.path());
+        assert!(detail(find(&section, "strategy")).starts_with("auto-detected"));
+    }
+
+    #[test]
+    fn the_forge_is_read_from_the_remote_url() {
+        let (dir, _repo) = init_repo();
+        git(
+            dir.path(),
+            &["remote", "add", "origin", "https://github.com/acme/app.git"],
+        );
+        let repo = open_repo(dir.path()).unwrap();
+        let section = checks::forge_section(Some(&repo), None, false);
+        let check = find(&section, "forge");
+        assert_eq!(check.status, Status::Ok);
+        assert_eq!(detail(check), "GitHub (from remote URL)");
+    }
+
+    #[test]
+    fn a_configured_forge_counts_even_without_a_remote() {
+        let (dir, repo) = init_repo();
+        let config = config_from(
+            dir.path(),
+            r#"{"workspace":{"forge":"gitlab"},"package":[{"name":"app","path":".","versionedFiles":[{"path":"Cargo.toml","format":"toml"}]}]}"#,
+        );
+        let section = checks::forge_section(Some(&repo), Some(&config), true);
+
+        assert_eq!(detail(find(&section, "forge")), "GitLab (from config)");
+        let reachable = find(&section, "forge reachable");
+        assert_eq!(reachable.status, Status::Info);
+        assert!(detail(reachable).contains("not implemented for GitLab"));
+    }
+
+    #[test]
+    fn an_unknown_forge_warns_and_has_nothing_to_reach() {
+        let (_dir, repo) = init_repo();
+        let section = checks::forge_section(Some(&repo), None, true);
+        assert_eq!(find(&section, "forge").status, Status::Warn);
+        assert_eq!(
+            detail(find(&section, "forge reachable")),
+            "no forge to reach"
+        );
+    }
+
+    #[test]
+    fn the_online_check_only_runs_when_asked() {
+        let (_dir, repo) = init_repo();
+        let section = checks::forge_section(Some(&repo), None, false);
+        assert!(section.checks.iter().all(|c| c.name != "forge reachable"));
+    }
+
+    #[test]
+    fn gitlab_and_forgejo_pipelines_are_recognised() {
+        let gitlab = tempfile::tempdir().unwrap();
+        write(gitlab.path(), ".gitlab-ci.yml", "stages: []\n");
+        assert_eq!(
+            detail(find(&checks::ci_section(gitlab.path()), "workflows")),
+            ".gitlab-ci.yml"
+        );
+
+        let forgejo = tempfile::tempdir().unwrap();
+        write(forgejo.path(), ".forgejo/workflows/ci.yml", "on: push\n");
+        assert_eq!(
+            detail(find(&checks::ci_section(forgejo.path()), "workflows")),
+            ".forgejo/workflows/"
+        );
+
+        let none = tempfile::tempdir().unwrap();
+        assert_eq!(
+            find(&checks::ci_section(none.path()), "workflows").status,
+            Status::Info
+        );
+    }
+
+    #[test]
+    fn a_quoted_legacy_action_reference_is_found() {
+        let dir = tempfile::tempdir().unwrap();
+        write(
+            dir.path(),
+            ".github/workflows/release.yaml",
+            "steps:\n  - uses: \"FerrFlow-Org/ferrflow@v3\"\n",
+        );
+        let section = checks::ci_section(dir.path());
+        let action = find(&section, "FerrFlow action");
+        assert_eq!(action.status, Status::Ok);
+        assert_eq!(detail(action), "FerrFlow-Org/ferrflow@v3");
+    }
+
+    #[test]
+    fn only_yaml_files_are_scanned_for_the_action() {
+        let dir = tempfile::tempdir().unwrap();
+        write(
+            dir.path(),
+            ".github/workflows/README.md",
+            "uses: FerrLabs/FerrFlow@v4\n",
+        );
+        write(
+            dir.path(),
+            ".github/workflows/ci.yml",
+            "steps:\n  - uses: actions/checkout@v4\n",
+        );
+        let section = checks::ci_section(dir.path());
+        assert_eq!(find(&section, "FerrFlow action").status, Status::Info);
+    }
+
+    #[test]
+    fn doctor_run_from_a_subdirectory_inspects_the_repository_root() {
+        let (dir, _repo) = init_repo();
+        let root = dir.path();
+        write(
+            root,
+            "Cargo.toml",
+            "[package]\nname = \"app\"\nversion = \"1.0.0\"\n",
+        );
+        write(
+            root,
+            ".ferrflow",
+            r#"{"package":[{"name":"app","path":".","versionedFiles":[{"path":"Cargo.toml","format":"toml"}]}]}"#,
+        );
+        write(root, ".github/workflows/ci.yml", "on: push\n");
+        std::fs::create_dir_all(root.join("src/deep")).unwrap();
+
+        let mut report = None;
+        with_cwd(&root.join("src/deep"), || {
+            report = Some(crate::doctor::build_report(None, false));
+            Ok(())
+        })
+        .unwrap();
+        let report = report.unwrap().unwrap();
+
+        let section = |title: &str| {
+            report
+                .sections
+                .iter()
+                .find(|s| s.title == title)
+                .unwrap_or_else(|| panic!("missing section {title}"))
+        };
+        assert_eq!(detail(find(section("Config"), "config file")), ".ferrflow");
+        assert_eq!(detail(find(section("Versioning"), "app")), "v1.0.0");
+        assert_eq!(find(section("CI"), "workflows").status, Status::Ok);
+    }
+
+    #[test]
+    fn doctor_outside_a_repository_fails_with_exit_code_two() {
+        let dir = tempfile::tempdir().unwrap();
+
+        let mut report = None;
+        with_cwd(dir.path(), || {
+            report = Some(crate::doctor::build_report(None, false));
+            Ok(())
+        })
+        .unwrap();
+        let report = report.unwrap().unwrap();
+
+        assert_eq!(report.exit_code, 2);
+        assert_eq!(report.status, Status::Error);
+        assert_eq!(report.sections[0].checks[0].name, "git repository");
+        assert_eq!(report.sections[0].checks[0].status, Status::Error);
+    }
+
+    #[test]
+    fn an_explicit_config_path_that_does_not_exist_is_reported_not_fatal() {
+        let (dir, _repo) = init_repo();
+
+        let mut report = None;
+        with_cwd(dir.path(), || {
+            report = Some(crate::doctor::build_report(
+                Some(Path::new("missing.json")),
+                false,
+            ));
+            Ok(())
+        })
+        .unwrap();
+        let report = report.unwrap().unwrap();
+
+        let config = report
+            .sections
+            .iter()
+            .find(|s| s.title == "Config")
+            .unwrap();
+        assert_eq!(find(config, "config parses").status, Status::Error);
+        assert_eq!(report.exit_code, 2);
+    }
+}
