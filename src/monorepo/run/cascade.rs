@@ -3,7 +3,7 @@ use std::path::Path;
 
 use colored::Colorize;
 
-use crate::config::{Config, PropagatePolicy};
+use crate::config::{Config, PackageConfig, PropagatePolicy, VersionedFile};
 use crate::conventional_commits::BumpType;
 use crate::formats::dependents::{plan_dependency_update, supports_dependency_updates};
 use crate::formats::{get_handler, read_version, write_version};
@@ -57,141 +57,205 @@ pub(super) fn run_dependency_cascade(
         .collect();
     super::build_metadata::capture_more(config, &cascaded, root, dry_run, captured_metadata)?;
     for (pkg_idx, bump) in settled.order {
-        {
-            let pkg = &config.packages[pkg_idx];
-            let Some(vf) = pkg.versioned_files.first() else {
-                continue;
-            };
-            let Ok(current_version) = read_version(vf, root) else {
-                continue;
-            };
-            let pkg_tag_prefix = pkg.tag_prefix(&config.workspace, config.is_monorepo());
-            let strategy = pkg.effective_versioning(&config.workspace, || {
-                tags_for_package(all_tags, &pkg_tag_prefix)
-            });
-            let version_template = pkg.effective_version_template(&config.workspace);
-            let Ok(new_version) =
-                compute_next_version(&current_version, bump, strategy, version_template)
-            else {
-                continue;
-            };
-            if current_version == new_version {
-                continue;
-            }
-            let tag = pkg.tag_for_version(&config.workspace, config.is_monorepo(), &new_version);
-            let dep_trigger: Vec<&str> = pkg
-                .depends_on
-                .iter()
-                .filter(|dep| {
-                    settled
-                        .state
-                        .get(dep.name())
-                        .is_some_and(|up| dep.propagate().resolve(*up) != BumpType::None)
-                })
-                .map(|dep| dep.name())
-                .collect();
-
-            if release_json {
-                sink.released.push(ReleasedPackage {
-                    package: pkg.name.clone(),
-                    previous_version: current_version.clone(),
-                    new_version: new_version.clone(),
-                    bump_type: bump.to_string(),
-                    tag: tag.clone(),
-                    commit_count: 0,
-                    prerelease: false,
-                    version_source: Some(VersionSource::File {
-                        file: vf.path.clone(),
-                    }),
-                    forge_release_url: None,
-                    forge_release_id: None,
-                });
-            }
-
-            if json {
-                sink.json_packages.push(CheckPackage {
-                    name: pkg.name.clone(),
-                    current_version: current_version.clone(),
-                    next_version: new_version.clone(),
-                    bump_type: bump.to_string(),
-                    tag: tag.clone(),
-                    channel: channel.map(str::to_string),
-                    prerelease: false,
-                    version_source: Some(VersionSource::File {
-                        file: vf.path.clone(),
-                    }),
-                    commits: vec![],
-                });
-            } else {
-                let mut lines = vec![format!(
-                    "{} {}  {} → {}  ({}, dependency: {})",
-                    "●".green().bold(),
-                    pkg.name.bold(),
-                    current_version.dimmed(),
-                    new_version.green().bold(),
-                    bump.to_string().cyan(),
-                    dep_trigger.join(", ").cyan()
-                )];
-                if !dry_run {
-                    let stamped =
-                        super::build_metadata::stamp(config, pkg, captured_metadata, &new_version);
-                    for vf in &pkg.versioned_files {
-                        write_version(vf, root, &stamped)?;
-                        if get_handler(&vf.format).modifies_file() {
-                            lines.push(format!("  ✓ Updated {}", vf.path));
-                            sink.files_to_commit.push(vf.path.clone());
-                            sink.files_per_package
-                                .entry(pkg.name.clone())
-                                .or_default()
-                                .push(vf.path.clone());
-                        }
-                    }
-                    if let Some(changelog_rel) = &pkg.changelog {
-                        let changelog_path = root.join(changelog_rel);
-                        update_changelog(
-                            &changelog_path,
-                            &pkg.name,
-                            &new_version,
-                            &[],
-                            bump,
-                            false,
-                        )?;
-                        sink.files_to_commit.push(changelog_rel.clone());
-                        sink.files_per_package
-                            .entry(pkg.name.clone())
-                            .or_default()
-                            .push(changelog_rel.clone());
-                    }
-                    if pkg.effective_update_lockfiles(&config.workspace) {
-                        super::refresh_lockfiles(
-                            pkg,
-                            root,
-                            sink.files_to_commit,
-                            sink.files_per_package.entry(pkg.name.clone()).or_default(),
-                        );
-                    }
-                }
-                sink.pkg_outputs.push((pkg.name.clone(), lines));
-            }
-            let body = format!("Dependency update: {}", dep_trigger.join(", "));
-            sink.tags_to_create.push(PlannedTag {
-                tag,
-                message: format!(
-                    "Release {}",
-                    pkg.tag_for_version(&config.workspace, config.is_monorepo(), &new_version)
-                ),
-                body,
-                package: pkg.name.clone(),
-                version: new_version.clone(),
-                commit_count: 0,
-                is_prerelease: false,
-            });
-            sink.bumped.insert(pkg.name.clone(), bump);
-            sink.bumped_versions.insert(pkg.name.clone(), new_version);
-            *sink.any_bumped = true;
+        let Some(release) = resolve_cascaded(config, root, all_tags, &settled.state, pkg_idx, bump)
+        else {
+            continue;
+        };
+        if release_json {
+            sink.released.push(release.released_package());
         }
+        if json {
+            sink.json_packages.push(release.check_package(channel));
+        } else {
+            let lines = cascaded_output(config, root, dry_run, sink, captured_metadata, &release)?;
+            sink.pkg_outputs.push((release.pkg.name.clone(), lines));
+        }
+        release.record(config, sink);
     }
     Ok(())
+}
+
+struct CascadedRelease<'a> {
+    pkg: &'a PackageConfig,
+    vf: &'a VersionedFile,
+    bump: BumpType,
+    current_version: String,
+    new_version: String,
+    tag: String,
+    dep_trigger: Vec<&'a str>,
+}
+
+fn resolve_cascaded<'a>(
+    config: &'a Config,
+    root: &Path,
+    all_tags: &[String],
+    state: &HashMap<String, BumpType>,
+    pkg_idx: usize,
+    bump: BumpType,
+) -> Option<CascadedRelease<'a>> {
+    let pkg = &config.packages[pkg_idx];
+    let vf = pkg.versioned_files.first()?;
+    let current_version = read_version(vf, root).ok()?;
+    let pkg_tag_prefix = pkg.tag_prefix(&config.workspace, config.is_monorepo());
+    let strategy = pkg.effective_versioning(&config.workspace, || {
+        tags_for_package(all_tags, &pkg_tag_prefix)
+    });
+    let version_template = pkg.effective_version_template(&config.workspace);
+    let new_version =
+        compute_next_version(&current_version, bump, strategy, version_template).ok()?;
+    if current_version == new_version {
+        return None;
+    }
+    let tag = pkg.tag_for_version(&config.workspace, config.is_monorepo(), &new_version);
+    let dep_trigger = pkg
+        .depends_on
+        .iter()
+        .filter(|dep| {
+            state
+                .get(dep.name())
+                .is_some_and(|up| dep.propagate().resolve(*up) != BumpType::None)
+        })
+        .map(|dep| dep.name())
+        .collect();
+    Some(CascadedRelease {
+        pkg,
+        vf,
+        bump,
+        current_version,
+        new_version,
+        tag,
+        dep_trigger,
+    })
+}
+
+impl CascadedRelease<'_> {
+    fn version_source(&self) -> Option<VersionSource> {
+        Some(VersionSource::File {
+            file: self.vf.path.clone(),
+        })
+    }
+
+    fn released_package(&self) -> ReleasedPackage {
+        ReleasedPackage {
+            package: self.pkg.name.clone(),
+            previous_version: self.current_version.clone(),
+            new_version: self.new_version.clone(),
+            bump_type: self.bump.to_string(),
+            tag: self.tag.clone(),
+            commit_count: 0,
+            prerelease: false,
+            version_source: self.version_source(),
+            forge_release_url: None,
+            forge_release_id: None,
+        }
+    }
+
+    fn check_package(&self, channel: Option<&str>) -> CheckPackage {
+        CheckPackage {
+            name: self.pkg.name.clone(),
+            current_version: self.current_version.clone(),
+            next_version: self.new_version.clone(),
+            bump_type: self.bump.to_string(),
+            tag: self.tag.clone(),
+            channel: channel.map(str::to_string),
+            prerelease: false,
+            version_source: self.version_source(),
+            commits: vec![],
+        }
+    }
+
+    fn record(self, config: &Config, sink: &mut CascadeSink<'_>) {
+        let pkg = self.pkg;
+        let body = format!("Dependency update: {}", self.dep_trigger.join(", "));
+        sink.tags_to_create.push(PlannedTag {
+            tag: self.tag,
+            message: format!(
+                "Release {}",
+                pkg.tag_for_version(&config.workspace, config.is_monorepo(), &self.new_version)
+            ),
+            body,
+            package: pkg.name.clone(),
+            version: self.new_version.clone(),
+            commit_count: 0,
+            is_prerelease: false,
+        });
+        sink.bumped.insert(pkg.name.clone(), self.bump);
+        sink.bumped_versions
+            .insert(pkg.name.clone(), self.new_version);
+        *sink.any_bumped = true;
+    }
+}
+
+fn cascaded_output(
+    config: &Config,
+    root: &Path,
+    dry_run: bool,
+    sink: &mut CascadeSink<'_>,
+    captured_metadata: &HashMap<String, String>,
+    release: &CascadedRelease<'_>,
+) -> anyhow::Result<Vec<String>> {
+    let mut lines = vec![format!(
+        "{} {}  {} → {}  ({}, dependency: {})",
+        "●".green().bold(),
+        release.pkg.name.bold(),
+        release.current_version.dimmed(),
+        release.new_version.green().bold(),
+        release.bump.to_string().cyan(),
+        release.dep_trigger.join(", ").cyan()
+    )];
+    if !dry_run {
+        write_cascaded_files(config, root, sink, captured_metadata, release, &mut lines)?;
+    }
+    Ok(lines)
+}
+
+fn write_cascaded_files(
+    config: &Config,
+    root: &Path,
+    sink: &mut CascadeSink<'_>,
+    captured_metadata: &HashMap<String, String>,
+    release: &CascadedRelease<'_>,
+    lines: &mut Vec<String>,
+) -> anyhow::Result<()> {
+    let pkg = release.pkg;
+    let stamped =
+        super::build_metadata::stamp(config, pkg, captured_metadata, &release.new_version);
+    for vf in &pkg.versioned_files {
+        write_version(vf, root, &stamped)?;
+        if get_handler(&vf.format).modifies_file() {
+            lines.push(format!("  ✓ Updated {}", vf.path));
+            stage_for(sink, &pkg.name, &vf.path);
+        }
+    }
+    if let Some(changelog_rel) = &pkg.changelog {
+        let changelog_path = root.join(changelog_rel);
+        update_changelog(
+            &changelog_path,
+            &pkg.name,
+            &release.new_version,
+            &[],
+            release.bump,
+            false,
+        )?;
+        stage_for(sink, &pkg.name, changelog_rel);
+    }
+    if pkg.effective_update_lockfiles(&config.workspace) {
+        super::refresh_lockfiles(
+            pkg,
+            root,
+            sink.files_to_commit,
+            sink.files_per_package.entry(pkg.name.clone()).or_default(),
+        );
+    }
+    Ok(())
+}
+
+fn stage_for(sink: &mut CascadeSink<'_>, package: &str, path: &str) {
+    sink.files_to_commit.push(path.to_string());
+    sink.files_per_package
+        .entry(package.to_string())
+        .or_default()
+        .push(path.to_string());
 }
 
 /// What the cascade adds: which packages, at which bump, in the order they
@@ -256,45 +320,57 @@ pub(super) fn update_dependent_manifests(
 ) -> anyhow::Result<Vec<String>> {
     let mut lines = Vec::new();
 
-    for pkg in &config.packages {
-        for dep in &pkg.depends_on {
-            if dep.propagate() == PropagatePolicy::None {
-                continue;
-            }
-            let Some(new_version) = bumped_versions.get(dep.name()) else {
+    for (pkg, dep_name, new_version) in propagating_edges(config, bumped_versions) {
+        let rewritable = pkg
+            .versioned_files
+            .iter()
+            .filter(|vf| supports_dependency_updates(&vf.format));
+        for vf in rewritable {
+            let Some(planned) = plan_dependency_update(vf, root, dep_name, new_version)? else {
                 continue;
             };
-            for vf in &pkg.versioned_files {
-                if !supports_dependency_updates(&vf.format) {
-                    continue;
-                }
-                let Some(planned) = plan_dependency_update(vf, root, dep.name(), new_version)?
-                else {
-                    continue;
-                };
-                lines.push(format!(
-                    "  {} {} → {} in {}",
-                    "↳".dimmed(),
-                    dep.name().cyan(),
-                    new_version.green(),
-                    vf.path.dimmed()
-                ));
-                if dry_run {
-                    continue;
-                }
-                planned.apply()?;
-                if !files_to_commit.contains(&vf.path) {
-                    files_to_commit.push(vf.path.clone());
-                }
-                let owned = files_per_package.entry(pkg.name.clone()).or_default();
-                if !owned.contains(&vf.path) {
-                    owned.push(vf.path.clone());
-                }
+            lines.push(format!(
+                "  {} {} → {} in {}",
+                "↳".dimmed(),
+                dep_name.cyan(),
+                new_version.green(),
+                vf.path.dimmed()
+            ));
+            if dry_run {
+                continue;
             }
+            planned.apply()?;
+            push_once(files_to_commit, &vf.path);
+            push_once(
+                files_per_package.entry(pkg.name.clone()).or_default(),
+                &vf.path,
+            );
         }
     }
 
     Ok(lines)
+}
+
+fn propagating_edges<'a>(
+    config: &'a Config,
+    bumped_versions: &'a HashMap<String, String>,
+) -> impl Iterator<Item = (&'a PackageConfig, &'a str, &'a String)> {
+    config.packages.iter().flat_map(move |pkg| {
+        pkg.depends_on
+            .iter()
+            .filter(|dep| dep.propagate() != PropagatePolicy::None)
+            .filter_map(move |dep| {
+                bumped_versions
+                    .get(dep.name())
+                    .map(|new_version| (pkg, dep.name(), new_version))
+            })
+    })
+}
+
+fn push_once(files: &mut Vec<String>, path: &str) {
+    if !files.iter().any(|f| f == path) {
+        files.push(path.to_string());
+    }
 }
 
 #[cfg(test)]
