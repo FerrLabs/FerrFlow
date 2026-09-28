@@ -7,49 +7,8 @@ pub struct JsonVersionFile;
 
 fn find_top_level_string_value_span(content: &str, target_key: &str) -> Option<(usize, usize)> {
     let bytes = content.as_bytes();
-    let n = bytes.len();
-    let mut i = skip_ws(bytes, 0);
-    if i >= n || bytes[i] != b'{' {
-        return None;
-    }
-    i += 1;
-
-    loop {
-        i = skip_ws(bytes, i);
-        if i >= n {
-            return None;
-        }
-        if bytes[i] == b'}' {
-            return None;
-        }
-        if bytes[i] == b',' {
-            i += 1;
-            continue;
-        }
-        if bytes[i] != b'"' {
-            return None;
-        }
-        let (key_start, key_end, after_key) = read_string(bytes, i)?;
-        let key = std::str::from_utf8(&bytes[key_start..key_end]).ok()?;
-        i = skip_ws(bytes, after_key);
-        if i >= n || bytes[i] != b':' {
-            return None;
-        }
-        i = skip_ws(bytes, i + 1);
-        if i >= n {
-            return None;
-        }
-
-        if key == target_key {
-            if bytes[i] != b'"' {
-                return None;
-            }
-            let (val_start, val_end, _) = read_string(bytes, i)?;
-            return Some((val_start, val_end));
-        }
-
-        i = skip_value(bytes, i)?;
-    }
+    let value_start = find_object_value_start(bytes, 0, target_key)?;
+    read_string(bytes, value_start).map(|(start, end, _)| (start, end))
 }
 
 pub(super) fn find_nested_string_value_span(
@@ -65,40 +24,37 @@ pub(super) fn find_nested_string_value_span(
 }
 
 fn find_object_value_start(bytes: &[u8], from: usize, target_key: &str) -> Option<usize> {
-    let n = bytes.len();
-    let mut i = skip_ws(bytes, from);
-    if i >= n || bytes[i] != b'{' {
+    let open = skip_ws(bytes, from);
+    if bytes.get(open) != Some(&b'{') {
         return None;
     }
-    i += 1;
+    let mut i = open + 1;
+    loop {
+        let (key, value_start) = next_member(bytes, i)?;
+        if key == target_key {
+            return Some(value_start);
+        }
+        i = skip_value(bytes, value_start)?;
+    }
+}
 
+fn next_member(bytes: &[u8], mut i: usize) -> Option<(&str, usize)> {
     loop {
         i = skip_ws(bytes, i);
-        if i >= n || bytes[i] == b'}' {
-            return None;
+        match bytes.get(i)? {
+            b',' => i += 1,
+            b'"' => break,
+            _ => return None,
         }
-        if bytes[i] == b',' {
-            i += 1;
-            continue;
-        }
-        if bytes[i] != b'"' {
-            return None;
-        }
-        let (key_start, key_end, after_key) = read_string(bytes, i)?;
-        let key = std::str::from_utf8(&bytes[key_start..key_end]).ok()?;
-        i = skip_ws(bytes, after_key);
-        if i >= n || bytes[i] != b':' {
-            return None;
-        }
-        i = skip_ws(bytes, i + 1);
-        if i >= n {
-            return None;
-        }
-        if key == target_key {
-            return Some(i);
-        }
-        i = skip_value(bytes, i)?;
     }
+    let (key_start, key_end, after_key) = read_string(bytes, i)?;
+    let key = std::str::from_utf8(&bytes[key_start..key_end]).ok()?;
+    let colon = skip_ws(bytes, after_key);
+    if bytes.get(colon) != Some(&b':') {
+        return None;
+    }
+    let value_start = skip_ws(bytes, colon + 1);
+    (value_start < bytes.len()).then_some((key, value_start))
 }
 
 fn skip_ws(bytes: &[u8], mut i: usize) -> usize {
@@ -137,34 +93,33 @@ fn skip_value(bytes: &[u8], i: usize) -> Option<usize> {
     }
     match bytes[i] {
         b'"' => read_string(bytes, i).map(|(_, _, after)| after),
-        b'{' | b'[' => {
-            let open = bytes[i];
-            let close = if open == b'{' { b'}' } else { b']' };
-            let mut depth: i32 = 1;
-            let mut j = i + 1;
-            while j < n && depth > 0 {
-                match bytes[j] {
-                    b'"' => {
-                        let (_, _, after) = read_string(bytes, j)?;
-                        j = after;
-                        continue;
-                    }
-                    b'{' | b'[' => depth += 1,
-                    c if c == close => depth -= 1,
-                    _ => {}
-                }
-                j += 1;
-            }
-            if depth == 0 { Some(j) } else { None }
-        }
-        _ => {
-            let mut j = i;
-            while j < n && !matches!(bytes[j], b',' | b'}' | b']') {
-                j += 1;
-            }
-            Some(j)
-        }
+        b'{' => skip_container(bytes, i, b'}'),
+        b'[' => skip_container(bytes, i, b']'),
+        _ => Some(
+            i + bytes[i..]
+                .iter()
+                .take_while(|c| !matches!(c, b',' | b'}' | b']'))
+                .count(),
+        ),
     }
+}
+
+fn skip_container(bytes: &[u8], open: usize, close: u8) -> Option<usize> {
+    let mut depth: i32 = 1;
+    let mut j = open + 1;
+    while j < bytes.len() && depth > 0 {
+        match bytes[j] {
+            b'"' => {
+                j = read_string(bytes, j)?.2;
+                continue;
+            }
+            b'{' | b'[' => depth += 1,
+            c if c == close => depth -= 1,
+            _ => {}
+        }
+        j += 1;
+    }
+    (depth == 0).then_some(j)
 }
 
 #[cfg(test)]

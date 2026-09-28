@@ -29,42 +29,20 @@ impl<'a> Scanner<'a> {
     }
 
     fn skip_special(&mut self) -> bool {
-        let rest = &self.src[self.i..];
-        if rest.starts_with(b"<!--") {
-            self.i += 4;
-            if let Some(end) = self.find_at(b"-->") {
-                self.i = end + 3;
-            } else {
-                self.i = self.src.len();
+        let src = self.src;
+        let rest = &src[self.i..];
+        for (open, close) in DELIMITED_SPECIALS {
+            if rest.starts_with(open) {
+                self.i += open.len();
+                self.i = self
+                    .find_at(close)
+                    .map_or(src.len(), |end| end + close.len());
+                return true;
             }
-            return true;
-        }
-        if rest.starts_with(b"<![CDATA[") {
-            self.i += 9;
-            if let Some(end) = self.find_at(b"]]>") {
-                self.i = end + 3;
-            } else {
-                self.i = self.src.len();
-            }
-            return true;
-        }
-        if rest.starts_with(b"<?") {
-            self.i += 2;
-            if let Some(end) = self.find_at(b"?>") {
-                self.i = end + 2;
-            } else {
-                self.i = self.src.len();
-            }
-            return true;
         }
         if rest.starts_with(b"<!") {
             self.i += 2;
-            while self.i < self.src.len() && self.src[self.i] != b'>' {
-                self.i += 1;
-            }
-            if self.i < self.src.len() {
-                self.i += 1;
-            }
+            self.i = self.find_at(b">").map_or(src.len(), |end| end + 1);
             return true;
         }
         false
@@ -74,70 +52,109 @@ impl<'a> Scanner<'a> {
         find_subslice(&self.src[self.i..], needle).map(|p| self.i + p)
     }
 
-    fn read_tag(&mut self) -> Option<(String, TagKind, usize)> {
+    fn next_tag(&mut self) -> Option<Tag> {
+        loop {
+            self.i += self.src[self.i..]
+                .iter()
+                .take_while(|&&c| c != b'<')
+                .count();
+            if self.done() {
+                return None;
+            }
+            if self.skip_special() {
+                continue;
+            }
+            let start = self.i;
+            match self.read_tag() {
+                Some((name, kind, end)) => {
+                    self.i = end;
+                    return Some(Tag {
+                        name,
+                        kind,
+                        start,
+                        end,
+                    });
+                }
+                None => self.i += 1,
+            }
+        }
+    }
+
+    fn read_tag(&self) -> Option<(String, TagKind, usize)> {
         debug_assert_eq!(self.src.get(self.i).copied(), Some(b'<'));
         let mut p = self.i + 1;
-        let kind_close = if self.src.get(p).copied() == Some(b'/') {
+        let closing = self.src.get(p) == Some(&b'/');
+        if closing {
             p += 1;
-            true
-        } else {
-            false
+        }
+        let (name, after_name) = self.read_name(p)?;
+        let (gt, self_close) = self.find_tag_end(after_name)?;
+        let kind = match (closing, self_close) {
+            (true, _) => TagKind::Close,
+            (false, true) => TagKind::SelfClose,
+            (false, false) => TagKind::Open,
         };
-
-        let name_start = p;
-        while p < self.src.len() {
-            let c = self.src[p];
-            if c == b' ' || c == b'\t' || c == b'\n' || c == b'\r' || c == b'/' || c == b'>' {
-                break;
-            }
-            p += 1;
-        }
-        if p == name_start {
-            return None;
-        }
-        let name = std::str::from_utf8(&self.src[name_start..p])
-            .ok()?
-            .to_string();
-
-        let mut self_close = false;
-        let mut in_quote: Option<u8> = None;
-        while p < self.src.len() {
-            let c = self.src[p];
-            match in_quote {
-                Some(q) if c == q => in_quote = None,
-                Some(_) => {}
-                None => match c {
-                    b'"' | b'\'' => in_quote = Some(c),
-                    b'/' => {
-                        let mut q = p + 1;
-                        while q < self.src.len() && (self.src[q] == b' ' || self.src[q] == b'\t') {
-                            q += 1;
-                        }
-                        if q < self.src.len() && self.src[q] == b'>' {
-                            self_close = true;
-                            p = q;
-                            break;
-                        }
-                    }
-                    b'>' => break,
-                    _ => {}
-                },
-            }
-            p += 1;
-        }
-        if p >= self.src.len() {
-            return None;
-        }
-        let end = p + 1; // after '>'
-        let kind = if kind_close {
-            TagKind::Close
-        } else if self_close {
-            TagKind::SelfClose
-        } else {
-            TagKind::Open
-        };
-        Some((name, kind, end))
+        Some((name, kind, gt + 1))
     }
+
+    fn read_name(&self, start: usize) -> Option<(String, usize)> {
+        let len = self.src[start..]
+            .iter()
+            .take_while(|c| !matches!(c, b' ' | b'\t' | b'\n' | b'\r' | b'/' | b'>'))
+            .count();
+        if len == 0 {
+            return None;
+        }
+        let end = start + len;
+        let name = std::str::from_utf8(&self.src[start..end]).ok()?.to_string();
+        Some((name, end))
+    }
+
+    fn find_tag_end(&self, from: usize) -> Option<(usize, bool)> {
+        let mut in_quote: Option<u8> = None;
+        for (p, &c) in self.src.iter().enumerate().skip(from) {
+            match (in_quote, c) {
+                (Some(q), c) if c == q => in_quote = None,
+                (Some(_), _) => {}
+                (None, b'"' | b'\'') => in_quote = Some(c),
+                (None, b'/') => {
+                    if let Some(gt) = self.gt_after_slash(p) {
+                        return Some((gt, true));
+                    }
+                }
+                (None, b'>') => return Some((p, false)),
+                _ => {}
+            }
+        }
+        None
+    }
+
+    fn gt_after_slash(&self, slash: usize) -> Option<usize> {
+        let blanks = self.src[slash + 1..]
+            .iter()
+            .take_while(|c| matches!(c, b' ' | b'\t'))
+            .count();
+        let gt = slash + 1 + blanks;
+        (self.src.get(gt) == Some(&b'>')).then_some(gt)
+    }
+}
+
+const DELIMITED_SPECIALS: [(&[u8], &[u8]); 3] =
+    [(b"<!--", b"-->"), (b"<![CDATA[", b"]]>"), (b"<?", b"?>")];
+
+struct Tag {
+    name: String,
+    kind: TagKind,
+    start: usize,
+    end: usize,
+}
+
+fn inner_range(src: &[u8], open: &Tag) -> Option<InnerRange> {
+    let close = find_matching_close(&src[open.end..], &open.name)?;
+    Some(InnerRange {
+        start: open.end,
+        end: open.end + close,
+    })
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -178,43 +195,18 @@ fn find_target(content: &str, selector: Option<&str>) -> Option<InnerRange> {
 fn walk_path(content: &str, path: &[&str]) -> Option<InnerRange> {
     let mut s = Scanner::new(content);
     let mut stack: Vec<String> = Vec::new();
-
-    while !s.done() {
-        while s.i < s.src.len() && s.src[s.i] != b'<' {
-            s.i += 1;
-        }
-        if s.done() {
-            break;
-        }
-        if s.skip_special() {
-            continue;
-        }
-        let Some((name, kind, end)) = s.read_tag() else {
-            s.i += 1;
-            continue;
-        };
-        match kind {
+    while let Some(tag) = s.next_tag() {
+        match tag.kind {
             TagKind::Open => {
-                stack.push(name.clone());
-                if stack.len() == path.len()
-                    && stack.iter().zip(path.iter()).all(|(a, b)| a.as_str() == *b)
-                {
-                    let inner_start = end;
-                    let close_idx = find_matching_close(&s.src[end..], &name)?;
-                    return Some(InnerRange {
-                        start: inner_start,
-                        end: end + close_idx,
-                    });
+                stack.push(tag.name.clone());
+                if stack.iter().map(String::as_str).eq(path.iter().copied()) {
+                    return inner_range(s.src, &tag);
                 }
-                s.i = end;
             }
             TagKind::Close => {
                 stack.pop();
-                s.i = end;
             }
-            TagKind::SelfClose => {
-                s.i = end;
-            }
+            TagKind::SelfClose => {}
         }
     }
     None
@@ -223,40 +215,14 @@ fn walk_path(content: &str, path: &[&str]) -> Option<InnerRange> {
 fn find_first_named(content: &str, name: &str, min_depth: Option<usize>) -> Option<InnerRange> {
     let mut s = Scanner::new(content);
     let mut depth: usize = 0;
-    while !s.done() {
-        while s.i < s.src.len() && s.src[s.i] != b'<' {
-            s.i += 1;
-        }
-        if s.done() {
-            break;
-        }
-        if s.skip_special() {
-            continue;
-        }
-        let Some((tag, kind, end)) = s.read_tag() else {
-            s.i += 1;
-            continue;
-        };
-        match kind {
-            TagKind::Open => {
-                if tag == name && min_depth.is_none_or(|m| depth == m) {
-                    let inner_start = end;
-                    let close_idx = find_matching_close(&s.src[end..], &tag)?;
-                    return Some(InnerRange {
-                        start: inner_start,
-                        end: end + close_idx,
-                    });
-                }
-                depth += 1;
-                s.i = end;
+    while let Some(tag) = s.next_tag() {
+        match tag.kind {
+            TagKind::Open if tag.name == name && min_depth.is_none_or(|m| depth == m) => {
+                return inner_range(s.src, &tag);
             }
-            TagKind::Close => {
-                depth = depth.saturating_sub(1);
-                s.i = end;
-            }
-            TagKind::SelfClose => {
-                s.i = end;
-            }
+            TagKind::Open => depth += 1,
+            TagKind::Close => depth = depth.saturating_sub(1),
+            TagKind::SelfClose => {}
         }
     }
     None
@@ -272,38 +238,15 @@ fn find_matching_close(after_open: &[u8], name: &str) -> Option<usize> {
         i: 0,
     };
     let mut depth: usize = 0;
-    while !s.done() {
-        while s.i < s.src.len() && s.src[s.i] != b'<' {
-            s.i += 1;
-        }
-        if s.done() {
-            return None;
-        }
-        let lt = s.i;
-        if s.skip_special() {
+    while let Some(tag) = s.next_tag() {
+        if tag.name != name {
             continue;
         }
-        let Some((tag, kind, end)) = s.read_tag() else {
-            s.i += 1;
-            continue;
-        };
-        match kind {
-            TagKind::Open => {
-                if tag == name {
-                    depth += 1;
-                }
-                s.i = end;
-            }
-            TagKind::Close => {
-                if tag == name {
-                    if depth == 0 {
-                        return Some(lt);
-                    }
-                    depth -= 1;
-                }
-                s.i = end;
-            }
-            TagKind::SelfClose => s.i = end,
+        match tag.kind {
+            TagKind::Open => depth += 1,
+            TagKind::Close if depth == 0 => return Some(tag.start),
+            TagKind::Close => depth -= 1,
+            TagKind::SelfClose => {}
         }
     }
     None
