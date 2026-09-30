@@ -373,17 +373,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish draft release
-        # Same scope reason as the wait + upload steps above. The
-        # ferrflow release subcommand calls find_draft_release +
-        # publish_release (both GitHub API, no git push) — neither
-        # works with FERRFLOW_TOKEN's PAT scopes against drafts.
-        # GITHUB_TOKEN with the job-level `contents: write` permission
-        # has the necessary release-API access on the workflow's own
-        # repo.
         run: ./target/release/ferrflow release
         env:
-          FERRFLOW_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FERRFLOW_BOT: "true"
 
   sweep-orphans:
     name: Publish orphaned older draft releases
