@@ -210,7 +210,7 @@ jobs:
         # log. Verify with:
         #   cosign verify-blob \
         #     --bundle ferrflow-linux-x64.tar.gz.sigstore.json \
-        #     --certificate-identity-regexp "https://github.com/FerrLabs/FerrFlow/.*" \
+        #     --certificate-identity-regexp "^https://github.com/FerrLabs/FerrFlow/.github/workflows/publish.yml@refs/tags/" \
         #     --certificate-oidc-issuer https://token.actions.githubusercontent.com \
         #     ferrflow-linux-x64.tar.gz
         #
@@ -384,17 +384,6 @@ jobs:
         env:
           FERRFLOW_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  awesome-alternatives:
-    name: Refresh the awesome-alternatives listing
-    needs: upload
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-    steps:
-      - uses: awesome-alternatives/refresh-action@81ceb765e376577d9fe670329decb7230e0369e8 # v1.0.0
-        continue-on-error: true
 
   sweep-orphans:
     name: Publish orphaned older draft releases
@@ -660,7 +649,7 @@ jobs:
         # Sigstore signature stored alongside the image in GHCR. Verify
         # with:
         #   cosign verify ghcr.io/ferrlabs/ferrflow:vX.Y.Z \
-        #     --certificate-identity-regexp "https://github.com/FerrLabs/FerrFlow/.*" \
+        #     --certificate-identity-regexp "^https://github.com/FerrLabs/FerrFlow/.github/workflows/publish.yml@refs/tags/" \
         #     --certificate-oidc-issuer https://token.actions.githubusercontent.com
         env:
           COSIGN_EXPERIMENTAL: "1"
