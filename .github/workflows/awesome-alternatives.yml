@@ -1,0 +1,17 @@
+name: awesome-alternatives
+
+on:
+  release:
+    types: [published]
+
+permissions: {}
+
+jobs:
+  refresh:
+    name: Refresh the awesome-alternatives listing
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - uses: awesome-alternatives/refresh-action@81ceb765e376577d9fe670329decb7230e0369e8 # v1.0.0
+        continue-on-error: true

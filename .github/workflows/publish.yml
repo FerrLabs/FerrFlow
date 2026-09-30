@@ -210,7 +210,7 @@ jobs:
         # log. Verify with:
         #   cosign verify-blob \
         #     --bundle ferrflow-linux-x64.tar.gz.sigstore.json \
-        #     --certificate-identity-regexp "https://github.com/FerrLabs/FerrFlow/.*" \
+        #     --certificate-identity-regexp "^https://github.com/FerrLabs/FerrFlow/.github/workflows/publish.yml@refs/tags/" \
         #     --certificate-oidc-issuer https://token.actions.githubusercontent.com \
         #     ferrflow-linux-x64.tar.gz
         #
@@ -649,7 +649,7 @@ jobs:
         # Sigstore signature stored alongside the image in GHCR. Verify
         # with:
         #   cosign verify ghcr.io/ferrlabs/ferrflow:vX.Y.Z \
-        #     --certificate-identity-regexp "https://github.com/FerrLabs/FerrFlow/.*" \
+        #     --certificate-identity-regexp "^https://github.com/FerrLabs/FerrFlow/.github/workflows/publish.yml@refs/tags/" \
         #     --certificate-oidc-issuer https://token.actions.githubusercontent.com
         env:
           COSIGN_EXPERIMENTAL: "1"
