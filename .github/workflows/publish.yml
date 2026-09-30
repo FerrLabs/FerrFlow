@@ -384,8 +384,17 @@ jobs:
         env:
           FERRFLOW_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Refresh the awesome-alternatives listing
-        uses: awesome-alternatives/refresh-action@81ceb765e376577d9fe670329decb7230e0369e8 # v1.0.0
+
+  awesome-alternatives:
+    name: Refresh the awesome-alternatives listing
+    needs: upload
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - uses: awesome-alternatives/refresh-action@81ceb765e376577d9fe670329decb7230e0369e8 # v1.0.0
+        continue-on-error: true
 
   sweep-orphans:
     name: Publish orphaned older draft releases
