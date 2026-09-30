@@ -4,6 +4,13 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.26.13] - 2026-09-30
+
+### Bug Fixes
+
+- fix(docs): verify the Docker image by the tag it is published under, without a v (#1251)
+- fix(docs): verify release signatures against the release workflow, not any workflow in the repo (#1249)
+
 ## [7.26.12] - 2026-09-28
 
 ### Bug Fixes
