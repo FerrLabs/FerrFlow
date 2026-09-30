@@ -640,7 +640,7 @@ jobs:
       - name: Sign Docker image with cosign (keyless)
         # Sigstore signature stored alongside the image in GHCR. Verify
         # with:
-        #   cosign verify ghcr.io/ferrlabs/ferrflow:vX.Y.Z \
+        #   cosign verify ghcr.io/ferrlabs/ferrflow:X.Y.Z \
         #     --certificate-identity-regexp "^https://github.com/FerrLabs/FerrFlow/.github/workflows/publish.yml@refs/tags/" \
         #     --certificate-oidc-issuer https://token.actions.githubusercontent.com
         env:

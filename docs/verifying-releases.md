@@ -16,7 +16,7 @@ log.
 | `ferrflow-darwin-arm64.tar.gz` | `.sigstore.json` |
 | `ferrflow-windows-x64.zip` | `.sigstore.json` |
 | `sbom.cdx.json` | `.sigstore.json` |
-| `ghcr.io/ferrlabs/ferrflow:vX.Y.Z` | Cosign signature recorded in
+| `ghcr.io/ferrlabs/ferrflow:X.Y.Z` | Cosign signature recorded in
 GHCR + Rekor |
 
 All sidecars are downloadable from the GitHub Release page next to the
@@ -62,7 +62,7 @@ A passing verification means:
 ## Verifying the Docker image
 
 ```bash
-cosign verify ghcr.io/ferrlabs/ferrflow:v5.0.1 \
+cosign verify ghcr.io/ferrlabs/ferrflow:5.0.1 \
   --certificate-identity-regexp "^https://github.com/FerrLabs/FerrFlow/.github/workflows/publish.yml@refs/tags/" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
