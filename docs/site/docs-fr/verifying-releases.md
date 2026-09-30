@@ -20,7 +20,7 @@ Disponible depuis la v5.2.
 | `ferrflow-windows-arm64.zip`       | `.sig`, `.crt`                     |
 | `ferrflow-completions.tar.gz`      | `.sig`, `.crt`                     |
 | `sbom.cdx.json`                    | `.sig`, `.crt`                     |
-| `ghcr.io/ferrlabs/ferrflow:vX.Y.Z` | Signature cosign dans GHCR + Rekor |
+| `ghcr.io/ferrlabs/ferrflow:X.Y.Z` | Signature cosign dans GHCR + Rekor |
 
 Tous les sidecars sont téléchargeables depuis la page GitHub Release à côté du binaire.
 
@@ -56,7 +56,7 @@ Une vérification qui passe signifie :
 ## Vérifier l'image Docker
 
 ```bash
-cosign verify ghcr.io/ferrlabs/ferrflow:v5.2.3 \
+cosign verify ghcr.io/ferrlabs/ferrflow:5.2.3 \
   --certificate-identity-regexp "^https://github.com/FerrLabs/FerrFlow/.github/workflows/publish.yml@refs/tags/" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
