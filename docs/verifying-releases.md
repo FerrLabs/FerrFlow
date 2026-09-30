@@ -42,7 +42,7 @@ gh release download "$TAG" --repo FerrLabs/FerrFlow \
 # verify
 cosign verify-blob \
   --bundle ferrflow-linux-x64.tar.gz.sigstore.json \
-  --certificate-identity-regexp "https://github.com/FerrLabs/FerrFlow/.*" \
+  --certificate-identity-regexp "^https://github.com/FerrLabs/FerrFlow/.github/workflows/publish.yml@refs/tags/" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   ferrflow-linux-x64.tar.gz
 # → Verified OK
@@ -52,8 +52,10 @@ A passing verification means:
 
 - The tarball bytes haven't been tampered with since the release
   workflow signed them.
-- The signing identity was a workflow running in `FerrLabs/FerrFlow`
-  triggered by GitHub Actions' OIDC issuer.
+- The signing identity was FerrFlow's release workflow,
+  `.github/workflows/publish.yml` in `FerrLabs/FerrFlow` running on a release
+  tag, authenticated by GitHub Actions' OIDC issuer. Another workflow in the
+  repository cannot produce a signature that passes this check.
 - The signature is recorded in the public Rekor log (
   https://search.sigstore.dev/ — search for the artifact's digest).
 
@@ -61,7 +63,7 @@ A passing verification means:
 
 ```bash
 cosign verify ghcr.io/ferrlabs/ferrflow:v5.0.1 \
-  --certificate-identity-regexp "https://github.com/FerrLabs/FerrFlow/.*" \
+  --certificate-identity-regexp "^https://github.com/FerrLabs/FerrFlow/.github/workflows/publish.yml@refs/tags/" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
@@ -75,7 +77,7 @@ It's signed the same way as the tarballs:
 cosign verify-blob \
   --certificate sbom.cdx.json.crt \
   --signature   sbom.cdx.json.sig \
-  --certificate-identity-regexp "https://github.com/FerrLabs/FerrFlow/.*" \
+  --certificate-identity-regexp "^https://github.com/FerrLabs/FerrFlow/.github/workflows/publish.yml@refs/tags/" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   sbom.cdx.json
 ```
@@ -108,7 +110,8 @@ In addition to Sigstore signatures, every release also ships a
 `actions/attest-build-provenance`. Verify with:
 
 ```bash
-gh attestation verify ferrflow-linux-x64.tar.gz --repo FerrLabs/FerrFlow
+gh attestation verify ferrflow-linux-x64.tar.gz --repo FerrLabs/FerrFlow \
+  --signer-workflow FerrLabs/FerrFlow/.github/workflows/publish.yml
 ```
 
 Tracks the workflow run, the source commit SHA, and the build inputs.

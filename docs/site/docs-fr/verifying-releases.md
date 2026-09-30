@@ -41,7 +41,7 @@ gh release download "$TAG" --repo FerrLabs/FerrFlow \
 # vérifier
 cosign verify-blob \
   --bundle ferrflow-linux-x64.tar.gz.sigstore.json \
-  --certificate-identity-regexp "https://github.com/FerrLabs/FerrFlow/.*" \
+  --certificate-identity-regexp "^https://github.com/FerrLabs/FerrFlow/.github/workflows/publish.yml@refs/tags/" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   ferrflow-linux-x64.tar.gz
 # → Verified OK
@@ -50,14 +50,14 @@ cosign verify-blob \
 Une vérification qui passe signifie :
 
 - Les octets du tarball n'ont pas été modifiés depuis que le workflow de release les a signés.
-- L'identité de signature était un workflow exécuté dans `FerrLabs/FerrFlow` déclenché par l'issuer OIDC de GitHub Actions.
+- L'identité de signature était le workflow de release de FerrFlow, `.github/workflows/publish.yml` dans `FerrLabs/FerrFlow` exécuté sur un tag de release, authentifié par l'issuer OIDC de GitHub Actions. Un autre workflow du dépôt ne peut pas produire une signature qui passe cette vérification.
 - La signature est inscrite dans le journal public Rekor : cherchez la valeur du `.sig` sur [search.sigstore.dev](https://search.sigstore.dev/).
 
 ## Vérifier l'image Docker
 
 ```bash
 cosign verify ghcr.io/ferrlabs/ferrflow:v5.2.3 \
-  --certificate-identity-regexp "https://github.com/FerrLabs/FerrFlow/.*" \
+  --certificate-identity-regexp "^https://github.com/FerrLabs/FerrFlow/.github/workflows/publish.yml@refs/tags/" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
@@ -68,7 +68,7 @@ Le SBOM (`sbom.cdx.json`) est un document [CycloneDX](https://cyclonedx.org/) li
 ```bash
 cosign verify-blob \
   --bundle sbom.cdx.json.sigstore.json \
-  --certificate-identity-regexp "https://github.com/FerrLabs/FerrFlow/.*" \
+  --certificate-identity-regexp "^https://github.com/FerrLabs/FerrFlow/.github/workflows/publish.yml@refs/tags/" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   sbom.cdx.json
 ```
@@ -80,7 +80,8 @@ Injectez le SBOM vérifié dans votre scanner : Grype, Trivy, Snyk, JFrog Xray, 
 En plus des signatures Sigstore, chaque release embarque aussi une [attestation de provenance SLSA](https://slsa.dev/) générée via [`actions/attest-build-provenance`](https://github.com/actions/attest-build-provenance). Elle enregistre le run du workflow, le SHA du commit source et les inputs de build.
 
 ```bash
-gh attestation verify ferrflow-linux-x64.tar.gz --repo FerrLabs/FerrFlow
+gh attestation verify ferrflow-linux-x64.tar.gz --repo FerrLabs/FerrFlow \
+  --signer-workflow FerrLabs/FerrFlow/.github/workflows/publish.yml
 ```
 
 ## Ce qui n'est pas signé
