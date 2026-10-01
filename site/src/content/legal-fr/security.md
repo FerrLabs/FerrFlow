@@ -18,7 +18,7 @@ lastUpdated: 2026-05-14
   les chaînes de version dans des fichiers que vous contrôlez, pousse des tags via vos
   identifiants git existants, puis sort. Le site compagnon <strong>ferrflow.com</strong> est
   une surface de documentation statique : voir la
-  <a href="/fr/privacy">politique de confidentialité</a> pour le peu qu'il journalise.
+  <a href="/fr/privacy/">politique de confidentialité</a> pour le peu qu'il journalise.
 </p>
 <p>
   Pour la posture sécurité plus large de la plateforme FerrLabs (chiffrement, identité,
@@ -114,8 +114,8 @@ lastUpdated: 2026-05-14
 </p>
 <p>
   Le site compagnon ferrflow.com n'utilise aucun cookie ni traceur tiers ; voir la
-  <a href="/fr/cookies">page cookies</a> et la
-  <a href="/fr/privacy">politique de confidentialité</a> pour le détail complet.
+  <a href="/fr/cookies/">page cookies</a> et la
+  <a href="/fr/privacy/">politique de confidentialité</a> pour le détail complet.
 </p>
 
 <h2>Contact</h2>

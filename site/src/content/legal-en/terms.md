@@ -44,7 +44,7 @@ lastUpdated: 2026-05-06
 <h2>6. Personal data</h2>
 <p>
   The Site collects no personal data beyond server logs (30-day retention, legal basis:
-  legitimate interest, security). See the <a href="/privacy">privacy policy</a>.
+  legitimate interest, security). See the <a href="/privacy/">privacy policy</a>.
 </p>
 
 <h2>7. Governing law</h2>

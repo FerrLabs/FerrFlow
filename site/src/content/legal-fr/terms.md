@@ -46,7 +46,7 @@ lastUpdated: 2026-05-06
 <p>
   Le Site ne collecte aucune donnée personnelle hors logs serveur (rétention 30 jours, base
   légale : intérêt légitime, sécurité). Voir la
-  <a href="/fr/privacy">politique de confidentialité</a>.
+  <a href="/fr/privacy/">politique de confidentialité</a>.
 </p>
 
 <h2>7. Droit applicable</h2>

@@ -16,9 +16,9 @@ export function ferrflowChrome(): SiteChromeConfig {
     logoSvg: LOGO_SVG,
     wordmark: 'ferrflow',
     navLinks: [
-      { label: $localize`:@@nav.docs:Docs`, href: '/docs/introduction' },
-      { label: $localize`:@@nav.performance:Performance`, href: '/performance' },
-      { label: $localize`:@@nav.why:Why FerrFlow`, href: '/why' },
+      { label: $localize`:@@nav.docs:Docs`, href: '/docs/introduction/' },
+      { label: $localize`:@@nav.performance:Performance`, href: '/performance/' },
+      { label: $localize`:@@nav.why:Why FerrFlow`, href: '/why/' },
       { label: $localize`:@@nav.changelog:Changelog`, href: '/changelog/' },
       {
         label: $localize`:@@nav.github:GitHub`,
@@ -26,7 +26,7 @@ export function ferrflowChrome(): SiteChromeConfig {
         external: true,
       },
     ],
-    cta: { label: $localize`:@@nav.cta:Get FerrFlow`, href: '/docs/introduction' },
+    cta: { label: $localize`:@@nav.cta:Get FerrFlow`, href: '/docs/introduction/' },
     footer: {
       tagline: $localize`:@@footer.tagline:Conventional commits in, semantic versions out. One Rust binary, every monorepo.`,
       backLabel: $localize`:@@footer.back:← Back to ferrlabs.com`,
@@ -35,8 +35,11 @@ export function ferrflowChrome(): SiteChromeConfig {
         {
           title: $localize`:@@footer.resources:Resources`,
           links: [
-            { label: $localize`:@@footer.documentation:Documentation`, href: '/docs/introduction' },
-            { label: $localize`:@@footer.performance:Performance`, href: '/performance' },
+            {
+              label: $localize`:@@footer.documentation:Documentation`,
+              href: '/docs/introduction/',
+            },
+            { label: $localize`:@@footer.performance:Performance`, href: '/performance/' },
             { label: $localize`:@@footer.changelog:Changelog`, href: '/changelog/' },
             { label: $localize`:@@footer.contact:Contact`, href: '/contact/' },
             {

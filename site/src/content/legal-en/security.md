@@ -16,7 +16,7 @@ lastUpdated: 2026-05-14
   endpoint handling user data. The CLI reads your git history, edits version strings in files
   you control, pushes tags through your existing git credentials, and exits. The companion
   site <strong>ferrflow.com</strong> is a static documentation surface: see the
-  <a href="/privacy">privacy policy</a> for what little it logs.
+  <a href="/privacy/">privacy policy</a> for what little it logs.
 </p>
 <p>
   For the broader FerrLabs platform posture (encryption, identity, network isolation, audit
@@ -111,7 +111,7 @@ lastUpdated: 2026-05-14
 </p>
 <p>
   The companion site ferrflow.com uses no cookies and no third-party trackers; see the
-  <a href="/cookies">cookies page</a> and <a href="/privacy">privacy policy</a> for the full
+  <a href="/cookies/">cookies page</a> and <a href="/privacy/">privacy policy</a> for the full
   detail.
 </p>
 

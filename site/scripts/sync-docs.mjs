@@ -14,6 +14,8 @@ import { fileURLToPath } from 'node:url';
 
 const PACKAGE = '@ferrflow/doc';
 
+const INTERNAL_LINK = /(\]\(|href=")(\/(?!\/)[^)"\s?#]*)([?#][^)"\s]*)?/g;
+
 const DATA_FILES = [
   ['data/benchmarks.json', 'src/app/data/benchmarks.json'],
   ['data/schema', 'public/schema'],
@@ -67,6 +69,12 @@ try {
     renameSync(join(contentDir, `${name}.incoming`), join(contentDir, name));
   }
 
+  const slashed = versions.reduce(
+    (total, name) => total + slashInternalLinks(join(contentDir, name)),
+    0,
+  );
+  console.log(`[docs] added the trailing slash to ${slashed} internal links`);
+
   // The benchmark numbers and the JSON schema ship in the same package as the
   // pages, so one dependency bump moves all three together. Before this they
   // arrived from a six-hourly job that pushed with an org-admin PAT, and the
@@ -111,6 +119,34 @@ try {
   console.log(`[docs] benchmarks and schema from ${PACKAGE}@${version}`);
 } catch (error) {
   fail(error.message);
+}
+
+function slashInternalLinks(dir) {
+  return readdirSync(dir, { withFileTypes: true }).reduce((total, entry) => {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      return total + slashInternalLinks(full);
+    }
+    if (!entry.name.endsWith('.md')) {
+      return total;
+    }
+    let count = 0;
+    const markdown = readFileSync(full, 'utf8').replace(
+      INTERNAL_LINK,
+      (link, opening, path, suffix = '') => {
+        const lastSegment = path.slice(path.lastIndexOf('/') + 1);
+        if (path.endsWith('/') || lastSegment.includes('.')) {
+          return link;
+        }
+        count += 1;
+        return `${opening}${path}/${suffix}`;
+      },
+    );
+    if (count > 0) {
+      writeFileSync(full, markdown);
+    }
+    return total + count;
+  }, 0);
 }
 
 function countPages(dir) {

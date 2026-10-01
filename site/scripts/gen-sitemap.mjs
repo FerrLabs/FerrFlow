@@ -1,82 +1,28 @@
-import { writeFileSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
+import { writeFileSync, readdirSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import fm from 'front-matter';
-
 const here = dirname(fileURLToPath(import.meta.url));
-const root = join(here, '..');
-const outDir = join(root, 'dist/analog/public');
+const outDir = join(here, '..', 'dist/analog/public');
 const SITE = 'https://ferrflow.com';
 
-const LEGAL = ['legal', 'privacy', 'security', 'terms', 'cookies'];
-
-function docSlugs(dir) {
-  const base = join(root, 'src/content', dir);
-  const out = [];
-  const walk = (d) => {
-    let entries;
-    try {
-      entries = readdirSync(d, { withFileTypes: true });
-    } catch {
-      return;
-    }
-    for (const e of entries) {
-      const full = join(d, e.name);
-      if (e.isDirectory()) walk(full);
-      else if (e.name.endsWith('.md'))
-        out.push(relative(base, full).replace(/\\/g, '/').replace(/\.md$/, ''));
-    }
-  };
-  walk(base);
-  return out;
+function prerenderedPaths(dir) {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) return prerenderedPaths(full);
+    if (entry.name !== 'index.html') return [];
+    const path = relative(outDir, dir).replace(/\\/g, '/');
+    return [path ? `/${path}/` : '/'];
+  });
 }
 
-const DOC_DIRS = [
-  { dir: 'docs-en', prefix: '/docs/' },
-  { dir: 'docs-fr', prefix: '/fr/docs/' },
-  { dir: 'docs-v4', prefix: '/v4/docs/' },
-  { dir: 'docs-v3', prefix: '/v3/docs/' },
-  { dir: 'docs-v2', prefix: '/v2/docs/' },
-  { dir: 'docs-v1', prefix: '/v1/docs/' },
-  { dir: 'docs-v0', prefix: '/v0/docs/' },
-  { dir: 'docs-fr-v4', prefix: '/fr/v4/docs/' },
-];
+const paths = prerenderedPaths(outDir)
+  .filter((path) => !/^\/(fr\/)?404\//.test(path) && !path.startsWith('/en/'))
+  .sort();
 
-const docPaths = DOC_DIRS.flatMap(({ dir, prefix }) => docSlugs(dir).map((s) => `${prefix}${s}/`));
-
-function changelogSlugs() {
-  const dir = join(root, 'src/content/changelog');
-  let files;
-  try {
-    files = readdirSync(dir).filter((f) => f.endsWith('.md'));
-  } catch {
-    return [];
-  }
-  return files
-    .filter((file) => {
-      const { attributes } = fm(readFileSync(join(dir, file), 'utf8'));
-      return !attributes.draft && attributes.product === 'ferrflow';
-    })
-    .map((file) => file.replace(/\.md$/, ''));
+if (paths.length === 0) {
+  throw new Error(`[sitemap] no prerendered page under ${outDir}`);
 }
-
-const changelogPaths = changelogSlugs().flatMap((s) => [`/changelog/${s}/`, `/fr/changelog/${s}/`]);
-
-const paths = [
-  '/',
-  '/fr/',
-  '/performance/',
-  '/fr/performance/',
-  ...LEGAL.map((p) => `/${p}/`),
-  ...LEGAL.map((p) => `/fr/${p}/`),
-  '/changelog/',
-  '/fr/changelog/',
-  '/contact/',
-  '/fr/contact/',
-  ...changelogPaths,
-  ...docPaths,
-];
 
 const urls = paths.map((p) => `  <url><loc>${SITE}${p}</loc></url>`).join('\n');
 
@@ -86,6 +32,5 @@ ${urls}
 </urlset>
 `;
 
-mkdirSync(outDir, { recursive: true });
 writeFileSync(join(outDir, 'sitemap.xml'), xml, 'utf8');
 console.log(`[sitemap] wrote ${paths.length} urls to /sitemap.xml`);
