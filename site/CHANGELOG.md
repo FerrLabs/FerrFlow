@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.10.1] - 2026-10-01
+
+### Bug Fixes
+
+- fix(site): stop serving redirects and 404s to crawlers (#1023)
+
 ## [2026.9.34] - 2026-09-29
 
 ### Bug Fixes
