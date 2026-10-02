@@ -35,7 +35,7 @@ pub(super) fn run_commit_or_pr(
 }
 
 fn authoring_forge(plan: &ReleasePlan<'_>) -> Option<Box<dyn crate::forge::Forge>> {
-    if !crate::bot_token::bot_mode_enabled() {
+    if plan.shadow || !crate::bot_token::bot_mode_enabled() {
         return None;
     }
     let forge = build_forge_instance(plan.repo, plan.config)?;

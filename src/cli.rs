@@ -70,6 +70,13 @@ pub enum Commands {
         #[arg(long)]
         force_unlock: bool,
     },
+    #[command(
+        about = "Run the full release in a throwaway clone: files, commit and tags, never pushed or published"
+    )]
+    ShadowRelease {
+        #[arg(long, help = "Keep the clone and print its path")]
+        keep: bool,
+    },
     Publish {
         packages: Vec<String>,
         #[arg(short = 'a', long)]
@@ -211,6 +218,7 @@ impl Commands {
         match self {
             Commands::Check { .. } => "check",
             Commands::Release { .. } => "release",
+            Commands::ShadowRelease { .. } => "shadow-release",
             Commands::Publish { .. } => "publish",
             Commands::Changelog => "changelog",
             Commands::Init { .. } => "init",
@@ -285,6 +293,9 @@ impl Cli {
                 force_unlock,
                 timing,
             ),
+            Commands::ShadowRelease { keep } => {
+                crate::shadow::run(self.config.as_deref(), self.verbose, keep)
+            }
             Commands::Publish { packages, all } => crate::publish::run(
                 self.config.as_deref(),
                 &packages,

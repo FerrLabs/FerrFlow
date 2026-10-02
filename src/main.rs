@@ -25,6 +25,7 @@ mod publishers;
 mod query;
 mod rollback;
 mod schema;
+mod shadow;
 mod status;
 mod timing;
 mod validate;

@@ -34,7 +34,7 @@ impl Publisher<'_> {
             timing.skip("release commit phase", "dry-run");
         }
 
-        if !state.any_bumped && !self.flags.draft && !self.flags.dry_run {
+        if !state.any_bumped && !self.flags.draft && !self.flags.dry_run && !self.flags.shadow {
             publish_pending_drafts(
                 self.repo,
                 self.config,
@@ -55,6 +55,10 @@ impl Publisher<'_> {
         let release_start = std::time::Instant::now();
         let release_result = execute_release(&mut self.release_plan(state, checkpoint.as_mut()));
         timing.record("release commit phase", release_start.elapsed());
+
+        if self.flags.shadow {
+            return release_result;
+        }
 
         let released_tags: Vec<String> =
             state.tags_to_create.iter().map(|t| t.tag.clone()).collect();
@@ -83,6 +87,7 @@ impl Publisher<'_> {
             root: self.root,
             target_branch: self.target_branch,
             dry_run: self.flags.dry_run,
+            shadow: self.flags.shadow,
             verbose: self.flags.verbose,
             force: self.flags.force,
             draft: self.flags.draft,

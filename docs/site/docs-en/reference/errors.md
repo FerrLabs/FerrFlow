@@ -268,6 +268,12 @@ After pushing, the release commit could not be verified on the remote branch.
 
 The remote branch was not found after a push operation.
 
+### E2016: Shadow clone failed
+
+<span id="e2016"></span>
+
+`ferrflow shadow-release` could not clone the repository into a temporary directory. Check that git is on the `PATH` and that the system temp directory is writable.
+
 ## GitHub API Errors
 
 ### E3001: Failed to create release

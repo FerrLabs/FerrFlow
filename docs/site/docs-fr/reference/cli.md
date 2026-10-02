@@ -31,6 +31,26 @@ ferrflow release [OPTIONS]
 
 ---
 
+## `ferrflow shadow-release`
+
+Exécuter toute la release dans un clone jetable du dépôt, pour voir ce qu'une vraie release ferait et si elle passerait.
+
+```bash
+ferrflow shadow-release [--keep]
+```
+
+| Option   | Description                                                |
+| -------- | ---------------------------------------------------------- |
+| `--keep` | Conserver le clone et afficher son chemin pour l'inspecter |
+
+Le clone reçoit tout ce que `release` fait en local : fichiers versionnés, changelogs, commit de release, tags et tags flottants. Les hooks pre-commit, post-commit, pre-tag, post-tag et pre-publish s'exécutent réellement, donc un hook qui ferait échouer la release échoue ici aussi. Rien ne sort de la machine : pas de push, pas de release sur la forge, pas de publication des brouillons, pas de hook post-publish, `onSuccess` ou `onError`, ni de publisher. Le dépôt d'origine n'est pas modifié.
+
+Avec `releaseCommitMode: "pr"`, le clone reçoit le commit et les tags qui arrivent une fois la PR de release mergée, pas la PR elle-même.
+
+À la fin, la commande liste les commits, les fichiers écrits et les tags créés, puis supprime le clone sauf avec `--keep`. Elle sort avec un code non nul et le code d'erreur de l'étape fautive dès qu'une étape échoue, pour qu'un job de CI puisse s'en servir comme garde-fou.
+
+---
+
 ## `ferrflow check`
 
 Prévisualiser ce que `ferrflow release` ferait sans effectuer de changements.
