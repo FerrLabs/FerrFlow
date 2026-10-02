@@ -4,6 +4,16 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.27.0] - 2026-10-02
+
+### Features
+
+- feat(cli): add shadow-release to run the full release in a throwaway clone (#1256)
+
+### Bug Fixes
+
+- fix(docs): point the API reference at the verifying releases page (#1255)
+
 ## [7.26.13] - 2026-09-30
 
 ### Bug Fixes
