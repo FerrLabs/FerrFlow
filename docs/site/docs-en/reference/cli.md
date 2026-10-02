@@ -74,7 +74,7 @@ ferrflow shadow-release [--keep]
 | -------- | ------------------------------------------------ |
 | `--keep` | Keep the clone and print its path for inspection |
 
-The clone gets everything `release` does locally: versioned files, changelogs, the release commit, tags and floating tags. Pre-commit, post-commit, pre-tag, post-tag and pre-publish hooks run for real, so a hook that would fail the release fails here too. Nothing leaves the machine: no push, no forge release, no draft promotion, no post-publish hook and no publisher. The repository you ran it from is not modified.
+The clone gets everything `release` does locally: versioned files, changelogs, the release commit, tags and floating tags. Pre-commit, post-commit, pre-tag, post-tag and pre-publish hooks run for real, so a hook that would fail the release fails here too. Nothing leaves the machine: no push, no forge release, no draft promotion, no post-publish, `onSuccess` or `onError` hook, and no publisher. The repository you ran it from is not modified.
 
 With `releaseCommitMode: "pr"`, the clone gets the commit and tags that land once the release PR is merged, not the PR itself.
 

@@ -56,6 +56,10 @@ impl Publisher<'_> {
         let release_result = execute_release(&mut self.release_plan(state, checkpoint.as_mut()));
         timing.record("release commit phase", release_start.elapsed());
 
+        if self.flags.shadow {
+            return release_result;
+        }
+
         let released_tags: Vec<String> =
             state.tags_to_create.iter().map(|t| t.tag.clone()).collect();
         match release_result {

@@ -8,7 +8,13 @@ struct Fixture {
     clone: PathBuf,
 }
 
+const PLAIN_CONFIG: &str = r#"{"package":[{"name":"app","path":".","versionedFiles":[{"path":"Cargo.toml","format":"toml"}]}]}"#;
+
 fn fixture(release_message: &str) -> Fixture {
+    fixture_with(release_message, PLAIN_CONFIG)
+}
+
+fn fixture_with(release_message: &str, config: &str) -> Fixture {
     let base = tempfile::tempdir().unwrap();
     let remote = base.path().join("remote.git");
     std::fs::create_dir_all(&remote).unwrap();
@@ -26,11 +32,7 @@ fn fixture(release_message: &str) -> Fixture {
         "[package]\nname = \"app\"\nversion = \"1.0.0\"\n",
     )
     .unwrap();
-    std::fs::write(
-        source.join(".ferrflow"),
-        r#"{"package":[{"name":"app","path":".","versionedFiles":[{"path":"Cargo.toml","format":"toml"}]}]}"#,
-    )
-    .unwrap();
+    std::fs::write(source.join(".ferrflow"), config).unwrap();
     git(&source, &["add", "."]);
     git(&source, &["commit", "--quiet", "-m", "chore: init"]);
     git(&source, &["tag", "-a", "v1.0.0", "-m", "v1.0.0"]);
@@ -157,4 +159,19 @@ fn relocate_moves_an_absolute_config_path_into_the_clone() {
         relocate(Path::new("/elsewhere/ferrflow.json"), root, clone),
         PathBuf::from("/elsewhere/ferrflow.json")
     );
+}
+
+#[test]
+fn shadow_release_runs_pre_publish_hooks_but_not_the_success_hook() {
+    let sep = std::path::MAIN_SEPARATOR;
+    let config = format!(
+        r#"{{"workspace":{{"hooks":{{"prePublish":"echo ran > ..{sep}{sep}pre-publish","onSuccess":"echo ran > ..{sep}{sep}on-success"}}}},"package":[{{"name":"app","path":".","versionedFiles":[{{"path":"Cargo.toml","format":"toml"}}]}}]}}"#
+    );
+    let f = fixture_with("feat: add a", &config);
+    let outside = f.clone.parent().unwrap();
+
+    release_in(&f.clone, None, false).unwrap();
+
+    assert!(outside.join("pre-publish").exists());
+    assert!(!outside.join("on-success").exists());
 }
