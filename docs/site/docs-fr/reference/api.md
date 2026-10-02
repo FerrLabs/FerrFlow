@@ -46,7 +46,7 @@ curl "https://api.ferrflow.com/v1/ferrflow/latest?platform=linux-x64"
 }
 ```
 
-Les releases sont signées avec [Sigstore](/fr/verifying-releases/) : vérifiez le `.bundle` plutôt qu'une somme de contrôle (les releases jusqu'à v5.47.4 embarquent une paire `.sig` + `.crt`). Sans `platform`, la réponse liste les `assets` de chaque plateforme. Plateformes valides : `linux-x64`, `linux-arm64`, `linux-arm`, `darwin-x64`, `darwin-arm64`, `win32-x64`, `win32-arm64`.
+Les releases sont signées avec [Sigstore](/fr/docs/verifying-releases/) : vérifiez le `.bundle` plutôt qu'une somme de contrôle (les releases jusqu'à v5.47.4 embarquent une paire `.sig` + `.crt`). Sans `platform`, la réponse liste les `assets` de chaque plateforme. Plateformes valides : `linux-x64`, `linux-arm64`, `linux-arm`, `darwin-x64`, `darwin-arm64`, `win32-x64`, `win32-arm64`.
 
 ## `POST /v1/ferrflow/validate`
 
