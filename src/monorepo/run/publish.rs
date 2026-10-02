@@ -34,7 +34,7 @@ impl Publisher<'_> {
             timing.skip("release commit phase", "dry-run");
         }
 
-        if !state.any_bumped && !self.flags.draft && !self.flags.dry_run {
+        if !state.any_bumped && !self.flags.draft && !self.flags.dry_run && !self.flags.shadow {
             publish_pending_drafts(
                 self.repo,
                 self.config,
@@ -83,6 +83,7 @@ impl Publisher<'_> {
             root: self.root,
             target_branch: self.target_branch,
             dry_run: self.flags.dry_run,
+            shadow: self.flags.shadow,
             verbose: self.flags.verbose,
             force: self.flags.force,
             draft: self.flags.draft,

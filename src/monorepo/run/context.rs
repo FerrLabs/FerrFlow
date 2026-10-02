@@ -26,6 +26,7 @@ pub(super) struct RunFlags {
     pub release_json: bool,
     pub force: bool,
     pub draft: bool,
+    pub shadow: bool,
 }
 
 impl RunFlags {

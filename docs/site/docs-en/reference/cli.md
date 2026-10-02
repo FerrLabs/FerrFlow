@@ -62,6 +62,26 @@ From there the first `feat:` commit bumps to `0.1.0` / `1` / today's date / … 
 
 ---
 
+## `ferrflow shadow-release`
+
+Run the whole release in a throwaway clone of the repository, so you can see what a real release would do and whether it would get through.
+
+```bash
+ferrflow shadow-release [--keep]
+```
+
+| Flag     | Description                                      |
+| -------- | ------------------------------------------------ |
+| `--keep` | Keep the clone and print its path for inspection |
+
+The clone gets everything `release` does locally: versioned files, changelogs, the release commit, tags and floating tags. Pre-commit, post-commit, pre-tag, post-tag and pre-publish hooks run for real, so a hook that would fail the release fails here too. Nothing leaves the machine: no push, no forge release, no draft promotion, no post-publish hook and no publisher. The repository you ran it from is not modified.
+
+With `releaseCommitMode: "pr"`, the clone gets the commit and tags that land once the release PR is merged, not the PR itself.
+
+At the end it lists the commits, the files written and the tags created, then deletes the clone unless `--keep` is set. It exits non-zero with the failing step's error code when any step fails, so a CI job can gate on it.
+
+---
+
 ## `ferrflow check`
 
 Preview what `ferrflow release` would do without making any changes.

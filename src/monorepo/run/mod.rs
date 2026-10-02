@@ -69,10 +69,52 @@ pub(super) fn run_release_logic(
         release_json,
         force,
         draft,
+        shadow: false,
     };
+    let access = RepoAccess {
+        channel,
+        force_unlock,
+    };
+    run_with_flags(
+        root,
+        config,
+        flags,
+        access,
+        force_versions,
+        excluded,
+        timing,
+    )
+}
 
+pub(crate) fn run_shadow_release(root: &Path, config: &Config, verbose: bool) -> Result<()> {
+    let flags = RunFlags {
+        dry_run: false,
+        verbose,
+        json: false,
+        release_json: false,
+        force: false,
+        draft: false,
+        shadow: true,
+    };
+    let access = RepoAccess {
+        channel: None,
+        force_unlock: false,
+    };
+    let mut timing = Timing::new(false);
+    run_with_flags(root, config, flags, access, &[], &[], &mut timing).map(|_| ())
+}
+
+fn run_with_flags(
+    root: &Path,
+    config: &Config,
+    flags: RunFlags,
+    access: RepoAccess<'_>,
+    force_versions: &[String],
+    excluded: &[String],
+    timing: &mut Timing,
+) -> Result<Option<RunOutput>> {
     if config.packages.is_empty() {
-        return finish(dry_run, output::empty_config(flags)?);
+        return finish(flags.dry_run, output::empty_config(flags)?);
     }
 
     if let Err(errors) = config.validate_groups() {
@@ -84,13 +126,9 @@ pub(super) fn run_release_logic(
 
     let release_order = graph::release_order(&config.packages).map_err(graph::Cycle::into_error)?;
 
-    let access = RepoAccess {
-        channel,
-        force_unlock,
-    };
     let inputs = ReleaseInputs::resolve(root, config, flags, access, timing)?;
 
-    let finalize_tags = inputs.finalize_tags(root, config, dry_run);
+    let finalize_tags = inputs.finalize_tags(root, config, flags.dry_run);
     let finalizing = !finalize_tags.is_empty();
 
     let forced = parse_forced_versions(force_versions, config.is_monorepo())?;
@@ -105,7 +143,8 @@ pub(super) fn run_release_logic(
     }
     let bump_order: &[usize] = if finalizing { &[] } else { &release_order };
 
-    let mut captured_metadata = build_metadata::capture(config, bump_order, &plans, root, dry_run)?;
+    let mut captured_metadata =
+        build_metadata::capture(config, bump_order, &plans, root, flags.dry_run)?;
 
     let package_run = PackageRun {
         config,
@@ -133,8 +172,8 @@ pub(super) fn run_release_logic(
 
     timing.record("per-package compute", compute_start.elapsed());
 
-    if json {
-        return finish(dry_run, output::check(state)?);
+    if flags.json {
+        return finish(flags.dry_run, output::check(state)?);
     }
 
     let publisher = Publisher {
@@ -148,12 +187,12 @@ pub(super) fn run_release_logic(
     };
     publisher.publish(&mut state, timing)?;
 
-    if release_json {
-        let out = output::release_json(&inputs.repo, state, &inputs.target_branch, dry_run)?;
-        return finish(dry_run, out);
+    if flags.release_json {
+        let out = output::release_json(&inputs.repo, state, &inputs.target_branch, flags.dry_run)?;
+        return finish(flags.dry_run, out);
     }
 
-    finish(dry_run, output::text(state, config, flags))
+    finish(flags.dry_run, output::text(state, config, flags))
 }
 
 fn propagate_bumps(

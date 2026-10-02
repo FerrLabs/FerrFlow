@@ -133,6 +133,7 @@ pub const GIT_INSPECT_RELEASE_BRANCH: ErrorCode = ErrorCode(2013);
 pub const GIT_DELETE_TAG: ErrorCode = ErrorCode(2014);
 #[allow(dead_code)]
 pub const GIT_REVERT: ErrorCode = ErrorCode(2015);
+pub const GIT_SHADOW_CLONE: ErrorCode = ErrorCode(2016);
 
 #[allow(dead_code)]
 pub const GITHUB_CREATE_RELEASE: ErrorCode = ErrorCode(3001);

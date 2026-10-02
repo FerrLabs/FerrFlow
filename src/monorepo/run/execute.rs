@@ -26,6 +26,7 @@ pub(super) struct ReleasePlan<'a> {
     pub root: &'a Path,
     pub target_branch: &'a str,
     pub dry_run: bool,
+    pub shadow: bool,
     pub verbose: bool,
     pub force: bool,
     pub draft: bool,
@@ -73,6 +74,10 @@ pub(super) fn execute_release(plan: &mut ReleasePlan<'_>) -> Result<()> {
 
     run_package_hooks(plan, HookPoint::PrePublish)?;
 
+    if plan.shadow {
+        return Ok(());
+    }
+
     if !plan.dry_run {
         push_and_publish(plan, commit.mode, &floating_tag_names)?;
     }
@@ -88,6 +93,8 @@ pub(super) fn execute_release(plan: &mut ReleasePlan<'_>) -> Result<()> {
 fn release_commit_mode(plan: &ReleasePlan<'_>) -> ReleaseCommitMode {
     if plan.finalizing {
         ReleaseCommitMode::None
+    } else if plan.shadow {
+        ReleaseCommitMode::Commit
     } else {
         plan.config.workspace.release_commit_mode
     }

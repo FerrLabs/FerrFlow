@@ -11,6 +11,7 @@ fn flags(json: bool, release_json: bool) -> RunFlags {
         release_json,
         force: false,
         draft: false,
+        shadow: false,
     }
 }
 

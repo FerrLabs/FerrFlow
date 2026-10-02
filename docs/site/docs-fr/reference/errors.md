@@ -265,6 +265,12 @@ Le commit de release n'a pas pu être vérifié sur la branche distante.
 
 La branche distante n'a pas été trouvée après le push.
 
+### E2016 : Clone de shadow-release échoué
+
+<span id="e2016"></span>
+
+`ferrflow shadow-release` n'a pas pu cloner le dépôt dans un répertoire temporaire. Vérifiez que git est dans le `PATH` et que le répertoire temporaire du système est accessible en écriture.
+
 ## API GitHub
 
 ### E3001 : Création de release échouée
