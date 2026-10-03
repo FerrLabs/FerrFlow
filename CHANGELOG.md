@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.27.3] - 2026-10-03
+
+### Bug Fixes
+
+- fix(release): keep the latest alias on the highest version when a hotfix ships (#1262)
+
 ## [7.27.2] - 2026-10-03
 
 ### Bug Fixes
