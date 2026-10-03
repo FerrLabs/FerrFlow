@@ -15,7 +15,9 @@ pub(super) fn create_and_move_floating_tags(
 ) -> Result<()> {
     for t in plan.tags_to_create.iter().filter(|t| !t.is_prerelease) {
         let pkg = package_for_tag(plan.config, t)?;
-        if let Some(alias) = pkg.latest_tag_name(&plan.config.workspace) {
+        if let Some(alias) = pkg.latest_tag_name(&plan.config.workspace)
+            && latest_moves(plan, t, &alias)
+        {
             move_floating_tag(plan, t, alias, floating_tag_names)?;
         }
         let levels = pkg.effective_floating_tags(&plan.config.workspace);
@@ -63,6 +65,32 @@ fn move_floating_tag(
     }
     floating_tag_names.push(name);
     Ok(())
+}
+
+fn latest_moves(plan: &mut ReleasePlan<'_>, t: &PlannedTag, alias: &str) -> bool {
+    let Some(old_ver) = backward_from(plan.repo, alias, &t.version) else {
+        return true;
+    };
+    if plan.force {
+        tracing::warn!(
+            "{}",
+            format!("  ⚠ {alias} moves backward ({old_ver} → {})", t.version).yellow()
+        );
+        return true;
+    }
+    if let Some((_, lines)) = plan
+        .pkg_outputs
+        .iter_mut()
+        .rev()
+        .find(|(n, _)| n == &t.package)
+    {
+        lines.push(format!(
+            "  Kept {} on {old_ver}: {} is older",
+            alias.cyan(),
+            t.version
+        ));
+    }
+    false
 }
 
 fn refuse_backward_move(plan: &ReleasePlan<'_>, float_tag: &str, version: &str) -> Result<()> {
