@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.27.1] - 2026-10-03
+
+### Bug Fixes
+
+- fix(cli): print strategy names as configured and reword the forced bump in why (#1259)
+
 ## [7.27.0] - 2026-10-02
 
 ### Features
