@@ -162,7 +162,10 @@ fn hostile_package_fields_cannot_break_the_table() {
         .lines()
         .find(|l| l.starts_with("| a"))
         .unwrap_or_else(|| panic!("{body}"));
-    assert_eq!(row, r"| a\|b &lt;img&gt; | `1.2.0` | `1.3.0\`` | minor |");
+    assert_eq!(
+        row,
+        r"| a\|b &lt;img&gt; | `1.2.0` | `` 1.3.0` `` | minor |"
+    );
 }
 
 mod forge_from_repo {
@@ -218,4 +221,29 @@ mod forge_from_repo {
             "could not tell which forge hosts git.example.com, set `forge` in the config"
         );
     }
+}
+
+#[test]
+fn code_cell_wraps_a_plain_version_in_one_backtick() {
+    assert_eq!(code_cell("1.2.3"), "`1.2.3`");
+}
+
+#[test]
+fn code_cell_lengthens_the_fence_past_an_inner_backtick_run() {
+    assert_eq!(code_cell("1.2`3"), "``1.2`3``");
+    assert_eq!(code_cell("a``b"), "```a``b```");
+}
+
+#[test]
+fn code_cell_pads_a_value_that_starts_or_ends_with_a_backtick() {
+    assert_eq!(code_cell("`x"), "`` `x ``");
+    assert_eq!(code_cell("x`"), "`` x` ``");
+}
+
+#[test]
+fn code_cell_keeps_the_row_intact_and_the_rest_literal() {
+    assert_eq!(code_cell("a|b"), r"`a\|b`");
+    assert_eq!(code_cell("a\nb"), "`a b`");
+    assert_eq!(code_cell(r"a\b<i>"), r"`a\b<i>`");
+    assert_eq!(code_cell(""), "");
 }

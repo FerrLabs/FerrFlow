@@ -127,10 +127,10 @@ fn format_preview_comment(packages: &[CheckPackage]) -> String {
     body.push_str("|---------|---------|------|------|\n");
     for pkg in packages {
         body.push_str(&format!(
-            "| {} | `{}` | `{}` | {} |\n",
+            "| {} | {} | {} | {} |\n",
             escape_md_cell(&pkg.name),
-            escape_md_cell(&pkg.current_version),
-            escape_md_cell(&pkg.next_version),
+            code_cell(&pkg.current_version),
+            code_cell(&pkg.next_version),
             escape_md_cell(&pkg.bump_type),
         ));
     }
@@ -153,6 +153,21 @@ pub(super) fn escape_md_cell(s: &str) -> String {
         }
     }
     out
+}
+
+pub(super) fn code_cell(s: &str) -> String {
+    let flat = s.replace(['\n', '\r'], " ").replace('|', "\\|");
+    if flat.is_empty() {
+        return flat;
+    }
+    let longest_run = flat.split(|c| c != '`').map(str::len).max().unwrap_or(0);
+    let fence = "`".repeat(longest_run + 1);
+    let pad = if flat.starts_with('`') || flat.ends_with('`') {
+        " "
+    } else {
+        ""
+    };
+    format!("{fence}{pad}{flat}{pad}{fence}")
 }
 
 #[cfg(test)]
