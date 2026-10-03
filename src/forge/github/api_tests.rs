@@ -355,7 +355,20 @@ fn find_open_pr_filters_by_owner_qualified_head_and_base() {
     assert_eq!(found, Some(12));
     assert_eq!(
         server.only_request().path,
-        "/repos/owner/repo/pulls?state=open&head=owner:release/v1&base=main"
+        "/repos/owner/repo/pulls?state=open&head=owner%3Arelease%2Fv1&base=main"
+    );
+}
+
+#[test]
+fn find_open_pr_encodes_a_branch_with_query_characters() {
+    let server = FakeServer::start(vec![Reply::json(200, json!([{ "number": 4 }]))]);
+
+    let found = forge(&server).find_open_pr("fix/a&b#c+d", "main").unwrap();
+
+    assert_eq!(found, Some(4));
+    assert_eq!(
+        server.only_request().path,
+        "/repos/owner/repo/pulls?state=open&head=owner%3Afix%2Fa%26b%23c%2Bd&base=main"
     );
 }
 
@@ -522,6 +535,22 @@ fn set_branch_creates_the_ref_when_it_does_not_exist() {
         requests[1].json(),
         json!({ "ref": "refs/heads/release/v1", "sha": "fff999" })
     );
+}
+
+#[test]
+fn set_branch_reports_a_patch_failure_other_than_a_missing_ref() {
+    let server = FakeServer::start(vec![Reply::json(
+        401,
+        json!({ "message": "Bad credentials" }),
+    )]);
+
+    let err = forge(&server)
+        .set_branch("release/v1", "fff999")
+        .unwrap_err();
+
+    assert_eq!(server.only_request().method, "PATCH");
+    assert_eq!(code(&err).as_deref(), Some("E3015"));
+    assert!(format!("{err:#}").contains("401"), "{err:#}");
 }
 
 #[test]

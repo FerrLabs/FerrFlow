@@ -167,7 +167,7 @@ impl Forge for GitHubForge {
 
         match patched {
             Ok(_) => Ok(()),
-            Err(_) => {
+            Err(ureq::Error::StatusCode(422)) => {
                 let create_url = format!("{}/repos/{}/git/refs", self.api_base, self.slug);
                 self.agent
                     .post(&create_url)
@@ -181,6 +181,9 @@ impl Forge for GitHubForge {
                     .with_context(|| format!("Failed to point branch '{branch}' at {oid}"))
                     .error_code(error_code::GITHUB_SET_BRANCH)
             }
+            Err(e) => Err(anyhow::Error::new(e))
+                .with_context(|| format!("Failed to move branch '{branch}' to {oid}"))
+                .error_code(error_code::GITHUB_SET_BRANCH),
         }
     }
     fn create_release(
@@ -415,13 +418,13 @@ impl Forge for GitHubForge {
 
     fn find_open_pr(&self, head: &str, base: &str) -> Result<Option<u64>> {
         let owner = self.slug.split('/').next().unwrap_or_default();
-        let url = format!(
-            "{}/repos/{}/pulls?state=open&head={}:{}&base={}",
-            self.api_base, self.slug, owner, head, base
-        );
+        let url = format!("{}/repos/{}/pulls", self.api_base, self.slug);
         let response: serde_json::Value = self
             .agent
             .get(&url)
+            .query("state", "open")
+            .query("head", format!("{owner}:{head}"))
+            .query("base", base)
             .header("Authorization", &format!("Bearer {}", self.token))
             .header("Accept", "application/vnd.github+json")
             .header("X-GitHub-Api-Version", "2022-11-28")

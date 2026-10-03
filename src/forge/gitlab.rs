@@ -288,13 +288,13 @@ impl Forge for GitLabForge {
 
     fn find_open_pr(&self, head: &str, base: &str) -> Result<Option<u64>> {
         let project = self.encoded_project_id();
-        let url = format!(
-            "{}/projects/{project}/merge_requests?state=opened&source_branch={head}&target_branch={base}",
-            self.api_base
-        );
+        let url = format!("{}/projects/{project}/merge_requests", self.api_base);
         let response: serde_json::Value = self
             .agent
             .get(&url)
+            .query("state", "opened")
+            .query("source_branch", head)
+            .query("target_branch", base)
             .header(self.token_kind.header(), &self.token)
             .header("User-Agent", "ferrflow")
             .call()
