@@ -257,7 +257,22 @@ fn find_open_pr_filters_opened_mrs_by_source_and_target() {
     assert_eq!(
         server.only_request().path,
         format!(
-            "{PROJECT}/merge_requests?state=opened&source_branch=release/v1&target_branch=main"
+            "{PROJECT}/merge_requests?state=opened&source_branch=release%2Fv1&target_branch=main"
+        )
+    );
+}
+
+#[test]
+fn find_open_pr_encodes_a_branch_with_query_characters() {
+    let server = FakeServer::start(vec![Reply::json(200, json!([{ "iid": 9 }]))]);
+
+    let found = forge(&server).find_open_pr("fix/a&b#c+d", "main").unwrap();
+
+    assert_eq!(found, Some(9));
+    assert_eq!(
+        server.only_request().path,
+        format!(
+            "{PROJECT}/merge_requests?state=opened&source_branch=fix%2Fa%26b%23c%2Bd&target_branch=main"
         )
     );
 }
