@@ -178,10 +178,7 @@ pub(super) fn versioning_section(config: Option<&Config>, root: &Path) -> Sectio
     match config.workspace.versioning {
         Some(strategy) => checks.push(Check::info(
             "strategy",
-            Some(format!(
-                "declared: {}",
-                format!("{strategy:?}").to_lowercase()
-            )),
+            Some(format!("declared: {strategy}")),
         )),
         None => checks.push(Check::info(
             "strategy",

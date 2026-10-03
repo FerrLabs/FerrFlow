@@ -562,7 +562,7 @@ mod sections {
         );
         let config = config_from(
             root,
-            r#"{"workspace":{"versioning":"calver"},"package":[
+            r#"{"workspace":{"versioning":"calver-short"},"package":[
                 {"name":"api","path":"api","versionedFiles":[{"path":"api/Cargo.toml","format":"toml"}]},
                 {"name":"web","path":"web","versionedFiles":[{"path":"web/package.json","format":"json"}]}
             ]}"#,
@@ -570,7 +570,7 @@ mod sections {
 
         let section = checks::versioning_section(Some(&config), root);
 
-        assert_eq!(detail(find(&section, "strategy")), "declared: calver");
+        assert_eq!(detail(find(&section, "strategy")), "declared: calver-short");
         assert_eq!(detail(find(&section, "api")), "v2.3.4");
         assert_eq!(
             detail(find(&section, "web")),

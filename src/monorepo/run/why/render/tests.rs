@@ -330,6 +330,6 @@ fn the_decision_names_what_triggered_the_bump() {
         rendered(&forced)
             .last()
             .unwrap()
-            .starts_with("Decision: forced bump forced — ")
+            .starts_with("Decision: forced bump set with --force-version — ")
     );
 }
