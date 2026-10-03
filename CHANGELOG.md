@@ -4,6 +4,13 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.27.2] - 2026-10-03
+
+### Bug Fixes
+
+- fix(forge): encode branch names in PR lookups and stop set_branch from hiding a PATCH error (#1261)
+- fix(preview): fence version cells so a backtick cannot break the PR comment table (#1260)
+
 ## [7.27.1] - 2026-10-03
 
 ### Bug Fixes
