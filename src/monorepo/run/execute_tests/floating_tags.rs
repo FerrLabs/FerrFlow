@@ -273,3 +273,48 @@ fn a_tag_for_an_unknown_package_is_an_error() {
     );
     assert!(harness.remote_tags().is_empty());
 }
+
+#[test]
+fn a_hotfix_on_an_older_line_leaves_the_latest_alias_alone() {
+    let mut harness = floating_harness(&["app"], &[FloatingTagLevel::Major]);
+    harness.config.workspace.latest_tag = Some("latest".to_string());
+    harness.git(&["tag", "-a", "v1", "-m", "Release 1.2.3"]);
+    harness.git(&["tag", "-a", "latest", "-m", "Release 2.0.0"]);
+    let pinned = commit_of(&harness, "latest");
+    commit_file(&harness.root, "b.txt", "b", "fix: hotfix");
+    let forge = RecordingForge::default();
+    let mut run = PlanRun {
+        pkg_outputs: vec![("app".to_string(), Vec::new())],
+        ..Default::default()
+    };
+
+    run.execute(&harness, &[tag_to_create("v1.2.4", "app", "1.2.4")], &forge)
+        .expect("a hotfix release goes through");
+
+    assert_eq!(commit_of(&harness, "latest"), pinned);
+    assert_eq!(tag_message(&harness, "latest"), "Release 2.0.0");
+    assert!(!harness.remote_tags().contains(&"latest".to_string()));
+    assert_eq!(tag_message(&harness, "v1"), "Release 1.2.4");
+    let lines = run.package_lines("app").join("\n");
+    assert!(lines.contains("Kept"), "{lines}");
+    assert!(lines.contains("on 2.0.0: 1.2.4 is older"), "{lines}");
+}
+
+#[test]
+fn force_moves_the_latest_alias_backward() {
+    let mut harness = floating_harness(&["app"], &[]);
+    harness.config.workspace.latest_tag = Some("latest".to_string());
+    harness.git(&["tag", "-a", "latest", "-m", "Release 2.0.0"]);
+    commit_file(&harness.root, "b.txt", "b", "fix: hotfix");
+    let forge = RecordingForge::default();
+    let mut run = PlanRun {
+        force: true,
+        ..Default::default()
+    };
+
+    run.execute(&harness, &[tag_to_create("v1.2.4", "app", "1.2.4")], &forge)
+        .expect("--force moves latest backward");
+
+    assert_eq!(commit_of(&harness, "latest"), commit_of(&harness, "HEAD"));
+    assert_eq!(tag_message(&harness, "latest"), "Release 1.2.4");
+}
