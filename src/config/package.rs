@@ -115,6 +115,20 @@ pub enum VersioningStrategy {
     Zerover,
 }
 
+impl std::fmt::Display for VersioningStrategy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Semver => "semver",
+            Self::Calver => "calver",
+            Self::CalverShort => "calver-short",
+            Self::CalverSeq => "calver-seq",
+            Self::CalverShortSeq => "calver-short-seq",
+            Self::Sequential => "sequential",
+            Self::Zerover => "zerover",
+        })
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum FloatingTagLevel {
@@ -279,6 +293,22 @@ pub enum FileFormat {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn strategy_display_matches_the_config_spelling() {
+        for strategy in [
+            VersioningStrategy::Semver,
+            VersioningStrategy::Calver,
+            VersioningStrategy::CalverShort,
+            VersioningStrategy::CalverSeq,
+            VersioningStrategy::CalverShortSeq,
+            VersioningStrategy::Sequential,
+            VersioningStrategy::Zerover,
+        ] {
+            let serialized = serde_json::to_value(strategy).unwrap();
+            assert_eq!(serialized.as_str(), Some(strategy.to_string().as_str()));
+        }
+    }
+
     fn ws(tag_template: Option<&str>, latest: Option<&str>) -> WorkspaceConfig {
         WorkspaceConfig {
             tag_template: tag_template.map(str::to_string),

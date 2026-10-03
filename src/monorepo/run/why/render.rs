@@ -156,7 +156,7 @@ fn push_decision(out: &mut Vec<String>, x: &Explanation) {
             let cause = match triggered_by {
                 Trigger::Commits => "from its own commits",
                 Trigger::Dependency => "from the dependency cascade",
-                Trigger::Forced => "forced",
+                Trigger::Forced => "set with --force-version",
             };
             let pre = if *prerelease { " (prerelease)" } else { "" };
             out.push(format!(
