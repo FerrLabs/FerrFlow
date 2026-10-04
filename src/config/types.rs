@@ -145,6 +145,14 @@ pub enum ReleaseCommitMode {
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Default)]
 #[serde(rename_all = "kebab-case")]
+pub enum NestedPackages {
+    #[default]
+    Shared,
+    Exclusive,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Default)]
+#[serde(rename_all = "kebab-case")]
 pub enum ReleaseCommitScope {
     #[default]
     Grouped,

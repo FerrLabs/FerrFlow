@@ -137,32 +137,46 @@ pub enum FloatingTagLevel {
 }
 
 impl PackageConfig {
-    /// Whether this package owns any of `changed_files` — its own `path`, or
-    /// one of its `shared_paths`.
+    /// Whether this package owns any of `changed_files`: its own `path`, minus
+    /// the `nested` package paths it contains, or one of its `shared_paths`.
     ///
     /// A single-package repo always owns everything, as does a package rooted
-    /// at the repo root, so both short-circuit to true.
-    pub fn is_touched_by(&self, changed_files: &[String], is_monorepo: bool) -> bool {
+    /// at the repo root with no nested package excluded, so both short-circuit
+    /// to true.
+    pub fn is_touched_by(
+        &self,
+        changed_files: &[String],
+        is_monorepo: bool,
+        nested: &[String],
+    ) -> bool {
         if !is_monorepo {
             return true;
         }
-
-        let pkg_path = self.path.trim_start_matches("./").trim_end_matches('/');
-        if pkg_path == "." || pkg_path.is_empty() {
+        if self.relative_path().is_none() && nested.is_empty() {
             return true;
         }
-
-        let prefix = format!("{pkg_path}/");
-        if changed_files.iter().any(|f| f.starts_with(&prefix)) {
+        if changed_files.iter().any(|f| self.owns_file(f, nested)) {
             return true;
         }
-
         self.shared_paths.iter().any(|shared| {
             let shared = shared.trim_end_matches('/');
             changed_files
                 .iter()
                 .any(|f| f.starts_with(shared) || f == shared)
         })
+    }
+
+    pub fn owns_file(&self, file: &str, nested: &[String]) -> bool {
+        let inside = match self.relative_path() {
+            None => true,
+            Some(path) => file.starts_with(&format!("{path}/")),
+        };
+        inside && !nested.iter().any(|n| file.starts_with(&format!("{n}/")))
+    }
+
+    pub fn relative_path(&self) -> Option<&str> {
+        let path = self.path.trim_start_matches("./").trim_end_matches('/');
+        (!path.is_empty() && path != ".").then_some(path)
     }
 
     /// Resolve the effective versioning strategy for this package. Priority:
@@ -465,37 +479,37 @@ mod tests {
     #[test]
     fn matches_files_under_the_package_path() {
         let p = pkg("packages/api", &[]);
-        assert!(p.is_touched_by(&files(&["packages/api/src/main.rs"]), true));
+        assert!(p.is_touched_by(&files(&["packages/api/src/main.rs"]), true, &[]));
     }
 
     #[test]
     fn ignores_files_of_a_sibling_package() {
         let p = pkg("packages/api", &[]);
-        assert!(!p.is_touched_by(&files(&["packages/web/src/app.ts"]), true));
+        assert!(!p.is_touched_by(&files(&["packages/web/src/app.ts"]), true, &[]));
     }
 
     #[test]
     fn a_sibling_with_a_shared_prefix_does_not_match() {
         let p = pkg("packages/api", &[]);
-        assert!(!p.is_touched_by(&files(&["packages/api-client/index.ts"]), true));
+        assert!(!p.is_touched_by(&files(&["packages/api-client/index.ts"]), true, &[]));
     }
 
     #[test]
     fn shared_paths_count_as_a_touch() {
         let p = pkg("packages/api", &["proto"]);
-        assert!(p.is_touched_by(&files(&["proto/schema.proto"]), true));
+        assert!(p.is_touched_by(&files(&["proto/schema.proto"]), true, &[]));
     }
 
     #[test]
     fn a_shared_path_file_itself_counts() {
         let p = pkg("packages/api", &["Cargo.lock"]);
-        assert!(p.is_touched_by(&files(&["Cargo.lock"]), true));
+        assert!(p.is_touched_by(&files(&["Cargo.lock"]), true, &[]));
     }
 
     #[test]
     fn a_single_package_repo_owns_everything() {
         let p = pkg("packages/api", &[]);
-        assert!(p.is_touched_by(&files(&["anywhere/else.txt"]), false));
+        assert!(p.is_touched_by(&files(&["anywhere/else.txt"]), false, &[]));
     }
 
     #[test]
@@ -503,7 +517,7 @@ mod tests {
         for path in [".", "", "./"] {
             let p = pkg(path, &[]);
             assert!(
-                p.is_touched_by(&files(&["anywhere/else.txt"]), true),
+                p.is_touched_by(&files(&["anywhere/else.txt"]), true, &[]),
                 "path {path:?} should own the whole tree"
             );
         }
@@ -512,12 +526,52 @@ mod tests {
     #[test]
     fn a_trailing_slash_on_the_package_path_is_tolerated() {
         let p = pkg("packages/api/", &[]);
-        assert!(p.is_touched_by(&files(&["packages/api/src/main.rs"]), true));
+        assert!(p.is_touched_by(&files(&["packages/api/src/main.rs"]), true, &[]));
     }
 
     #[test]
     fn no_changed_files_is_not_a_touch() {
         let p = pkg("packages/api", &[]);
-        assert!(!p.is_touched_by(&[], true));
+        assert!(!p.is_touched_by(&[], true, &[]));
+    }
+    fn nested(list: &[&str]) -> Vec<String> {
+        files(list)
+    }
+
+    #[test]
+    fn a_root_package_skips_files_owned_by_a_nested_package() {
+        let p = pkg(".", &[]);
+        assert!(!p.is_touched_by(&files(&["cli/src/main.rs"]), true, &nested(&["cli"])));
+        assert!(p.is_touched_by(
+            &files(&["cli/src/main.rs", "go.mod"]),
+            true,
+            &nested(&["cli"])
+        ));
+    }
+
+    #[test]
+    fn a_nested_exclusion_does_not_swallow_a_sibling_with_a_shared_prefix() {
+        let p = pkg(".", &[]);
+        assert!(p.is_touched_by(&files(&["cli-tools/run.sh"]), true, &nested(&["cli"])));
+    }
+
+    #[test]
+    fn an_outer_package_keeps_its_files_outside_the_nested_one() {
+        let p = pkg("packages/app", &[]);
+        let inner = nested(&["packages/app/plugin"]);
+        assert!(!p.is_touched_by(&files(&["packages/app/plugin/lib.rs"]), true, &inner));
+        assert!(p.is_touched_by(&files(&["packages/app/src/lib.rs"]), true, &inner));
+    }
+
+    #[test]
+    fn a_shared_path_still_counts_inside_a_nested_package() {
+        let p = pkg(".", &["cli/schema.json"]);
+        assert!(p.is_touched_by(&files(&["cli/schema.json"]), true, &nested(&["cli"])));
+    }
+
+    #[test]
+    fn a_root_package_with_nested_exclusions_needs_a_changed_file() {
+        let p = pkg(".", &[]);
+        assert!(!p.is_touched_by(&[], true, &nested(&["cli"])));
     }
 }

@@ -540,7 +540,7 @@ fn bench_full_monorepo_flow(c: &mut Criterion) {
 
                 let mut planned = 0usize;
                 for pkg in &config.packages {
-                    if !pkg.is_touched_by(&changed, true) {
+                    if !pkg.is_touched_by(&changed, true, &[]) {
                         continue;
                     }
                     let strategy = pkg.effective_versioning(&config.workspace, Vec::new);

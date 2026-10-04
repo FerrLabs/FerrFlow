@@ -38,7 +38,7 @@ fn file_list_is_scoped_to_the_package_in_a_monorepo() {
         "packages/web/app.ts".to_string(),
         "proto/schema.proto".to_string(),
     ];
-    let scoped = scope_files_to_package(&scoped_pkg(), true, files);
+    let scoped = scope_files_to_package(&scoped_pkg(), true, &[], files);
     assert_eq!(
         scoped,
         vec![
@@ -52,7 +52,7 @@ fn file_list_is_scoped_to_the_package_in_a_monorepo() {
 #[test]
 fn file_list_is_untouched_in_a_single_package_repo() {
     let files = vec!["anything/at/all.rs".to_string()];
-    let scoped = scope_files_to_package(&scoped_pkg(), false, files.clone());
+    let scoped = scope_files_to_package(&scoped_pkg(), false, &[], files.clone());
     assert_eq!(scoped, files);
 }
 
@@ -351,10 +351,10 @@ mod git_backed {
         let web_commit = head(root);
 
         let pkg = package("api", "api");
-        assert!(commit_touches_package(&repo, &pkg, true, api_commit));
-        assert!(!commit_touches_package(&repo, &pkg, true, web_commit));
+        assert!(commit_touches_package(&repo, &pkg, true, &[], api_commit));
+        assert!(!commit_touches_package(&repo, &pkg, true, &[], web_commit));
         assert!(
-            commit_touches_package(&repo, &pkg, false, web_commit),
+            commit_touches_package(&repo, &pkg, false, &[], web_commit),
             "a single-package repo keeps every commit"
         );
     }

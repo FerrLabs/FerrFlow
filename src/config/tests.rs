@@ -1859,3 +1859,64 @@ fn the_derived_and_deserialized_workspace_defaults_agree_field_by_field() {
 
     assert_eq!(from_default, from_empty);
 }
+
+fn nesting_config(mode: &str) -> Config {
+    let json = format!(
+        r#"{{
+            "workspace": {{ "nestedPackages": "{mode}" }},
+            "package": [
+                {{ "name": "operator", "path": "." }},
+                {{ "name": "cli", "path": "cli" }},
+                {{ "name": "app", "path": "packages/app/" }},
+                {{ "name": "plugin", "path": "./packages/app/plugin" }},
+                {{ "name": "web", "path": "packages/web" }}
+            ]
+        }}"#
+    );
+    serde_json::from_str(&json).unwrap()
+}
+
+fn nested_of(config: &Config, name: &str) -> Vec<String> {
+    let pkg = config.packages.iter().find(|p| p.name == name).unwrap();
+    config.nested_package_paths(pkg)
+}
+
+#[test]
+fn nested_packages_default_to_shared() {
+    let config: Config =
+        serde_json::from_str(r#"{ "package": [{ "name": "a", "path": "." }] }"#).unwrap();
+    assert_eq!(config.workspace.nested_packages, NestedPackages::Shared);
+}
+
+#[test]
+fn nested_packages_accepts_the_snake_case_spelling() {
+    let config: Config = serde_json::from_str(
+        r#"{ "workspace": { "nested_packages": "exclusive" }, "package": [{ "name": "a", "path": "." }] }"#,
+    )
+    .unwrap();
+    assert_eq!(config.workspace.nested_packages, NestedPackages::Exclusive);
+}
+
+#[test]
+fn shared_mode_excludes_nothing() {
+    let config = nesting_config("shared");
+    assert!(nested_of(&config, "operator").is_empty());
+    assert!(nested_of(&config, "app").is_empty());
+}
+
+#[test]
+fn exclusive_mode_gives_the_root_every_other_package_path() {
+    let config = nesting_config("exclusive");
+    assert_eq!(
+        nested_of(&config, "operator"),
+        vec!["cli", "packages/app", "packages/app/plugin", "packages/web"]
+    );
+}
+
+#[test]
+fn exclusive_mode_only_excludes_packages_inside_the_outer_path() {
+    let config = nesting_config("exclusive");
+    assert_eq!(nested_of(&config, "app"), vec!["packages/app/plugin"]);
+    assert!(nested_of(&config, "web").is_empty());
+    assert!(nested_of(&config, "plugin").is_empty());
+}

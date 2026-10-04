@@ -45,6 +45,7 @@ const CAMEL_CASE_KEYS: &[&str] = &[
     "tag_template",
     "versioned_files",
     "shared_paths",
+    "nested_packages",
     "recover_missed_releases",
     "release_commit_mode",
     "release_commit_scope",

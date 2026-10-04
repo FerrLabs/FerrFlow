@@ -204,6 +204,7 @@ fn scope_commits_to_package(
         return commits;
     }
     prefetch_commit_files(repo, &commits, inputs.commit_files_cache);
+    let nested = inputs.config.nested_package_paths(pkg);
     commits
         .into_iter()
         .filter(|c| {
@@ -211,7 +212,7 @@ fn scope_commits_to_package(
                 return true;
             };
             let files = files_for_commit_cached(repo, id, inputs.commit_files_cache);
-            files.is_empty() || pkg.is_touched_by(&files, true)
+            files.is_empty() || pkg.is_touched_by(&files, true, &nested)
         })
         .collect()
 }
@@ -229,8 +230,9 @@ pub(super) fn evaluate_touch(
 ) -> Result<TouchOutcome> {
     let config = inputs.config;
     let is_monorepo = config.is_monorepo();
+    let nested = config.nested_package_paths(pkg);
 
-    if is_package_touched(pkg, inputs.changed_files, is_monorepo) {
+    if is_package_touched(pkg, inputs.changed_files, is_monorepo, &nested) {
         return Ok(TouchOutcome {
             touched: true,
             recovered: false,
@@ -261,7 +263,7 @@ pub(super) fn evaluate_touch(
             )?)
         };
 
-    let touched = is_package_touched(pkg, &files_since_tag, true);
+    let touched = is_package_touched(pkg, &files_since_tag, true, &nested);
     Ok(TouchOutcome {
         touched,
         recovered: touched,

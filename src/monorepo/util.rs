@@ -78,8 +78,9 @@ pub(super) fn is_package_touched(
     pkg: &PackageConfig,
     changed_files: &[String],
     is_monorepo: bool,
+    nested: &[String],
 ) -> bool {
-    pkg.is_touched_by(changed_files, is_monorepo)
+    pkg.is_touched_by(changed_files, is_monorepo, nested)
 }
 
 #[cfg(test)]

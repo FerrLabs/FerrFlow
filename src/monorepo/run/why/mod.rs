@@ -201,6 +201,7 @@ fn explain(
     };
 
     let touch = evaluate_touch(repo, pkg, &inputs)?;
+    let nested = config.nested_package_paths(pkg);
     let plan = compute_plan(repo, pkg, &inputs)?;
 
     let commits = if touch.touched {
@@ -251,7 +252,7 @@ fn explain(
                 .files
                 .iter()
                 .map(|f| FileMatch {
-                    matched: matching_rule(pkg, f, is_monorepo),
+                    matched: matching_rule(pkg, f, is_monorepo, &nested),
                     path: f.clone(),
                 })
                 .collect(),
@@ -263,17 +264,20 @@ fn explain(
     })
 }
 
-fn matching_rule(pkg: &PackageConfig, file: &str, is_monorepo: bool) -> Option<String> {
+fn matching_rule(
+    pkg: &PackageConfig,
+    file: &str,
+    is_monorepo: bool,
+    nested: &[String],
+) -> Option<String> {
     if !is_monorepo {
         return Some("single-package repo".to_string());
     }
-    let pkg_path = pkg.path.trim_start_matches("./").trim_end_matches('/');
-    if pkg_path == "." || pkg_path.is_empty() {
-        return Some("repo root".to_string());
-    }
-    let prefix = format!("{pkg_path}/");
-    if file.starts_with(&prefix) {
-        return Some(prefix);
+    if pkg.owns_file(file, nested) {
+        return Some(match pkg.relative_path() {
+            None => "repo root".to_string(),
+            Some(path) => format!("{path}/"),
+        });
     }
     pkg.shared_paths.iter().find_map(|shared| {
         let trimmed = shared.trim_end_matches('/');
