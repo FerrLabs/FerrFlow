@@ -548,10 +548,9 @@ user-login = "BurntSushi"
 user-name = "Andrew Gallant"
 
 [[publisher.libc]]
-version = "0.2.189"
-when = "2026-07-21"
-user-id = 55123
-user-login = "rust-lang-owner"
+version = "0.2.190"
+when = "2026-10-02"
+trusted-publisher = "github:rust-lang/libc"
 
 [[publisher.memchr]]
 version = "2.8.3"

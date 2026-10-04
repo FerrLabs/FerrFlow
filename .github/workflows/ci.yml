@@ -66,7 +66,7 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
       - uses: taiki-e/install-action@67729d5c413db75907f0ad1e39bb04b9c868ff60 # v2
         with:
-          tool: cargo-audit,cargo-deny,cargo-machete,cargo-vet
+          tool: cargo-audit,cargo-deny,cargo-machete,cargo-vet@0.10.2
       - name: cargo audit (RustSec advisories)
         run: cargo audit --deny warnings
       - name: cargo deny (licenses + bans + sources)
