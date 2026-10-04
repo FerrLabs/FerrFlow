@@ -565,3 +565,25 @@ fn set_branch_fails_when_neither_move_nor_create_works() {
     assert_eq!(code(&err).as_deref(), Some("E3015"));
     assert!(format!("{err:#}").contains("'main'"), "{err:#}");
 }
+
+#[test]
+fn set_branch_encodes_a_branch_that_would_cut_the_ref_url() {
+    let server = FakeServer::start(vec![
+        Reply::json(422, json!({ "message": "Reference does not exist" })),
+        Reply::json(201, json!({})),
+    ]);
+
+    forge(&server)
+        .set_branch("release/a#b?c", "fff999")
+        .unwrap();
+
+    let requests = server.requests();
+    assert_eq!(
+        requests[0].path,
+        "/repos/owner/repo/git/refs/heads/release/a%23b%3Fc"
+    );
+    assert_eq!(
+        requests[1].json(),
+        json!({ "ref": "refs/heads/release/a#b?c", "sha": "fff999" })
+    );
+}

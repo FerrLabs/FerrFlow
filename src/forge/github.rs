@@ -155,8 +155,10 @@ impl Forge for GitHubForge {
 
     fn set_branch(&self, branch: &str, oid: &str) -> Result<()> {
         let url = format!(
-            "{}/repos/{}/git/refs/heads/{branch}",
-            self.api_base, self.slug
+            "{}/repos/{}/git/refs/heads/{}",
+            self.api_base,
+            self.slug,
+            crate::config::percent_encode_path(branch)
         );
         let patched = self
             .agent

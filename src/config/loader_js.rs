@@ -30,7 +30,7 @@ pub(crate) fn path_to_file_url(path: &Path) -> Result<String> {
     }
 }
 
-fn percent_encode_path(path: &str) -> String {
+pub(crate) fn percent_encode_path(path: &str) -> String {
     let mut out = String::with_capacity(path.len());
     for byte in path.bytes() {
         match byte {

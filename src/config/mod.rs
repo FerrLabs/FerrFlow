@@ -48,6 +48,8 @@ pub use workspace::{
 
 use format::{CONFIG_FORMATS, DotfileFormat, Json5Format, JsonFormat, TomlFormat};
 #[cfg(feature = "cli")]
+pub(crate) use loader_js::percent_encode_path;
+#[cfg(feature = "cli")]
 use loader_js::{JS_CONFIG_FILENAME, TS_CONFIG_FILENAME, load_js_ts_config};
 
 #[derive(Debug, Deserialize, Serialize, Default)]
