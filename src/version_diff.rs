@@ -28,6 +28,7 @@ pub fn run(spec: &[String], json: bool, config_path: Option<&Path>) -> Result<()
     let config = Config::load(&root, config_path)?;
     let pkg = resolve_package(&config, package)?;
     let is_monorepo = config.is_monorepo();
+    let nested = config.nested_package_paths(pkg);
 
     let (from_oid, from_tag) =
         resolve_endpoint(&repo, pkg, &config.workspace, is_monorepo, from_ref)?;
@@ -35,11 +36,12 @@ pub fn run(spec: &[String], json: bool, config_path: Option<&Path>) -> Result<()
 
     let skip = config.workspace.effective_commit_skip_markers();
     let commits = get_commits_between(&repo, from_oid, to_oid, &skip, |repo, oid| {
-        commit_touches_package(repo, pkg, is_monorepo, oid)
+        commit_touches_package(repo, pkg, is_monorepo, &nested, oid)
     })?;
     let files = scope_files_to_package(
         pkg,
         is_monorepo,
+        &nested,
         get_changed_files_between(&repo, from_oid, to_oid).unwrap_or_default(),
     );
 
@@ -90,13 +92,14 @@ fn commit_touches_package(
     repo: &crate::git::Repository,
     pkg: &PackageConfig,
     is_monorepo: bool,
+    nested: &[String],
     oid: ObjectId,
 ) -> bool {
     if !is_monorepo {
         return true;
     }
     match get_changed_files_for_commit(repo, oid) {
-        Ok(files) => pkg.is_touched_by(&files, true),
+        Ok(files) => pkg.is_touched_by(&files, true, nested),
         Err(_) => true,
     }
 }
@@ -104,6 +107,7 @@ fn commit_touches_package(
 fn scope_files_to_package(
     pkg: &PackageConfig,
     is_monorepo: bool,
+    nested: &[String],
     files: Vec<String>,
 ) -> Vec<String> {
     if !is_monorepo {
@@ -111,7 +115,7 @@ fn scope_files_to_package(
     }
     files
         .into_iter()
-        .filter(|f| pkg.is_touched_by(std::slice::from_ref(f), true))
+        .filter(|f| pkg.is_touched_by(std::slice::from_ref(f), true, nested))
         .collect()
 }
 

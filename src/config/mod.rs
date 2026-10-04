@@ -37,9 +37,9 @@ pub use package::{
 #[allow(unused_imports)]
 pub use types::{
     BranchChannelConfig, BuildMetadata, ChannelValue, DockerSign, ForgeKind, GENERIC_TOKEN_ENV_VAR,
-    HooksConfig, OnFailure, OrphanedTagStrategy, PrereleaseIdentifier, PublisherConfig,
-    RegistryConfig, ReleaseCommitBody, ReleaseCommitMode, ReleaseCommitScope, VersionSourcePolicy,
-    all_token_env_vars,
+    HooksConfig, NestedPackages, OnFailure, OrphanedTagStrategy, PrereleaseIdentifier,
+    PublisherConfig, RegistryConfig, ReleaseCommitBody, ReleaseCommitMode, ReleaseCommitScope,
+    VersionSourcePolicy, all_token_env_vars,
 };
 #[allow(unused_imports)]
 pub use workspace::{
@@ -217,6 +217,23 @@ impl Config {
 
     pub fn is_monorepo(&self) -> bool {
         self.packages.len() > 1
+    }
+
+    pub fn nested_package_paths(&self, pkg: &PackageConfig) -> Vec<String> {
+        if self.workspace.nested_packages != NestedPackages::Exclusive {
+            return Vec::new();
+        }
+        let outer = pkg.relative_path();
+        self.packages
+            .iter()
+            .filter(|other| other.name != pkg.name)
+            .filter_map(PackageConfig::relative_path)
+            .filter(|inner| match outer {
+                None => true,
+                Some(outer) => inner.starts_with(&format!("{outer}/")),
+            })
+            .map(str::to_string)
+            .collect()
     }
 
     pub fn discovered_config_paths(repo_root: &Path) -> Vec<PathBuf> {

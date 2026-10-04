@@ -57,6 +57,22 @@ path = &quot;packages/site&quot;
 </div></div>
 </div>
 
+### Nested packages
+
+When one package's `path` contains another's, for example a root package at `.` and a CLI at `cli`, a file under `cli/` counts for both by default, so a change to the CLI also releases the root package. Set `workspace.nestedPackages` to `exclusive` to give each changed file to the package with the longest matching path only:
+
+```json
+{
+  "workspace": { "nestedPackages": "exclusive" },
+  "package": [
+    { "name": "operator", "path": "." },
+    { "name": "cli", "path": "cli" }
+  ]
+}
+```
+
+A commit touching only `cli/` then releases the CLI alone, and a commit touching both trees releases both. `sharedPaths` stay an explicit opt-in: a file listed there still counts for that package, even inside a nested one. Narrowing the outer package's `path` is not an alternative, because publishers resolve their working directory from it.
+
 ## Shared dependencies
 
 If you have code shared between packages (e.g., a `packages/shared/` library), declare it as a `sharedPaths` entry. A change to any shared path triggers a release for every package that lists it:

@@ -272,8 +272,8 @@ fn the_per_file_rule_agrees_with_the_touch_check() {
     ] {
         let files = [file.to_string()];
         assert_eq!(
-            matching_rule(api, file, true).is_some(),
-            api.is_touched_by(&files, true),
+            matching_rule(api, file, true, &[]).is_some(),
+            api.is_touched_by(&files, true, &[]),
             "disagreement on {file:?}"
         );
     }
@@ -296,4 +296,88 @@ fn an_unknown_package_name_is_rejected_with_the_known_ones() {
         .unwrap_err()
         .to_string();
     assert!(err.contains("nope") && err.contains("core"), "{err}");
+}
+
+fn nested_repo(mode: &str) -> Fixture {
+    let (dir, repo) = init_repo();
+    let root = dir.path().to_path_buf();
+    std::fs::create_dir_all(root.join("cli")).unwrap();
+    std::fs::write(root.join("VERSION"), "1.0.0\n").unwrap();
+    std::fs::write(
+        root.join("cli").join("Cargo.toml"),
+        "[package]\nname = \"cli\"\nversion = \"1.0.0\"\n",
+    )
+    .unwrap();
+    std::fs::write(
+        root.join("ferrflow.json"),
+        format!(
+            r#"{{
+  "workspace": {{ "nestedPackages": "{mode}" }},
+  "package": [
+    {{ "name": "operator", "path": ".", "versionedFiles": [{{ "path": "VERSION", "format": "txt" }}] }},
+    {{ "name": "cli", "path": "cli", "versionedFiles": [{{ "path": "cli/Cargo.toml", "format": "toml" }}] }}
+  ]
+}}
+"#
+        ),
+    )
+    .unwrap();
+    git(&root, &["add", "-A"]);
+    commit_file(&root, "seed.txt", "x", "chore: seed", next_ts());
+    let config = Config::load(&root, Some(&root.join("ferrflow.json"))).unwrap();
+    let fx = Fixture {
+        _dir: dir,
+        repo,
+        config,
+        root,
+    };
+    fx.tag("operator@v1.0.0");
+    fx.tag("cli@v1.0.0");
+    fx
+}
+
+#[test]
+fn exclusive_nesting_leaves_the_root_package_out_of_a_nested_change() {
+    let fx = nested_repo("exclusive");
+    fx.commit("cli/src/main.rs", "feat: new subcommand");
+
+    let operator = fx.explain("operator");
+    assert!(!operator.touch.touched);
+    assert_eq!(
+        operator
+            .touch
+            .files
+            .iter()
+            .map(|f| (f.path.as_str(), f.matched.as_deref()))
+            .collect::<Vec<_>>(),
+        [("cli/src/main.rs", None)]
+    );
+    assert!(fx.explain("cli").touch.touched);
+}
+
+#[test]
+fn exclusive_nesting_still_bumps_the_root_for_its_own_files() {
+    let fx = nested_repo("exclusive");
+    fx.commit("cli/src/main.rs", "feat: new subcommand");
+    fx.commit("internal/controller.go", "fix: requeue");
+
+    let operator = fx.explain("operator");
+    assert!(operator.touch.touched);
+    assert_eq!(
+        operator
+            .commits
+            .iter()
+            .map(|c| c.bump.as_str())
+            .collect::<Vec<_>>(),
+        ["patch"],
+        "the cli commit must not be classified for the root package"
+    );
+}
+
+#[test]
+fn shared_nesting_keeps_counting_a_nested_change_for_the_root() {
+    let fx = nested_repo("shared");
+    fx.commit("cli/src/main.rs", "feat: new subcommand");
+
+    assert!(fx.explain("operator").touch.touched);
 }

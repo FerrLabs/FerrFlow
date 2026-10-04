@@ -57,6 +57,22 @@ path = &quot;packages/site&quot;
 </div></div>
 </div>
 
+### Packages imbriqués
+
+Quand le `path` d'un package contient celui d'un autre, par exemple un package racine à `.` et un CLI à `cli`, un fichier sous `cli/` compte par défaut pour les deux : une modification du CLI publie aussi le package racine. Passez `workspace.nestedPackages` à `exclusive` pour attribuer chaque fichier modifié au seul package dont le chemin correspond le plus longuement :
+
+```json
+{
+  "workspace": { "nestedPackages": "exclusive" },
+  "package": [
+    { "name": "operator", "path": "." },
+    { "name": "cli", "path": "cli" }
+  ]
+}
+```
+
+Un commit qui ne touche que `cli/` publie alors le CLI seul, et un commit qui touche les deux arborescences publie les deux. Les `sharedPaths` restent un choix explicite : un fichier qui y figure compte toujours pour ce package, même à l'intérieur d'un package imbriqué. Réduire le `path` du package englobant n'est pas une alternative, car les publishers en déduisent leur répertoire de travail.
+
 ## Dépendances partagées
 
 Si vous avez du code partagé entre packages (ex. une bibliothèque `packages/shared/`), déclarez-le comme entrée `sharedPaths`. Un changement dans un chemin partagé déclenche une release pour chaque package qui le référence :

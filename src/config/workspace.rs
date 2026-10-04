@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 use super::commit_formats::CommitFormats;
 use super::package::{FloatingTagLevel, VersioningStrategy};
 use super::types::{
-    BranchChannelConfig, ForgeKind, HooksConfig, OrphanedTagStrategy, RegistryConfig,
-    ReleaseCommitBody, ReleaseCommitMode, ReleaseCommitScope, VersionSourcePolicy,
+    BranchChannelConfig, ForgeKind, HooksConfig, NestedPackages, OrphanedTagStrategy,
+    RegistryConfig, ReleaseCommitBody, ReleaseCommitMode, ReleaseCommitScope, VersionSourcePolicy,
 };
 use std::collections::BTreeMap;
 
@@ -68,6 +68,8 @@ pub struct WorkspaceConfig {
     pub update_lockfiles: bool,
     #[serde(default, alias = "updateDependents")]
     pub update_dependents: bool,
+    #[serde(default, alias = "nestedPackages")]
+    pub nested_packages: NestedPackages,
     #[serde(default)]
     pub linked: Vec<Vec<String>>,
     #[serde(default)]
@@ -109,6 +111,7 @@ impl Default for WorkspaceConfig {
             manifest_file: Default::default(),
             update_lockfiles: Default::default(),
             update_dependents: Default::default(),
+            nested_packages: Default::default(),
             linked: Default::default(),
             fixed: Default::default(),
         }
