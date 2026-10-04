@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.27.4] - 2026-10-04
+
+### Bug Fixes
+
+- fix(forge): encode the branch name in the GitHub ref URL (#1267)
+
 ## [7.27.3] - 2026-10-03
 
 ### Bug Fixes
