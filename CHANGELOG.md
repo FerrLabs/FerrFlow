@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.28.0] - 2026-10-04
+
+### Features
+
+- feat(monorepo): add workspace.nestedPackages to give a file to the most specific package (#1270)
+
 ## [7.27.5] - 2026-10-04
 
 ### Bug Fixes
