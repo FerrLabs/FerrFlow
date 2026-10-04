@@ -40,6 +40,20 @@ fn a_cloud_release_resolves_the_tag_and_returns_its_page() {
 }
 
 #[test]
+fn a_cloud_release_encodes_a_tag_that_would_cut_the_url() {
+    let server = FakeServer::start(vec![Reply::json(200, json!({}))]);
+
+    cloud(&server)
+        .create_release("api@v1.0.0+build#7", "notes", false, false)
+        .unwrap();
+
+    assert_eq!(
+        server.only_request().path,
+        "/repositories/workspace/repo/refs/tags/api%40v1.0.0%2Bbuild%237"
+    );
+}
+
+#[test]
 fn a_missing_cloud_tag_is_a_create_release_error() {
     let server = FakeServer::start(vec![Reply::json(
         404,

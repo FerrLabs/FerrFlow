@@ -27,8 +27,10 @@ impl Forge for BitbucketForge {
         }
 
         let url = format!(
-            "{}/repositories/{}/refs/tags/{tag}",
-            self.api_base, self.slug
+            "{}/repositories/{}/refs/tags/{}",
+            self.api_base,
+            self.slug,
+            crate::config::percent_encode_path(tag)
         );
         let response: serde_json::Value = self
             .agent
