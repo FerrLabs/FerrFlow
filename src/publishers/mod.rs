@@ -77,7 +77,8 @@ pub fn run_all(
                 tracing::info!("    [{kind}] {preview} {}", "(dry-run)".dimmed());
             }
             Err(e) => {
-                tracing::error!("    [{kind}] {} {e:#}", "ERROR".red());
+                let detail = format!("{e:#}").replace('\n', "\n      ");
+                tracing::error!("    [{kind}] {} {detail}", "ERROR".red());
                 return Err(e);
             }
         }
