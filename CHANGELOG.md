@@ -4,6 +4,13 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.28.2] - 2026-10-05
+
+### Bug Fixes
+
+- fix(cli): indent a multi-line error head below the causes (#1282)
+- fix(docs): restore the accents in the French E1024 entry (#1283)
+
 ## [7.28.1] - 2026-10-05
 
 ### Bug Fixes
