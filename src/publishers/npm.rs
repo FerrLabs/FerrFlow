@@ -22,7 +22,7 @@ pub fn run(
                 .ok_or_else(|| anyhow!(
                     "publisher npm: registry `{name}` is not declared under `workspace.registries`"
                 ))
-                .error_code(error_code::CONFIG_INVALID_PATH)?;
+                .error_code(error_code::PUBLISHER_MISCONFIGURED)?;
             if let Some(env_name) = &r.token_env
                 && std::env::var(env_name).is_err()
             {
@@ -30,7 +30,7 @@ pub fn run(
                     "publisher npm:{name}: env var `{env_name}` is not set; \
                      export the registry token before running `ferrflow release`"
                 ))
-                .error_code(error_code::CONFIG_INVALID_PATH);
+                .error_code(error_code::PUBLISHER_MISCONFIGURED);
             }
             Some(r)
         }
@@ -88,7 +88,7 @@ pub fn run(
         registry_label,
         first_meaningful_line(&stderr, &stdout)
     ))
-    .error_code(error_code::CONFIG_INVALID_PATH)
+    .error_code(error_code::PUBLISH_FAILED)
 }
 
 #[allow(clippy::too_many_arguments)]

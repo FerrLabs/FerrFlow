@@ -16,7 +16,7 @@ pub fn run(
             "publisher github-release-asset: file {} does not exist",
             asset_path.display()
         ))
-        .error_code(error_code::CONFIG_INVALID_PATH);
+        .error_code(error_code::PUBLISHER_MISCONFIGURED);
     }
 
     if ctx.dry_run {
@@ -43,7 +43,7 @@ pub fn run(
             asset_path.display(),
             String::from_utf8_lossy(&output.stderr).trim()
         ))
-        .error_code(error_code::CONFIG_INVALID_PATH);
+        .error_code(error_code::PUBLISH_FAILED);
     }
 
     Ok(PublishOutcome::Published {

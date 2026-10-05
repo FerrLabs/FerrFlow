@@ -30,11 +30,11 @@ pub fn mint(repository_url: Option<&str>) -> Result<String> {
         .header("Accept", "application/json")
         .call()
         .context("publisher pypi: requesting a GitHub OIDC token failed")
-        .error_code(error_code::CONFIG_INVALID_PATH)?
+        .error_code(error_code::PUBLISH_FAILED)?
         .body_mut()
         .read_json()
         .context("publisher pypi: the GitHub OIDC token response was not the expected JSON")
-        .error_code(error_code::CONFIG_INVALID_PATH)?;
+        .error_code(error_code::PUBLISH_FAILED)?;
 
     let minted: MintedTokenResponse = agent
         .post(&endpoint)
@@ -48,11 +48,11 @@ pub fn mint(repository_url: Option<&str>) -> Result<String> {
                  for the project"
             )
         })
-        .error_code(error_code::CONFIG_INVALID_PATH)?
+        .error_code(error_code::PUBLISH_FAILED)?
         .body_mut()
         .read_json()
         .context("publisher pypi: the mint-token response was not the expected JSON")
-        .error_code(error_code::CONFIG_INVALID_PATH)?;
+        .error_code(error_code::PUBLISH_FAILED)?;
 
     Ok(minted.token)
 }
@@ -65,7 +65,7 @@ fn required_env(name: &str) -> Result<String> {
                  only when the job declares `permissions: id-token: write`"
             )
         })
-        .error_code(error_code::CONFIG_INVALID_PATH)
+        .error_code(error_code::PUBLISHER_MISCONFIGURED)
 }
 
 fn audience_url(base: &str) -> String {
@@ -87,7 +87,7 @@ fn mint_endpoint(repository_url: Option<&str>) -> Result<String> {
                  token endpoint from, got `{raw}`"
             )
         })
-        .error_code(error_code::CONFIG_INVALID_PATH)?;
+        .error_code(error_code::PUBLISHER_MISCONFIGURED)?;
     Ok(format!("https://{host}/_/oidc/mint-token"))
 }
 

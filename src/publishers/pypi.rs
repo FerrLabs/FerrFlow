@@ -45,7 +45,7 @@ fn resolve_registry<'a>(
                 "publisher pypi: registry `{name}` is not declared under `workspace.registries`"
             )
         })
-        .error_code(error_code::CONFIG_INVALID_PATH)?;
+        .error_code(error_code::PUBLISHER_MISCONFIGURED)?;
     let Some(env_name) = &r.token_env else {
         return Ok(r);
     };
@@ -54,14 +54,14 @@ fn resolve_registry<'a>(
             "publisher pypi:{name}: `trustedPublishing` and the registry `tokenEnv` \
              (`{env_name}`) both configure authentication; keep one"
         ))
-        .error_code(error_code::CONFIG_INVALID_PATH);
+        .error_code(error_code::PUBLISHER_MISCONFIGURED);
     }
     if std::env::var(env_name).is_err() {
         return Err(anyhow!(
             "publisher pypi:{name}: env var `{env_name}` is not set; \
              export the registry token before running `ferrflow release`"
         ))
-        .error_code(error_code::CONFIG_INVALID_PATH);
+        .error_code(error_code::PUBLISHER_MISCONFIGURED);
     }
     Ok(r)
 }
@@ -87,7 +87,7 @@ fn build_dist(ctx: &PublishContext<'_>) -> Result<()> {
         ctx.package_name,
         first_meaningful_line(&stderr, &stdout)
     ))
-    .error_code(error_code::CONFIG_INVALID_PATH)
+    .error_code(error_code::PUBLISH_FAILED)
 }
 
 fn twine_command(
@@ -172,7 +172,7 @@ fn upload_with_retry(
             registry_label,
             first_meaningful_line(&stderr, &stdout)
         ))
-        .error_code(error_code::CONFIG_INVALID_PATH);
+        .error_code(error_code::PUBLISH_FAILED);
     }
 }
 

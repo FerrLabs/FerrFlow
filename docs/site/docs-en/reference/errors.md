@@ -490,6 +490,23 @@ A lifecycle hook exited with a non-zero status code and `on_failure` is set to `
 <aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>Check the hook command output, or set <code>on_failure: &quot;continue&quot;</code> to ignore failures.</p>
 </div></aside>
 
+## Publisher Errors
+
+### E6101: Publisher misconfigured
+
+<span id="e6101"></span>
+
+A publisher could not start because its setup is incomplete: a `registry` that is not declared under `workspace.registries`, a `tokenEnv` variable that is not set, a build context, chart or asset file that does not exist, or a `trustedPublishing` setup outside GitHub Actions. The message names the publisher and the missing piece. Nothing was published.
+
+### E6102: Publish failed
+
+<span id="e6102"></span>
+
+The publish step ran and failed: `cargo publish`, `npm publish`, `twine upload`, `docker buildx`, `helm push`, `gh release upload` or a webhook returned an error. The message carries the tool's own error, including the lines that explain its cause. For cargo, FerrFlow retries a few times when the error looks like registry index lag after a dependency was just published, and reports E6102 once the retries are spent.
+
+<aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>Run the same command by hand from the package directory, for example <code>cargo publish --dry-run</code>, to see the full output.</p>
+</div></aside>
+
 ## Query Errors
 
 ### E7001: No packages configured

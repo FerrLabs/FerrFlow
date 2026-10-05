@@ -24,7 +24,7 @@ pub fn run(
             .ok_or_else(|| anyhow!(
                 "publisher cargo: registry `{name}` is not declared under `workspace.registries`"
             ))
-            .error_code(error_code::CONFIG_INVALID_PATH)?;
+            .error_code(error_code::PUBLISHER_MISCONFIGURED)?;
         if let Some(env_name) = &r.token_env
             && std::env::var(env_name).is_err()
         {
@@ -32,7 +32,7 @@ pub fn run(
                 "publisher cargo:{name}: env var `{env_name}` is not set; \
                  export the registry token before running `ferrflow release`"
             ))
-            .error_code(error_code::CONFIG_INVALID_PATH);
+            .error_code(error_code::PUBLISHER_MISCONFIGURED);
         }
     }
 
@@ -90,9 +90,9 @@ pub fn run(
             "cargo publish failed for {} on {}: {}",
             ctx.package_name,
             registry_label,
-            first_meaningful_line(&stderr, &stdout)
+            failure_report(&stderr, &stdout)
         ))
-        .error_code(error_code::CONFIG_INVALID_PATH);
+        .error_code(error_code::PUBLISH_FAILED);
     }
 }
 
@@ -149,18 +149,13 @@ fn classify_transient(stderr: &str) -> bool {
     needles.iter().any(|n| lower.contains(n))
 }
 
-fn first_meaningful_line(stderr: &str, stdout: &str) -> String {
-    for src in [stderr, stdout] {
-        for line in src.lines().rev() {
-            let trimmed = line.trim();
-            if trimmed.is_empty() {
-                continue;
-            }
-            if trimmed.starts_with("\u{1b}[") {
-                continue;
-            }
-            if trimmed.starts_with("error:") || trimmed.starts_with("warning:") {
-                return trimmed.to_string();
+fn failure_report(stderr: &str, stdout: &str) -> String {
+    let stderr = strip_ansi(stderr);
+    let stdout = strip_ansi(stdout);
+    for marker in ["error:", "warning:"] {
+        for src in [&stderr, &stdout] {
+            if let Some(block) = last_block_from(src, marker) {
+                return block;
             }
         }
     }
@@ -168,7 +163,40 @@ fn first_meaningful_line(stderr: &str, stdout: &str) -> String {
         .lines()
         .rfind(|l| !l.trim().is_empty())
         .unwrap_or("(no output)")
+        .trim()
         .to_string()
+}
+
+fn last_block_from(text: &str, marker: &str) -> Option<String> {
+    let lines: Vec<&str> = text.lines().collect();
+    let start = lines
+        .iter()
+        .rposition(|l| l.trim_start().starts_with(marker))?;
+    let block: Vec<&str> = lines[start..]
+        .iter()
+        .map(|l| l.trim())
+        .filter(|l| !l.is_empty())
+        .collect();
+    Some(block.join("\n"))
+}
+
+fn strip_ansi(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut chars = text.chars();
+    while let Some(c) = chars.next() {
+        if c != '\u{1b}' {
+            out.push(c);
+            continue;
+        }
+        if chars.next() == Some('[') {
+            for c in chars.by_ref() {
+                if ('@'..='~').contains(&c) {
+                    break;
+                }
+            }
+        }
+    }
+    out
 }
 
 /// The crate name cargo publishes under, which is `[package].name` in the
@@ -311,11 +339,31 @@ mod tests {
     }
 
     #[test]
-    fn first_meaningful_line_picks_error_over_spinner() {
+    fn failure_report_picks_error_over_spinner() {
         let stderr =
             "\u{1b}[2K\u{1b}[K\nerror: failed to publish: cargo lock conflict\n   exit code 101\n";
-        let line = first_meaningful_line(stderr, "");
-        assert!(line.contains("cargo lock conflict"));
+        let report = failure_report(stderr, "");
+        assert!(report.starts_with("error: failed to publish: cargo lock conflict"));
+    }
+
+    #[test]
+    fn failure_report_keeps_the_cause_when_cargo_colours_its_output() {
+        let stderr = "\u{1b}[1m\u{1b}[92m   Packaging\u{1b}[0m core v2.0.0\n\
+                      \u{1b}[1m\u{1b}[91merror\u{1b}[0m: failed to prepare local package for uploading\n\
+                      \n\
+                      Caused by:\n  \
+                      no matching package named `core` found\n  \
+                      location searched: forgejo index\n  \
+                      required by package `gapline v2.0.0 (/workspace/gapline/cli)`\n";
+
+        assert_eq!(
+            failure_report(stderr, ""),
+            "error: failed to prepare local package for uploading\n\
+             Caused by:\n\
+             no matching package named `core` found\n\
+             location searched: forgejo index\n\
+             required by package `gapline v2.0.0 (/workspace/gapline/cli)`"
+        );
     }
 
     #[test]
@@ -458,23 +506,29 @@ mod tests {
     }
 
     #[test]
-    fn first_meaningful_line_prefers_the_last_error_or_warning() {
-        let stderr =
-            "   Packaging foo v1.0.0\nerror: first problem\n   Uploading\nwarning: last word\n";
-        assert_eq!(first_meaningful_line(stderr, ""), "warning: last word");
+    fn failure_report_prefers_an_error_to_a_later_warning() {
+        let stderr = "   Packaging foo v1.0.0\nerror: first problem\n   Uploading\n";
+        assert_eq!(
+            failure_report(stderr, ""),
+            "error: first problem\nUploading"
+        );
+        assert_eq!(
+            failure_report("   Packaging foo\nwarning: last word\n", ""),
+            "warning: last word"
+        );
     }
 
     #[test]
-    fn first_meaningful_line_falls_back_to_stdout_then_the_last_stderr_line() {
+    fn failure_report_falls_back_to_stdout_then_the_last_stderr_line() {
         assert_eq!(
-            first_meaningful_line("   Updating index\n", "error: from stdout\n"),
+            failure_report("   Updating index\n", "error: from stdout\n"),
             "error: from stdout"
         );
         assert_eq!(
-            first_meaningful_line("   Updating index\n   Uploading foo\n\n", "done\n"),
-            "   Uploading foo"
+            failure_report("   Updating index\n   Uploading foo\n\n", "done\n"),
+            "Uploading foo"
         );
-        assert_eq!(first_meaningful_line("", ""), "(no output)");
+        assert_eq!(failure_report("", ""), "(no output)");
     }
 
     #[test]
