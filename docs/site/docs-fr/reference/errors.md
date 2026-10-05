@@ -157,13 +157,13 @@ Deux packages portent le même `name`, qu'ils viennent de la config racine ou d'
 
 Un package de la config racine n'a pas de `path`. Renseignez-le relativement à la racine du dépôt, ou déplacez le package dans son propre fichier listé sous `include`, où `path` vaut par défaut le répertoire de ce fichier.
 
-### E1024 : Fichier versionne introuvable
+### E1024 : Fichier versionné introuvable
 
 <span id="e1024"></span>
 
-Un package que cette execution allait publier declare une entree `versionedFiles` dont le fichier n'est pas sur le disque. L'execution s'arrete au moment du plan plutot qu'au moment de l'ecriture, ou le meme probleme apparait sous la forme d'une simple erreur de lecture.
+Un package que cette exécution allait publier déclare une entrée `versionedFiles` dont le fichier n'est pas sur le disque. L'exécution s'arrête au moment du plan plutôt qu'au moment de l'écriture, où le même problème apparaîtrait sous la forme d'une simple erreur de lecture.
 
-La cause habituelle est un chemin ecrit relativement au package plutot qu'a la racine du depot. `package.path` n'est pas un prefixe que FerrFlow ajoute pour vous :
+La cause habituelle est un chemin écrit relativement au package plutôt qu'à la racine du dépôt. `package.path` n'est pas un préfixe que FerrFlow ajoute pour vous :
 
 ```toml
 [[package]]
@@ -171,11 +171,11 @@ name = "api"
 path = "packages/api"
 
 [[package.versioned_files]]
-path = "Cargo.toml"              # faux, cherche a la racine du depot
+path = "Cargo.toml"              # faux, cherché à la racine du dépôt
 # path = "packages/api/Cargo.toml"  # correct
 ```
 
-L'erreur indique le chemin qu'elle suppose correct. `ferrflow validate` signale le meme probleme pour tous les packages configures, y compris ceux que cette execution n'aurait pas touches.
+L'erreur indique le chemin qu'elle suppose correct. `ferrflow validate` signale le même problème pour tous les packages configurés, y compris ceux que cette exécution n'aurait pas touchés.
 
 ## Erreurs de validation
 
