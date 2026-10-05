@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.10.4] - 2026-10-05
+
+### Bug Fixes
+
+- fix(site): require ui-ng 1.43.0 so canonicals carry the trailing slash (#1038)
+
 ## [2026.10.3] - 2026-10-04
 
 ### Bug Fixes
