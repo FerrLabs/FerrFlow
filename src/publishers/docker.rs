@@ -45,7 +45,7 @@ pub fn run(
             "publisher docker: build context {} does not exist",
             context_path.display()
         ))
-        .error_code(error_code::CONFIG_INVALID_PATH);
+        .error_code(error_code::PUBLISHER_MISCONFIGURED);
     }
 
     let output = buildx_command(
@@ -70,7 +70,7 @@ pub fn run(
             ctx.package_name,
             stderr.trim()
         ))
-        .error_code(error_code::CONFIG_INVALID_PATH);
+        .error_code(error_code::PUBLISH_FAILED);
     }
 
     if matches!(sign, DockerSign::Sigstore) {
@@ -90,7 +90,7 @@ pub fn run(
                 "cosign sign failed for {target}: {}",
                 stderr.trim()
             ))
-            .error_code(error_code::CONFIG_INVALID_PATH);
+            .error_code(error_code::PUBLISH_FAILED);
         }
     }
 

@@ -33,14 +33,14 @@ pub fn run(
     let response = req
         .send_json(payload)
         .with_context(|| format!("POST {interpolated_url}"))
-        .error_code(error_code::CONFIG_INVALID_PATH)?;
+        .error_code(error_code::PUBLISH_FAILED)?;
 
     let status = response.status();
     if !status.is_success() {
         return Err(anyhow!(
             "webhook POST {interpolated_url} returned HTTP {status}"
         ))
-        .error_code(error_code::CONFIG_INVALID_PATH);
+        .error_code(error_code::PUBLISH_FAILED);
     }
 
     Ok(PublishOutcome::Published {
@@ -259,7 +259,7 @@ mod tests {
         assert!(format!("{err:#}").contains(&url), "{err:#}");
         assert_eq!(
             crate::error_code::code_from_error(&err).as_deref(),
-            Some("E1018")
+            Some("E6102")
         );
     }
 

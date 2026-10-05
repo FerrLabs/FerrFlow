@@ -16,7 +16,7 @@ pub fn run(
             "publisher helm: chart directory {} does not exist",
             chart_dir.display()
         ))
-        .error_code(error_code::CONFIG_INVALID_PATH);
+        .error_code(error_code::PUBLISHER_MISCONFIGURED);
     }
     let chart_name = read_chart_name(&chart_dir)?;
 
@@ -44,7 +44,7 @@ pub fn run(
             "helm package failed for {chart_name}: {}",
             String::from_utf8_lossy(&pkg.stderr).trim()
         ))
-        .error_code(error_code::CONFIG_INVALID_PATH);
+        .error_code(error_code::PUBLISH_FAILED);
     }
 
     let tgz_name = format!("{chart_name}-{}.tgz", ctx.new_version);
@@ -53,7 +53,7 @@ pub fn run(
         return Err(anyhow!(
             "expected {tgz_name} after helm package but it's not there"
         ))
-        .error_code(error_code::CONFIG_INVALID_PATH);
+        .error_code(error_code::PUBLISH_FAILED);
     }
 
     let push = Command::new("helm")
@@ -71,7 +71,7 @@ pub fn run(
             });
         }
         return Err(anyhow!("helm push failed for {oci_ref}: {}", stderr.trim()))
-            .error_code(error_code::CONFIG_INVALID_PATH);
+            .error_code(error_code::PUBLISH_FAILED);
     }
 
     Ok(PublishOutcome::Published { url: Some(oci_ref) })
@@ -93,7 +93,7 @@ fn read_chart_name(chart_dir: &std::path::Path) -> Result<String> {
         "could not parse `name:` from {}",
         chart_yaml.display()
     ))
-    .error_code(error_code::CONFIG_INVALID_PATH)
+    .error_code(error_code::PUBLISHER_MISCONFIGURED)
 }
 
 fn helm_chart_exists(oci_ref: &str) -> bool {

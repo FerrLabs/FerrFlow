@@ -348,6 +348,8 @@ pub const VERSIONING_INVALID_SEMVER: ErrorCode = ErrorCode(5010);
 
 #[allow(dead_code)]
 pub const HOOK_FAILED: ErrorCode = ErrorCode(6001);
+pub const PUBLISHER_MISCONFIGURED: ErrorCode = ErrorCode(6101);
+pub const PUBLISH_FAILED: ErrorCode = ErrorCode(6102);
 
 #[allow(dead_code)]
 pub const QUERY_NO_PACKAGES: ErrorCode = ErrorCode(7001);

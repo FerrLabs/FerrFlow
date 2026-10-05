@@ -360,6 +360,23 @@ Un hook a échoué avec `on_failure: "abort"`.
 <aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>Vérifiez la commande du hook, ou mettez <code>on_failure: &quot;continue&quot;</code>.</p>
 </div></aside>
 
+## Publishers
+
+### E6101 : Publisher mal configuré
+
+<span id="e6101"></span>
+
+Un publisher n'a pas pu démarrer parce que sa configuration est incomplète : un `registry` absent de `workspace.registries`, une variable `tokenEnv` non définie, un contexte de build, un chart ou un fichier d'asset introuvable, ou un `trustedPublishing` utilisé hors de GitHub Actions. Le message nomme le publisher et l'élément manquant. Rien n'a été publié.
+
+### E6102 : Publication échouée
+
+<span id="e6102"></span>
+
+L'étape de publication a tourné et a échoué : `cargo publish`, `npm publish`, `twine upload`, `docker buildx`, `helm push`, `gh release upload` ou un webhook a renvoyé une erreur. Le message reprend l'erreur de l'outil, avec les lignes qui en expliquent la cause. Pour cargo, FerrFlow réessaie quelques fois quand l'erreur ressemble à un retard d'index du registre juste après la publication d'une dépendance, et signale E6102 une fois les essais épuisés.
+
+<aside class="ferr-aside ferr-aside--tip"><div class="ferr-aside__body"><p>Lancez la même commande à la main depuis le dossier du package, par exemple <code>cargo publish --dry-run</code>, pour voir la sortie complète.</p>
+</div></aside>
+
 ## Query
 
 ### E7001 : Aucun package configuré
