@@ -548,7 +548,7 @@ L'écriture de la nouvelle version dans le fichier de version TOML (`Cargo.toml`
 
 <span id="e4105"></span>
 
-Le contenu de le fichier de version TOML (`Cargo.toml`, `pyproject.toml`) n'est pas de l'UTF-8 valide.
+Le contenu du fichier de version TOML (`Cargo.toml`, `pyproject.toml`) n'est pas de l'UTF-8 valide.
 
 ### E4201 : Lecture du fichier JSON impossible
 
@@ -578,7 +578,7 @@ L'écriture de la nouvelle version dans le fichier de version JSON (`package.jso
 
 <span id="e4205"></span>
 
-Le contenu de le fichier de version JSON (`package.json`, `composer.json`) n'est pas de l'UTF-8 valide.
+Le contenu du fichier de version JSON (`package.json`, `composer.json`) n'est pas de l'UTF-8 valide.
 
 ### E4301 : Lecture de Chart.yaml (helm) impossible
 
@@ -602,7 +602,7 @@ L'écriture de la nouvelle version dans le `Chart.yaml` déclaré avec `format =
 
 <span id="e4304"></span>
 
-Le contenu de le `Chart.yaml` déclaré avec `format = "helm"` n'est pas de l'UTF-8 valide.
+Le contenu du `Chart.yaml` déclaré avec `format = "helm"` n'est pas de l'UTF-8 valide.
 
 ### E4401 : Lecture du fichier XML impossible
 
@@ -626,7 +626,7 @@ L'écriture de la nouvelle version dans le fichier de version XML (`pom.xml`) a 
 
 <span id="e4404"></span>
 
-Le contenu de le fichier de version XML (`pom.xml`) n'est pas de l'UTF-8 valide.
+Le contenu du fichier de version XML (`pom.xml`) n'est pas de l'UTF-8 valide.
 
 ### E4410 : Lecture du fichier .csproj impossible
 
@@ -650,7 +650,7 @@ L'écriture de la nouvelle version dans le fichier `.csproj` a échoué.
 
 <span id="e4413"></span>
 
-Le contenu de le fichier `.csproj` n'est pas de l'UTF-8 valide.
+Le contenu du fichier `.csproj` n'est pas de l'UTF-8 valide.
 
 ### E4501 : Lecture du fichier Gradle impossible
 
@@ -674,7 +674,7 @@ L'écriture de la nouvelle version dans le fichier de build Gradle (`build.gradl
 
 <span id="e4504"></span>
 
-Le contenu de le fichier de build Gradle (`build.gradle`, `build.gradle.kts`) n'est pas de l'UTF-8 valide.
+Le contenu du fichier de build Gradle (`build.gradle`, `build.gradle.kts`) n'est pas de l'UTF-8 valide.
 
 ### E4601 : Impossible de lancer git describe
 
@@ -718,7 +718,7 @@ L'écriture de la nouvelle version dans le fichier de version texte (`VERSION`, 
 
 <span id="e4704"></span>
 
-Le contenu de le fichier de version texte (`VERSION`, `VERSION.txt`) n'est pas de l'UTF-8 valide.
+Le contenu du fichier de version texte (`VERSION`, `VERSION.txt`) n'est pas de l'UTF-8 valide.
 
 ### E4801 : Lecture de pubspec.yaml impossible
 
@@ -790,7 +790,7 @@ L'écriture de la nouvelle version dans le `Chart.yaml` déclaré avec `format =
 
 <span id="e4824"></span>
 
-Le contenu de le `Chart.yaml` déclaré avec `format = "chartyaml"` n'est pas de l'UTF-8 valide.
+Le contenu du `Chart.yaml` déclaré avec `format = "chartyaml"` n'est pas de l'UTF-8 valide.
 
 ### E4831 : Lecture du fichier .gemspec impossible
 
@@ -814,7 +814,7 @@ L'écriture de la nouvelle version dans le fichier `.gemspec` a échoué.
 
 <span id="e4834"></span>
 
-Le contenu de le fichier `.gemspec` n'est pas de l'UTF-8 valide.
+Le contenu du fichier `.gemspec` n'est pas de l'UTF-8 valide.
 
 ### E4841 : Lecture de Package.swift impossible
 
@@ -862,7 +862,7 @@ L'écriture de la nouvelle version dans le fichier `.cabal` a échoué.
 
 <span id="e4854"></span>
 
-Le contenu de le fichier `.cabal` n'est pas de l'UTF-8 valide.
+Le contenu du fichier `.cabal` n'est pas de l'UTF-8 valide.
 
 ### E4861 : Lecture de CMakeLists.txt impossible
 
