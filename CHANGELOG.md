@@ -4,6 +4,15 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.28.1] - 2026-10-05
+
+### Bug Fixes
+
+- fix(cli): indent the continuation lines of a multi-line error (#1278)
+- fix(docs): contract de le into du in the French error reference (#1279)
+- fix(docs): document every error code in the error reference (#1275)
+- fix(publish): give publisher failures their own codes and keep cargo's full error (#1273)
+
 ## [7.28.0] - 2026-10-04
 
 ### Features
