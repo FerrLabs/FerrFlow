@@ -25,7 +25,7 @@ pub fn error_report_lines(err: &anyhow::Error) -> Vec<String> {
                 .first()
                 .map(String::as_str)
                 .unwrap_or("unknown error");
-            push_message(&mut lines, &format!("error[{code}]: "), "  ", head);
+            push_message(&mut lines, &format!("error[{code}]: "), "    ", head);
             for cause in causes.iter().skip(1) {
                 push_message(&mut lines, "  ", "    ", cause);
             }
@@ -125,8 +125,26 @@ mod tests {
             lines[..3],
             [
                 "error[E6102]: cargo publish failed for core on forgejo: error: failed to prepare local package",
-                "  Caused by:",
-                "  no matching package named `core` found",
+                "    Caused by:",
+                "    no matching package named `core` found",
+            ]
+        );
+    }
+
+    #[test]
+    fn a_multi_line_coded_head_stays_apart_from_the_next_cause() {
+        let err = anyhow::Result::<()>::Err(anyhow::anyhow!("permission denied"))
+            .context("could not publish\nregistry said no")
+            .error_code(error_code::PUBLISH_FAILED)
+            .unwrap_err();
+
+        let lines = error_report_lines(&err);
+        assert_eq!(
+            lines[..3],
+            [
+                "error[E6102]: could not publish",
+                "    registry said no",
+                "  permission denied",
             ]
         );
     }
