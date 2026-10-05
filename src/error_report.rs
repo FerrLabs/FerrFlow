@@ -25,9 +25,9 @@ pub fn error_report_lines(err: &anyhow::Error) -> Vec<String> {
                 .first()
                 .map(String::as_str)
                 .unwrap_or("unknown error");
-            lines.push(format!("error[{code}]: {head}"));
+            push_message(&mut lines, &format!("error[{code}]: "), "  ", head);
             for cause in causes.iter().skip(1) {
-                lines.push(format!("  {cause}"));
+                push_message(&mut lines, "  ", "    ", cause);
             }
             lines.push(String::new());
             lines.push(format!("  For help: {}", code.doc_url()));
@@ -37,14 +37,20 @@ pub fn error_report_lines(err: &anyhow::Error) -> Vec<String> {
                 .first()
                 .map(String::as_str)
                 .unwrap_or("unknown error");
-            lines.push(format!("Error: {head}"));
+            push_message(&mut lines, "Error: ", "  ", head);
             for cause in causes.iter().skip(1) {
-                lines.push(format!("  Caused by: {cause}"));
+                push_message(&mut lines, "  Caused by: ", "    ", cause);
             }
         }
     }
 
     lines
+}
+
+fn push_message(lines: &mut Vec<String>, lead: &str, indent: &str, message: &str) {
+    let mut physical = message.lines();
+    lines.push(format!("{lead}{}", physical.next().unwrap_or_default()));
+    lines.extend(physical.map(|line| format!("{indent}{line}")));
 }
 
 #[cfg(test)]
@@ -104,5 +110,40 @@ mod tests {
         let lines = error_report_lines(&err);
         assert_eq!(lines[0], "error[E1001]: could not read config");
         assert_eq!(lines[1], "  permission denied");
+    }
+
+    #[test]
+    fn a_multi_line_coded_message_keeps_its_continuation_indented() {
+        let err = anyhow::Result::<()>::Err(anyhow::anyhow!(
+            "cargo publish failed for core on forgejo: error: failed to prepare local package\nCaused by:\nno matching package named `core` found"
+        ))
+        .error_code(error_code::PUBLISH_FAILED)
+        .unwrap_err();
+
+        let lines = error_report_lines(&err);
+        assert_eq!(
+            lines[..3],
+            [
+                "error[E6102]: cargo publish failed for core on forgejo: error: failed to prepare local package",
+                "  Caused by:",
+                "  no matching package named `core` found",
+            ]
+        );
+    }
+
+    #[test]
+    fn a_multi_line_cause_indents_under_its_own_line() {
+        let err = anyhow::Result::<()>::Err(anyhow::anyhow!("first line\nsecond line"))
+            .context("could not publish")
+            .unwrap_err();
+
+        assert_eq!(
+            error_report_lines(&err),
+            [
+                "Error: could not publish",
+                "  Caused by: first line",
+                "    second line",
+            ]
+        );
     }
 }
