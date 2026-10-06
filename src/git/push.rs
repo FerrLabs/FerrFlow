@@ -166,12 +166,62 @@ pub fn force_push_branch(repo: &Repository, remote: Remote<'_>, branch: &str) ->
     let remote_name = remote.name;
     super::validate::ensure_safe_refname_fragment(remote_name, "remote name")?;
     super::validate::ensure_safe_refname_fragment(branch, "branch name")?;
-    retry_transient(&format!("force-push branch '{branch}'"), || {
-        try_force_push_branch_once(repo, remote, branch)
+    push_branch(repo, remote, branch, BranchPush::Force)
+}
+
+#[derive(Clone, Copy)]
+enum BranchPush {
+    FastForward,
+    Force,
+}
+
+impl BranchPush {
+    fn refspec_prefix(self) -> &'static str {
+        match self {
+            Self::FastForward => "",
+            Self::Force => "+",
+        }
+    }
+
+    fn verb(self) -> &'static str {
+        match self {
+            Self::FastForward => "push",
+            Self::Force => "force-push",
+        }
+    }
+
+    fn command(self) -> &'static str {
+        match self {
+            Self::FastForward => "git push",
+            Self::Force => "git push --force",
+        }
+    }
+
+    fn error_code(self) -> error_code::ErrorCode {
+        match self {
+            Self::FastForward => error_code::GIT_PUSH_BRANCH,
+            Self::Force => error_code::GIT_FORCE_PUSH_BRANCH,
+        }
+    }
+}
+
+fn push_branch(
+    repo: &Repository,
+    remote: Remote<'_>,
+    branch: &str,
+    mode: BranchPush,
+) -> Result<()> {
+    retry_transient(&format!("{} branch '{branch}'", mode.verb()), || {
+        push_branch_once(repo, remote, branch, mode)
     })
 }
 
-fn try_force_push_branch_once(repo: &Repository, remote: Remote<'_>, branch: &str) -> Result<()> {
+fn push_branch_once(
+    repo: &Repository,
+    remote: Remote<'_>,
+    branch: &str,
+    mode: BranchPush,
+) -> Result<()> {
     let Remote {
         name: remote_name,
         forge,
@@ -182,7 +232,7 @@ fn try_force_push_branch_once(repo: &Repository, remote: Remote<'_>, branch: &st
     let push_url = get_remote_url(repo, remote_name)
         .ok_or_else(|| anyhow!("Remote '{remote_name}' has no URL"))?;
     let source = resolve_push_source(repo, branch);
-    let refspec = format!("+{source}:refs/heads/{branch}");
+    let refspec = format!("{}{source}:refs/heads/{branch}", mode.refspec_prefix());
 
     let mut cmd = std::process::Command::new("git");
     cmd.current_dir(workdir);
@@ -191,13 +241,16 @@ fn try_force_push_branch_once(repo: &Repository, remote: Remote<'_>, branch: &st
 
     let output = cmd
         .output()
-        .with_context(|| format!("spawn `git push --force` for branch '{branch}' failed"))?;
+        .with_context(|| format!("spawn `{}` for branch '{branch}' failed", mode.command()))?;
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let detail = format!("{stdout}{stderr}").trim().to_string();
-        return Err(anyhow!("Failed to force-push branch '{branch}': {detail}"))
-            .error_code(error_code::GIT_FORCE_PUSH_BRANCH);
+        return Err(anyhow!(
+            "Failed to {} branch '{branch}': {detail}",
+            mode.verb()
+        ))
+        .error_code(mode.error_code());
     }
     Ok(())
 }
@@ -393,43 +446,6 @@ fn shell_push_tags(
     Ok(())
 }
 
-fn try_push_branch(repo: &Repository, remote: Remote<'_>, branch: &str) -> Result<()> {
-    retry_transient(&format!("push branch '{branch}'"), || {
-        try_push_branch_once(repo, remote, branch)
-    })
-}
-
-fn try_push_branch_once(repo: &Repository, remote: Remote<'_>, branch: &str) -> Result<()> {
-    let Remote {
-        name: remote_name,
-        forge,
-    } = remote;
-    let workdir = repo
-        .workdir()
-        .ok_or_else(|| anyhow!("bare repos are not supported"))?;
-    let push_url = get_remote_url(repo, remote_name)
-        .ok_or_else(|| anyhow!("Remote '{remote_name}' has no URL"))?;
-    let source = resolve_push_source(repo, branch);
-    let refspec = format!("{source}:refs/heads/{branch}");
-
-    let mut cmd = std::process::Command::new("git");
-    cmd.current_dir(workdir);
-    configure_git_command(&mut cmd, &push_url, forge);
-    cmd.arg("push").arg(&push_url).arg(&refspec);
-
-    let output = cmd
-        .output()
-        .with_context(|| format!("spawn `git push` for branch '{branch}' failed"))?;
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        let detail = format!("{stdout}{stderr}").trim().to_string();
-        return Err(anyhow!("Failed to push branch '{branch}': {detail}"))
-            .error_code(error_code::GIT_PUSH_BRANCH);
-    }
-    Ok(())
-}
-
 pub fn reset_branch_to_remote(repo: &Repository, remote: Remote<'_>, branch: &str) -> Result<()> {
     let Remote {
         name: remote_name,
@@ -483,7 +499,7 @@ pub fn reset_branch_to_remote(repo: &Repository, remote: Remote<'_>, branch: &st
 }
 
 pub fn push(repo: &Repository, remote: Remote<'_>, branch: &str) -> Result<()> {
-    try_push_branch(repo, remote, branch)
+    push_branch(repo, remote, branch, BranchPush::FastForward)
         .with_context(|| format!("Failed to push branch '{branch}'"))
         .error_code(error_code::GIT_PUSH_BRANCH)?;
 
