@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.28.4] - 2026-10-06
+
+### Refactoring
+
+- refactor(forge): share pagination as a function and keep RestClient for GitHub and Gitea (#1289)
+
 ## [7.28.3] - 2026-10-06
 
 ### Refactoring
