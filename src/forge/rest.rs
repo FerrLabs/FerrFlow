@@ -41,22 +41,6 @@ impl<'a> RestClient<'a> {
         }
     }
 
-    pub fn gitlab(
-        agent: &'a ureq::Agent,
-        project_url: String,
-        token_header: &'static str,
-        token: &str,
-    ) -> Self {
-        Self {
-            agent,
-            repo_url: project_url,
-            auth: (token_header, token.to_string()),
-            extra_headers: &[],
-            page_size_param: "per_page",
-            page_size: 100,
-        }
-    }
-
     fn headers<B>(&self, mut request: RequestBuilder<B>) -> RequestBuilder<B> {
         request = request
             .header(self.auth.0, &self.auth.1)
@@ -84,28 +68,12 @@ impl<'a> RestClient<'a> {
         base_url: &str,
         what: &str,
     ) -> Result<Vec<serde_json::Value>> {
-        let mut all = Vec::new();
-        for page in 1..=MAX_PAGES {
-            let body: serde_json::Value = self
-                .get(base_url)
-                .query(self.page_size_param, self.page_size.to_string())
-                .query("page", page.to_string())
-                .call()
-                .with_context(|| format!("Failed to list {what}"))?
-                .body_mut()
-                .read_json()
-                .with_context(|| format!("Failed to parse {what} response"))?;
-            let page_items = match body.as_array() {
-                Some(arr) if !arr.is_empty() => arr.clone(),
-                _ => return Ok(all),
-            };
-            let len = page_items.len();
-            all.extend(page_items);
-            if (len as u32) < self.page_size {
-                return Ok(all);
-            }
-        }
-        Ok(all)
+        paginate(
+            || self.get(base_url),
+            self.page_size_param,
+            self.page_size,
+            what,
+        )
     }
 
     pub fn create_release(
@@ -171,4 +139,33 @@ impl<'a> RestClient<'a> {
             .send_json(serde_json::json!({ "body": body }))?;
         Ok(())
     }
+}
+
+pub(super) fn paginate(
+    request: impl Fn() -> RequestBuilder<WithoutBody>,
+    page_size_param: &str,
+    page_size: u32,
+    what: &str,
+) -> Result<Vec<serde_json::Value>> {
+    let mut all = Vec::new();
+    for page in 1..=MAX_PAGES {
+        let body: serde_json::Value = request()
+            .query(page_size_param, page_size.to_string())
+            .query("page", page.to_string())
+            .call()
+            .with_context(|| format!("Failed to list {what}"))?
+            .body_mut()
+            .read_json()
+            .with_context(|| format!("Failed to parse {what} response"))?;
+        let page_items = match body.as_array() {
+            Some(arr) if !arr.is_empty() => arr.clone(),
+            _ => return Ok(all),
+        };
+        let len = page_items.len();
+        all.extend(page_items);
+        if (len as u32) < page_size {
+            return Ok(all);
+        }
+    }
+    Ok(all)
 }
