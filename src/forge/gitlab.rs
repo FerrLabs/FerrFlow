@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use colored::Colorize;
 
-use super::rest::RestClient;
+use super::rest::paginate;
 use super::{Forge, MergeRequestResult, ReleaseResult};
 use crate::error_code::{self, ErrorCodeExt};
 
@@ -52,13 +52,17 @@ impl GitLabForge {
     }
 
     fn paginated_json_array(&self, base_url: &str, what: &str) -> Result<Vec<serde_json::Value>> {
-        RestClient::gitlab(
-            &self.agent,
-            format!("{}/projects/{}", self.api_base, self.encoded_project_id()),
-            self.token_kind.header(),
-            &self.token,
+        paginate(
+            || {
+                self.agent
+                    .get(base_url)
+                    .header(self.token_kind.header(), &self.token)
+                    .header("User-Agent", "ferrflow")
+            },
+            "per_page",
+            100,
+            what,
         )
-        .paginated_json_array(base_url, what)
     }
 }
 
