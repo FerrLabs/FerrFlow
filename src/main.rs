@@ -28,6 +28,7 @@ mod schema;
 mod shadow;
 mod status;
 mod timing;
+mod uri;
 mod validate;
 mod version_diff;
 mod versioning;

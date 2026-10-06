@@ -1,11 +1,8 @@
 use anyhow::{Context, Result};
 
+use super::rest::RestClient;
 use super::{Forge, MergeRequestResult, ReleaseResult};
 use crate::error_code::{self, ErrorCodeExt};
-
-const PER_PAGE: u32 = 50;
-
-const MAX_PAGES: u32 = 100;
 
 pub struct GiteaForge {
     pub token: String,
@@ -15,31 +12,8 @@ pub struct GiteaForge {
 }
 
 impl GiteaForge {
-    fn paginated_json_array(&self, base_url: &str, what: &str) -> Result<Vec<serde_json::Value>> {
-        let mut all = Vec::new();
-        for page in 1..=MAX_PAGES {
-            let url = format!("{base_url}?limit={PER_PAGE}&page={page}");
-            let body: serde_json::Value = self
-                .agent
-                .get(&url)
-                .header("Authorization", &format!("token {}", self.token))
-                .header("User-Agent", "ferrflow")
-                .call()
-                .with_context(|| format!("Failed to list {what}"))?
-                .body_mut()
-                .read_json()
-                .with_context(|| format!("Failed to parse {what} response"))?;
-            let page_items = match body.as_array() {
-                Some(arr) if !arr.is_empty() => arr.clone(),
-                _ => return Ok(all),
-            };
-            let len = page_items.len();
-            all.extend(page_items);
-            if (len as u32) < PER_PAGE {
-                return Ok(all);
-            }
-        }
-        Ok(all)
+    fn rest(&self) -> RestClient<'_> {
+        RestClient::gitea(&self.agent, &self.api_base, &self.slug, &self.token)
     }
 }
 
@@ -51,64 +25,23 @@ impl Forge for GiteaForge {
         prerelease: bool,
         draft: bool,
     ) -> Result<ReleaseResult> {
-        let url = format!("{}/repos/{}/releases", self.api_base, self.slug);
-
-        let payload = serde_json::json!({
-            "tag_name": tag,
-            "name": tag,
-            "body": body,
-            "draft": draft,
-            "prerelease": prerelease,
-        });
-        let response: serde_json::Value = self
-            .agent
-            .post(&url)
-            .header("Authorization", &format!("token {}", self.token))
-            .header("User-Agent", "ferrflow")
-            .send_json(payload)
+        self.rest()
+            .create_release(tag, body, prerelease, draft)
             .with_context(|| format!("Failed to create Gitea release for {tag}"))
-            .error_code(error_code::GITEA_CREATE_RELEASE)?
-            .body_mut()
-            .read_json()
-            .unwrap_or(serde_json::Value::Null);
-
-        Ok(ReleaseResult {
-            id: response["id"].as_u64(),
-            url: response["html_url"].as_str().map(str::to_string),
-        })
+            .error_code(error_code::GITEA_CREATE_RELEASE)
     }
 
     fn find_draft_release(&self, tag: &str) -> Result<Option<u64>> {
-        let base_url = format!("{}/repos/{}/releases", self.api_base, self.slug);
-        let releases = self
-            .paginated_json_array(&base_url, "Gitea releases")
-            .error_code(error_code::GITEA_LIST_RELEASES)?;
-        for release in releases {
-            if release["draft"].as_bool() == Some(true)
-                && release["tag_name"].as_str() == Some(tag)
-                && let Some(id) = release["id"].as_u64()
-            {
-                return Ok(Some(id));
-            }
-        }
-        Ok(None)
+        self.rest()
+            .find_draft_release(tag, "Gitea releases")
+            .error_code(error_code::GITEA_LIST_RELEASES)
     }
 
     fn publish_release(&self, release_id: u64) -> Result<()> {
-        let url = format!(
-            "{}/repos/{}/releases/{release_id}",
-            self.api_base, self.slug
-        );
-
-        self.agent
-            .patch(&url)
-            .header("Authorization", &format!("token {}", self.token))
-            .header("User-Agent", "ferrflow")
-            .send_json(serde_json::json!({ "draft": false }))
+        self.rest()
+            .publish_release(release_id)
             .with_context(|| format!("Failed to publish Gitea release {release_id}"))
-            .error_code(error_code::GITEA_PUBLISH_RELEASE)?;
-
-        Ok(())
+            .error_code(error_code::GITEA_PUBLISH_RELEASE)
     }
 
     fn create_merge_request(
@@ -139,48 +72,19 @@ impl Forge for GiteaForge {
     }
 
     fn find_comment(&self, pr_id: u64, marker: &str) -> Result<Option<u64>> {
-        let base_url = format!(
-            "{}/repos/{}/issues/{}/comments",
-            self.api_base, self.slug, pr_id
-        );
-        let comments = self.paginated_json_array(&base_url, "issue comments")?;
-        for comment in comments {
-            if let Some(body) = comment["body"].as_str()
-                && body.contains(marker)
-                && let Some(id) = comment["id"].as_u64()
-            {
-                return Ok(Some(id));
-            }
-        }
-        Ok(None)
+        self.rest().find_comment(pr_id, marker, "issue comments")
     }
 
     fn create_comment(&self, pr_id: u64, body: &str) -> Result<()> {
-        let url = format!(
-            "{}/repos/{}/issues/{}/comments",
-            self.api_base, self.slug, pr_id
-        );
-        self.agent
-            .post(&url)
-            .header("Authorization", &format!("token {}", self.token))
-            .header("User-Agent", "ferrflow")
-            .send_json(serde_json::json!({ "body": body }))
-            .with_context(|| "Failed to create issue comment")?;
-        Ok(())
+        self.rest()
+            .create_comment(pr_id, body)
+            .context("Failed to create issue comment")
     }
 
     fn update_comment(&self, _pr_id: u64, comment_id: u64, body: &str) -> Result<()> {
-        let url = format!(
-            "{}/repos/{}/issues/comments/{}",
-            self.api_base, self.slug, comment_id
-        );
-        self.agent
-            .patch(&url)
-            .header("Authorization", &format!("token {}", self.token))
-            .header("User-Agent", "ferrflow")
-            .send_json(serde_json::json!({ "body": body }))
-            .with_context(|| "Failed to update issue comment")?;
-        Ok(())
+        self.rest()
+            .update_comment(comment_id, body)
+            .context("Failed to update issue comment")
     }
 
     fn find_open_pr(&self, _head: &str, _base: &str) -> Result<Option<u64>> {
