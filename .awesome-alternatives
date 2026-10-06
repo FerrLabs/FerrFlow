@@ -1,1 +1,36 @@
-ferrflow
+# yaml-language-server: $schema=https://raw.githubusercontent.com/awesome-alternatives/awesome-alternatives/main/schema/maintainer-file.schema.json
+tools:
+  ferrflow:
+    category: release-automation
+    replaces:
+      - tool: semantic-release
+        fit: full
+        note: Monorepos across 16 version-file formats from one binary.
+      - tool: release-please
+        fit: full
+        note: Also has a release pull request mode, across 16 version-file formats.
+      - tool: changesets
+        fit: full
+        note: Reads Conventional Commits instead of changeset files, and can publish to npm.
+      - tool: release-plz
+        fit: full
+        note: Release pull requests and cargo publish, for Cargo workspaces and 15 other formats.
+      - tool: knope
+        fit: full
+        note: Commit-driven bumps and changelogs for monorepos, in 16 version-file formats.
+      - tool: cocogitto
+        fit: full
+        note: Conventional Commit bumps, changelog, tags and releases, monorepos included.
+      - tool: git-cliff
+        fit: partial
+        note: Writes the changelog as part of a release rather than as a standalone generator.
+      - tool: lerna
+        fit: partial
+        note: Covers lerna version and publish, not running scripts across packages.
+      - tool: conventional-changelog
+        fit: partial
+        note: Writes the changelog as part of a release.
+      - tool: cargo-release
+        fit: full
+        note: Bumps Cargo.toml, tags and runs cargo publish, among 16 version-file formats.
+    affiliation: Maintained by FerrLabs, whose founder also maintains this directory.
