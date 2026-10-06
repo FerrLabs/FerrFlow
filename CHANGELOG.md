@@ -4,6 +4,13 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.28.3] - 2026-10-06
+
+### Refactoring
+
+- refactor(forge): share one REST client between GitHub, Gitea and GitLab pagination (#1287)
+- refactor(git): share one branch push for the fast-forward and force cases (#1286)
+
 ## [7.28.2] - 2026-10-05
 
 ### Bug Fixes
