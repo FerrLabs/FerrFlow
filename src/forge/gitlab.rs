@@ -1,11 +1,9 @@
 use anyhow::{Context, Result};
 use colored::Colorize;
 
+use super::rest::RestClient;
 use super::{Forge, MergeRequestResult, ReleaseResult};
 use crate::error_code::{self, ErrorCodeExt};
-
-const PER_PAGE: u32 = 100;
-const MAX_PAGES: u32 = 100;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GitLabToken {
@@ -54,30 +52,13 @@ impl GitLabForge {
     }
 
     fn paginated_json_array(&self, base_url: &str, what: &str) -> Result<Vec<serde_json::Value>> {
-        let mut all = Vec::new();
-        for page in 1..=MAX_PAGES {
-            let url = format!("{base_url}?per_page={PER_PAGE}&page={page}");
-            let body: serde_json::Value = self
-                .agent
-                .get(&url)
-                .header(self.token_kind.header(), &self.token)
-                .header("User-Agent", "ferrflow")
-                .call()
-                .with_context(|| format!("Failed to list {what}"))?
-                .body_mut()
-                .read_json()
-                .with_context(|| format!("Failed to parse {what} response"))?;
-            let page_items = match body.as_array() {
-                Some(arr) if !arr.is_empty() => arr.clone(),
-                _ => return Ok(all),
-            };
-            let len = page_items.len();
-            all.extend(page_items);
-            if (len as u32) < PER_PAGE {
-                return Ok(all);
-            }
-        }
-        Ok(all)
+        RestClient::gitlab(
+            &self.agent,
+            format!("{}/projects/{}", self.api_base, self.encoded_project_id()),
+            self.token_kind.header(),
+            &self.token,
+        )
+        .paginated_json_array(base_url, what)
     }
 }
 

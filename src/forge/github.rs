@@ -1,11 +1,8 @@
 use anyhow::{Context, Result};
 
+use super::rest::RestClient;
 use super::{AuthoredCommit, Forge, MergeRequestResult, ReleaseResult};
 use crate::error_code::{self, ErrorCodeExt};
-
-const PER_PAGE: u32 = 100;
-
-const MAX_PAGES: u32 = 100;
 
 pub struct GitHubForge {
     pub token: String,
@@ -15,33 +12,8 @@ pub struct GitHubForge {
 }
 
 impl GitHubForge {
-    fn paginated_json_array(&self, base_url: &str, what: &str) -> Result<Vec<serde_json::Value>> {
-        let mut all = Vec::new();
-        for page in 1..=MAX_PAGES {
-            let url = format!("{base_url}?per_page={PER_PAGE}&page={page}");
-            let body: serde_json::Value = self
-                .agent
-                .get(&url)
-                .header("Authorization", &format!("Bearer {}", self.token))
-                .header("Accept", "application/vnd.github+json")
-                .header("X-GitHub-Api-Version", "2022-11-28")
-                .header("User-Agent", "ferrflow")
-                .call()
-                .with_context(|| format!("Failed to list {what}"))?
-                .body_mut()
-                .read_json()
-                .with_context(|| format!("Failed to parse {what} response"))?;
-            let page_items = match body.as_array() {
-                Some(arr) if !arr.is_empty() => arr.clone(),
-                _ => return Ok(all),
-            };
-            let len = page_items.len();
-            all.extend(page_items);
-            if (len as u32) < PER_PAGE {
-                return Ok(all);
-            }
-        }
-        Ok(all)
+    fn rest(&self) -> RestClient<'_> {
+        RestClient::github(&self.agent, &self.api_base, &self.slug, &self.token)
     }
 }
 
@@ -158,7 +130,7 @@ impl Forge for GitHubForge {
             "{}/repos/{}/git/refs/heads/{}",
             self.api_base,
             self.slug,
-            crate::config::percent_encode_path(branch)
+            crate::uri::percent_encode_path(branch)
         );
         let patched = self
             .agent
@@ -195,33 +167,10 @@ impl Forge for GitHubForge {
         prerelease: bool,
         draft: bool,
     ) -> Result<ReleaseResult> {
-        let url = format!("{}/repos/{}/releases", self.api_base, self.slug);
-
-        let payload = serde_json::json!({
-            "tag_name": tag,
-            "name": tag,
-            "body": body,
-            "draft": draft,
-            "prerelease": prerelease,
-        });
-        let response: serde_json::Value = self
-            .agent
-            .post(&url)
-            .header("Authorization", &format!("Bearer {}", self.token))
-            .header("Accept", "application/vnd.github+json")
-            .header("X-GitHub-Api-Version", "2022-11-28")
-            .header("User-Agent", "ferrflow")
-            .send_json(payload)
+        self.rest()
+            .create_release(tag, body, prerelease, draft)
             .with_context(|| format!("Failed to create GitHub release for {tag}"))
-            .error_code(error_code::GITHUB_CREATE_RELEASE)?
-            .body_mut()
-            .read_json()
-            .unwrap_or(serde_json::Value::Null);
-
-        Ok(ReleaseResult {
-            id: response["id"].as_u64(),
-            url: response["html_url"].as_str().map(str::to_string),
-        })
+            .error_code(error_code::GITHUB_CREATE_RELEASE)
     }
 
     fn delete_release(&self, id: u64) -> Result<()> {
@@ -237,42 +186,16 @@ impl Forge for GitHubForge {
     }
 
     fn find_draft_release(&self, tag: &str) -> Result<Option<u64>> {
-        let base_url = format!("{}/repos/{}/releases", self.api_base, self.slug);
-        let releases = self
-            .paginated_json_array(&base_url, "GitHub releases")
-            .error_code(error_code::GITHUB_LIST_RELEASES)?;
-        for release in releases {
-            if release["draft"].as_bool() == Some(true)
-                && release["tag_name"].as_str() == Some(tag)
-                && let Some(id) = release["id"].as_u64()
-            {
-                return Ok(Some(id));
-            }
-        }
-        Ok(None)
+        self.rest()
+            .find_draft_release(tag, "GitHub releases")
+            .error_code(error_code::GITHUB_LIST_RELEASES)
     }
 
     fn publish_release(&self, release_id: u64) -> Result<()> {
-        let url = format!(
-            "{}/repos/{}/releases/{release_id}",
-            self.api_base, self.slug
-        );
-
-        let payload = serde_json::json!({
-            "draft": false,
-        });
-
-        self.agent
-            .patch(&url)
-            .header("Authorization", &format!("Bearer {}", self.token))
-            .header("Accept", "application/vnd.github+json")
-            .header("X-GitHub-Api-Version", "2022-11-28")
-            .header("User-Agent", "ferrflow")
-            .send_json(payload)
+        self.rest()
+            .publish_release(release_id)
             .with_context(|| format!("Failed to publish GitHub release {release_id}"))
-            .error_code(error_code::GITHUB_PUBLISH_RELEASE)?;
-
-        Ok(())
+            .error_code(error_code::GITHUB_PUBLISH_RELEASE)
     }
 
     fn create_merge_request(
@@ -372,50 +295,19 @@ impl Forge for GitHubForge {
     }
 
     fn find_comment(&self, pr_id: u64, marker: &str) -> Result<Option<u64>> {
-        let base_url = format!(
-            "{}/repos/{}/issues/{}/comments",
-            self.api_base, self.slug, pr_id
-        );
-        let comments = self.paginated_json_array(&base_url, "PR comments")?;
-        for comment in comments {
-            if let Some(body) = comment["body"].as_str()
-                && body.contains(marker)
-                && let Some(id) = comment["id"].as_u64()
-            {
-                return Ok(Some(id));
-            }
-        }
-        Ok(None)
+        self.rest().find_comment(pr_id, marker, "PR comments")
     }
 
     fn create_comment(&self, pr_id: u64, body: &str) -> Result<()> {
-        let url = format!(
-            "{}/repos/{}/issues/{}/comments",
-            self.api_base, self.slug, pr_id
-        );
-        self.agent
-            .post(&url)
-            .header("Authorization", &format!("Bearer {}", self.token))
-            .header("Accept", "application/vnd.github+json")
-            .header("User-Agent", "ferrflow")
-            .send_json(serde_json::json!({ "body": body }))
-            .with_context(|| "Failed to create PR comment")?;
-        Ok(())
+        self.rest()
+            .create_comment(pr_id, body)
+            .context("Failed to create PR comment")
     }
 
     fn update_comment(&self, _pr_id: u64, comment_id: u64, body: &str) -> Result<()> {
-        let url = format!(
-            "{}/repos/{}/issues/comments/{}",
-            self.api_base, self.slug, comment_id
-        );
-        self.agent
-            .patch(&url)
-            .header("Authorization", &format!("Bearer {}", self.token))
-            .header("Accept", "application/vnd.github+json")
-            .header("User-Agent", "ferrflow")
-            .send_json(serde_json::json!({ "body": body }))
-            .with_context(|| "Failed to update PR comment")?;
-        Ok(())
+        self.rest()
+            .update_comment(comment_id, body)
+            .context("Failed to update PR comment")
     }
 
     fn find_open_pr(&self, head: &str, base: &str) -> Result<Option<u64>> {

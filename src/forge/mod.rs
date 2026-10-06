@@ -2,6 +2,7 @@ pub mod bitbucket;
 pub mod gitea;
 pub mod github;
 pub mod gitlab;
+mod rest;
 #[cfg(test)]
 pub(crate) mod test_server;
 
