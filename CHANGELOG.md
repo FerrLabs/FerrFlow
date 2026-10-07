@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.28.5] - 2026-10-07
+
+### Bug Fixes
+
+- fix(cli): spell date and sequence strategies as configured in JSON output (#1293)
+
 ## [7.28.4] - 2026-10-06
 
 ### Refactoring
