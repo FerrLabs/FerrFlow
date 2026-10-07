@@ -240,7 +240,7 @@ fn explain(
         package: pkg.name.clone(),
         path: pkg.path.clone(),
         shared_paths: pkg.shared_paths.clone(),
-        strategy: format!("{strategy:?}").to_lowercase(),
+        strategy: strategy.to_string(),
         current_version,
         version_source,
         monorepo: is_monorepo,

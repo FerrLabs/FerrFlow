@@ -502,7 +502,7 @@ fn strategy_label(forced: bool, pkg_strategy: VersioningStrategy, bump: BumpType
     if forced {
         "forced".to_string()
     } else if is_date_or_seq(pkg_strategy) {
-        format!("{pkg_strategy:?}").to_lowercase()
+        pkg_strategy.to_string()
     } else {
         bump.to_string()
     }
@@ -543,6 +543,26 @@ mod tests {
         }
         assert!(!is_date_or_seq(VersioningStrategy::Semver));
         assert!(!is_date_or_seq(VersioningStrategy::Zerover));
+    }
+
+    #[test]
+    fn a_date_or_sequence_label_uses_the_config_spelling() {
+        assert_eq!(
+            strategy_label(false, VersioningStrategy::CalverShortSeq, BumpType::Minor),
+            "calver-short-seq"
+        );
+        assert_eq!(
+            strategy_label(false, VersioningStrategy::CalverShort, BumpType::Patch),
+            "calver-short"
+        );
+        assert_eq!(
+            strategy_label(false, VersioningStrategy::Semver, BumpType::Minor),
+            "minor"
+        );
+        assert_eq!(
+            strategy_label(true, VersioningStrategy::CalverSeq, BumpType::Minor),
+            "forced"
+        );
     }
 
     #[test]
