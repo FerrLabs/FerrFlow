@@ -1,6 +1,6 @@
 ---
-title: 'FerrFlow: declarative publishers: publish to cargo, npm, docker, helm & more on release'
-summary: 'FerrFlow can now publish your packages to registries declaratively from ferrflow.json: cargo, npm, docker (multi-arch + Sigstore), helm, GitHub release assets and webhooks: replacing hand-rolled postPublish shell hooks. Shipped across FerrFlow v5.4–v5.7.'
+title: 'FerrFlow: declarative publishers (publish to cargo, npm, docker, helm & more on release)'
+summary: 'FerrFlow can now publish your packages to registries declaratively from ferrflow.json (cargo, npm, docker with multi-arch + Sigstore, helm, GitHub release assets and webhooks), replacing hand-rolled postPublish shell hooks. Shipped across FerrFlow v5.4 to v5.7.'
 date: 2026-06-16T10:00:00Z
 product: ferrflow
 type: new

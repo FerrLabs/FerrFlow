@@ -1,6 +1,6 @@
 ---
 title: 'FerrFlow: Migrate from changesets, release-please & standard-version'
-summary: '`ferrflow migrate` now imports configs from changesets, release-please, and standard-version too: not just semantic-release: generating an equivalent `ferrflow.json` and a report of what mapped, what was ignored, and what needs a look.'
+summary: '`ferrflow migrate` now imports configs from changesets, release-please, and standard-version too (not just semantic-release), generating an equivalent `ferrflow.json` and a report of what mapped, what was ignored, and what needs a look.'
 date: 2026-07-21T13:00:00Z
 product: ferrflow
 type: new

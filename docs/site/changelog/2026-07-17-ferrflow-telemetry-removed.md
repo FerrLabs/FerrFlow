@@ -1,6 +1,6 @@
 ---
 title: 'FerrFlow: Telemetry removed. The CLI no longer phones home'
-summary: 'FerrFlow no longer collects any usage telemetry. The module is gone from the binary entirely, along with the network calls it made on every command: which also makes monorepo commands dramatically faster.'
+summary: 'FerrFlow no longer collects any usage telemetry. The module is gone from the binary entirely, along with the network calls it made on every command, which also makes monorepo commands dramatically faster.'
 date: 2026-07-17T15:00:00Z
 product: ferrflow
 type: new

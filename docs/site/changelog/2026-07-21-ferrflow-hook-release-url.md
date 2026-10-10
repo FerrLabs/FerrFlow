@@ -1,6 +1,6 @@
 ---
 title: 'FerrFlow: Post-publish hooks get the release URL'
-summary: '`postPublish` hooks now receive `releaseUrl`: the URL of the GitHub/GitLab release FerrFlow just created: so you can link to it from a Slack notification, a dashboard, or a downstream job.'
+summary: '`postPublish` hooks now receive `releaseUrl` (the URL of the GitHub/GitLab release FerrFlow just created), so you can link to it from a Slack notification, a dashboard, or a downstream job.'
 date: 2026-07-21T08:00:00Z
 product: ferrflow
 type: new

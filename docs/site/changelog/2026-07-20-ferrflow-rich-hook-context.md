@@ -1,6 +1,6 @@
 ---
 title: 'FerrFlow: Richer context for release hooks'
-summary: Release hooks now receive the rendered changelog, the parsed commits, the list of bumped files, and whether the run is a monorepo or pre-release. Both as `FERRFLOW_*` env vars and on the JS/TS `ctx` object.
+summary: Release hooks now receive the rendered changelog, the parsed commits, the list of bumped files, and whether the run is a monorepo or pre-release, both as `FERRFLOW_*` env vars and on the JS/TS `ctx` object.
 date: 2026-07-20T12:00:00Z
 product: ferrflow
 type: new
@@ -14,7 +14,7 @@ Every hook now gets the full picture. Shell hooks read new `FERRFLOW_*` environm
 
 - `changelog`: the rendered changelog section for this bump, in markdown.
 - `commits`: the commits in the bump as structured objects (`hash`, `message`, `type`, `scope`, `breaking`), so you can branch on a breaking change instead of grepping a string.
-- `bumpedFiles`. Every file the release actually modified, with its format.
+- `bumpedFiles`: every file the release actually modified, with its format.
 - `monorepo` and `isPrerelease`: flags to tell a workspace release apart from a single-package one, and a channel pre-release from a stable one.
 
 `commits` and `bumpedFiles` arrive as real arrays in function hooks (`FERRFLOW_COMMITS_JSON` / `FERRFLOW_BUMPED_FILES_JSON` as JSON for shell hooks, ready to pipe through `jq`):

@@ -8,7 +8,7 @@ prLink: https://github.com/FerrLabs/FerrFlow/pull/774
 docsLink: https://ferrflow.com/docs/verifying-releases
 ---
 
-Sigstore's tooling moved on: cosign v3 replaced the separate signature and certificate outputs with a single bundle that carries both. FerrFlow releases follow suit. Every artifact: the platform tarballs and zips, the completions archive, the SBOM: now ships one `<artifact>.bundle` sidecar instead of a `.sig` + `.crt` pair.
+Sigstore's tooling moved on: cosign v3 replaced the separate signature and certificate outputs with a single bundle that carries both. FerrFlow releases follow suit. Every artifact (the platform tarballs and zips, the completions archive, the SBOM) now ships one `<artifact>.bundle` sidecar instead of a `.sig` + `.crt` pair.
 
 Verification loses a flag:
 

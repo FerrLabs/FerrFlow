@@ -8,7 +8,7 @@ prLink: https://github.com/FerrLabs/FerrFlow-Cloud/pull/772
 docsLink: https://ferrflow.com/docs/reference/api
 ---
 
-The hosted FerrFlow API: `validate`, `preview`, `latest`, the config schema, and the bot token exchange: was published under the holding company's hostname, `api.ferrlabs.com`. Pointing a `$schema` at a *ferrlabs* URL to validate a *ferrflow* config never read right, and every other product already serves its API from its own domain. It now answers on `api.ferrflow.com`, which is the host the documentation uses from here on.
+The hosted FerrFlow API (`validate`, `preview`, `latest`, the config schema, and the bot token exchange) was published under the holding company's hostname, `api.ferrlabs.com`. Pointing a `$schema` at a *ferrlabs* URL to validate a *ferrflow* config never read right, and every other product already serves its API from its own domain. It now answers on `api.ferrflow.com`, which is the host the documentation uses from here on.
 
 Paths are unchanged, so moving over is a hostname swap and nothing else:
 

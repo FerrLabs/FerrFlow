@@ -1,6 +1,6 @@
 ---
 title: 'FerrFlow: Hooks see the whole release batch'
-summary: 'Release hooks now receive `allPackages`. Every package the run bumps, with its new version and bump type: so a monorepo hook can act on the batch, not just its own package.'
+summary: 'Release hooks now receive `allPackages` (every package the run bumps, with its new version and bump type), so a monorepo hook can act on the batch, not just its own package.'
 date: 2026-07-20T16:00:00Z
 product: ferrflow
 type: new

@@ -11,7 +11,7 @@ Releases run with `bot: true` now push correctly even when your release branch i
 
 ### Why it happened
 
-`actions/checkout` persists your workflow's `GITHUB_TOKEN` as an `http.<server>.extraheader` git config entry. An HTTP extra-header outranks a credential helper, so even though FerrFlow swaps in its OIDC-minted bot token, git kept sending the original `GITHUB_TOKEN` on every push. The release commit therefore landed as `github-actions[bot]`. Which is not a bypass actor: and the ruleset rejected it.
+`actions/checkout` persists your workflow's `GITHUB_TOKEN` as an `http.<server>.extraheader` git config entry. An HTTP extra-header outranks a credential helper, so even though FerrFlow swaps in its OIDC-minted bot token, git kept sending the original `GITHUB_TOKEN` on every push. The release commit therefore landed as `github-actions[bot]`, which is not a bypass actor, and the ruleset rejected it.
 
 ### What changes
 
