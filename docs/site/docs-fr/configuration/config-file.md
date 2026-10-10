@@ -637,6 +637,7 @@ on_failure   = &quot;abort&quot;
 | `onSuccess`   | string | —         | Exécuté une fois après une release entièrement réussie                                                |
 | `onError`     | string | —         | Exécuté une fois quand la release échoue ; définit `FERRFLOW_ERROR_CODE` (une fois)                   |
 | `onFailure`   | string | `"abort"` | Stratégie — `"abort"` annule la release en cas d'échec de hook, `"continue"` affiche un avertissement |
+| `timeout`     | number | `900`     | Secondes qu'un hook peut tourner avant d'être tué et que `onFailure` s'applique                       |
 
 ### Variables d'environnement
 
@@ -665,6 +666,8 @@ Chaque hook reçoit ces variables :
 Pour les hooks exécutés une seule fois par run (`preRelease`, `onSuccess`, `onError`), les variables par package sont vides et `FERRFLOW_TAG` contient tous les tags publiés séparés par des virgules.
 
 `onFailure` est la **stratégie** d'échec (`abort` / `continue`), pas une commande. La commande exécutée _quand_ une release échoue est `onError`, qui reçoit le `FERRFLOW_ERROR_CODE` fautif.
+
+Les hooks s'exécutent avec stdin fermé : une commande qui poserait une question (`npm login`, une passphrase `gpg`, une demande d'identifiants git) échoue tout de suite au lieu d'attendre indéfiniment. Un hook encore en cours après `timeout` secondes est tué avec les processus qu'il a lancés, et compte comme un hook en échec : `abort` arrête la release, `continue` affiche un avertissement et poursuit. Chaque minute, un hook long indique qu'il tourne toujours. `timeout` défini sur un package remplace la valeur du workspace. Sous Linux et macOS, un hook tourne dans son propre groupe de processus pour pouvoir être tué avec tout ce qu'il a lancé : un Ctrl+C sur un `ferrflow release` interactif arrête donc FerrFlow mais pas un hook déjà en cours, qui reste borné par son timeout.
 
 ### Hooks par package
 

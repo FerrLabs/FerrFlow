@@ -1167,6 +1167,12 @@
             "continue"
           ],
           "default": "abort"
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Seconds a hook may run before FerrFlow kills it and its child processes, then applies onFailure. Defaults to 900 (15 minutes).",
+          "default": 900
         }
       },
       "additionalProperties": false

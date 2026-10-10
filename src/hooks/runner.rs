@@ -1,18 +1,21 @@
+mod process;
+
 use crate::config::OnFailure;
 use crate::error_code::{self, ErrorCodeExt};
 use anyhow::Context as _;
 use anyhow::Result;
 use colored::Colorize;
 use std::path::Path;
-use std::process::{Command, Stdio};
+use std::process::Command;
 
-use super::{HookContext, HookPoint};
+use super::{HookContext, HookPoint, HookPolicy};
+use process::{Finish, run_bounded};
 
 pub fn run_hook(
     point: HookPoint,
     command: &str,
     ctx: &HookContext,
-    on_failure: OnFailure,
+    policy: HookPolicy,
     dry_run: bool,
     verbose: bool,
     working_dir: &Path,
@@ -34,34 +37,35 @@ pub fn run_hook(
         command
     );
 
-    let mut cmd = build_hook_command(command, ctx, working_dir);
+    let cmd = build_hook_command(command, ctx, working_dir);
 
-    if verbose {
-        let status = cmd
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .status()?;
-
-        if !status.success() {
-            return handle_failure(point, command, status.code(), on_failure);
+    match run_bounded(cmd, !verbose, policy.timeout, point.label())? {
+        Finish::Exited { status, .. } if status.success() => Ok(()),
+        Finish::Exited {
+            status,
+            stdout,
+            stderr,
+        } => {
+            echo_captured(&stdout);
+            echo_captured(&stderr);
+            let code = status
+                .code()
+                .map_or_else(|| "signal".to_string(), |c| c.to_string());
+            handle_failure(point, command, &format!("exit {code}"), policy.on_failure)
         }
-    } else {
-        let output = cmd.output()?;
-
-        if !output.status.success() {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            if !stdout.is_empty() {
-                eprint!("{stdout}");
-            }
-            if !stderr.is_empty() {
-                eprint!("{stderr}");
-            }
-            return handle_failure(point, command, output.status.code(), on_failure);
-        }
+        Finish::TimedOut => handle_failure(
+            point,
+            command,
+            &format!("timed out after {}s", policy.timeout.as_secs()),
+            policy.on_failure,
+        ),
     }
+}
 
-    Ok(())
+fn echo_captured(output: &[u8]) {
+    if !output.is_empty() {
+        eprint!("{}", String::from_utf8_lossy(output));
+    }
 }
 
 fn build_hook_command(command: &str, ctx: &HookContext, working_dir: &Path) -> Command {
@@ -124,29 +128,21 @@ fn build_command(command: &str) -> Command {
 fn handle_failure(
     point: HookPoint,
     command: &str,
-    code: Option<i32>,
+    reason: &str,
     on_failure: OnFailure,
 ) -> Result<()> {
-    let code_str = code
-        .map(|c| c.to_string())
-        .unwrap_or_else(|| "signal".to_string());
-
     match on_failure {
         OnFailure::Abort => Err(anyhow::anyhow!(
-            "hook [{}] failed (exit {}): {}",
-            point.label(),
-            code_str,
-            command
+            "hook [{}] failed ({reason}): {command}",
+            point.label()
         ))
         .error_code(error_code::HOOK_FAILED)?,
         OnFailure::Continue => {
             tracing::warn!(
                 "{}",
                 format!(
-                    "  Warning: hook [{}] failed (exit {}): {}",
-                    point.label(),
-                    code_str,
-                    command
+                    "  Warning: hook [{}] failed ({reason}): {command}",
+                    point.label()
                 )
                 .yellow()
             );
@@ -181,7 +177,7 @@ mod tests {
 
     #[test]
     fn handle_failure_abort_returns_error() {
-        let result = handle_failure(HookPoint::PreBump, "echo fail", Some(1), OnFailure::Abort);
+        let result = handle_failure(HookPoint::PreBump, "echo fail", "exit 1", OnFailure::Abort);
         assert!(result.is_err());
         let msg = format!("{:?}", result.unwrap_err());
         assert!(msg.contains("pre_bump"));
@@ -194,17 +190,10 @@ mod tests {
         let result = handle_failure(
             HookPoint::PostBump,
             "echo fail",
-            Some(42),
+            "exit 42",
             OnFailure::Continue,
         );
         assert!(result.is_ok());
-    }
-
-    #[test]
-    fn handle_failure_signal_no_exit_code() {
-        let result = handle_failure(HookPoint::PreCommit, "killed", None, OnFailure::Abort);
-        assert!(result.is_err());
-        assert!(format!("{:?}", result.unwrap_err()).contains("signal"));
     }
 }
 

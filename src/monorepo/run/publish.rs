@@ -4,7 +4,7 @@ use std::path::Path;
 use crate::config::{Config, OnFailure};
 use crate::git::Repository;
 use crate::hooks::{
-    HookContext, HookPackage, HookPoint, resolve_hook, resolve_on_failure, run_hook,
+    HookContext, HookPackage, HookPoint, HookPolicy, resolve_hook, resolve_policy, run_hook,
 };
 use crate::timing::Timing;
 
@@ -156,12 +156,12 @@ impl Publisher<'_> {
             return Ok(());
         };
         let ctx = self.summary_context(released_tags);
-        let on_failure = resolve_on_failure(None, ws_hooks);
+        let policy = resolve_policy(None, ws_hooks);
         run_hook(
             HookPoint::OnSuccess,
             &cmd,
             &ctx,
-            on_failure,
+            policy,
             self.flags.dry_run,
             self.flags.verbose,
             self.root,
@@ -175,11 +175,15 @@ impl Publisher<'_> {
         };
         let mut ctx = self.summary_context(released_tags);
         ctx.error_code = crate::error_code::code_from_error(err);
+        let policy = HookPolicy {
+            on_failure: OnFailure::Continue,
+            ..resolve_policy(None, ws_hooks)
+        };
         let _ = run_hook(
             HookPoint::OnError,
             &cmd,
             &ctx,
-            OnFailure::Continue,
+            policy,
             self.flags.dry_run,
             self.flags.verbose,
             self.root,
