@@ -16,7 +16,7 @@ updates your version files, writes the changelog, and cuts the tagged release. A
 [![Socket Badge](https://badge.socket.dev/cargo/package/ferrflow/latest)](https://socket.dev/cargo/package/ferrflow)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/FerrLabs/FerrFlow/badge)](https://scorecard.dev/viewer/?uri=github.com/FerrLabs/FerrFlow)
 
-[Documentation](https://ferrflow.com/docs) | [Changelog](https://ferrlabs.com/changelog/) | [GitHub App](https://github.com/apps/ferrflow)
+[Documentation](https://ferrflow.com/docs) | [Changelog](https://ferrflow.com/changelog/) | [GitHub App](https://github.com/apps/ferrflow)
 
 </div>
 
