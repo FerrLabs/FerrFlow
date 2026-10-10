@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.30.0] - 2026-10-10
+
+### Features
+
+- feat(init): discover monorepo packages from Cargo, Go and Gradle workspaces (#1309)
+
 ## [7.29.0] - 2026-10-10
 
 ### Features
