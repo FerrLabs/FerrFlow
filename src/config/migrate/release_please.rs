@@ -198,18 +198,7 @@ fn build_package(
                 .clone()
                 .unwrap_or_else(|| "CHANGELOG.md".to_string()),
         ),
-        shared_paths: Vec::new(),
-        depends_on: vec![],
-        versioning: None,
-        tag_template: None,
-        version_template: None,
-        hooks: None,
-        floating_tags: None,
-        latest_tag: None,
-        build_metadata: None,
-        publishers: vec![],
-        update_lockfiles: None,
-        version_source: None,
+        ..Default::default()
     }
 }
 

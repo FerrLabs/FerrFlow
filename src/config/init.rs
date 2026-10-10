@@ -120,16 +120,17 @@ impl<R: BufRead> Prompter<R> {
             &under(&path, "CHANGELOG.md"),
         );
 
-        package_config(
+        PackageConfig {
             name,
             path,
-            vec![VersionedFile {
+            versioned_files: vec![VersionedFile {
                 path: version_file_path,
                 format: parse_file_format(&format_str),
                 selector: None,
             }],
-            changelog,
-        )
+            changelog: Some(changelog),
+            ..Default::default()
+        }
     }
 
     fn discovered(&mut self, found: &[DiscoveredPackage]) -> Option<Vec<PackageConfig>> {
@@ -167,43 +168,18 @@ impl<R: BufRead> Prompter<R> {
     }
 }
 
-fn package_config(
-    name: String,
-    path: String,
-    versioned_files: Vec<VersionedFile>,
-    changelog: String,
-) -> PackageConfig {
-    PackageConfig {
-        name,
-        path,
-        versioned_files,
-        changelog: Some(changelog),
-        shared_paths: Vec::new(),
-        depends_on: vec![],
-        versioning: None,
-        tag_template: None,
-        version_template: None,
-        hooks: None,
-        floating_tags: None,
-        latest_tag: None,
-        build_metadata: None,
-        publishers: vec![],
-        update_lockfiles: None,
-        version_source: None,
-    }
-}
-
 fn discovered_package(found: &DiscoveredPackage) -> PackageConfig {
-    package_config(
-        found.name.clone(),
-        found.path.clone(),
-        vec![VersionedFile {
+    PackageConfig {
+        name: found.name.clone(),
+        path: found.path.clone(),
+        versioned_files: vec![VersionedFile {
             path: under(&found.path, found.manifest),
             format: found.format.clone(),
             selector: None,
         }],
-        under(&found.path, "CHANGELOG.md"),
-    )
+        changelog: Some(under(&found.path, "CHANGELOG.md")),
+        ..Default::default()
+    }
 }
 
 const ALLOWED_FORMATS: &[&str] = &["toml", "json", "xml", "gradle", "gomod", "txt"];

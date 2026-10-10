@@ -525,22 +525,10 @@ fn pick_higher_semver_strips_leading_v() {
 
 fn make_pkg(name: &str, path: &str, shared: &[&str]) -> PackageConfig {
     PackageConfig {
-        build_metadata: None,
-        version_source: None,
         name: name.into(),
         path: path.into(),
-        versioned_files: vec![],
-        changelog: None,
         shared_paths: shared.iter().map(|s| s.to_string()).collect(),
-        depends_on: vec![],
-        versioning: None,
-        tag_template: None,
-        version_template: None,
-        hooks: None,
-        floating_tags: None,
-        latest_tag: None,
-        publishers: vec![],
-        update_lockfiles: None,
+        ..Default::default()
     }
 }
 

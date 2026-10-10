@@ -5,7 +5,7 @@ use crate::conventional_commits::BumpType;
 use super::types::{BuildMetadata, HooksConfig, PublisherConfig, VersionSourcePolicy};
 use super::workspace::WorkspaceConfig;
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct PackageConfig {
     pub name: String,
     #[serde(default)]
@@ -384,22 +384,10 @@ mod tests {
 
     fn pkg(path: &str, shared: &[&str]) -> PackageConfig {
         PackageConfig {
-            build_metadata: None,
-            version_source: None,
             name: "api".to_string(),
             path: path.to_string(),
-            versioned_files: Vec::new(),
-            changelog: None,
             shared_paths: shared.iter().map(|s| s.to_string()).collect(),
-            depends_on: Vec::new(),
-            versioning: None,
-            tag_template: None,
-            version_template: None,
-            floating_tags: None,
-            latest_tag: None,
-            hooks: None,
-            publishers: Vec::new(),
-            update_lockfiles: None,
+            ..Default::default()
         }
     }
 

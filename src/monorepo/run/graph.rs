@@ -193,25 +193,13 @@ mod tests {
 
     fn pkg(name: &str, deps: &[&str]) -> PackageConfig {
         PackageConfig {
-            build_metadata: None,
-            version_source: None,
             name: name.to_string(),
             path: name.to_string(),
-            versioned_files: vec![],
-            changelog: None,
-            shared_paths: vec![],
             depends_on: deps
                 .iter()
                 .map(|s| crate::config::Dependency::Name(s.to_string()))
                 .collect(),
-            update_lockfiles: None,
-            versioning: None,
-            tag_template: None,
-            version_template: None,
-            floating_tags: None,
-            latest_tag: None,
-            hooks: None,
-            publishers: vec![],
+            ..Default::default()
         }
     }
 

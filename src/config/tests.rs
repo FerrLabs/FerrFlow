@@ -194,22 +194,9 @@ fn effective_versioning_inherits_workspace() {
         ..WorkspaceConfig::default()
     };
     let pkg = PackageConfig {
-        build_metadata: None,
-        version_source: None,
         name: "a".into(),
         path: ".".into(),
-        versioned_files: vec![],
-        changelog: None,
-        shared_paths: vec![],
-        depends_on: vec![],
-        versioning: None,
-        tag_template: None,
-        version_template: None,
-        hooks: None,
-        floating_tags: None,
-        latest_tag: None,
-        publishers: vec![],
-        update_lockfiles: None,
+        ..Default::default()
     };
     assert_eq!(
         pkg.effective_versioning(&ws, Vec::new),
@@ -224,22 +211,10 @@ fn effective_versioning_package_overrides() {
         ..WorkspaceConfig::default()
     };
     let pkg = PackageConfig {
-        build_metadata: None,
-        version_source: None,
         name: "a".into(),
         path: ".".into(),
-        versioned_files: vec![],
-        changelog: None,
-        shared_paths: vec![],
-        depends_on: vec![],
         versioning: Some(VersioningStrategy::Zerover),
-        tag_template: None,
-        version_template: None,
-        hooks: None,
-        latest_tag: None,
-        floating_tags: None,
-        publishers: vec![],
-        update_lockfiles: None,
+        ..Default::default()
     };
     assert_eq!(
         pkg.effective_versioning(&ws, Vec::new),
@@ -254,22 +229,9 @@ fn effective_versioning_does_not_read_tags_when_strategy_is_configured() {
         ..WorkspaceConfig::default()
     };
     let pkg = PackageConfig {
-        build_metadata: None,
-        version_source: None,
         name: "a".into(),
         path: ".".into(),
-        versioned_files: vec![],
-        changelog: None,
-        shared_paths: vec![],
-        depends_on: vec![],
-        versioning: None,
-        tag_template: None,
-        version_template: None,
-        latest_tag: None,
-        hooks: None,
-        floating_tags: None,
-        publishers: vec![],
-        update_lockfiles: None,
+        ..Default::default()
     };
     let strategy =
         pkg.effective_versioning(&ws, || panic!("tags scanned despite configured strategy"));
@@ -280,22 +242,9 @@ fn effective_versioning_does_not_read_tags_when_strategy_is_configured() {
 fn effective_versioning_autodetects_from_tags_when_unset() {
     let ws = WorkspaceConfig::default();
     let pkg = PackageConfig {
-        build_metadata: None,
-        version_source: None,
         name: "a".into(),
         path: ".".into(),
-        versioned_files: vec![],
-        changelog: None,
-        shared_paths: vec![],
-        depends_on: vec![],
-        versioning: None,
-        latest_tag: None,
-        tag_template: None,
-        version_template: None,
-        hooks: None,
-        floating_tags: None,
-        publishers: vec![],
-        update_lockfiles: None,
+        ..Default::default()
     };
     let tags = vec!["v2024.04.18", "v2024.05.01"];
     assert_eq!(
@@ -308,22 +257,9 @@ fn effective_versioning_autodetects_from_tags_when_unset() {
 fn effective_versioning_falls_back_to_semver_without_tags() {
     let ws = WorkspaceConfig::default();
     let pkg = PackageConfig {
-        build_metadata: None,
-        version_source: None,
         name: "a".into(),
         path: ".".into(),
-        versioned_files: vec![],
-        changelog: None,
-        shared_paths: vec![],
-        depends_on: vec![],
-        latest_tag: None,
-        versioning: None,
-        tag_template: None,
-        version_template: None,
-        hooks: None,
-        floating_tags: None,
-        publishers: vec![],
-        update_lockfiles: None,
+        ..Default::default()
     };
     assert_eq!(
         pkg.effective_versioning(&ws, Vec::new),
@@ -333,22 +269,10 @@ fn effective_versioning_falls_back_to_semver_without_tags() {
 
 fn make_pkg(name: &str, tag_template: Option<&str>) -> PackageConfig {
     PackageConfig {
-        build_metadata: None,
-        version_source: None,
         name: name.into(),
         path: ".".into(),
-        versioned_files: vec![],
-        changelog: None,
-        shared_paths: vec![],
-        latest_tag: None,
-        depends_on: vec![],
-        versioning: None,
         tag_template: tag_template.map(String::from),
-        version_template: None,
-        hooks: None,
-        floating_tags: None,
-        publishers: vec![],
-        update_lockfiles: None,
+        ..Default::default()
     }
 }
 
@@ -580,8 +504,6 @@ fn json_serializes_camel_case() {
             ..WorkspaceConfig::default()
         },
         packages: vec![PackageConfig {
-            build_metadata: None,
-            version_source: None,
             name: "app".into(),
             path: ".".into(),
             versioned_files: vec![VersionedFile {
@@ -589,17 +511,9 @@ fn json_serializes_camel_case() {
                 format: FileFormat::Toml,
                 selector: None,
             }],
-            changelog: None,
-            latest_tag: None,
             shared_paths: vec!["shared/".into()],
-            depends_on: vec![],
-            versioning: None,
             tag_template: Some("{name}@v{version}".into()),
-            version_template: None,
-            hooks: None,
-            floating_tags: None,
-            publishers: vec![],
-            update_lockfiles: None,
+            ..Default::default()
         }],
     };
     let serialized = handler.serialize(&config).unwrap();
@@ -634,8 +548,6 @@ fn toml_keeps_snake_case() {
             ..WorkspaceConfig::default()
         },
         packages: vec![PackageConfig {
-            build_metadata: None,
-            version_source: None,
             name: "app".into(),
             path: ".".into(),
             versioned_files: vec![VersionedFile {
@@ -643,17 +555,9 @@ fn toml_keeps_snake_case() {
                 format: FileFormat::Toml,
                 selector: None,
             }],
-            latest_tag: None,
-            changelog: None,
             shared_paths: vec!["shared/".into()],
-            depends_on: vec![],
-            versioning: None,
             tag_template: Some("{name}@v{version}".into()),
-            version_template: None,
-            hooks: None,
-            floating_tags: None,
-            publishers: vec![],
-            update_lockfiles: None,
+            ..Default::default()
         }],
     };
     let serialized = handler.serialize(&config).unwrap();
@@ -1215,22 +1119,10 @@ fn depends_on_deserializes_snake_case() {
 fn tag_prefix_no_version_placeholder() {
     let ws = WorkspaceConfig::default();
     let pkg = PackageConfig {
-        build_metadata: None,
-        version_source: None,
         name: "app".to_string(),
         path: ".".to_string(),
-        latest_tag: None,
-        versioned_files: vec![],
-        changelog: None,
-        shared_paths: vec![],
-        depends_on: vec![],
-        versioning: None,
         tag_template: Some("release-latest".to_string()),
-        version_template: None,
-        hooks: None,
-        floating_tags: None,
-        publishers: vec![],
-        update_lockfiles: None,
+        ..Default::default()
     };
     assert_eq!(pkg.tag_prefix(&ws, false), "release-latest");
 }
@@ -1239,22 +1131,10 @@ fn tag_prefix_no_version_placeholder() {
 fn tag_for_version_replaces_placeholders() {
     let ws = WorkspaceConfig::default();
     let pkg = PackageConfig {
-        build_metadata: None,
-        version_source: None,
         name: "api".to_string(),
-        latest_tag: None,
         path: ".".to_string(),
-        versioned_files: vec![],
-        changelog: None,
-        shared_paths: vec![],
-        depends_on: vec![],
-        versioning: None,
         tag_template: Some("{name}/v{version}".to_string()),
-        version_template: None,
-        hooks: None,
-        floating_tags: None,
-        publishers: vec![],
-        update_lockfiles: None,
+        ..Default::default()
     };
     assert_eq!(pkg.tag_for_version(&ws, true, "1.2.3"), "api/v1.2.3");
 }
