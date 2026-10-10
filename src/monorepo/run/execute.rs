@@ -10,7 +10,7 @@ use std::path::Path;
 use crate::config::{Config, ReleaseCommitMode};
 use crate::error_code::{self, ErrorCodeExt};
 use crate::git::{Remote, Repository, create_tag, force_push_tags, push, push_tags};
-use crate::hooks::{HookContext, HookPoint, resolve_hook, resolve_on_failure, run_hook};
+use crate::hooks::{HookContext, HookPoint, resolve_hook, resolve_policy, run_hook};
 
 use super::checkpoint::{Checkpoint, Phase};
 use super::summary::{PlannedTag, write_github_step_summary};
@@ -205,14 +205,14 @@ fn run_pre_commit_hooks(plan: &mut ReleasePlan<'_>) -> Result<()> {
         let pkg = &plan.config.packages[*pkg_idx];
         let ws_hooks = plan.config.workspace.hooks.as_ref();
         let pkg_hooks = pkg.hooks.as_ref();
-        let on_failure = resolve_on_failure(pkg_hooks, ws_hooks);
+        let policy = resolve_policy(pkg_hooks, ws_hooks);
         if let Some(cmd) = resolve_hook(pkg_hooks, ws_hooks, HookPoint::PreCommit) {
             let before = collect_dirty_files(plan.repo);
             run_hook(
                 HookPoint::PreCommit,
                 &cmd,
                 ctx,
-                on_failure,
+                policy,
                 plan.dry_run,
                 plan.verbose,
                 plan.root,
@@ -291,13 +291,13 @@ fn run_package_hooks(plan: &ReleasePlan<'_>, point: HookPoint) -> Result<()> {
         let pkg = &plan.config.packages[*pkg_idx];
         let ws_hooks = plan.config.workspace.hooks.as_ref();
         let pkg_hooks = pkg.hooks.as_ref();
-        let on_failure = resolve_on_failure(pkg_hooks, ws_hooks);
+        let policy = resolve_policy(pkg_hooks, ws_hooks);
         if let Some(cmd) = resolve_hook(pkg_hooks, ws_hooks, point) {
             run_hook(
                 point,
                 &cmd,
                 ctx,
-                on_failure,
+                policy,
                 plan.dry_run,
                 plan.verbose,
                 plan.root,
@@ -310,7 +310,7 @@ fn run_package_hooks(plan: &ReleasePlan<'_>, point: HookPoint) -> Result<()> {
 fn run_release_summary_hook(plan: &ReleasePlan<'_>, point: HookPoint) -> Result<()> {
     let ws_hooks = plan.config.workspace.hooks.as_ref();
     if let Some(cmd) = resolve_hook(None, ws_hooks, point) {
-        let on_failure = resolve_on_failure(None, ws_hooks);
+        let policy = resolve_policy(None, ws_hooks);
         let tags: Vec<String> = plan.tags_to_create.iter().map(|t| t.tag.clone()).collect();
         let mut ctx =
             HookContext::release_summary(plan.root, &tags, plan.dry_run, plan.config.is_monorepo());
@@ -321,7 +321,7 @@ fn run_release_summary_hook(plan: &ReleasePlan<'_>, point: HookPoint) -> Result<
             point,
             &cmd,
             &ctx,
-            on_failure,
+            policy,
             plan.dry_run,
             plan.verbose,
             plan.root,
@@ -521,7 +521,7 @@ fn run_post_publish_hooks(plan: &mut ReleasePlan<'_>) -> Result<()> {
         let pkg = &plan.config.packages[*pkg_idx];
         let ws_hooks = plan.config.workspace.hooks.as_ref();
         let pkg_hooks = pkg.hooks.as_ref();
-        let on_failure = resolve_on_failure(pkg_hooks, ws_hooks);
+        let policy = resolve_policy(pkg_hooks, ws_hooks);
         if let Some(cmd) = resolve_hook(pkg_hooks, ws_hooks, HookPoint::PostPublish) {
             let mut ctx = ctx.clone();
             ctx.release_url = release_url_for_tag(plan.forge_results, &ctx.tag);
@@ -529,7 +529,7 @@ fn run_post_publish_hooks(plan: &mut ReleasePlan<'_>) -> Result<()> {
                 HookPoint::PostPublish,
                 &cmd,
                 &ctx,
-                on_failure,
+                policy,
                 plan.dry_run,
                 plan.verbose,
                 plan.root,
@@ -589,7 +589,7 @@ pub(super) fn print_dry_run_hooks(plan: &mut ReleasePlan<'_>) -> Result<()> {
         let pkg = &plan.config.packages[*pkg_idx];
         let ws_hooks = plan.config.workspace.hooks.as_ref();
         let pkg_hooks = pkg.hooks.as_ref();
-        let on_failure = resolve_on_failure(pkg_hooks, ws_hooks);
+        let policy = resolve_policy(pkg_hooks, ws_hooks);
         for point in [
             HookPoint::PreCommit,
             HookPoint::PostCommit,
@@ -599,7 +599,7 @@ pub(super) fn print_dry_run_hooks(plan: &mut ReleasePlan<'_>) -> Result<()> {
             HookPoint::PostPublish,
         ] {
             if let Some(cmd) = resolve_hook(pkg_hooks, ws_hooks, point) {
-                run_hook(point, &cmd, ctx, on_failure, true, plan.verbose, plan.root)?;
+                run_hook(point, &cmd, ctx, policy, true, plan.verbose, plan.root)?;
             }
         }
         run_publishers_for_package(plan, pkg, &ctx.package, &ctx.new_version, &ctx.tag)?;

@@ -778,6 +778,7 @@ on_failure   = &quot;abort&quot;
 | `onSuccess`   | string | —         | Run once after the whole release completes cleanly                                      |
 | `onError`     | string | —         | Run once when the release fails; sets `FERRFLOW_ERROR_CODE` (once per run)              |
 | `onFailure`   | string | `"abort"` | Strategy — `"abort"` cancels the release on hook failure, `"continue"` prints a warning |
+| `timeout`     | number | `900`     | Seconds a hook may run before it is killed and `onFailure` applies                      |
 
 ### Environment variables
 
@@ -806,6 +807,8 @@ Every hook receives these variables:
 For the once-per-run hooks (`preRelease`, `onSuccess`, `onError`) the per-package variables are empty and `FERRFLOW_TAG` holds every released tag joined by commas.
 
 `onFailure` is the failure **strategy** (`abort` / `continue`), not a command. The command that runs _when_ a release fails is `onError`, which receives the failing `FERRFLOW_ERROR_CODE`.
+
+Hooks run with stdin closed, so a command that would prompt (`npm login`, a `gpg` passphrase, a git credential prompt) fails at once instead of waiting forever. A hook still running after `timeout` seconds is killed along with any process it started, and counts as a failed hook: `abort` stops the release, `continue` warns and moves on. Every minute a long hook prints that it is still running. Set `timeout` per package to override the workspace value.
 
 ### Per-package hooks
 

@@ -50,12 +50,19 @@ fn read(dir: &Path, file: &str) -> String {
         .to_string()
 }
 
+fn policy(on_failure: OnFailure) -> HookPolicy {
+    HookPolicy {
+        on_failure,
+        timeout: crate::hooks::resolve::DEFAULT_HOOK_TIMEOUT,
+    }
+}
+
 fn run(command: &str, dir: &Path, on_failure: OnFailure, dry_run: bool) -> Result<()> {
     run_hook(
         HookPoint::PreBump,
         command,
         &ctx(),
-        on_failure,
+        policy(on_failure),
         dry_run,
         false,
         dir,
@@ -115,7 +122,7 @@ fn a_release_summary_hook_sees_every_tag_of_the_run() {
         HookPoint::OnSuccess,
         &write_var("FERRFLOW_TAG", "tags.txt"),
         &summary,
-        OnFailure::Abort,
+        policy(OnFailure::Abort),
         false,
         false,
         dir.path(),
@@ -168,7 +175,7 @@ fn a_failing_hook_aborts_in_verbose_mode_too() {
         HookPoint::PostTag,
         "exit 5",
         &ctx(),
-        OnFailure::Abort,
+        policy(OnFailure::Abort),
         false,
         true,
         dir.path(),
@@ -223,4 +230,89 @@ fn build_metadata_rejects_output_semver_would_refuse() {
         format!("{err:#}").contains("dot-separated alphanumerics"),
         "{err:#}"
     );
+}
+
+fn sleep_for(seconds: u32) -> String {
+    if cfg!(windows) {
+        format!("ping -n {} 127.0.0.1 >NUL", seconds + 1)
+    } else {
+        format!("sleep {seconds}")
+    }
+}
+
+fn bounded(on_failure: OnFailure, seconds: u64) -> HookPolicy {
+    HookPolicy {
+        on_failure,
+        timeout: std::time::Duration::from_secs(seconds),
+    }
+}
+
+fn run_with(command: &str, dir: &Path, policy: HookPolicy) -> Result<()> {
+    run_hook(
+        HookPoint::PreBump,
+        command,
+        &ctx(),
+        policy,
+        false,
+        false,
+        dir,
+    )
+}
+
+#[test]
+fn a_hook_past_its_timeout_is_killed_and_reported() {
+    let dir = tempfile::tempdir().unwrap();
+    let started = std::time::Instant::now();
+
+    let err = run_with(&sleep_for(30), dir.path(), bounded(OnFailure::Abort, 1)).unwrap_err();
+
+    assert!(started.elapsed() < std::time::Duration::from_secs(15));
+    let msg = format!("{err:#}");
+    assert!(msg.contains("timed out after 1s"), "{msg}");
+    assert_eq!(
+        crate::error_code::code_from_error(&err),
+        Some(error_code::HOOK_FAILED.to_string())
+    );
+}
+
+#[test]
+fn a_timed_out_hook_with_continue_does_not_stop_the_release() {
+    let dir = tempfile::tempdir().unwrap();
+    run_with(&sleep_for(30), dir.path(), bounded(OnFailure::Continue, 1)).unwrap();
+}
+
+#[test]
+fn a_hook_reading_stdin_gets_end_of_file_instead_of_blocking() {
+    let dir = tempfile::tempdir().unwrap();
+    let command = if cfg!(windows) {
+        "sort > stdin.txt"
+    } else {
+        "cat > stdin.txt"
+    };
+
+    run_with(command, dir.path(), bounded(OnFailure::Abort, 10)).unwrap();
+
+    assert_eq!(read(dir.path(), "stdin.txt"), "");
+}
+
+#[cfg(unix)]
+#[test]
+fn a_timeout_also_kills_what_the_hook_started_in_the_background() {
+    let dir = tempfile::tempdir().unwrap();
+
+    run_with(
+        "sleep 30 & echo $! > child.pid; sleep 30",
+        dir.path(),
+        bounded(OnFailure::Continue, 1),
+    )
+    .unwrap();
+
+    let pid = read(dir.path(), "child.pid");
+    std::thread::sleep(std::time::Duration::from_millis(200));
+    let alive = std::process::Command::new("kill")
+        .args(["-0", &pid])
+        .status()
+        .unwrap()
+        .success();
+    assert!(!alive, "background child {pid} outlived the hook");
 }

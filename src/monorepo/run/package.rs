@@ -8,7 +8,7 @@ use crate::config::{Config, PackageConfig};
 use crate::formats::get_handler;
 use crate::git::tag_exists;
 use crate::hooks::{
-    HookCommit, HookContext, HookFile, HookPackage, HookPoint, resolve_hook, resolve_on_failure,
+    HookCommit, HookContext, HookFile, HookPackage, HookPoint, resolve_hook, resolve_policy,
     run_hook,
 };
 use crate::versioning::truncate_version;
@@ -284,13 +284,12 @@ impl PackageRun<'_> {
         hook_ctx: &HookContext,
         dry_run: bool,
     ) -> Result<()> {
-        let on_failure =
-            resolve_on_failure(pkg.hooks.as_ref(), self.config.workspace.hooks.as_ref());
+        let policy = resolve_policy(pkg.hooks.as_ref(), self.config.workspace.hooks.as_ref());
         run_hook(
             point,
             cmd,
             hook_ctx,
-            on_failure,
+            policy,
             dry_run,
             self.flags.verbose,
             self.root,

@@ -1,6 +1,30 @@
+use std::time::Duration;
+
 use crate::config::{HooksConfig, OnFailure};
 
 use super::HookPoint;
+
+pub const DEFAULT_HOOK_TIMEOUT: Duration = Duration::from_secs(15 * 60);
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HookPolicy {
+    pub on_failure: OnFailure,
+    pub timeout: Duration,
+}
+
+pub fn resolve_policy(
+    pkg_hooks: Option<&HooksConfig>,
+    ws_hooks: Option<&HooksConfig>,
+) -> HookPolicy {
+    let timeout = pkg_hooks
+        .and_then(|h| h.timeout)
+        .or_else(|| ws_hooks.and_then(|h| h.timeout))
+        .map_or(DEFAULT_HOOK_TIMEOUT, Duration::from_secs);
+    HookPolicy {
+        on_failure: resolve_on_failure(pkg_hooks, ws_hooks),
+        timeout,
+    }
+}
 
 pub fn resolve_hook(
     pkg_hooks: Option<&HooksConfig>,
@@ -99,6 +123,37 @@ mod tests {
     }
 
     #[test]
+    fn timeout_defaults_to_fifteen_minutes() {
+        assert_eq!(resolve_policy(None, None).timeout, DEFAULT_HOOK_TIMEOUT);
+        assert_eq!(DEFAULT_HOOK_TIMEOUT, Duration::from_secs(900));
+    }
+
+    #[test]
+    fn timeout_comes_from_the_package_then_the_workspace() {
+        let ws = HooksConfig {
+            timeout: Some(120),
+            ..Default::default()
+        };
+        let pkg = HooksConfig {
+            timeout: Some(30),
+            ..Default::default()
+        };
+
+        assert_eq!(
+            resolve_policy(None, Some(&ws)).timeout,
+            Duration::from_secs(120)
+        );
+        assert_eq!(
+            resolve_policy(Some(&pkg), Some(&ws)).timeout,
+            Duration::from_secs(30)
+        );
+        assert_eq!(
+            resolve_policy(Some(&HooksConfig::default()), Some(&ws)).timeout,
+            Duration::from_secs(120)
+        );
+    }
+
+    #[test]
     fn on_failure_defaults_to_abort() {
         assert_eq!(resolve_on_failure(None, None), OnFailure::Abort);
     }
@@ -140,6 +195,7 @@ mod tests {
             on_success: Some("j".into()),
             on_error: Some("k".into()),
             on_failure: None,
+            timeout: None,
         };
         for (point, expected) in [
             (HookPoint::PreBump, "a"),
