@@ -16,4 +16,4 @@ Now, when FerrFlow doesn't recognise the remote's hostname, it probes the host's
 - a GitHub Enterprise instance,
 - or a Gitea / Forgejo instance.
 
-The probe is unauthenticated, short (a ~2s timeout), best-effort, and cached: so a run checks a given host at most once, and a hostname FerrFlow already knows never touches the network. You only need to set `forge` explicitly now if your host isn't reachable over HTTPS or you'd rather skip the probe.
+The probe is unauthenticated, short (a ~2s timeout), best-effort, and cached, so a run checks a given host at most once, and a hostname FerrFlow already knows never touches the network. You only need to set `forge` explicitly now if your host isn't reachable over HTTPS or you'd rather skip the probe.

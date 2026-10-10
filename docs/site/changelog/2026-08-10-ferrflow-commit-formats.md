@@ -1,6 +1,6 @@
 ---
 title: 'FerrFlow: commit formats are configurable, and the defaults are more permissive'
-summary: 'workspace.commitFormats lets you declare which commit subjects map to which bump level. The defaults now also recognise Feat:, Fix/, feature: and friends. Which is why this ships as v7.'
+summary: 'workspace.commitFormats lets you declare which commit subjects map to which bump level. The defaults now also recognise Feat:, Fix/, feature: and friends, which is why this ships as v7.'
 date: 2026-08-10T18:00:00Z
 product: ferrflow
 type: breaking
@@ -8,7 +8,7 @@ prLink: https://github.com/FerrLabs/FerrFlow/pull/824
 docsLink: https://ferrflow.com/docs/configuration/config-file
 ---
 
-FerrFlow only ever recognised strict lowercase conventional prefixes. Teams whose history uses `Feat/add-login`, `Fix: resolve crash` or `feature:`: the shapes that come out of branch-named squash merges: got no releases at all, with nothing in the output explaining why.
+FerrFlow only ever recognised strict lowercase conventional prefixes. Teams whose history uses `Feat/add-login`, `Fix: resolve crash` or `feature:` (the shapes that come out of branch-named squash merges) got no releases at all, with nothing in the output explaining why.
 
 `workspace.commitFormats` now declares the mapping. Each of `major`, `minor` and `patch` takes a pattern, a list of patterns, or `"all"`:
 

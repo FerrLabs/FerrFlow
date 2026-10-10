@@ -1,6 +1,6 @@
 ---
 title: 'FerrFlow: Concurrent releases no longer fail with E2006'
-summary: 'When two release runs race, the losing run now replans against the version the winner published instead of aborting with E2006. And no longer silently drops the other packages it was about to release.'
+summary: 'When two release runs race, the losing run now replans against the version the winner published instead of aborting with E2006, and no longer silently drops the other packages it was about to release.'
 date: 2026-07-25T10:00:00Z
 product: ferrflow
 type: fix

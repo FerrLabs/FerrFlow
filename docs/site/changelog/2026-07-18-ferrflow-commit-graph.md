@@ -7,7 +7,7 @@ type: perf
 prLink: https://github.com/FerrLabs/FerrFlow/pull/728
 ---
 
-FerrFlow's tag scans and commit walks already read a git commit-graph when one exists, but a fresh clone. Every CI checkout: has a pack and no graph, so the speedup never kicked in where FerrFlow runs most.
+FerrFlow's tag scans and commit walks already read a git commit-graph when one exists, but a fresh clone (every CI checkout) has a pack and no graph, so the speedup never kicked in where FerrFlow runs most.
 
 Now, on a cold `check` (cache miss) or a real `release`, if the repository has no commit-graph and a history larger than ~1000 commits, FerrFlow writes one with `git commit-graph write --reachable`. On a 200-package, 10k-commit monorepo that trims the walk-heavy portion of a run by roughly 30% on every subsequent invocation.
 

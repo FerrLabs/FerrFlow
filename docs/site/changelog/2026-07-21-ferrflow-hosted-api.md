@@ -1,6 +1,6 @@
 ---
 title: 'FerrFlow: Hosted API for validate, preview, schema and releases'
-summary: 'A new hosted API at api.ferrlabs.com/v1/ferrflow/* lets you validate a config, preview version bumps and changelog, fetch the config JSON Schema, and resolve the latest release: over HTTP, with results identical to the CLI.'
+summary: 'A new hosted API at api.ferrlabs.com/v1/ferrflow/* lets you validate a config, preview version bumps and changelog, fetch the config JSON Schema, and resolve the latest release, over HTTP, with results identical to the CLI.'
 date: 2026-07-21T16:00:00Z
 product: ferrflow
 type: new

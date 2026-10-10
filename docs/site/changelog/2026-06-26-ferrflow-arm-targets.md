@@ -1,6 +1,6 @@
 ---
 title: 'FerrFlow: Windows arm64 and Linux armv7 prebuilt binaries'
-summary: 'FerrFlow now ships prebuilt, signed binaries: and matching npm packages: for Windows on ARM (aarch64) and 32-bit ARM Linux (armv7). The release matrix grows from 5 targets to 7, so `npm i ferrflow` and direct downloads now work on Surface/Snapdragon Windows laptops and 32-bit Raspberry Pi / SBCs.'
+summary: 'FerrFlow now ships prebuilt, signed binaries (and matching npm packages) for Windows on ARM (aarch64) and 32-bit ARM Linux (armv7). The release matrix grows from 5 targets to 7, so `npm i ferrflow` and direct downloads now work on Surface/Snapdragon Windows laptops and 32-bit Raspberry Pi / SBCs.'
 date: 2026-06-26T10:00:00Z
 product: ferrflow
 type: new
@@ -8,7 +8,7 @@ prLink: https://github.com/FerrLabs/FerrFlow/pull/607
 docsLink: https://ferrflow.com/docs/verifying-releases/
 ---
 
-ARM64 was already covered on Linux and macOS, but not Windows: and 32-bit ARM Linux had no build at all. This release closes both gaps, taking the target matrix to seven.
+ARM64 was already covered on Linux and macOS, but not Windows, and 32-bit ARM Linux had no build at all. This release closes both gaps, taking the target matrix to seven.
 
 Two new targets ship with every release, signed with Sigstore and listed in the SBOM exactly like the existing five:
 

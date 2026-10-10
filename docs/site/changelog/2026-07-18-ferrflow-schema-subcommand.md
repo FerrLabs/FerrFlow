@@ -1,6 +1,6 @@
 ---
 title: 'FerrFlow: ferrflow schema'
-summary: 'A new `ferrflow schema` subcommand prints the config JSON schema that is now bundled into the binary: so editor tooling and pre-commit hooks can validate `.ferrflow.json` completely offline.'
+summary: 'A new `ferrflow schema` subcommand prints the config JSON schema that is now bundled into the binary, so editor tooling and pre-commit hooks can validate `.ferrflow.json` completely offline.'
 date: 2026-07-18T10:00:00Z
 product: ferrflow
 type: new
