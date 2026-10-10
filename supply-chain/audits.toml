@@ -303,6 +303,12 @@ user-id = 980 # Sebastian Thiel (Byron)
 start = "2023-02-17"
 end = "2027-07-17"
 
+[[trusted.gix-parallel]]
+criteria = "safe-to-deploy"
+user-id = 980 # Sebastian Thiel (Byron)
+start = "2026-10-08"
+end = "2027-10-10"
+
 [[trusted.gix-path]]
 criteria = "safe-to-deploy"
 user-id = 980 # Sebastian Thiel (Byron)
@@ -416,6 +422,12 @@ criteria = "safe-to-deploy"
 user-id = 980 # Sebastian Thiel (Byron)
 start = "2023-07-22"
 end = "2027-07-17"
+
+[[trusted.gix-zlib]]
+criteria = "safe-to-deploy"
+user-id = 980 # Sebastian Thiel (Byron)
+start = "2026-07-23"
+end = "2027-10-10"
 
 [[trusted.http]]
 criteria = "safe-to-deploy"

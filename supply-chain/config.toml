@@ -195,10 +195,6 @@ criteria = "safe-to-deploy"
 version = "0.4.3"
 criteria = "safe-to-deploy"
 
-[[exemptions.gix-zlib]]
-version = "0.1.0"
-criteria = "safe-to-deploy"
-
 [[exemptions.glob-match]]
 version = "0.2.1"
 criteria = "safe-to-deploy"
@@ -419,12 +415,8 @@ criteria = "safe-to-deploy"
 version = "0.9.42"
 criteria = "safe-to-deploy"
 
-[[exemptions.sha1]]
-version = "0.10.7"
-criteria = "safe-to-deploy"
-
-[[exemptions.sha1-checked]]
-version = "0.10.0"
+[[exemptions.sha1dc]]
+version = "0.1.5"
 criteria = "safe-to-deploy"
 
 [[exemptions.sha2]]
