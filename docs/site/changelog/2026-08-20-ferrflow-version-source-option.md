@@ -1,5 +1,5 @@
 ---
-title: 'FerrFlow · choose whether the tag or the file is the source of truth'
+title: 'FerrFlow: choose whether the tag or the file is the source of truth'
 summary: 'When a package has both a git tag and a version in a versioned file, FerrFlow took whichever was higher. That is still the default, and versionSource now lets a repo say the tags are the record, or that the file is.'
 date: 2026-08-20T12:00:00Z
 product: ferrflow
