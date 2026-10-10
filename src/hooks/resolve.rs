@@ -19,7 +19,7 @@ pub fn resolve_policy(
     let timeout = pkg_hooks
         .and_then(|h| h.timeout)
         .or_else(|| ws_hooks.and_then(|h| h.timeout))
-        .map_or(DEFAULT_HOOK_TIMEOUT, Duration::from_secs);
+        .map_or(DEFAULT_HOOK_TIMEOUT, |secs| Duration::from_secs(secs.get()));
     HookPolicy {
         on_failure: resolve_on_failure(pkg_hooks, ws_hooks),
         timeout,
@@ -82,6 +82,7 @@ pub fn resolve_on_failure(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::num::NonZeroU64;
 
     fn ws_hooks(pre_bump: Option<&str>, post_publish: Option<&str>) -> HooksConfig {
         HooksConfig {
@@ -123,6 +124,14 @@ mod tests {
     }
 
     #[test]
+    fn a_zero_timeout_is_rejected_when_the_config_is_read() {
+        let zero = serde_json::from_str::<HooksConfig>(r#"{"timeout": 0}"#);
+        assert!(zero.is_err());
+        let ten = serde_json::from_str::<HooksConfig>(r#"{"timeout": 10}"#).unwrap();
+        assert_eq!(ten.timeout, NonZeroU64::new(10));
+    }
+
+    #[test]
     fn timeout_defaults_to_fifteen_minutes() {
         assert_eq!(resolve_policy(None, None).timeout, DEFAULT_HOOK_TIMEOUT);
         assert_eq!(DEFAULT_HOOK_TIMEOUT, Duration::from_secs(900));
@@ -131,11 +140,11 @@ mod tests {
     #[test]
     fn timeout_comes_from_the_package_then_the_workspace() {
         let ws = HooksConfig {
-            timeout: Some(120),
+            timeout: NonZeroU64::new(120),
             ..Default::default()
         };
         let pkg = HooksConfig {
-            timeout: Some(30),
+            timeout: NonZeroU64::new(30),
             ..Default::default()
         };
 

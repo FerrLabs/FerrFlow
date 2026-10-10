@@ -316,3 +316,15 @@ fn a_timeout_also_kills_what_the_hook_started_in_the_background() {
         .success();
     assert!(!alive, "background child {pid} outlived the hook");
 }
+
+#[cfg(unix)]
+#[test]
+fn a_background_process_holding_the_output_open_cannot_outlast_the_timeout() {
+    let dir = tempfile::tempdir().unwrap();
+    let started = std::time::Instant::now();
+
+    let err = run_with("sleep 30 &", dir.path(), bounded(OnFailure::Abort, 1)).unwrap_err();
+
+    assert!(started.elapsed() < std::time::Duration::from_secs(15));
+    assert!(format!("{err:#}").contains("timed out after 1s"), "{err:#}");
+}

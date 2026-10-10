@@ -66,7 +66,7 @@ pub struct HooksConfig {
     #[serde(default, alias = "onFailure")]
     pub on_failure: Option<OnFailure>,
     #[serde(default)]
-    pub timeout: Option<u64>,
+    pub timeout: Option<std::num::NonZeroU64>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Default)]

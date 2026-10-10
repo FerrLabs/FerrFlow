@@ -808,7 +808,7 @@ For the once-per-run hooks (`preRelease`, `onSuccess`, `onError`) the per-packag
 
 `onFailure` is the failure **strategy** (`abort` / `continue`), not a command. The command that runs _when_ a release fails is `onError`, which receives the failing `FERRFLOW_ERROR_CODE`.
 
-Hooks run with stdin closed, so a command that would prompt (`npm login`, a `gpg` passphrase, a git credential prompt) fails at once instead of waiting forever. A hook still running after `timeout` seconds is killed along with any process it started, and counts as a failed hook: `abort` stops the release, `continue` warns and moves on. Every minute a long hook prints that it is still running. Set `timeout` per package to override the workspace value.
+Hooks run with stdin closed, so a command that would prompt (`npm login`, a `gpg` passphrase, a git credential prompt) fails at once instead of waiting forever. A hook still running after `timeout` seconds is killed along with any process it started, and counts as a failed hook: `abort` stops the release, `continue` warns and moves on. Every minute a long hook prints that it is still running. Set `timeout` per package to override the workspace value. On Linux and macOS a hook runs in its own process group so it can be killed with everything it started, which also means a Ctrl+C on an interactive `ferrflow release` stops FerrFlow but not a hook that is already running; the timeout still bounds it.
 
 ### Per-package hooks
 

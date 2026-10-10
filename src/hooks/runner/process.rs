@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use std::io::Read;
 use std::process::{Child, Command, ExitStatus, Stdio};
-use std::thread::JoinHandle;
+use std::sync::mpsc::{self, Receiver};
 use std::time::{Duration, Instant};
 
 const POLL_INTERVAL: Duration = Duration::from_millis(50);
@@ -30,55 +30,69 @@ pub(super) fn run_bounded(
     }
     own_process_group(&mut cmd);
 
+    let deadline = Instant::now() + timeout;
     let mut child = cmd.spawn().context("failed to start the hook")?;
     let stdout = child.stdout.take().map(drain);
     let stderr = child.stderr.take().map(drain);
 
-    match wait_until(&mut child, timeout, label)? {
-        Some(status) => Ok(Finish::Exited {
+    let Some(status) = wait_until(&mut child, deadline, label)? else {
+        return Ok(time_out(&mut child));
+    };
+    match (collect(stdout, deadline), collect(stderr, deadline)) {
+        (Some(stdout), Some(stderr)) => Ok(Finish::Exited {
             status,
-            stdout: collect(stdout),
-            stderr: collect(stderr),
+            stdout,
+            stderr,
         }),
-        None => {
-            kill_tree(&mut child);
-            let _ = child.wait();
-            Ok(Finish::TimedOut)
-        }
+        _ => Ok(time_out(&mut child)),
     }
 }
 
-fn wait_until(child: &mut Child, timeout: Duration, label: &str) -> Result<Option<ExitStatus>> {
+fn time_out(child: &mut Child) -> Finish {
+    kill_tree(child);
+    let _ = child.wait();
+    Finish::TimedOut
+}
+
+fn wait_until(child: &mut Child, deadline: Instant, label: &str) -> Result<Option<ExitStatus>> {
     let start = Instant::now();
-    let mut next_heartbeat = HEARTBEAT_INTERVAL;
+    let mut next_heartbeat = start + HEARTBEAT_INTERVAL;
     loop {
         if let Some(status) = child.try_wait()? {
             return Ok(Some(status));
         }
-        let elapsed = start.elapsed();
-        if elapsed >= timeout {
+        let now = Instant::now();
+        if now >= deadline {
             return Ok(None);
         }
-        if elapsed >= next_heartbeat {
-            tracing::info!("    [{label}] still running after {}s", elapsed.as_secs());
+        if now >= next_heartbeat {
+            tracing::info!(
+                "    [{label}] still running after {}s",
+                (now - start).as_secs()
+            );
             next_heartbeat += HEARTBEAT_INTERVAL;
         }
         std::thread::sleep(POLL_INTERVAL);
     }
 }
 
-fn drain(mut pipe: impl Read + Send + 'static) -> JoinHandle<Vec<u8>> {
+fn drain(mut pipe: impl Read + Send + 'static) -> Receiver<Vec<u8>> {
+    let (tx, rx) = mpsc::channel();
     std::thread::spawn(move || {
         let mut buf = Vec::new();
         let _ = pipe.read_to_end(&mut buf);
-        buf
-    })
+        let _ = tx.send(buf);
+    });
+    rx
 }
 
-fn collect(reader: Option<JoinHandle<Vec<u8>>>) -> Vec<u8> {
+fn collect(reader: Option<Receiver<Vec<u8>>>, deadline: Instant) -> Option<Vec<u8>> {
+    let Some(reader) = reader else {
+        return Some(Vec::new());
+    };
     reader
-        .and_then(|handle| handle.join().ok())
-        .unwrap_or_default()
+        .recv_timeout(deadline.saturating_duration_since(Instant::now()))
+        .ok()
 }
 
 #[cfg(unix)]
@@ -92,11 +106,9 @@ fn own_process_group(_cmd: &mut Command) {}
 
 #[cfg(unix)]
 fn kill_tree(child: &mut Child) {
-    let _ = Command::new("kill")
-        .args(["-KILL", "--", &format!("-{}", child.id())])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status();
+    if let Ok(group) = libc::pid_t::try_from(child.id()) {
+        unsafe { libc::kill(-group, libc::SIGKILL) };
+    }
     let _ = child.kill();
 }
 
