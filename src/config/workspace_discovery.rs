@@ -40,28 +40,30 @@ const SKIP_DIRS: &[&str] = &[
 const MAX_DEPTH: usize = 6;
 
 pub(super) fn discover(root: &Path) -> Vec<DiscoveredPackage> {
-    let mut found: Vec<DiscoveredPackage> = [
-        node::source(root),
-        cargo::source(root),
-        go::source(root),
-        gradle::source(root),
-    ]
-    .iter()
-    .filter(|source| !source.globs.is_empty())
-    .flat_map(|source| source.collect(root))
-    .collect();
-    found.sort_by(|a, b| a.path.cmp(&b.path));
-    found.dedup_by(|a, b| a.path == b.path);
-    found
+    collect_sorted(
+        root,
+        [
+            node::source(root),
+            cargo::source(root),
+            go::source(root),
+            gradle::source(root),
+        ],
+    )
 }
 
 pub(super) fn discover_node(root: &Path) -> Vec<DiscoveredPackage> {
-    let source = node::source(root);
-    let mut found = if source.globs.is_empty() {
-        Vec::new()
-    } else {
-        source.collect(root)
-    };
+    collect_sorted(root, [node::source(root)])
+}
+
+fn collect_sorted(
+    root: &Path,
+    sources: impl IntoIterator<Item = Source>,
+) -> Vec<DiscoveredPackage> {
+    let mut found: Vec<DiscoveredPackage> = sources
+        .into_iter()
+        .filter(|source| !source.globs.is_empty())
+        .flat_map(|source| source.collect(root))
+        .collect();
     found.sort_by(|a, b| a.path.cmp(&b.path));
     found.dedup_by(|a, b| a.path == b.path);
     found

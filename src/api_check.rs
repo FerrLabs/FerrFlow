@@ -183,7 +183,7 @@ fn build_report(
         packages.push(PackageReport {
             package: pkg.name.clone(),
             baseline,
-            commit_bump: format!("{commit_bump:?}").to_lowercase(),
+            commit_bump: commit_bump.to_string(),
             disagrees: disagrees(commit_bump, &api),
             api,
         });
