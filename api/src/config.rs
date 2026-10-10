@@ -119,8 +119,8 @@ mod tests {
             split_list(Some("https://a.com, https://b.com ,, ")),
             ["https://a.com", "https://b.com"]
         );
-        assert!(split_list(None).is_empty());
-        assert!(split_list(Some("")).is_empty());
+        assert_eq!(split_list(None), Vec::<String>::new());
+        assert_eq!(split_list(Some("")), Vec::<String>::new());
     }
 
     // A Vault-injected key that failed to materialise leaves the var set but
@@ -146,7 +146,7 @@ mod tests {
             expected_audience: DEFAULT_AUDIENCE.to_string(),
             api_base_url: DEFAULT_GITHUB_API.to_string(),
         };
-        assert!(cfg.private_key_pem.is_empty());
+        assert_eq!(cfg.private_key_pem, "");
     }
 
     // The Vault agent writes the key to a file; a deploy that lost its mount
