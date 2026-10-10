@@ -114,6 +114,14 @@ release, publishing a binary to crates.io and eight npm packages for a typo, and
 withdrawn. A pull request that ships code and its documentation together takes the code's type, as
 usual.
 
+A user-facing change also gets an entry in the public changelog at
+[ferrflow.com/changelog](https://ferrflow.com/changelog/), in the same pull request: one file per change
+in `docs/site/changelog/`, named `YYYY-MM-DD-slug.md`, with `title`, `summary`, `date`,
+`product: ferrflow`, `type` (`new`, `fix`, `perf`, `breaking`, `deprecation` or `security`) and an
+optional `prLink` and `docsLink` in the frontmatter, then a few sentences on what changed, why, and
+how to use it. Internal refactors, test-only and CI-only changes, and dependency bumps that change
+nothing for users do not get one.
+
 Never edit `docs/site/docs-vN/` or `docs/site/docs-fr-vN/`. Those record what a past major actually
 documented, mistakes included, because someone pinned to that major reads them to understand the
 binary they are running. CI rejects a pull request that modifies one, and allows adding a new one.
