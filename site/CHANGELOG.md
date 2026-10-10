@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.10.7] - 2026-10-10
+
+### Bug Fixes
+
+- fix(deps): update ferrlabs npm packages (#1048)
+
 ## [2026.10.6] - 2026-10-10
 
 ### Bug Fixes
