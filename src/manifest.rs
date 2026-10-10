@@ -259,8 +259,6 @@ mod tests {
 
     fn pkg(name: &str, path: &str) -> PackageConfig {
         PackageConfig {
-            build_metadata: None,
-            version_source: None,
             name: name.to_string(),
             path: ".".to_string(),
             versioned_files: vec![VersionedFile {
@@ -268,17 +266,7 @@ mod tests {
                 format: FileFormat::Json,
                 selector: None,
             }],
-            changelog: None,
-            shared_paths: Vec::new(),
-            depends_on: vec![],
-            versioning: None,
-            tag_template: None,
-            version_template: None,
-            hooks: None,
-            floating_tags: None,
-            latest_tag: None,
-            publishers: vec![],
-            update_lockfiles: None,
+            ..Default::default()
         }
     }
 

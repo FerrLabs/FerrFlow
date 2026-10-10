@@ -14,22 +14,9 @@ fn make_config(packages: Vec<PackageConfig>) -> Config {
 
 fn make_package(name: &str, path: &str) -> PackageConfig {
     PackageConfig {
-        build_metadata: None,
-        version_source: None,
         name: name.to_string(),
         path: path.to_string(),
-        versioned_files: vec![],
-        changelog: None,
-        shared_paths: vec![],
-        depends_on: vec![],
-        versioning: None,
-        tag_template: None,
-        version_template: None,
-        floating_tags: None,
-        latest_tag: None,
-        publishers: vec![],
-        update_lockfiles: None,
-        hooks: None,
+        ..Default::default()
     }
 }
 

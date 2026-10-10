@@ -148,18 +148,7 @@ fn scaffold_package(name: String, path: String) -> PackageConfig {
             selector: None,
         }],
         changelog: Some(changelog),
-        shared_paths: Vec::new(),
-        depends_on: vec![],
-        versioning: None,
-        tag_template: None,
-        version_template: None,
-        hooks: None,
-        floating_tags: None,
-        latest_tag: None,
-        build_metadata: None,
-        publishers: vec![],
-        update_lockfiles: None,
-        version_source: None,
+        ..Default::default()
     }
 }
 

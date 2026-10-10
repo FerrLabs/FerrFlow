@@ -148,18 +148,7 @@ pub(super) fn build(raw: &str) -> Result<(Config, MigrationReport)> {
         path: ".".to_string(),
         versioned_files,
         changelog: Some("CHANGELOG.md".to_string()),
-        shared_paths: Vec::new(),
-        depends_on: vec![],
-        versioning: None,
-        tag_template: None,
-        version_template: None,
-        hooks: None,
-        floating_tags: None,
-        latest_tag: None,
-        build_metadata: None,
-        publishers: vec![],
-        update_lockfiles: None,
-        version_source: None,
+        ..Default::default()
     };
 
     report.warnings.push(
