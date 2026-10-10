@@ -8,12 +8,11 @@
     "pnpm": ">=11.8.0"
   },
   "scripts": {
-    "dev": "node scripts/sync-docs.mjs && node scripts/fetch-changelog.mjs && vite",
-    "build": "node scripts/sync-docs.mjs && node scripts/fetch-changelog.mjs && vite build && node scripts/gen-rss.mjs && node scripts/gen-sitemap.mjs",
+    "dev": "node scripts/sync-docs.mjs && vite",
+    "build": "node scripts/sync-docs.mjs && vite build && node scripts/gen-rss.mjs && node scripts/gen-sitemap.mjs",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
     "check:i18n": "node ./scripts/check-i18n.mjs",
     "preview": "vite preview",
-    "changelog:fetch": "node scripts/fetch-changelog.mjs",
     "docs:sync": "node scripts/sync-docs.mjs"
   },
   "dependencies": {
@@ -26,7 +25,7 @@
     "@angular/platform-browser": "^22.0.0",
     "@angular/platform-server": "^22.0.0",
     "@angular/router": "^22.0.0",
-    "@ferrflow/doc": "7.28.5",
+    "@ferrflow/doc": "7.30.0",
     "@ferrlabs/ui-foundation": "^5.4.0",
     "@ferrlabs/ui-ng": "^1.43.0",
     "chart.js": "^4.5.1",

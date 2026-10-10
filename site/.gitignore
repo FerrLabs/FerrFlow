@@ -2,8 +2,8 @@
 # build and dev run invokes first. The docs are public and edited there.
 src/content/docs-*
 
-# Fetched from FerrLabs/Changelog by scripts/fetch-changelog.mjs, which every
-# build and dev run invokes first. Entries are written in that repo.
+# Copied from @ferrflow/doc by scripts/sync-docs.mjs, which every build and
+# dev run invokes first. Entries are written in FerrLabs/FerrFlow.
 src/content/changelog*
 
 # Written from @ferrflow/doc by scripts/sync-docs.mjs, which every build and

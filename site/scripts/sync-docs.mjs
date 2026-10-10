@@ -112,6 +112,21 @@ try {
     console.warn('[docs] which is roughly 2.4x the real download.');
   }
 
+  const changelogSource = join(packageRoot, 'changelog');
+  if (!existsSync(changelogSource)) {
+    throw new Error(`${PACKAGE}@${version} carries no changelog directory`);
+  }
+  const entries = readdirSync(changelogSource).filter((name) => name.endsWith('.md'));
+  if (entries.length === 0) {
+    throw new Error(`${PACKAGE}@${version} carries no changelog entry`);
+  }
+  const changelogIncoming = join(contentDir, 'changelog.incoming');
+  rmSync(changelogIncoming, { recursive: true, force: true });
+  cpSync(changelogSource, changelogIncoming, { recursive: true });
+  rmSync(join(contentDir, 'changelog'), { recursive: true, force: true });
+  renameSync(changelogIncoming, join(contentDir, 'changelog'));
+  console.log(`[docs] ${entries.length} changelog entries from ${PACKAGE}@${version}`);
+
   const pages = versions.reduce((total, name) => total + countPages(join(packageRoot, name)), 0);
   console.log(
     `[docs] ${pages} pages from ${PACKAGE}@${version} across ${versions.length} versions`,
