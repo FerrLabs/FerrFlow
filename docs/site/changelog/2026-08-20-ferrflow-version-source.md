@@ -1,5 +1,5 @@
 ---
-title: 'FerrFlow · release output says where the current version came from'
+title: 'FerrFlow: release output says where the current version came from'
 summary: 'The version FerrFlow starts from is resolved from a tag, a versioned file, or neither. The release and check output now names the source, so a package whose tag was never pushed is distinguishable from one that has no tags yet.'
 date: 2026-08-20T10:00:00Z
 product: ferrflow

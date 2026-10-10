@@ -14,7 +14,7 @@ Two small additions to make the FerrFlow CLI's anonymous telemetry friendlier an
 **First-run notice.** The first time you run the CLI on a machine, it prints one line to stderr:
 
 ```
-Anonymous telemetry on. See https://ferrlabs.com/telemetry: opt out: FERRFLOW_TELEMETRY=0 or DO_NOT_TRACK=1
+Anonymous telemetry on. See https://ferrlabs.com/telemetry — opt out: FERRFLOW_TELEMETRY=0 or DO_NOT_TRACK=1
 ```
 
 A marker file in `$XDG_STATE_HOME/ferrflow/.telemetry-notice-shown` (or `~/Library/Application Support/ferrflow/` on macOS, `%LOCALAPPDATA%\ferrflow\` on Windows, override with `FERRFLOW_STATE_DIR`) suppresses it on subsequent runs. We never silently re-enable telemetry between versions; if you opted out, the notice doesn't print and nothing is sent.
