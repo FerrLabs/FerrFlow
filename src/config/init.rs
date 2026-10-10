@@ -9,6 +9,7 @@ use super::format::{CONFIG_FORMATS, ConfigFileFormat, format_handler};
 use super::loader_js::{JS_CONFIG_FILENAME, TS_CONFIG_FILENAME};
 use super::package::{FileFormat, PackageConfig, VersionedFile};
 use super::workspace::WorkspaceConfig;
+use super::workspace_discovery::{self, DiscoveredPackage};
 
 struct Prompter<R> {
     input: R,
@@ -119,28 +120,30 @@ impl<R: BufRead> Prompter<R> {
             &under(&path, "CHANGELOG.md"),
         );
 
-        PackageConfig {
+        package_config(
             name,
             path,
-            versioned_files: vec![VersionedFile {
+            vec![VersionedFile {
                 path: version_file_path,
                 format: parse_file_format(&format_str),
                 selector: None,
             }],
-            changelog: Some(changelog),
-            shared_paths: Vec::new(),
-            depends_on: vec![],
-            versioning: None,
-            tag_template: None,
-            version_template: None,
-            hooks: None,
-            floating_tags: None,
-            latest_tag: None,
-            build_metadata: None,
-            publishers: vec![],
-            update_lockfiles: None,
-            version_source: None,
+            changelog,
+        )
+    }
+
+    fn discovered(&mut self, found: &[DiscoveredPackage]) -> Option<Vec<PackageConfig>> {
+        if found.is_empty() {
+            return None;
         }
+        println!("Found {} workspace package(s):", found.len());
+        for package in found {
+            println!("  {} ({})", package.path, package.name);
+        }
+        if !self.ask_bool("Use these packages?", true) {
+            return None;
+        }
+        Some(found.iter().map(discovered_package).collect())
     }
 
     fn packages(&mut self, monorepo: bool) -> Result<Vec<PackageConfig>> {
@@ -162,6 +165,45 @@ impl<R: BufRead> Prompter<R> {
             }
         }
     }
+}
+
+fn package_config(
+    name: String,
+    path: String,
+    versioned_files: Vec<VersionedFile>,
+    changelog: String,
+) -> PackageConfig {
+    PackageConfig {
+        name,
+        path,
+        versioned_files,
+        changelog: Some(changelog),
+        shared_paths: Vec::new(),
+        depends_on: vec![],
+        versioning: None,
+        tag_template: None,
+        version_template: None,
+        hooks: None,
+        floating_tags: None,
+        latest_tag: None,
+        build_metadata: None,
+        publishers: vec![],
+        update_lockfiles: None,
+        version_source: None,
+    }
+}
+
+fn discovered_package(found: &DiscoveredPackage) -> PackageConfig {
+    package_config(
+        found.name.clone(),
+        found.path.clone(),
+        vec![VersionedFile {
+            path: under(&found.path, found.manifest),
+            format: found.format.clone(),
+            selector: None,
+        }],
+        under(&found.path, "CHANGELOG.md"),
+    )
 }
 
 const ALLOWED_FORMATS: &[&str] = &["toml", "json", "xml", "gradle", "gomod", "txt"];
@@ -233,9 +275,14 @@ fn init_from(input: impl BufRead, format: Option<ConfigFileFormat>, manifest: bo
     let fmt = format.unwrap_or_else(|| prompter.ask_config_format());
     let handler = format_handler(fmt);
 
-    let monorepo = prompter.ask_bool("Is this a monorepo?", false);
-
-    let packages = prompter.packages(monorepo)?;
+    let found = workspace_discovery::discover(&std::env::current_dir()?);
+    let packages = match prompter.discovered(&found) {
+        Some(packages) => packages,
+        None => {
+            let monorepo = prompter.ask_bool("Is this a monorepo?", false);
+            prompter.packages(monorepo)?
+        }
+    };
 
     let mut workspace = WorkspaceConfig::default();
     if manifest {

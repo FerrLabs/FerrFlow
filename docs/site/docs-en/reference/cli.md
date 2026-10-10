@@ -169,6 +169,8 @@ ferrflow init [OPTIONS]
 | ------------------- | ---------------------------------------------- |
 | `--format <FORMAT>` | Config file format: `json`, `json5`, or `toml` |
 
+If the repository declares a workspace, `init` lists the packages it found and offers to use them, one package per member with its manifest as the versioned file and a changelog next to it. It reads `workspaces` in `package.json`, `pnpm-workspace.yaml`, `[workspace] members` in `Cargo.toml`, `use` entries in `go.work` and `include` calls in `settings.gradle(.kts)`. Answer `n` to enter the packages by hand.
+
 ---
 
 ## `ferrflow migrate`

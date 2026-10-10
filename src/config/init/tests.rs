@@ -265,3 +265,68 @@ fn an_existing_config_of_any_kind_is_never_overwritten() {
         );
     }
 }
+
+#[test]
+fn a_cargo_workspace_is_scaffolded_one_package_per_member() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(
+        dir.path().join("Cargo.toml"),
+        "[workspace]\nmembers = [\"crates/*\"]\n",
+    )
+    .unwrap();
+    for name in ["api", "cli"] {
+        let member = dir.path().join("crates").join(name);
+        std::fs::create_dir_all(&member).unwrap();
+        std::fs::write(
+            member.join("Cargo.toml"),
+            format!("[package]\nname = \"acme-{name}\"\nversion = \"0.1.0\"\n"),
+        )
+        .unwrap();
+    }
+
+    run_init(dir.path(), "", Some(ConfigFileFormat::Json), false).unwrap();
+
+    let config = load(dir.path(), "ferrflow.json");
+    let packages: Vec<_> = config
+        .packages
+        .iter()
+        .map(|p| (p.name.as_str(), p.path.as_str()))
+        .collect();
+    assert_eq!(
+        packages,
+        [("acme-api", "crates/api"), ("acme-cli", "crates/cli")]
+    );
+    assert_eq!(
+        config.packages[0].versioned_files[0].path,
+        "crates/api/Cargo.toml"
+    );
+    assert_eq!(
+        config.packages[0].changelog.as_deref(),
+        Some("crates/api/CHANGELOG.md")
+    );
+}
+
+#[test]
+fn declining_the_discovered_packages_falls_back_to_the_manual_flow() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(
+        dir.path().join("package.json"),
+        r#"{"workspaces": ["packages/*"]}"#,
+    )
+    .unwrap();
+    let member = dir.path().join("packages/a");
+    std::fs::create_dir_all(&member).unwrap();
+    std::fs::write(member.join("package.json"), r#"{"name": "a"}"#).unwrap();
+
+    run_init(
+        dir.path(),
+        &lines(&["n"]),
+        Some(ConfigFileFormat::Json),
+        false,
+    )
+    .unwrap();
+
+    let config = load(dir.path(), "ferrflow.json");
+    assert_eq!(config.packages.len(), 1);
+    assert_eq!(config.packages[0].path, ".");
+}
