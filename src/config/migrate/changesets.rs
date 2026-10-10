@@ -93,7 +93,7 @@ pub(super) fn build(raw: &str, root: &Path) -> Result<(Config, MigrationReport)>
         ));
     }
 
-    let discovered = super::workspace_packages::discover(root);
+    let discovered = crate::config::workspace_discovery::discover_node(root);
     let packages = if discovered.is_empty() {
         report.warnings.push(
             "no JS workspace found (`workspaces` in package.json or pnpm-workspace.yaml), so a \

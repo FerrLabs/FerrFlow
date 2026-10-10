@@ -16,7 +16,6 @@ use super::workspace::WorkspaceConfig;
 mod changesets;
 mod release_please;
 mod standard_version;
-mod workspace_packages;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Source {

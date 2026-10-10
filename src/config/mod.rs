@@ -18,6 +18,8 @@ mod package;
 mod types;
 mod unknown_keys;
 mod workspace;
+#[cfg(feature = "cli")]
+mod workspace_discovery;
 
 #[allow(unused_imports)]
 pub use commit_formats::{CATCH_ALL, CommitFormats, PatternSet};
