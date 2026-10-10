@@ -252,7 +252,7 @@ fn render(rows: &[Row], overrides: &BTreeMap<String, Override>, config: &Config)
                     row.package,
                     row.current,
                     version.green(),
-                    format!("{bump:?}").to_lowercase().green()
+                    bump.to_string().green()
                 );
             }
             None => match &row.planned {
