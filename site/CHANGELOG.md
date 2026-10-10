@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.10.6] - 2026-10-10
+
+### Bug Fixes
+
+- fix(site): render the changelog from @ferrflow/doc (#1052)
+
 ## [2026.10.5] - 2026-10-08
 
 ### Bug Fixes
