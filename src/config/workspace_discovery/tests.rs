@@ -357,3 +357,38 @@ fn a_path_declared_by_two_ecosystems_is_listed_once() {
     assert_eq!(found.len(), 1);
     assert_eq!(found[0].name, "bridge-js");
 }
+
+#[test]
+fn gradle_includes_spanning_several_lines_are_read() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path();
+    write(
+        root,
+        "settings.gradle.kts",
+        "include(\n    \":a\",\n    \":b:c\"\n)\n",
+    );
+    write(root, "a/build.gradle.kts", "");
+    write(root, "b/c/build.gradle.kts", "");
+
+    assert_eq!(names_and_paths(&discover(root)), [("a", "a"), ("c", "b/c")]);
+}
+
+#[test]
+fn discover_node_ignores_other_ecosystems() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path();
+    write(
+        root,
+        "Cargo.toml",
+        "[workspace]\nmembers = [\"crates/*\"]\n",
+    );
+    write(root, "crates/api/Cargo.toml", &cargo_package("api"));
+    write(root, "package.json", r#"{"workspaces": ["packages/*"]}"#);
+    write(root, "packages/web/package.json", &pkg("web"));
+
+    assert_eq!(
+        names_and_paths(&discover_node(root)),
+        [("web", "packages/web")]
+    );
+    assert_eq!(discover(root).len(), 2);
+}

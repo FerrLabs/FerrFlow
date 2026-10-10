@@ -23,7 +23,7 @@ fn includes(root: &Path) -> Vec<String> {
         return Vec::new();
     };
     let (Ok(statement), Ok(quoted)) = (
-        Regex::new(r"(?m)^\s*include(?:\s*\(|\s+)([^\n]*)"),
+        Regex::new(r"(?m)^\s*include\s*\(([^)]*)\)|^\s*include\s+([^\n(][^\n]*)"),
         Regex::new(r#"["']([^"']+)["']"#),
     ) else {
         return Vec::new();
@@ -32,7 +32,7 @@ fn includes(root: &Path) -> Vec<String> {
         .captures_iter(&raw)
         .flat_map(|c| {
             quoted
-                .captures_iter(&c[1])
+                .captures_iter(c.get(1).or_else(|| c.get(2)).map_or("", |m| m.as_str()))
                 .map(|q| q[1].trim_matches(':').replace(':', "/"))
                 .collect::<Vec<_>>()
         })

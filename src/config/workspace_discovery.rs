@@ -55,6 +55,18 @@ pub(super) fn discover(root: &Path) -> Vec<DiscoveredPackage> {
     found
 }
 
+pub(super) fn discover_node(root: &Path) -> Vec<DiscoveredPackage> {
+    let source = node::source(root);
+    let mut found = if source.globs.is_empty() {
+        Vec::new()
+    } else {
+        source.collect(root)
+    };
+    found.sort_by(|a, b| a.path.cmp(&b.path));
+    found.dedup_by(|a, b| a.path == b.path);
+    found
+}
+
 impl Source {
     fn collect(&self, root: &Path) -> Vec<DiscoveredPackage> {
         let mut found = Vec::new();
