@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.10.9] - 2026-10-11
+
+### Features
+
+- feat(site): enrich the SoftwareApplication structured data (#1059)
+
 ## [2026.10.8] - 2026-10-11
 
 ### Bug Fixes
