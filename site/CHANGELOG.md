@@ -1,5 +1,12 @@
 # Changelog
 
+## [2026.10.8] - 2026-10-11
+
+### Bug Fixes
+
+- fix(site): render the v0 docs pages that show no content (#1057)
+- fix(site): point versioned docs at the current page and keep them out of the sitemap (#1055)
+
 ## [2026.10.7] - 2026-10-10
 
 ### Bug Fixes
