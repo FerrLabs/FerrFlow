@@ -14,6 +14,9 @@ import { fileURLToPath } from 'node:url';
 
 const PACKAGE = '@ferrflow/doc';
 
+const FRONTMATTER = /^---\r?\n[\s\S]*?\r?\n---/;
+const SLUG_LINE = /^slug:.*\r?\n/m;
+
 const INTERNAL_LINK = /(\]\(|href=")(\/(?!\/)[^)"\s?#]*)([?#][^)"\s]*)?/g;
 
 const DATA_FILES = [
@@ -74,6 +77,14 @@ try {
     0,
   );
   console.log(`[docs] added the trailing slash to ${slashed} internal links`);
+
+  const unslugged = versions.reduce(
+    (total, name) => total + dropSlugOverride(join(contentDir, name)),
+    0,
+  );
+  if (unslugged > 0) {
+    console.log(`[docs] dropped the frontmatter slug override from ${unslugged} pages`);
+  }
 
   // The benchmark numbers and the JSON schema ship in the same package as the
   // pages, so one dependency bump moves all three together. Before this they
@@ -161,6 +172,25 @@ function slashInternalLinks(dir) {
       writeFileSync(full, markdown);
     }
     return total + count;
+  }, 0);
+}
+
+function dropSlugOverride(dir) {
+  return readdirSync(dir, { withFileTypes: true }).reduce((total, entry) => {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      return total + dropSlugOverride(full);
+    }
+    if (!entry.name.endsWith('.md')) {
+      return total;
+    }
+    const markdown = readFileSync(full, 'utf8');
+    const head = FRONTMATTER.exec(markdown)?.[0];
+    if (head === undefined || !SLUG_LINE.test(head)) {
+      return total;
+    }
+    writeFileSync(full, markdown.replace(head, head.replace(SLUG_LINE, '')));
+    return total + 1;
   }, 0);
 }
 
