@@ -1,4 +1,4 @@
-import { writeFileSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -16,8 +16,17 @@ function prerenderedPaths(dir) {
   });
 }
 
+const CANONICAL = /<link rel="canonical" href="([^"]+)"/;
+
+function isCanonicalToItself(path) {
+  const html = readFileSync(join(outDir, path, 'index.html'), 'utf8');
+  const declared = CANONICAL.exec(html)?.[1];
+  return declared === undefined || declared === `${SITE}${path}`;
+}
+
 const paths = prerenderedPaths(outDir)
   .filter((path) => !/^\/(fr\/)?404\//.test(path) && !path.startsWith('/en/'))
+  .filter(isCanonicalToItself)
   .sort();
 
 if (paths.length === 0) {
