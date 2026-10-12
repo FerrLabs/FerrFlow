@@ -1,4 +1,4 @@
-FROM docker.io/library/rust:1.97-slim-bookworm AS builder
+FROM docker.io/library/rust:1.99-slim-bookworm AS builder
 
 WORKDIR /app
 
