@@ -27,7 +27,7 @@
     "@angular/router": "^22.0.0",
     "@ferrflow/doc": "7.30.1",
     "@ferrlabs/ui-foundation": "^5.5.0",
-    "@ferrlabs/ui-ng": "^1.44.1",
+    "@ferrlabs/ui-ng": "^1.44.5",
     "chart.js": "^4.5.1",
     "front-matter": "^4.0.2",
     "marked": "^18.0.0",
