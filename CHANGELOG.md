@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.30.3] - 2026-10-16
+
+### Bug Fixes
+
+- fix(docs): give the introduction page a descriptive title, description and H1 (#1315)
+
 ## [7.30.2] - 2026-10-16
 
 ### Bug Fixes
