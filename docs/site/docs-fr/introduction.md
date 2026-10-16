@@ -1,7 +1,9 @@
 ---
-title: Introduction
-description: Ce qu'est FerrFlow et pourquoi il existe.
+title: Qu'est-ce que FerrFlow ? CLI de versionnage sémantique
+description: FerrFlow est un binaire unique qui lit vos commits, incrémente les versions dans n'importe quel format de fichier, rédige le changelog et publie la release. Monorepo ou repo classique.
 ---
+
+# Qu'est-ce que FerrFlow ?
 
 FerrFlow est un binaire unique qui automatise le versionnage sémantique pour n'importe quel repository : monorepo ou classique, quel que soit le langage.
 
