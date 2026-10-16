@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.10.8] - 2026-10-16
+
+### Bug Fixes
+
+- fix(deps): update rustls to 0.23.46 for RUSTSEC-2026-0346 to 0349 (#1076)
+
 ## [2026.9.4] - 2026-09-17
 
 ### Bug Fixes
