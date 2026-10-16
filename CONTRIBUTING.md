@@ -14,7 +14,7 @@ Thanks for your interest in contributing to FerrFlow! Here's how to get started.
 
 ### Prerequisites
 
-- [Rust](https://rustup.rs/) (nightly toolchain)
+- [Rust](https://rustup.rs/) (stable toolchain; nightly only for fuzzing)
 - Git
 
 ### Build and Test
@@ -49,6 +49,12 @@ it with `cargo +nightly fuzz run <target> <that file>`, and commit it under
 CI fuzzes every target for 45 seconds on a pull request that touches `src/` or
 `fuzz/`, and for ten minutes a night on `main`. The corpus is cached between
 runs, so the nightly run starts where the last one left off.
+
+## Minimum supported Rust version
+
+`rust-version` in `Cargo.toml` is the MSRV, and the `MSRV` CI job runs `cargo check --workspace --locked` on exactly that toolchain.
+
+Raise it only when a dependency or a language feature we want requires it, never speculatively. Bump it in the same PR that needs it, and keep it to the oldest stable release that compiles. A bump ships as a minor release.
 
 ## Git hooks
 

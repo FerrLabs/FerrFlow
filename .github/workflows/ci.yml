@@ -53,6 +53,22 @@ jobs:
       - name: Tests (nextest)
         run: cargo nextest run --no-fail-fast
 
+  msrv:
+    name: MSRV
+    if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Read rust-version
+        id: msrv
+        run: echo "version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "ferrflow") | .rust_version')" >> "$GITHUB_OUTPUT"
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          toolchain: ${{ steps.msrv.outputs.version }}
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - name: Check at the declared MSRV
+        run: cargo check --workspace --locked
+
   security:
     name: Cargo Security
     if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):')
