@@ -17,6 +17,9 @@ const PACKAGE = '@ferrflow/doc';
 const FRONTMATTER = /^---\r?\n[\s\S]*?\r?\n---/;
 const SLUG_LINE = /^slug:.*\r?\n/m;
 
+const PRE_BLOCK = /<pre\b[\s\S]*?<\/pre>/g;
+const BLANK_LINE = /\n[ \t]*(?=\n)/g;
+
 const INTERNAL_LINK = /(\]\(|href=")(\/(?!\/)[^)"\s?#]*)([?#][^)"\s]*)?/g;
 
 const DATA_FILES = [
@@ -85,6 +88,12 @@ try {
   if (unslugged > 0) {
     console.log(`[docs] dropped the frontmatter slug override from ${unslugged} pages`);
   }
+
+  const unbroken = versions.reduce(
+    (total, name) => total + keepPreBlocksWhole(join(contentDir, name)),
+    0,
+  );
+  console.log(`[docs] kept ${unbroken} raw <pre> blocks whole across blank lines`);
 
   // The benchmark numbers and the JSON schema ship in the same package as the
   // pages, so one dependency bump moves all three together. Before this they
@@ -168,6 +177,30 @@ function slashInternalLinks(dir) {
         return `${opening}${path}/${suffix}`;
       },
     );
+    if (count > 0) {
+      writeFileSync(full, markdown);
+    }
+    return total + count;
+  }, 0);
+}
+
+function keepPreBlocksWhole(dir) {
+  return readdirSync(dir, { withFileTypes: true }).reduce((total, entry) => {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      return total + keepPreBlocksWhole(full);
+    }
+    if (!entry.name.endsWith('.md')) {
+      return total;
+    }
+    let count = 0;
+    const markdown = readFileSync(full, 'utf8').replace(PRE_BLOCK, (block) => {
+      const kept = block.replace(BLANK_LINE, '\n<span></span>');
+      if (kept !== block) {
+        count += 1;
+      }
+      return kept;
+    });
     if (count > 0) {
       writeFileSync(full, markdown);
     }
