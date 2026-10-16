@@ -1,7 +1,9 @@
 ---
-title: Introduction
-description: What FerrFlow is and why it exists.
+title: What is FerrFlow? Semantic versioning CLI
+description: FerrFlow is a single binary that reads your commits, bumps versions in any file format, writes the changelog and publishes the release. Monorepo or classic repo.
 ---
+
+# What is FerrFlow?
 
 FerrFlow is a single binary that automates semantic versioning for any repository: monorepo or classic, any language.
 

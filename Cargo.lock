@@ -610,7 +610,7 @@ checksum = "da7c62ceae207dd37ea5b845da6a0696c799f85e97da1ab5b7910be3c1c80223"
 
 [[package]]
 name = "ferrflow"
-version = "7.30.1"
+version = "7.30.2"
 dependencies = [
  "anyhow",
  "base64",
@@ -647,7 +647,7 @@ dependencies = [
 
 [[package]]
 name = "ferrflow-wasm"
-version = "7.30.1"
+version = "7.30.2"
 dependencies = [
  "ferrflow",
  "serde",
@@ -2125,9 +2125,9 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.23.45"
+version = "0.23.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d41d731c7d2f962d1ccc364cec258de3c0e93b38c2fb3ba97ac74513048d634"
+checksum = "48e13bd8c0e9365c43cfa5c9e8f9ad49d3c8444926c9aac819e0e4dc503c8fdf"
 dependencies = [
  "log",
  "once_cell",

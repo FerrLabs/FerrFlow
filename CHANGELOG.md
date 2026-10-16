@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.30.2] - 2026-10-16
+
+### Bug Fixes
+
+- fix(deps): update rustls to 0.23.46 and regenerate cargo vet exemptions (#1323)
+
 ## [7.30.1] - 2026-10-10
 
 ### Refactoring
