@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.10.12] - 2026-10-16
+
+### Bug Fixes
+
+- fix(site): keep raw pre blocks whole across blank lines in synced docs (#1078)
+
 ## [2026.10.11] - 2026-10-13
 
 ### Bug Fixes
