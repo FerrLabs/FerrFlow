@@ -40,10 +40,6 @@ version = "2.13.2"
 criteria = "safe-to-deploy"
 
 [[exemptions.block-buffer]]
-version = "0.10.4"
-criteria = "safe-to-deploy"
-
-[[exemptions.block-buffer]]
 version = "0.12.1"
 criteria = "safe-to-deploy"
 
@@ -56,7 +52,7 @@ version = "1.5.0"
 criteria = "safe-to-run"
 
 [[exemptions.cc]]
-version = "1.4.6"
+version = "1.7.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.cfg-if]]
@@ -85,10 +81,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.cookie_store]]
 version = "0.22.1"
-criteria = "safe-to-deploy"
-
-[[exemptions.cpufeatures]]
-version = "0.2.17"
 criteria = "safe-to-deploy"
 
 [[exemptions.cpufeatures]]
@@ -124,10 +116,6 @@ version = "0.8.23"
 criteria = "safe-to-deploy"
 
 [[exemptions.crypto-common]]
-version = "0.1.7"
-criteria = "safe-to-deploy"
-
-[[exemptions.crypto-common]]
 version = "0.2.2"
 criteria = "safe-to-deploy"
 
@@ -148,10 +136,6 @@ version = "1.0.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.digest]]
-version = "0.10.7"
-criteria = "safe-to-deploy"
-
-[[exemptions.digest]]
 version = "0.11.3"
 criteria = "safe-to-deploy"
 
@@ -167,12 +151,12 @@ criteria = "safe-to-deploy"
 version = "0.2.29"
 criteria = "safe-to-deploy"
 
-[[exemptions.flate2]]
-version = "1.1.10"
+[[exemptions.find-msvc-tools]]
+version = "0.1.14"
 criteria = "safe-to-deploy"
 
-[[exemptions.futures-core]]
-version = "0.3.34"
+[[exemptions.flate2]]
+version = "1.1.10"
 criteria = "safe-to-deploy"
 
 [[exemptions.futures-task]]
@@ -181,10 +165,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.futures-util]]
 version = "0.3.34"
-criteria = "safe-to-deploy"
-
-[[exemptions.generic-array]]
-version = "0.14.7"
 criteria = "safe-to-deploy"
 
 [[exemptions.getrandom]]
@@ -276,11 +256,15 @@ version = "0.1.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.js-sys]]
-version = "0.3.105"
+version = "0.3.106"
 criteria = "safe-to-deploy"
 
 [[exemptions.json5]]
 version = "1.3.1"
+criteria = "safe-to-deploy"
+
+[[exemptions.lazy_static]]
+version = "1.5.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.libmimalloc-sys]]
@@ -317,14 +301,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.miniz_oxide]]
 version = "0.9.1"
-criteria = "safe-to-deploy"
-
-[[exemptions.multiversion]]
-version = "0.9.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.multiversion-macros]]
-version = "0.9.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.nonempty]]
@@ -375,6 +351,10 @@ criteria = "safe-to-deploy"
 version = "0.1.6"
 criteria = "safe-to-deploy"
 
+[[exemptions.powerfmt]]
+version = "0.2.1"
+criteria = "safe-to-deploy"
+
 [[exemptions.r-efi]]
 version = "6.0.0"
 criteria = "safe-to-deploy"
@@ -420,7 +400,7 @@ version = "0.1.5"
 criteria = "safe-to-deploy"
 
 [[exemptions.sha2]]
-version = "0.11.0"
+version = "0.11.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.simd-adler32]]
@@ -432,7 +412,7 @@ version = "0.4.12"
 criteria = "safe-to-deploy"
 
 [[exemptions.smallvec]]
-version = "1.16.1"
+version = "1.16.3"
 criteria = "safe-to-deploy"
 
 [[exemptions.stable_deref_trait]]
@@ -477,10 +457,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.tracing-attributes]]
 version = "0.1.31"
-criteria = "safe-to-deploy"
-
-[[exemptions.tracing-core]]
-version = "0.1.36"
 criteria = "safe-to-deploy"
 
 [[exemptions.tracing-serde]]
@@ -532,23 +508,23 @@ version = "0.11.1+wasi-snapshot-preview1"
 criteria = "safe-to-deploy"
 
 [[exemptions.wasm-bindgen]]
-version = "0.2.128"
+version = "0.2.129"
 criteria = "safe-to-deploy"
 
 [[exemptions.wasm-bindgen-macro]]
-version = "0.2.128"
+version = "0.2.129"
 criteria = "safe-to-deploy"
 
 [[exemptions.wasm-bindgen-macro-support]]
-version = "0.2.128"
+version = "0.2.129"
 criteria = "safe-to-deploy"
 
 [[exemptions.wasm-bindgen-shared]]
-version = "0.2.128"
+version = "0.2.129"
 criteria = "safe-to-deploy"
 
 [[exemptions.web-sys]]
-version = "0.3.105"
+version = "0.3.106"
 criteria = "safe-to-run"
 
 [[exemptions.webpki-roots]]
@@ -608,11 +584,11 @@ version = "0.8.4"
 criteria = "safe-to-deploy"
 
 [[exemptions.zerocopy]]
-version = "0.8.57"
+version = "0.8.62"
 criteria = "safe-to-run"
 
 [[exemptions.zerocopy-derive]]
-version = "0.8.57"
+version = "0.8.62"
 criteria = "safe-to-run"
 
 [[exemptions.zerofrom]]
@@ -624,7 +600,7 @@ version = "0.1.8"
 criteria = "safe-to-deploy"
 
 [[exemptions.zeroize]]
-version = "1.9.0"
+version = "1.9.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.zerotrie]]
