@@ -1,3 +1,4 @@
+const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -47,4 +48,35 @@ if (bench && fs.existsSync(bench)) {
 
 if (!embedded) {
   console.log("no usable benchmark artifact, keeping the published numbers");
+}
+
+const benchmarksFile = path.join(target, "benchmarks.json");
+const linuxTarball = "ferrflow-linux-x64.tar.gz";
+
+function previousReleaseSizeMb() {
+  const out = execFileSync(
+    "gh",
+    ["release", "view", "--json", "assets"],
+    { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+  );
+  const asset = JSON.parse(out).assets.find((a) => a.name === linuxTarball);
+  if (!asset) {
+    throw new Error(`no ${linuxTarball} asset on the latest release`);
+  }
+  return (asset.size / (1024 * 1024)).toFixed(1);
+}
+
+// This release's own tarballs do not exist yet, so the size embedded is the
+// previous release's. A failure here must not abort the release either.
+if (fs.existsSync(benchmarksFile)) {
+  try {
+    const data = JSON.parse(fs.readFileSync(benchmarksFile, "utf8"));
+    data.ferrflow_release_size_mb = previousReleaseSizeMb();
+    fs.writeFileSync(benchmarksFile, JSON.stringify(data, null, 2) + "\n");
+    console.log(
+      `embedded previous release tarball size ${data.ferrflow_release_size_mb} MB`,
+    );
+  } catch (err) {
+    console.log(`release size unavailable (${err.message}), leaving it as is`);
+  }
 }
