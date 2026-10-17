@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.31.0] - 2026-10-17
+
+### Features
+
+- feat(release): embed the previous release tarball size in the doc data (#1326)
+
 ## [7.30.3] - 2026-10-16
 
 ### Bug Fixes
