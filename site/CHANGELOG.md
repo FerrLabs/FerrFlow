@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.10.13] - 2026-10-17
+
+### Bug Fixes
+
+- fix(deps): update dependency @ferrlabs/ui-ng to ^1.44.7 (#1080)
+
 ## [2026.10.12] - 2026-10-16
 
 ### Bug Fixes
