@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.33.0] - 2026-10-20
+
+### Features
+
+- feat(npm): ship TypeScript types for ferrflow.ts configs (#1332)
+
 ## [7.32.0] - 2026-10-20
 
 ### Features
