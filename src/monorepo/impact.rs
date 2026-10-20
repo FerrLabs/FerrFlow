@@ -53,6 +53,12 @@ impl Versions<'_> {
     }
 
     fn next(&self, pkg: &PackageConfig, bump: BumpType) -> Option<String> {
+        if pkg
+            .effective_version_command(&self.config.workspace)
+            .is_some()
+        {
+            return None;
+        }
         let current = self.current(pkg)?;
         let prefix = pkg.tag_prefix(&self.config.workspace, self.config.is_monorepo());
         let strategy = pkg.effective_versioning(&self.config.workspace, || {

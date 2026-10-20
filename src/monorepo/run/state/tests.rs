@@ -12,6 +12,7 @@ fn flags(json: bool, release_json: bool) -> RunFlags {
         force: false,
         draft: false,
         shadow: false,
+        version_commands: false,
     }
 }
 

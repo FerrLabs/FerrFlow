@@ -53,6 +53,7 @@ pub(super) struct PackageBump {
     pub strategy_label: String,
     pub tag: String,
     pub version_source: Option<VersionSource>,
+    pub version_pending: bool,
 }
 
 pub(super) enum PackagePlan {
@@ -439,6 +440,7 @@ pub(super) fn compute_plan(
         strategy_label,
         tag,
         version_source,
+        version_pending: false,
     })))
 }
 

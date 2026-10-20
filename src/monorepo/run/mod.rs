@@ -37,6 +37,7 @@ mod release_json;
 mod state;
 mod summary;
 mod upgrade;
+mod version_hook;
 mod why;
 use context::{ReleaseInputs, RepoAccess, RunFlags};
 use forced::parse_forced_versions;
@@ -60,6 +61,7 @@ pub(super) fn run_release_logic(
     channel: Option<&str>,
     draft: bool,
     force_unlock: bool,
+    version_commands: bool,
     timing: &mut Timing,
 ) -> Result<Option<RunOutput>> {
     let flags = RunFlags {
@@ -70,6 +72,7 @@ pub(super) fn run_release_logic(
         force,
         draft,
         shadow: false,
+        version_commands,
     };
     let access = RepoAccess {
         channel,
@@ -95,6 +98,7 @@ pub(crate) fn run_shadow_release(root: &Path, config: &Config, verbose: bool) ->
         force: false,
         draft: false,
         shadow: true,
+        version_commands: true,
     };
     let access = RepoAccess {
         channel: None,
@@ -135,6 +139,10 @@ fn run_with_flags(
 
     let compute_start = std::time::Instant::now();
     let mut plans = inputs.compute_plans(root, config, &forced, excluded)?;
+    let version_pass = version_pass(config, root, &inputs, flags);
+    if !finalizing {
+        version_pass.apply(&release_order, &mut plans)?;
+    }
     let all_packages = batch_package_snapshot(&release_order, &plans, &config.packages);
 
     let mut state = ReleaseState::default();
@@ -164,7 +172,7 @@ fn run_with_flags(
     propagate_bumps(
         config,
         root,
-        &inputs,
+        &version_pass,
         flags,
         &mut state,
         &mut captured_metadata,
@@ -195,23 +203,35 @@ fn run_with_flags(
     finish(flags.dry_run, output::text(state, config, flags))
 }
 
+fn version_pass<'a>(
+    config: &'a Config,
+    root: &'a Path,
+    inputs: &'a ReleaseInputs,
+    flags: RunFlags,
+) -> version_hook::Pass<'a> {
+    version_hook::Pass {
+        config,
+        root,
+        all_tags: &inputs.all_tags,
+        channel: inputs.prerelease_ctx.channel.as_deref(),
+        dry_run: flags.dry_run,
+        run_commands: flags.version_commands,
+    }
+}
+
 fn propagate_bumps(
     config: &Config,
     root: &Path,
-    inputs: &ReleaseInputs,
+    version_pass: &version_hook::Pass<'_>,
     flags: RunFlags,
     state: &mut ReleaseState,
     captured_metadata: &mut HashMap<String, String>,
 ) -> Result<()> {
     if config.is_monorepo() {
         cascade::run_dependency_cascade(
-            config,
-            root,
-            &inputs.all_tags,
-            inputs.prerelease_ctx.channel.as_deref(),
+            version_pass,
             flags.json,
             flags.release_json,
-            flags.dry_run,
             &mut state.cascade_sink(),
             captured_metadata,
         )?;
@@ -377,6 +397,7 @@ mod tests {
             strategy_label: bump.to_string(),
             tag: format!("v{new_version}"),
             version_source: None,
+            version_pending: false,
         }))
     }
 

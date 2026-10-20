@@ -67,6 +67,7 @@ pub(super) fn apply_groups(config: &Config, root: &Path, plans: &mut [Option<Pac
                         bump: BumpType::None,
                         strategy_label: group.kind.label().to_string(),
                         version_source: file_source.map(|(file, _)| VersionSource::File { file }),
+                        version_pending: false,
                         tag: target_tag,
                     })));
                 }
@@ -144,6 +145,7 @@ mod tests {
             strategy_label: bump.to_string(),
             tag: tag.to_string(),
             version_source: None,
+            version_pending: false,
         })))
     }
 

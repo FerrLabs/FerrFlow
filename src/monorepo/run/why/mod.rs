@@ -77,8 +77,8 @@ enum Decision {
     Bump {
         bump: String,
         from: String,
-        to: String,
-        tag: String,
+        to: Option<String>,
+        tag: Option<String>,
         prerelease: bool,
         triggered_by: Trigger,
     },
@@ -414,14 +414,17 @@ fn decide(
     cascade: &std::collections::HashMap<String, BumpType>,
     current_version: &str,
 ) -> Result<Decision> {
+    let version_by_command = pkg.effective_version_command(&config.workspace).is_some();
     if let PackagePlan::Bump(bump) = plan {
+        let forced = bump.strategy_label == "forced";
+        let pending = version_by_command && !forced;
         return Ok(Decision::Bump {
             bump: bump.strategy_label.clone(),
             from: bump.current_version.clone(),
-            to: bump.new_version.clone(),
-            tag: bump.tag.clone(),
+            to: (!pending).then(|| bump.new_version.clone()),
+            tag: (!pending).then(|| bump.tag.clone()),
             prerelease: bump.is_prerelease,
-            triggered_by: if bump.strategy_label == "forced" {
+            triggered_by: if forced {
                 Trigger::Forced
             } else {
                 Trigger::Commits
@@ -449,8 +452,9 @@ fn decide(
         return Ok(Decision::Bump {
             bump: bump.to_string(),
             from: current_version.to_string(),
-            to: next.clone(),
-            tag: pkg.tag_for_version(&config.workspace, config.is_monorepo(), &next),
+            to: (!version_by_command).then(|| next.clone()),
+            tag: (!version_by_command)
+                .then(|| pkg.tag_for_version(&config.workspace, config.is_monorepo(), &next)),
             prerelease: false,
             triggered_by: Trigger::Dependency,
         });

@@ -53,6 +53,7 @@ pub fn release(
             channel,
             draft,
             force_unlock,
+            true,
             timing,
         )?;
         if let Some(out) = out {
@@ -81,6 +82,7 @@ pub fn release(
             channel,
             draft,
             force_unlock,
+            true,
             timing,
         );
 

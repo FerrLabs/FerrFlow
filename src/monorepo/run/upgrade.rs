@@ -150,6 +150,7 @@ mod tests {
             strategy_label: bump.to_string(),
             tag: format!("v{next}"),
             version_source: None::<VersionSource>,
+            version_pending: false,
         })))
     }
 

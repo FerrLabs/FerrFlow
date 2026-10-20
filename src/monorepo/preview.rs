@@ -130,7 +130,11 @@ fn format_preview_comment(packages: &[CheckPackage]) -> String {
             "| {} | {} | {} | {} |\n",
             escape_md_cell(&pkg.name),
             code_cell(&pkg.current_version),
-            code_cell(&pkg.next_version),
+            code_cell(
+                pkg.next_version
+                    .as_deref()
+                    .unwrap_or("set by versionCommand at release"),
+            ),
             escape_md_cell(&pkg.bump_type),
         ));
     }

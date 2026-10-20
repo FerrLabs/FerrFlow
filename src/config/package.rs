@@ -30,6 +30,8 @@ pub struct PackageConfig {
     /// it with a plain version while the rest of the workspace stays stamped.
     #[serde(default, alias = "buildMetadata")]
     pub build_metadata: Option<BuildMetadata>,
+    #[serde(default, alias = "versionCommand")]
+    pub version_command: Option<String>,
     #[serde(default)]
     pub hooks: Option<HooksConfig>,
     #[serde(default)]
@@ -207,6 +209,15 @@ impl PackageConfig {
         self.version_template
             .as_deref()
             .or(workspace.version_template.as_deref())
+    }
+
+    pub fn effective_version_command<'a>(
+        &'a self,
+        workspace: &'a WorkspaceConfig,
+    ) -> Option<&'a str> {
+        self.version_command
+            .as_deref()
+            .or(workspace.version_command.as_deref())
     }
 
     fn effective_template<'a>(

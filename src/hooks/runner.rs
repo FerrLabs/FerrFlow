@@ -269,6 +269,27 @@ mod hook_env_tests {
         assert!(provided.iter().any(|k| k == "FERRFLOW_NEW_VERSION"));
         assert!(provided.iter().any(|k| k == "FERRFLOW_TAG"));
     }
+
+    #[cfg(unix)]
+    #[test]
+    fn capture_version_trims_stdout_and_exposes_the_context() {
+        let version = capture_version(
+            "printf '  %s\\n' \"$FERRFLOW_OLD_VERSION\"",
+            &ctx(),
+            Path::new("."),
+        )
+        .unwrap();
+
+        assert_eq!(version, "1.0.0");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn capture_version_rejects_empty_output() {
+        let err = capture_version("true", &ctx(), Path::new(".")).unwrap_err();
+
+        assert!(err.to_string().contains("printed nothing"));
+    }
 }
 
 /// Runs the `buildMetadata` command and returns its stdout as semver build
@@ -307,6 +328,30 @@ pub fn capture_build_metadata(command: &str, working_dir: &Path) -> Result<Strin
         anyhow::bail!(
             "buildMetadata must be dot-separated alphanumerics and hyphens, got {value:?} from: {command}"
         );
+    }
+    Ok(value)
+}
+
+pub fn capture_version(command: &str, ctx: &HookContext, working_dir: &Path) -> Result<String> {
+    let output = build_hook_command(command, ctx, working_dir)
+        .stderr(std::process::Stdio::inherit())
+        .output()
+        .with_context(|| format!("versionCommand failed to start: {command}"))?;
+
+    if !output.status.success() {
+        anyhow::bail!(
+            "versionCommand exited with {}: {command}",
+            output
+                .status
+                .code()
+                .map(|c| c.to_string())
+                .unwrap_or_else(|| "a signal".to_string()),
+        );
+    }
+
+    let value = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if value.is_empty() {
+        anyhow::bail!("versionCommand printed nothing: {command}");
     }
     Ok(value)
 }

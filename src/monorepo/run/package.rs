@@ -51,7 +51,8 @@ impl PackageRun<'_> {
             state.released.push(released_package(pkg, &bump));
         }
 
-        if self.flags.dry_run && self.flags.verbose && !self.flags.quiet() {
+        if self.flags.dry_run && self.flags.verbose && !self.flags.quiet() && !bump.version_pending
+        {
             emit_dry_run_diffs(
                 pkg,
                 self.root,
@@ -136,9 +137,9 @@ impl PackageRun<'_> {
         CheckPackage {
             name: pkg.name.clone(),
             current_version: bump.current_version.clone(),
-            next_version: bump.new_version.clone(),
+            next_version: (!bump.version_pending).then(|| bump.new_version.clone()),
             bump_type: bump.strategy_label.clone(),
-            tag: bump.tag.clone(),
+            tag: (!bump.version_pending).then(|| bump.tag.clone()),
             channel: self.inputs.prerelease_ctx.channel.clone(),
             prerelease: bump.is_prerelease,
             version_source: bump.version_source.clone(),
@@ -164,12 +165,17 @@ impl PackageRun<'_> {
             .as_ref()
             .map(|source| format!(", {source}"))
             .unwrap_or_default();
+        let shown_version = if bump.version_pending {
+            "set by versionCommand at release".yellow().bold()
+        } else {
+            bump.new_version.green().bold()
+        };
         let mut lines = vec![format!(
             "{} {}  {} → {}  ({}{}{})",
             "●".green().bold(),
             pkg.name.bold(),
             bump.current_version.dimmed(),
-            bump.new_version.green().bold(),
+            shown_version,
             bump.strategy_label.cyan(),
             source_label.dimmed(),
             channel_label.yellow()
@@ -184,7 +190,7 @@ impl PackageRun<'_> {
             }));
         }
 
-        if !bump.is_prerelease {
+        if !bump.is_prerelease && !bump.version_pending {
             lines.extend(self.floating_tag_lines(pkg, &bump.new_version));
         }
         lines

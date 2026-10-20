@@ -58,6 +58,7 @@ pub fn check(
         channel,
         false,
         false,
+        false,
         timing,
     )?;
 
@@ -115,6 +116,7 @@ pub(super) fn plan_json(config_path: Option<&Path>, channel: Option<&str>) -> Re
         &[],
         &[],
         channel,
+        false,
         false,
         false,
         &mut timing,

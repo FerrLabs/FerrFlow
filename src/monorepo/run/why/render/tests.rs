@@ -77,8 +77,8 @@ fn explanation() -> Explanation {
         decision: Decision::Bump {
             bump: "minor".to_string(),
             from: "1.2.0".to_string(),
-            to: "1.3.0".to_string(),
-            tag: "api@v1.3.0".to_string(),
+            to: Some("1.3.0".to_string()),
+            tag: Some("api@v1.3.0".to_string()),
             prerelease: false,
             triggered_by: Trigger::Commits,
         },
@@ -307,8 +307,8 @@ fn the_decision_names_what_triggered_the_bump() {
     cascade.decision = Decision::Bump {
         bump: "patch".to_string(),
         from: "1.2.0".to_string(),
-        to: "1.2.1-beta.1".to_string(),
-        tag: "api@v1.2.1-beta.1".to_string(),
+        to: Some("1.2.1-beta.1".to_string()),
+        tag: Some("api@v1.2.1-beta.1".to_string()),
         prerelease: true,
         triggered_by: Trigger::Dependency,
     };
@@ -321,8 +321,8 @@ fn the_decision_names_what_triggered_the_bump() {
     forced.decision = Decision::Bump {
         bump: "forced".to_string(),
         from: "1.2.0".to_string(),
-        to: "5.0.0".to_string(),
-        tag: "api@v5.0.0".to_string(),
+        to: Some("5.0.0".to_string()),
+        tag: Some("api@v5.0.0".to_string()),
         prerelease: false,
         triggered_by: Trigger::Forced,
     };

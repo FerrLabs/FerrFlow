@@ -186,6 +186,14 @@
       ],
       "description": "Snake_case form of `buildMetadata` — both spellings are accepted. Overrides `workspace.buildMetadata` for this package. A command replaces the workspace one, `true` inherits it, and `false` releases this package with a plain version while the rest of the workspace stays stamped."
     },
+    "versionCommand": {
+      "type": "string",
+      "description": "Overrides `workspace.versionCommand` for this package. Command whose stdout is the version this release ships, replacing the one the versioning strategy computed. It receives the usual `FERRFLOW_*` variables, with `FERRFLOW_NEW_VERSION` holding the computed proposal. It runs only in `release` (dry run included), after the bump is decided and before any version file, tag or changelog heading is written. `check`, `preview`, `status`, `why` and `graph` never run it and report the version as set by the command. The output must be a version that goes past the current one and does not collide with an existing tag. Not allowed on a package in a linked or fixed group."
+    },
+    "version_command": {
+      "type": "string",
+      "description": "Snake_case form of `versionCommand` — both spellings are accepted. Overrides `workspace.versionCommand` for this package. Command whose stdout is the version this release ships, replacing the one the versioning strategy computed. It receives the usual `FERRFLOW_*` variables, with `FERRFLOW_NEW_VERSION` holding the computed proposal. It runs only in `release` (dry run included), after the bump is decided and before any version file, tag or changelog heading is written. `check`, `preview`, `status`, `why` and `graph` never run it and report the version as set by the command. The output must be a version that goes past the current one and does not collide with an existing tag. Not allowed on a package in a linked or fixed group."
+    },
     "hooks": {
       "$ref": "#/$defs/hooks"
     },
