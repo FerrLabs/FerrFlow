@@ -6,8 +6,18 @@
   "engines": {
     "node": ">=18"
   },
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
+    "./package.json": "./package.json"
+  },
   "files": [
-    "bin"
+    "bin",
+    "index.js",
+    "index.d.ts",
+    "types"
   ],
   "homepage": "https://ferrflow.com",
   "keywords": [
@@ -18,6 +28,7 @@
     "release"
   ],
   "license": "MIT",
+  "main": "./index.js",
   "name": "ferrflow",
   "optionalDependencies": {
     "@ferrflow/darwin-arm64": "7.32.0",
@@ -33,5 +44,6 @@
     "url": "git+https://github.com/FerrLabs/FerrFlow.git"
   },
   "type": "module",
+  "types": "./index.d.ts",
   "version": "7.32.0"
 }

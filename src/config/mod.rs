@@ -11,7 +11,7 @@ mod include;
 #[cfg(feature = "cli")]
 mod init;
 #[cfg(feature = "cli")]
-mod loader_js;
+pub(crate) mod loader_js;
 #[cfg(feature = "cli")]
 mod migrate;
 mod package;

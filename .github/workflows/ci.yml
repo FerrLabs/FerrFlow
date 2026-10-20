@@ -52,6 +52,16 @@ jobs:
         run: cargo check -p ferrflow-wasm
       - name: Tests (nextest)
         run: cargo nextest run --no-fail-fast
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+      - name: Config types match the schema
+        run: |
+          npm install --no-save --prefix scripts json-schema-to-typescript@15.0.4
+          node scripts/generate-types.mjs
+          git diff --exit-code npm/types/config.d.ts
+      - name: Typecheck the published types and their misuse cases
+        run: npx --yes -p typescript@5 tsc --noEmit --strict --skipLibCheck false --module nodenext --moduleResolution nodenext npm/types-check.ts
 
   msrv:
     name: MSRV

@@ -2,6 +2,8 @@ mod context;
 mod point;
 mod resolve;
 mod runner;
+#[cfg(test)]
+mod types_tests;
 
 pub use context::{HookCommit, HookContext, HookFile, HookPackage};
 pub use point::HookPoint;
