@@ -420,7 +420,28 @@ Définit un package à versionner. Vous pouvez en avoir un ou plusieurs.
 | `tagTemplate`   | non    | hérité du workspace   | Surcharger le modèle de tag pour ce package                 |
 | `latestTag`     | non    | hérité du workspace   | Surcharger le tag alias flottant pour ce package            |
 | `buildMetadata` | non    | hérité du workspace   | Surcharger la commande de métadonnées, ou `false` pour une version nue |
+| `versionCommand` | non    | hérité du workspace   | Surcharger la commande de version pour ce package                      |
 | `versionSource` | non    | hérité du workspace   | Surcharger la résolution tag / fichier pour ce package      |
+
+### Commande de version
+
+`versionCommand` désigne une commande dont la sortie standard est la version publiée par une release. À utiliser quand la version elle-même, et non un suffixe, est décidée hors des commits : un numéro imposé par un projet amont, un schéma de dates que les stratégies intégrées ne couvrent pas. Pour une décoration après un `+`, préférer `buildMetadata`.
+
+La commande est exécutée par `release`, `--dry-run` compris, une fois le bump décidé et avant l'écriture de tout fichier de version, tag ou titre de changelog, qui portent donc tous sa sortie. Elle reçoit les variables `FERRFLOW_*` habituelles ; `FERRFLOW_NEW_VERSION` contient la version que la stratégie aurait choisie et `FERRFLOW_COMMITS_JSON` les commits. FerrFlow élague la sortie et retire un `v` initial.
+
+La release est interrompue si la commande échoue, n'imprime rien, imprime une valeur que la stratégie ne sait pas lire, une version qui ne dépasse pas la version courante, ou une version dont le tag existe déjà. Imprimer la version courante ne publie rien pour ce package. Dans un monorepo la commande s'exécute une fois par package publié, et chaque package peut définir la sienne.
+
+`check`, `preview`, `status`, `why` et `graph` ne l'exécutent jamais, car ils tournent dans des contextes qui ne doivent pas exécuter le code du dépôt. Ils indiquent que la version est fixée par la commande, et `check --json` renvoie `null` pour `next_version` et `tag`.
+
+Un package d'un groupe `linked` ou `fixed` ne peut pas définir `versionCommand`, et `--force-version` l'emporte sur elle.
+
+```json
+{
+  "workspace": {
+    "versionCommand": "sh scripts/next-version.sh"
+  }
+}
+```
 
 ### `versionedFiles`
 

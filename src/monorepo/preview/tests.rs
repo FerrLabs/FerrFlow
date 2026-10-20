@@ -156,7 +156,7 @@ fn each_package_gets_a_row_and_commits_are_summed_across_packages() {
 fn hostile_package_fields_cannot_break_the_table() {
     let mut evil = api();
     evil.name = "a|b\n<img>".to_string();
-    evil.next_version = "1.3.0`".to_string();
+    evil.next_version = Some("1.3.0`".to_string());
     let body = format_preview_comment(&[evil]);
     let row = body
         .lines()

@@ -375,6 +375,7 @@ mod release_json_diff {
                 None,
                 false,
                 false,
+                true,
                 &mut Timing::new(false),
             )?;
             captured = out.expect("dry-run returns output").json;
@@ -949,6 +950,7 @@ mod cycle_detection {
                 None,
                 false,
                 false,
+                true,
                 &mut Timing::new(false),
             )?;
             Ok(())

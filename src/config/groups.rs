@@ -48,12 +48,29 @@ impl Config {
 
         for group in &groups {
             check_group(group, &known, &mut assigned, &mut errors);
+            self.check_version_commands(group, &mut errors);
         }
 
         if errors.is_empty() {
             Ok(())
         } else {
             Err(errors)
+        }
+    }
+
+    fn check_version_commands(&self, group: &PackageGroup, errors: &mut Vec<String>) {
+        let kind = group.kind.label();
+        for member in &group.members {
+            let sets_command = self
+                .packages
+                .iter()
+                .find(|p| &p.name == member)
+                .is_some_and(|p| p.effective_version_command(&self.workspace).is_some());
+            if sets_command {
+                errors.push(format!(
+                    "package '{member}' in a {kind} group sets versionCommand, which would break the version the group keeps in step"
+                ));
+            }
         }
     }
 }
@@ -130,6 +147,17 @@ mod tests {
         let c = config(&["a", "b", "c"], r#"[["a","b"]]"#, r#"[["a","c"]]"#);
         let err = c.validate_groups().unwrap_err();
         assert!(err.iter().any(|e| e.contains("more than one")));
+    }
+
+    #[test]
+    fn a_group_member_with_a_version_command_is_an_error() {
+        let mut cfg = config(&["a", "b"], r#"[["a","b"]]"#, "[]");
+        cfg.packages[1].version_command = Some("echo 1.0.0".into());
+
+        let errors = cfg.validate_groups().unwrap_err();
+
+        assert_eq!(errors.len(), 1);
+        assert!(errors[0].contains("'b'") && errors[0].contains("versionCommand"));
     }
 
     #[test]

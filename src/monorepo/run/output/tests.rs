@@ -19,6 +19,7 @@ fn flags() -> RunFlags {
         force: false,
         draft: false,
         shadow: false,
+        version_commands: false,
     }
 }
 
@@ -124,9 +125,9 @@ fn check_serialises_the_planned_packages() {
         json_packages: vec![CheckPackage {
             name: "api".to_string(),
             current_version: "1.0.0".to_string(),
-            next_version: "1.1.0".to_string(),
+            next_version: Some("1.1.0".to_string()),
             bump_type: "minor".to_string(),
-            tag: "api@v1.1.0".to_string(),
+            tag: Some("api@v1.1.0".to_string()),
             channel: None,
             prerelease: false,
             version_source: None,

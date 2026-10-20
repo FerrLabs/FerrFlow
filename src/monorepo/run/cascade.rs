@@ -14,6 +14,7 @@ use super::super::util::tags_for_package;
 use super::super::version_source::VersionSource;
 use super::release_json::ReleasedPackage;
 use super::summary::PlannedTag;
+use super::version_hook::{Candidate, Resolved};
 use crate::changelog::update_changelog;
 
 pub(super) struct CascadeSink<'a> {
@@ -30,16 +31,19 @@ pub(super) struct CascadeSink<'a> {
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn run_dependency_cascade(
-    config: &Config,
-    root: &Path,
-    all_tags: &[String],
-    channel: Option<&str>,
+    pass: &super::version_hook::Pass<'_>,
     json: bool,
     release_json: bool,
-    dry_run: bool,
     sink: &mut CascadeSink<'_>,
     captured_metadata: &mut std::collections::HashMap<String, String>,
 ) -> anyhow::Result<()> {
+    let (config, root, all_tags, channel, dry_run) = (
+        pass.config,
+        pass.root,
+        pass.all_tags,
+        pass.channel,
+        pass.dry_run,
+    );
     let settled = settle(config, sink.bumped);
     // These packages were not in `bump_order`, so `capture` never saw them and
     // their commands are missing from the map. Without this they released with
@@ -57,10 +61,14 @@ pub(super) fn run_dependency_cascade(
         .collect();
     super::build_metadata::capture_more(config, &cascaded, root, dry_run, captured_metadata)?;
     for (pkg_idx, bump) in settled.order {
-        let Some(release) = resolve_cascaded(config, root, all_tags, &settled.state, pkg_idx, bump)
+        let Some(mut release) =
+            resolve_cascaded(config, root, all_tags, &settled.state, pkg_idx, bump)
         else {
             continue;
         };
+        if !release.settle(pass)? {
+            continue;
+        }
         if release_json {
             sink.released.push(release.released_package());
         }
@@ -83,6 +91,7 @@ struct CascadedRelease<'a> {
     new_version: String,
     tag: String,
     dep_trigger: Vec<&'a str>,
+    version_pending: bool,
 }
 
 fn resolve_cascaded<'a>(
@@ -125,10 +134,35 @@ fn resolve_cascaded<'a>(
         new_version,
         tag,
         dep_trigger,
+        version_pending: false,
     })
 }
 
 impl CascadedRelease<'_> {
+    fn settle(&mut self, pass: &super::version_hook::Pass<'_>) -> anyhow::Result<bool> {
+        let resolved = pass.resolve(&Candidate {
+            pkg: self.pkg,
+            current: &self.current_version,
+            proposed: &self.new_version,
+            bump: self.bump,
+            is_prerelease: false,
+            commits: &[],
+        })?;
+        Ok(match resolved {
+            Resolved::Plain => true,
+            Resolved::Pending => {
+                self.version_pending = true;
+                true
+            }
+            Resolved::Version { version, tag } => {
+                self.new_version = version;
+                self.tag = tag;
+                true
+            }
+            Resolved::Unchanged => false,
+        })
+    }
+
     fn version_source(&self) -> Option<VersionSource> {
         Some(VersionSource::File {
             file: self.vf.path.clone(),
@@ -154,9 +188,9 @@ impl CascadedRelease<'_> {
         CheckPackage {
             name: self.pkg.name.clone(),
             current_version: self.current_version.clone(),
-            next_version: self.new_version.clone(),
+            next_version: (!self.version_pending).then(|| self.new_version.clone()),
             bump_type: self.bump.to_string(),
-            tag: self.tag.clone(),
+            tag: (!self.version_pending).then(|| self.tag.clone()),
             channel: channel.map(str::to_string),
             prerelease: false,
             version_source: self.version_source(),
@@ -194,12 +228,17 @@ fn cascaded_output(
     captured_metadata: &HashMap<String, String>,
     release: &CascadedRelease<'_>,
 ) -> anyhow::Result<Vec<String>> {
+    let shown_version = if release.version_pending {
+        "set by versionCommand at release".yellow().bold()
+    } else {
+        release.new_version.green().bold()
+    };
     let mut lines = vec![format!(
         "{} {}  {} → {}  ({}, dependency: {})",
         "●".green().bold(),
         release.pkg.name.bold(),
         release.current_version.dimmed(),
-        release.new_version.green().bold(),
+        shown_version,
         release.bump.to_string().cyan(),
         release.dep_trigger.join(", ").cyan()
     )];
@@ -375,6 +414,7 @@ fn push_once(files: &mut Vec<String>, path: &str) {
 
 #[cfg(test)]
 mod tests {
+    use super::super::version_hook::Pass;
     use super::*;
 
     fn workspace() -> tempfile::TempDir {
@@ -535,11 +575,14 @@ mod tests {
         };
 
         run_dependency_cascade(
-            &config,
-            dir.path(),
-            &[],
-            None,
-            false,
+            &Pass {
+                config: &config,
+                root: dir.path(),
+                all_tags: &[],
+                channel: None,
+                dry_run: false,
+                run_commands: false,
+            },
             false,
             false,
             &mut sink,
@@ -588,13 +631,16 @@ mod tests {
         };
 
         run_dependency_cascade(
-            &config,
-            dir.path(),
-            &[],
-            None,
+            &Pass {
+                config: &config,
+                root: dir.path(),
+                all_tags: &[],
+                channel: None,
+                dry_run: true,
+                run_commands: false,
+            },
             false,
             false,
-            true,
             &mut sink,
             &mut std::collections::HashMap::new(),
         )

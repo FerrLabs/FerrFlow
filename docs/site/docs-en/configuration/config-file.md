@@ -481,6 +481,26 @@ buildMetadata = &quot;sh scripts/protocol-versions.sh&quot;
 </div></div>
 </div>
 
+### Version command
+
+`versionCommand` names a command whose stdout is the version a release ships. Reach for it when the version itself, not a suffix, is decided outside the commits: a number owned by an upstream project, a date scheme the built-in strategies do not cover. For decoration after a `+`, use `buildMetadata` instead.
+
+The command runs in `release`, `--dry-run` included, after the bump is decided and before any version file, tag or changelog heading is written, so all three carry its output. It receives the usual `FERRFLOW_*` variables; `FERRFLOW_NEW_VERSION` holds the version the strategy would have picked and `FERRFLOW_COMMITS_JSON` the commits. FerrFlow trims the output and drops a leading `v`.
+
+The release aborts if the command fails, prints nothing, prints something the strategy cannot parse, prints a version that does not go past the current one, or prints a version whose tag already exists. Printing the current version releases nothing for that package. In a monorepo the command runs once per package that releases, and a package can set its own.
+
+`check`, `preview`, `status`, `why` and `graph` never run it, because they run in places that must not execute repository code. They report the version as set by the command, and `check --json` prints `null` for `next_version` and `tag`.
+
+A package in a `linked` or `fixed` group cannot set `versionCommand`, and `--force-version` takes precedence over it.
+
+```json
+{
+  "workspace": {
+    "versionCommand": "sh scripts/next-version.sh"
+  }
+}
+```
+
 ### Changelog rendering
 
 Omit `changelog` entirely and FerrFlow writes the classic layout: **Breaking Changes**, **Features**, **Bug Fixes** and **Refactoring**, flat bullets, no links. `perf` commits fold into **Bug Fixes** there, and every other type, `docs` and `security` included, is left out.
@@ -560,6 +580,7 @@ Defines a package to version. You can have one or many.
 | `floatingTags`  | no       | inherited from workspace | Override floating tags for this package                                                                                                                                                                                                                                       |
 | `latestTag`     | no       | inherited from workspace | Override the floating alias tag for this package                                                                                                                                                                                                                              |
 | `buildMetadata` | no       | inherited from workspace | Override the build metadata command for this package, or `false` to release it with a plain version                                                                                                                                                                           |
+| `versionCommand` | no       | inherited from workspace | Override the version command for this package                                                                                                                                                                                                                                 |
 | `versionSource` | no       | inherited from workspace | Override the tag-vs-file resolution for this package                                                                                                                                                                                                                          |
 
 ### `versionedFiles`

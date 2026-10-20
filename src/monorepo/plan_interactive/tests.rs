@@ -275,6 +275,6 @@ fn the_release_plan_json_still_matches_the_shape_the_session_reads() {
     let entry = &plan.packages[0];
     assert_eq!(entry.name, "app");
     assert_eq!(entry.current_version, "1.0.0");
-    assert_eq!(entry.next_version, "1.1.0");
+    assert_eq!(entry.next_version.as_deref(), Some("1.1.0"));
     assert_eq!(entry.bump_type, "minor");
 }

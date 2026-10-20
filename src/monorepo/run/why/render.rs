@@ -159,13 +159,19 @@ fn push_decision(out: &mut Vec<String>, x: &Explanation) {
                 Trigger::Forced => "set with --force-version",
             };
             let pre = if *prerelease { " (prerelease)" } else { "" };
+            let outcome = match (to, tag) {
+                (Some(to), Some(tag)) => format!(
+                    "{} → {}, tag {}",
+                    from.dimmed(),
+                    to.green().bold(),
+                    tag.cyan()
+                ),
+                _ => format!("{} → set by versionCommand at release", from.dimmed()),
+            };
             out.push(format!(
-                "{} {} bump {cause}{pre} — {} → {}, tag {}",
+                "{} {} bump {cause}{pre} — {outcome}",
                 "Decision:".bold(),
                 bump.green().bold(),
-                from.dimmed(),
-                to.green().bold(),
-                tag.cyan()
             ));
         }
         Decision::Skipped { reason } => out.push(format!(

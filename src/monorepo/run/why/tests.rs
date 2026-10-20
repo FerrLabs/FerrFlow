@@ -104,7 +104,7 @@ fn a_feat_commit_on_the_package_explains_the_minor_bump() {
             ..
         } => {
             assert_eq!(
-                (bump.as_str(), from.as_str(), to.as_str()),
+                (bump.as_str(), from.as_str(), to.as_deref().unwrap()),
                 ("minor", "1.0.0", "1.1.0")
             );
             assert!(matches!(triggered_by, Trigger::Commits));
@@ -179,7 +179,7 @@ fn a_cascaded_package_reports_the_dependency_as_the_trigger() {
             triggered_by,
             ..
         } => {
-            assert_eq!((bump.as_str(), to.as_str()), ("patch", "1.0.1"));
+            assert_eq!((bump.as_str(), to.as_deref().unwrap()), ("patch", "1.0.1"));
             assert!(matches!(triggered_by, Trigger::Dependency));
         }
         other => panic!(
@@ -191,7 +191,7 @@ fn a_cascaded_package_reports_the_dependency_as_the_trigger() {
     let api = fx.explain("api");
     match bump_of(&api) {
         Decision::Bump { bump, to, .. } => {
-            assert_eq!((bump.as_str(), to.as_str()), ("major", "2.0.0"))
+            assert_eq!((bump.as_str(), to.as_deref().unwrap()), ("major", "2.0.0"))
         }
         other => panic!(
             "expected a cascade bump, got {:?}",

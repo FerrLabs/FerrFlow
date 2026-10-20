@@ -13,10 +13,15 @@ flowchart TB
     GRAPH --> TAGS["pre-collect every tag + commit OID<br/>in one tag_foreach scan"]
     TAGS --> ANALYSE["per package: find last tag,<br/>read commits since,<br/>classify conventional commits"]
     ANALYSE --> PLAN["compute the bump<br/>→ snapshot of every package to change"]
-    PLAN --> CL["build the changelog section once"]
+    PLAN --> VC["versionCommand sets the version<br/>(release only, never check or preview)"]
+    VC --> CL["build the changelog section once"]
     CL --> WRITE["write versions into the manifests"]
     WRITE --> EXEC["execute_release"]
 ```
+
+`versionCommand` sits between the decided bump and every write, so the tag, the changelog heading and
+the version files all carry the version it prints. Read-only commands skip it and report the version as
+command-determined instead of printing a number that may not be the one that ships.
 
 The tag pre-collection matters more than it looks: without it, every package does its own tag walk,
 and lookups go from `O(1)` against a prepared map to `O(tags)` callbacks plus an `O(commits)` walk —

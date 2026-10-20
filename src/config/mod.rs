@@ -233,10 +233,10 @@ impl Config {
 
     pub fn has_release_side_effects(&self) -> bool {
         self.workspace.hooks.is_some()
-            || self
-                .packages
-                .iter()
-                .any(|pkg| pkg.hooks.is_some() || !pkg.publishers.is_empty())
+            || self.workspace.version_command.is_some()
+            || self.packages.iter().any(|pkg| {
+                pkg.hooks.is_some() || pkg.version_command.is_some() || !pkg.publishers.is_empty()
+            })
     }
 }
 

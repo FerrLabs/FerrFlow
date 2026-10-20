@@ -132,6 +132,7 @@ mod tests {
             strategy_label: BumpType::Minor.to_string(),
             tag: "v1.1.0".to_string(),
             version_source: None,
+            version_pending: false,
         })))
     }
 

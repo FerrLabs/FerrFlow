@@ -10,9 +10,9 @@ pub(super) struct CheckCommit {
 pub(super) struct CheckPackage {
     pub name: String,
     pub current_version: String,
-    pub next_version: String,
+    pub next_version: Option<String>,
     pub bump_type: String,
-    pub tag: String,
+    pub tag: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub channel: Option<String>,
     pub prerelease: bool,

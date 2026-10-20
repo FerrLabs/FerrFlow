@@ -22,7 +22,7 @@ struct PlanJson {
 struct PlanEntry {
     name: String,
     current_version: String,
-    next_version: String,
+    next_version: Option<String>,
     bump_type: String,
 }
 
@@ -74,7 +74,7 @@ pub fn run(config_path: Option<&Path>, channel: Option<&str>) -> Result<()> {
         .map(|p| Row {
             package: p.name.clone(),
             current: p.current_version.clone(),
-            planned: Some(p.next_version.clone()),
+            planned: p.next_version.clone(),
             reason: p.bump_type.clone(),
         })
         .collect();

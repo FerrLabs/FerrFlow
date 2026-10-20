@@ -26,6 +26,8 @@ pub struct WorkspaceConfig {
     /// identity and ignored for precedence.
     #[serde(default, alias = "buildMetadata")]
     pub build_metadata: Option<String>,
+    #[serde(default, alias = "versionCommand")]
+    pub version_command: Option<String>,
     #[serde(default, alias = "recoverMissedReleases")]
     pub recover_missed_releases: bool,
     #[serde(default, alias = "releaseCommitMode")]
@@ -90,6 +92,7 @@ impl Default for WorkspaceConfig {
             tag_template: Default::default(),
             version_template: Default::default(),
             build_metadata: Default::default(),
+            version_command: Default::default(),
             recover_missed_releases: Default::default(),
             release_commit_mode: Default::default(),
             release_commit_scope: Default::default(),
