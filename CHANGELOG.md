@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.32.0] - 2026-10-20
+
+### Features
+
+- feat(versioning): add versionCommand, a command that decides the release version (#1331)
+
 ## [7.31.0] - 2026-10-17
 
 ### Features
