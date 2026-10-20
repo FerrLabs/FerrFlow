@@ -31,7 +31,7 @@ pub(crate) fn path_to_file_url(path: &Path) -> Result<String> {
     }
 }
 
-const LOADER_SCRIPT: &str = r#"
+pub(crate) const LOADER_SCRIPT: &str = r#"
 const SHELL_SAFE_JS_ESCAPES = { '\\': '\\\\\\\\', "'": "\\'", '"': '\\"', '`': '\\`', '$': '\\$' };
 
 function shellSafeJsString(value) {

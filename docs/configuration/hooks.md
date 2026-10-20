@@ -90,3 +90,24 @@ token must read it from a different variable you inject yourself.
 (prefixed with `⊙`) without executing them. The once-per-run `onSuccess` /
 `onError` / `preRelease` hooks depend on a real release outcome and are not
 part of the dry-run trace.
+
+## Typed `ferrflow.ts`
+
+The `ferrflow` npm package ships types for the whole config and for the
+context passed to function hooks. `defineConfig` accepts an object, a function
+returning one, or an async function returning one:
+
+```ts
+import { defineConfig } from 'ferrflow';
+
+export default defineConfig({
+  workspace: {
+    hooks: {
+      postTag: (ctx) => console.log(`tagged ${ctx.package} ${ctx.newVersion}`),
+    },
+  },
+});
+```
+
+`HookContext`, `HookCommit`, `HookFile` and `HookPackage` are exported for
+hooks defined elsewhere.
