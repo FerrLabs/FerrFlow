@@ -6,4 +6,4 @@ export type FerrflowConfigInput =
   | FerrFlowConfiguration
   | (() => FerrFlowConfiguration | Promise<FerrFlowConfiguration>);
 
-export declare function defineConfig<T extends FerrflowConfigInput>(config: T): T;
+export declare function defineConfig(config: FerrflowConfigInput): FerrflowConfigInput;
