@@ -1,6 +1,6 @@
 [package]
 name = "ferrflow-api"
-version = "2026.10.9"
+version = "2026.10.10"
 edition = "2024"
 license = "LicenseRef-FerrLabs-Proprietary"
 publish = false
