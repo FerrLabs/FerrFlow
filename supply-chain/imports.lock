@@ -527,8 +527,8 @@ user-login = "BurntSushi"
 user-name = "Andrew Gallant"
 
 [[publisher.libc]]
-version = "0.2.190"
-when = "2026-10-02"
+version = "0.2.191"
+when = "2026-10-16"
 trusted-publisher = "github:rust-lang/libc"
 
 [[publisher.memchr]]
@@ -749,15 +749,15 @@ user-login = "Manishearth"
 user-name = "Manish Goregaokar"
 
 [[publisher.ureq]]
-version = "3.4.2"
-when = "2026-09-13"
+version = "3.5.0"
+when = "2026-10-21"
 user-id = 5441
 user-login = "algesten"
 user-name = "Martin Algesten"
 
 [[publisher.ureq-proto]]
-version = "0.6.4"
-when = "2026-09-16"
+version = "0.6.5"
+when = "2026-10-17"
 user-id = 5441
 user-login = "algesten"
 user-name = "Martin Algesten"
@@ -995,6 +995,12 @@ as correct and otherwise this crate is good to go.
 who = "Pat Hickey <p.hickey@f5.com>"
 criteria = "safe-to-deploy"
 delta = "0.23.45 -> 0.23.46"
+
+[[audits.bytecode-alliance.audits.rustls-webpki]]
+who = "Alex Crichton <alex@alexcrichton.com>"
+criteria = "safe-to-deploy"
+delta = "0.103.15 -> 0.103.16"
+notes = "Updated with new certificates"
 
 [[audits.bytecode-alliance.audits.sharded-slab]]
 who = "Pat Hickey <phickey@fastly.com>"
