@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.10.12] - 2026-10-24
+
+### Bug Fixes
+
+- fix(deps): update crates for RUSTSEC-2026-0381..0385 and ignore 0387 (#1105)
+
 ## [2026.10.10] - 2026-10-21
 
 ### Bug Fixes
