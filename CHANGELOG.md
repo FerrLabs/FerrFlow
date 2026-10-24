@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.33.2] - 2026-10-24
+
+### Bug Fixes
+
+- fix(deps): update rust crate gix to 0.90 [security] (#1347)
+
 ## [7.33.1] - 2026-10-24
 
 ### Bug Fixes
