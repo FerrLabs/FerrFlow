@@ -163,120 +163,120 @@ user-login = "cuviper"
 user-name = "Josh Stone"
 
 [[publisher.gix]]
-version = "0.89.0"
-when = "2026-10-08"
+version = "0.90.0"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-actor]]
-version = "0.44.0"
-when = "2026-10-08"
+version = "0.44.1"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-attributes]]
-version = "0.37.0"
-when = "2026-10-08"
+version = "0.37.1"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-bitmap]]
-version = "0.6.0"
-when = "2026-10-08"
+version = "0.6.1"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-chunk]]
-version = "0.10.0"
-when = "2026-10-08"
+version = "0.10.1"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-command]]
-version = "0.12.0"
-when = "2026-10-08"
+version = "0.12.1"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-commitgraph]]
-version = "0.41.0"
-when = "2026-10-08"
+version = "0.42.0"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-config]]
-version = "0.62.0"
-when = "2026-10-08"
+version = "0.62.2"
+when = "2026-10-24"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-config-value]]
-version = "0.21.0"
-when = "2026-10-08"
+version = "0.21.1"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-date]]
-version = "0.18.0"
-when = "2026-10-08"
+version = "0.18.1"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-diff]]
-version = "0.69.0"
-when = "2026-10-08"
+version = "0.70.0"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-discover]]
-version = "0.57.0"
-when = "2026-10-08"
+version = "0.57.1"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-error]]
-version = "0.5.0"
-when = "2026-10-08"
+version = "0.5.2"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-filter]]
-version = "0.36.0"
-when = "2026-10-08"
+version = "0.36.1"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-fs]]
-version = "0.24.0"
-when = "2026-10-08"
+version = "0.24.1"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-glob]]
-version = "0.29.0"
-when = "2026-10-08"
+version = "0.29.1"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-hash]]
-version = "0.28.0"
-when = "2026-10-08"
+version = "0.28.1"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
@@ -289,8 +289,8 @@ user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-index]]
-version = "0.57.0"
-when = "2026-10-08"
+version = "0.58.0"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
@@ -310,106 +310,106 @@ user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-note]]
-version = "0.3.0"
-when = "2026-10-08"
+version = "0.3.1"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-object]]
-version = "0.66.0"
-when = "2026-10-08"
+version = "0.66.1"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-odb]]
-version = "0.86.0"
-when = "2026-10-08"
+version = "0.87.0"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-pack]]
-version = "0.76.0"
-when = "2026-10-08"
+version = "0.77.0"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-packetline]]
-version = "0.24.0"
-when = "2026-10-08"
+version = "0.24.1"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-parallel]]
-version = "0.50.0"
-when = "2026-10-08"
+version = "0.50.1"
+when = "2026-10-24"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-path]]
-version = "0.14.0"
-when = "2026-10-08"
+version = "0.14.1"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-protocol]]
-version = "0.67.0"
-when = "2026-10-08"
+version = "0.68.0"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-quote]]
-version = "0.10.0"
-when = "2026-10-08"
+version = "0.10.1"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-ref]]
-version = "0.69.0"
-when = "2026-10-08"
+version = "0.69.1"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-refspec]]
-version = "0.47.0"
-when = "2026-10-08"
+version = "0.47.1"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-revision]]
-version = "0.51.0"
-when = "2026-10-08"
+version = "0.52.0"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-revwalk]]
-version = "0.37.0"
-when = "2026-10-08"
+version = "0.38.0"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-sec]]
-version = "0.16.0"
-when = "2026-10-08"
+version = "0.16.1"
+when = "2026-10-24"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-shallow]]
-version = "0.15.0"
-when = "2026-10-08"
+version = "0.15.1"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
@@ -422,57 +422,57 @@ user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-trace]]
-version = "0.3.0"
-when = "2026-10-08"
+version = "0.3.1"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-transport]]
-version = "0.61.0"
-when = "2026-10-08"
+version = "0.62.0"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-traverse]]
-version = "0.63.0"
-when = "2026-10-08"
+version = "0.64.0"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-url]]
-version = "0.40.0"
-when = "2026-10-08"
+version = "0.40.1"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-utils]]
-version = "0.5.0"
-when = "2026-10-08"
+version = "0.5.2"
+when = "2026-10-24"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-validate]]
-version = "0.13.0"
-when = "2026-10-08"
+version = "0.13.1"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-worktree-stream]]
-version = "0.38.0"
-when = "2026-10-08"
+version = "0.39.0"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
 
 [[publisher.gix-zlib]]
-version = "0.3.0"
-when = "2026-10-08"
+version = "0.4.0"
+when = "2026-10-22"
 user-id = 980
 user-login = "Byron"
 user-name = "Sebastian Thiel"
