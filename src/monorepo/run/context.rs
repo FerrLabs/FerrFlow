@@ -86,12 +86,6 @@ impl ReleaseInputs {
             None => crate::git::build_head_ancestors(&repo).ok(),
         };
 
-        let target_branch = if prerelease_ctx.is_prerelease() {
-            current_branch
-        } else {
-            config.workspace.branch.clone()
-        };
-
         let changed_files = get_changed_files(&repo)?;
         if !flags.quiet() {
             log_changed_files(&changed_files);
@@ -106,7 +100,7 @@ impl ReleaseInputs {
             all_tags,
             tag_index,
             fallback_ancestors,
-            target_branch,
+            target_branch: current_branch,
             changed_files,
         })
     }
@@ -222,4 +216,62 @@ fn log_changed_files(changed_files: &[String]) {
         tracing::debug!("  {}", f.dimmed());
     }
     tracing::debug!("");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn git(dir: &Path, args: &[&str]) {
+        let status = std::process::Command::new("git")
+            .current_dir(dir)
+            .args(args)
+            .env_remove("GIT_DIR")
+            .env_remove("GIT_WORK_TREE")
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .expect("git should be on PATH");
+        assert!(status.success(), "git {args:?} failed");
+    }
+
+    fn target_branch_on(checked_out: &str, workspace_branch: &str) -> String {
+        let dir = tempfile::tempdir().unwrap();
+        git(dir.path(), &["init", "-q", "-b", "main"]);
+        git(dir.path(), &["config", "user.email", "t@example.com"]);
+        git(dir.path(), &["config", "user.name", "t"]);
+        git(dir.path(), &["commit", "-q", "--allow-empty", "-m", "root"]);
+        git(dir.path(), &["checkout", "-q", "-B", checked_out]);
+
+        let mut config = Config::default();
+        config.workspace.branch = workspace_branch.to_string();
+
+        let flags = RunFlags {
+            dry_run: true,
+            verbose: false,
+            json: true,
+            release_json: false,
+            force: false,
+            draft: false,
+            shadow: false,
+            version_commands: false,
+        };
+        let access = RepoAccess {
+            channel: None,
+            force_unlock: false,
+        };
+        ReleaseInputs::resolve(dir.path(), &config, flags, access, &mut Timing::new(false))
+            .unwrap()
+            .target_branch
+    }
+
+    #[test]
+    fn stable_release_targets_the_checked_out_maintenance_branch() {
+        assert_eq!(target_branch_on("1.1.x", "main"), "1.1.x");
+    }
+
+    #[test]
+    fn stable_release_targets_workspace_branch_when_on_it() {
+        assert_eq!(target_branch_on("main", "main"), "main");
+    }
 }

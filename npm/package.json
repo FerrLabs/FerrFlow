@@ -31,13 +31,13 @@
   "main": "./index.js",
   "name": "ferrflow",
   "optionalDependencies": {
-    "@ferrflow/darwin-arm64": "7.33.0",
-    "@ferrflow/darwin-x64": "7.33.0",
-    "@ferrflow/linux-arm": "7.33.0",
-    "@ferrflow/linux-arm64": "7.33.0",
-    "@ferrflow/linux-x64": "7.33.0",
-    "@ferrflow/win32-arm64": "7.33.0",
-    "@ferrflow/win32-x64": "7.33.0"
+    "@ferrflow/darwin-arm64": "7.33.1",
+    "@ferrflow/darwin-x64": "7.33.1",
+    "@ferrflow/linux-arm": "7.33.1",
+    "@ferrflow/linux-arm64": "7.33.1",
+    "@ferrflow/linux-x64": "7.33.1",
+    "@ferrflow/win32-arm64": "7.33.1",
+    "@ferrflow/win32-x64": "7.33.1"
   },
   "repository": {
     "type": "git",
@@ -45,5 +45,5 @@
   },
   "type": "module",
   "types": "./index.d.ts",
-  "version": "7.33.0"
+  "version": "7.33.1"
 }
