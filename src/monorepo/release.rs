@@ -62,6 +62,7 @@ pub fn release(
         return Ok(());
     }
 
+    let branch = crate::git::resolve_current_branch(&open_repo(&root)?, &config.workspace.branch);
     let mut last_err: Option<anyhow::Error> = None;
     for attempt in 1..=MAX_RELEASE_REGENERATE_ATTEMPTS {
         let pre_attempt_tags: std::collections::HashSet<String> = {
@@ -97,9 +98,6 @@ pub fn release(
                 if attempt < MAX_RELEASE_REGENERATE_ATTEMPTS
                     && crate::git::is_push_rejected_error(&e) =>
             {
-                let branch = open_repo(&root)
-                    .map(|repo| crate::git::resolve_current_branch(&repo, &config.workspace.branch))
-                    .unwrap_or_else(|_| config.workspace.branch.clone());
                 warn_stale_attempt(attempt, &branch, &e);
 
                 cleanup_failed_release_attempt(&root, &config, &pre_attempt_tags)?;
