@@ -6,6 +6,7 @@ version = 2
 yanked = "deny"
 ignore = [
   { id = "RUSTSEC-2023-0071", reason = "Marvin timing sidechannel in `rsa`, never fixed upstream. This service does use the RSA path: `jsonwebtoken` is pulled with `rust_crypto`, and `bot/app_jwt.rs` signs the GitHub App JWT with RS256, which GitHub mandates. Marvin is a chosen-ciphertext timing attack on RSA *decryption*; the bot signs with a local key and never decrypts attacker-supplied input, so there is no oracle to time. Do not copy this reasoning to another product without checking it. See #903." },
+  { id = "RUSTSEC-2026-0387", reason = "Timing variability in `crypto-bigint` 0.5.5, fixed only in >=0.7.6. The 0.5 line is pulled by the RustCrypto 0.13 stack (`elliptic-curve`, `rsa`) under `jsonwebtoken`, which has no release on the patched line yet. Drop this once `jsonwebtoken` moves to a patched `crypto-bigint`." },
 ]
 
 [licenses]
