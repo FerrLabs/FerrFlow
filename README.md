@@ -688,6 +688,16 @@ release:
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
+With the action, gate post-release steps on its `released` output (`releases` holds a JSON array of the tagged packages):
+
+```yaml
+- uses: FerrLabs/FerrFlow@v7
+  id: release
+- name: Publish
+  if: steps.release.outputs.released == 'true'
+  run: npm publish
+```
+
 ### Using the hosted bot (ferrflow[bot])
 
 Install the [FerrFlow GitHub App](https://github.com/apps/ferrflow) on your repo or org, then opt in with `bot: true`. Release commits, tags, and GitHub Releases are authored by `ferrflow[bot]` and downstream workflows triggered by those events run normally (unlike the default `GITHUB_TOKEN`, which suppresses them).

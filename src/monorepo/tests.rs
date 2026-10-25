@@ -103,7 +103,7 @@ mod manifest_flow {
     use std::collections::BTreeMap;
     use std::path::Path;
 
-    fn add_bare_remote(dir: &Path) -> tempfile::TempDir {
+    pub(super) fn add_bare_remote(dir: &Path) -> tempfile::TempDir {
         let bare = tempfile::tempdir().unwrap();
         git(dir, &["init", "--bare", &bare.path().to_string_lossy()]);
         git(
@@ -113,7 +113,7 @@ mod manifest_flow {
         bare
     }
 
-    fn write_config(dir: &Path, manifest_mode: bool, commit_mode: &str) {
+    pub(super) fn write_config(dir: &Path, manifest_mode: bool, commit_mode: &str) {
         let manifest_line = if manifest_mode {
             r#""manifestFile": ".ferrflow.manifest.json", "#
         } else {
@@ -131,7 +131,7 @@ mod manifest_flow {
         .unwrap();
     }
 
-    fn write_pkg(dir: &Path, pkg: &str, version: &str) {
+    pub(super) fn write_pkg(dir: &Path, pkg: &str, version: &str) {
         std::fs::create_dir_all(dir.join(pkg)).unwrap();
         std::fs::write(
             dir.join(pkg).join("version.json"),
@@ -154,6 +154,7 @@ mod manifest_flow {
                 None,
                 false,
                 false,
+                None,
                 &mut Timing::new(false),
             )
         })
@@ -328,6 +329,99 @@ mod manifest_flow {
     }
 }
 
+mod release_outputs {
+    use super::manifest_flow::{add_bare_remote, write_config, write_pkg};
+    use crate::monorepo::release_output::{ReleaseOutputFormat, ReleaseOutputTarget};
+    use crate::test_utils::{commit_file, git, init_repo, with_cwd};
+    use crate::timing::Timing;
+    use std::path::Path;
+
+    fn release_with_output(dir: &Path, dry_run: bool) -> serde_json::Value {
+        let config = dir.join(".ferrflow");
+        let out_file = dir.join("ferrflow-out.json");
+        let target =
+            ReleaseOutputTarget::resolve(ReleaseOutputFormat::Json, Some(out_file.clone()), None)
+                .unwrap();
+        with_cwd(dir, || {
+            crate::monorepo::release(
+                Some(&config),
+                dry_run,
+                false,
+                false,
+                false,
+                &[],
+                &[],
+                None,
+                false,
+                false,
+                Some(&target),
+                &mut Timing::new(false),
+            )
+        })
+        .unwrap();
+        serde_json::from_str(&std::fs::read_to_string(out_file).unwrap()).unwrap()
+    }
+
+    fn repo_with_api_feature(commit_mode: &str) -> tempfile::TempDir {
+        let (dir, _repo) = init_repo();
+        write_pkg(dir.path(), "api", "1.0.0");
+        write_pkg(dir.path(), "web", "2.0.0");
+        write_config(dir.path(), false, commit_mode);
+        commit_file(dir.path(), "seed.txt", "x", "chore: seed", 1_962_000_000);
+        commit_file(
+            dir.path(),
+            "api/feature.txt",
+            "y",
+            "feat: api change",
+            1_962_000_001,
+        );
+        dir
+    }
+
+    #[test]
+    fn a_release_reports_the_tagged_packages() {
+        let dir = repo_with_api_feature("commit");
+        let _remote = add_bare_remote(dir.path());
+
+        let out = release_with_output(dir.path(), false);
+
+        assert_eq!(out["released"], true);
+        let releases = out["releases"].as_array().unwrap();
+        assert_eq!(releases.len(), 1);
+        assert_eq!(releases[0]["name"], "api");
+        assert_eq!(releases[0]["version"], "1.1.0");
+        let tag = releases[0]["tag"].as_str().unwrap();
+        assert_eq!(git(dir.path(), &["tag", "--list", tag]).trim(), tag);
+    }
+
+    #[test]
+    fn a_dry_run_reports_nothing_released() {
+        let dir = repo_with_api_feature("commit");
+
+        let out = release_with_output(dir.path(), true);
+
+        assert_eq!(out["released"], false);
+        assert_eq!(out["releases"], serde_json::json!([]));
+    }
+
+    #[test]
+    fn nothing_to_release_still_writes_the_outputs() {
+        let (dir, _repo) = init_repo();
+        write_pkg(dir.path(), "api", "1.0.0");
+        write_pkg(dir.path(), "web", "2.0.0");
+        write_config(dir.path(), false, "commit");
+        commit_file(dir.path(), "seed.txt", "x", "chore: seed", 1_963_000_000);
+        git(dir.path(), &["tag", "api@v1.0.0"]);
+        git(dir.path(), &["tag", "web@v2.0.0"]);
+        let _remote = add_bare_remote(dir.path());
+
+        let out = release_with_output(dir.path(), false);
+
+        assert_eq!(out["released"], false);
+        assert_eq!(out["releases"], serde_json::json!([]));
+    }
+}
+
 mod release_json_diff {
     use crate::changelog::{ChangelogRender, GitLog};
     use crate::config::Config;
@@ -378,7 +472,7 @@ mod release_json_diff {
                 true,
                 &mut Timing::new(false),
             )?;
-            captured = out.expect("dry-run returns output").json;
+            captured = out.json;
             Ok(())
         })
         .unwrap();
@@ -742,6 +836,7 @@ mod lockfile_flow {
                 None,
                 false,
                 false,
+                None,
                 &mut Timing::new(false),
             )
         })
@@ -1057,6 +1152,7 @@ mod bump_raising {
                 None,
                 false,
                 false,
+                None,
                 &mut Timing::new(false),
             )
         });

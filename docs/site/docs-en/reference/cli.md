@@ -11,13 +11,15 @@ Run the full release pipeline: bump versions, update changelogs, commit, tag, pu
 ferrflow release [OPTIONS]
 ```
 
-| Flag                        | Description                                                                                                                                                    |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--force`                   | Allow floating tags to move backward to a lower version                                                                                                        |
-| `--force-version <VERSION>` | Force a specific version, skipping commit analysis. Format: `VERSION` (single repo) or `NAME@VERSION` (monorepo)                                               |
-| `--channel <NAME>`          | Pre-release channel override (e.g. `beta`, `rc`, `dev`)                                                                                                        |
-| `--draft`                   | Create releases as drafts (GitHub only). A later `ferrflow release` without `--draft` detects and publishes existing drafts automatically                      |
-| `--force-unlock`            | Break an existing `.git/ferrflow.lock` before acquiring it. Use only when no other `ferrflow release` is running — e.g. after a crash left the lockfile behind |
+| Flag                        | Description                                                                                                                                                                             |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--force`                   | Allow floating tags to move backward to a lower version                                                                                                                                 |
+| `--force-version <VERSION>` | Force a specific version, skipping commit analysis. Format: `VERSION` (single repo) or `NAME@VERSION` (monorepo)                                                                        |
+| `--channel <NAME>`          | Pre-release channel override (e.g. `beta`, `rc`, `dev`)                                                                                                                                 |
+| `--draft`                   | Create releases as drafts (GitHub only). A later `ferrflow release` without `--draft` detects and publishes existing drafts automatically                                               |
+| `--force-unlock`            | Break an existing `.git/ferrflow.lock` before acquiring it. Use only when no other `ferrflow release` is running — e.g. after a crash left the lockfile behind                          |
+| `--output-format <FORMAT>`  | After the run, write whether a release happened and which packages were tagged: `github` (appends to `$GITHUB_OUTPUT`), `dotenv` (`FERRFLOW_RELEASED` / `FERRFLOW_RELEASES`), or `json` |
+| `--output-file <PATH>`      | Destination for `--output-format`. Required for `dotenv` and `json`; `github` defaults to `$GITHUB_OUTPUT`                                                                              |
 
 **What it does:**
 

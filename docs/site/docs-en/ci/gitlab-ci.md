@@ -108,3 +108,24 @@ If you store that token as a **protected** variable, GitLab only exposes it to p
 ## GitLab Releases
 
 When `GITLAB_TOKEN` is set, FerrFlow creates a GitLab Release with the generated changelog as release notes, matching the behaviour of the GitHub integration.
+
+## Gating later jobs on a release
+
+`--output-format dotenv` writes `FERRFLOW_RELEASED` and `FERRFLOW_RELEASES` (a JSON array of `name`, `version`, `tag`) to a file GitLab can pass to later jobs:
+
+```yaml title=".gitlab-ci.yml"
+release:
+  script:
+    - ferrflow release --output-format dotenv --output-file ferrflow.env
+  artifacts:
+    reports:
+      dotenv: ferrflow.env
+
+build:
+  needs: [release]
+  script:
+    - if [ "$FERRFLOW_RELEASED" != "true" ]; then exit 0; fi
+    - pnpm build
+```
+
+Dotenv variables reach the script of a later job, not its `rules:`, which GitLab evaluates when the pipeline is created.

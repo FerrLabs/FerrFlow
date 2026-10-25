@@ -44,7 +44,7 @@ fn run(dir: &Path, json: bool, run_version_hooks: bool) -> anyhow::Result<serde_
             run_version_hooks,
             &mut Timing::new(false),
         )?;
-        captured = out.expect("dry run returns output").json;
+        captured = out.json;
         Ok(())
     })?;
     Ok(serde_json::from_str(&captured.expect("json set")).unwrap())

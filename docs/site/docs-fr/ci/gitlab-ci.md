@@ -95,3 +95,24 @@ Si vous stockez ce token dans une variable **protégée**, GitLab ne l'expose qu
 ## GitLab Releases
 
 Lorsque `GITLAB_TOKEN` est défini, FerrFlow crée une GitLab Release avec le changelog généré comme notes de release, de la même manière que l'intégration GitHub.
+
+## Conditionner les jobs suivants à une release
+
+`--output-format dotenv` écrit `FERRFLOW_RELEASED` et `FERRFLOW_RELEASES` (un tableau JSON de `name`, `version`, `tag`) dans un fichier que GitLab transmet aux jobs suivants :
+
+```yaml
+release:
+  script:
+    - ferrflow release --output-format dotenv --output-file ferrflow.env
+  artifacts:
+    reports:
+      dotenv: ferrflow.env
+
+build:
+  needs: [release]
+  script:
+    - if [ "$FERRFLOW_RELEASED" != "true" ]; then exit 0; fi
+    - pnpm build
+```
+
+Les variables dotenv arrivent dans le script d'un job suivant, pas dans ses `rules:`, que GitLab évalue à la création du pipeline.

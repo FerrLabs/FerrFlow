@@ -6,8 +6,10 @@ use crate::config::Config;
 use crate::git::{get_repo_root, open_repo};
 use crate::timing::Timing;
 
+use super::release_output::ReleaseOutputTarget;
 use super::run::checkpoint::Checkpoint;
 use super::run::run_release_logic;
+use super::types::RunOutput;
 
 const MAX_RELEASE_REGENERATE_ATTEMPTS: usize = 3;
 
@@ -23,6 +25,7 @@ pub fn release(
     channel: Option<&str>,
     draft: bool,
     force_unlock: bool,
+    output: Option<&ReleaseOutputTarget>,
     timing: &mut Timing,
 ) -> Result<()> {
     let repo = timing.stage("open_repo", || open_repo(&std::env::current_dir()?))?;
@@ -56,10 +59,7 @@ pub fn release(
             true,
             timing,
         )?;
-        if let Some(out) = out {
-            out.print();
-        }
-        return Ok(());
+        return emit(out, output);
     }
 
     let branch = crate::git::resolve_current_branch(&open_repo(&root)?, &config.workspace.branch);
@@ -88,12 +88,7 @@ pub fn release(
         );
 
         match result {
-            Ok(out) => {
-                if let Some(out) = out {
-                    out.print();
-                }
-                return Ok(());
-            }
+            Ok(out) => return emit(out, output),
             Err(e)
                 if attempt < MAX_RELEASE_REGENERATE_ATTEMPTS
                     && crate::git::is_push_rejected_error(&e) =>
@@ -111,6 +106,14 @@ pub fn release(
             "release failed after {MAX_RELEASE_REGENERATE_ATTEMPTS} regenerate attempts"
         )
     }))
+}
+
+fn emit(out: RunOutput, output: Option<&ReleaseOutputTarget>) -> Result<()> {
+    out.print();
+    match output {
+        Some(target) => target.write(&out.releases),
+        None => Ok(()),
+    }
 }
 
 fn print_banner(dry_run: bool) {

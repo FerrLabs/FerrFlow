@@ -84,7 +84,9 @@ impl Publisher<'_> {
 
         let mut checkpoint = self.checkpoint(&state.tags_to_create)?;
         let release_start = std::time::Instant::now();
-        let release_result = execute_release(&mut self.release_plan(state, checkpoint.as_mut()));
+        let mut plan = self.release_plan(state, checkpoint.as_mut());
+        let creates_tags = plan.creates_tags();
+        let release_result = execute_release(&mut plan);
         timing.record("release commit phase", release_start.elapsed());
 
         if self.flags.shadow {
@@ -97,6 +99,13 @@ impl Publisher<'_> {
             Ok(()) => {
                 if !self.flags.dry_run {
                     Checkpoint::delete(self.root)?;
+                }
+                if creates_tags {
+                    state.published = state
+                        .tags_to_create
+                        .iter()
+                        .map(PlannedTag::published)
+                        .collect();
                 }
                 self.run_success_hook(&released_tags)
             }

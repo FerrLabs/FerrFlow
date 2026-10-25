@@ -52,6 +52,14 @@ inputs:
     required: false
     default: ''
 
+outputs:
+  released:
+    description: '"true" when mode "release" tagged at least one package, otherwise "false". Always "false" on a dry run.'
+    value: ${{ steps.ferrflow.outputs.released }}
+  releases:
+    description: 'JSON array of the packages tagged by mode "release", each with name, version and tag. "[]" when nothing was released.'
+    value: ${{ steps.ferrflow.outputs.releases }}
+
 runs:
   using: composite
   steps:
@@ -192,6 +200,7 @@ runs:
       run: ferrflow check --comment
 
     - name: Run FerrFlow release
+      id: ferrflow
       if: inputs.mode == 'release'
       shell: bash
       env:
@@ -200,6 +209,7 @@ runs:
         FERRFLOW_BOT_AUDIENCE: ${{ inputs.bot_audience }}
         INPUT_DRY_RUN: ${{ inputs.dry_run }}
         INPUT_FORCE_VERSION: ${{ inputs.force_version }}
+        INPUT_VERSION: ${{ inputs.version }}
       run: |
         set -euo pipefail
 
@@ -213,6 +223,12 @@ runs:
             exit 1
           fi
           args+=(--force-version "$INPUT_FORCE_VERSION")
+        fi
+
+        if [[ "$(ferrflow release --help)" == *--output-format* ]]; then
+          args+=(--output-format github)
+        else
+          echo "::warning::FerrFlow ${INPUT_VERSION} cannot report release outputs; the released and releases outputs stay empty."
         fi
 
         ferrflow "${args[@]}"

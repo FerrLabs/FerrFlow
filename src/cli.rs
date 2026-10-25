@@ -7,6 +7,7 @@ use clap_complete::Shell;
 use crate::config::ConfigFileFormat;
 use crate::doctor::DoctorFormat;
 use crate::logging::LogFormat;
+use crate::monorepo::release_output::{ReleaseOutputFormat, ReleaseOutputTarget};
 use crate::status::OutputFormat;
 use crate::timing::Timing;
 
@@ -69,6 +70,12 @@ pub enum Commands {
         draft: bool,
         #[arg(long)]
         force_unlock: bool,
+        /// Write whether a release happened, and what was tagged, for the next CI step.
+        #[arg(long, value_enum, value_name = "FORMAT")]
+        output_format: Option<ReleaseOutputFormat>,
+        /// Destination for --output-format. Defaults to $GITHUB_OUTPUT for `github`.
+        #[arg(long, value_name = "PATH", requires = "output_format")]
+        output_file: Option<PathBuf>,
     },
     #[command(
         about = "Run the full release in a throwaway clone: files, commit and tags, never pushed or published"
@@ -280,19 +287,33 @@ impl Cli {
                 channel,
                 draft,
                 force_unlock,
-            } => crate::monorepo::release(
-                self.config.as_deref(),
-                self.dry_run,
-                self.verbose,
-                json,
-                force,
-                &force_version,
-                &exclude,
-                channel.as_deref(),
-                draft,
-                force_unlock,
-                timing,
-            ),
+                output_format,
+                output_file,
+            } => {
+                let output = output_format
+                    .map(|format| {
+                        ReleaseOutputTarget::resolve(
+                            format,
+                            output_file,
+                            std::env::var_os("GITHUB_OUTPUT"),
+                        )
+                    })
+                    .transpose()?;
+                crate::monorepo::release(
+                    self.config.as_deref(),
+                    self.dry_run,
+                    self.verbose,
+                    json,
+                    force,
+                    &force_version,
+                    &exclude,
+                    channel.as_deref(),
+                    draft,
+                    force_unlock,
+                    output.as_ref(),
+                    timing,
+                )
+            }
             Commands::ShadowRelease { keep } => {
                 crate::shadow::run(self.config.as_deref(), self.verbose, keep)
             }
@@ -462,6 +483,8 @@ mod tests {
                 channel: None,
                 draft: false,
                 force_unlock: false,
+                output_format: None,
+                output_file: None,
             } if v.is_empty() && e.is_empty()
         ));
     }
@@ -507,6 +530,34 @@ mod tests {
             }
             _ => panic!("expected Release"),
         }
+    }
+
+    #[test]
+    fn parse_release_output_format() {
+        let cli = parse(&[
+            "ferrflow",
+            "release",
+            "--output-format",
+            "dotenv",
+            "--output-file",
+            "ferrflow.env",
+        ]);
+        match cli.command {
+            Commands::Release {
+                output_format,
+                output_file,
+                ..
+            } => {
+                assert_eq!(output_format, Some(ReleaseOutputFormat::Dotenv));
+                assert_eq!(output_file, Some(PathBuf::from("ferrflow.env")));
+            }
+            _ => panic!("expected Release"),
+        }
+    }
+
+    #[test]
+    fn output_file_requires_output_format() {
+        assert!(Cli::try_parse_from(["ferrflow", "release", "--output-file", "out.env"]).is_err());
     }
 
     #[test]
