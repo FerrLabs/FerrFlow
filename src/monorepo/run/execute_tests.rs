@@ -291,11 +291,21 @@ fn run_publish_phase(
     tags: &[PlannedTag],
     forge: &dyn Forge,
 ) -> (Result<()>, Vec<(String, ReleaseResult)>) {
+    run_publish_phase_with_floating(harness, tags, forge, &[])
+}
+
+fn run_publish_phase_with_floating(
+    harness: &Harness,
+    tags: &[PlannedTag],
+    forge: &dyn Forge,
+    floating_tags: &[&str],
+) -> (Result<()>, Vec<(String, ReleaseResult)>) {
     let mut checkpoint = Checkpoint::new(
         harness.git(&["rev-parse", "HEAD"]).trim().to_string(),
         tags.iter().map(|t| t.tag.clone()).collect(),
     );
     checkpoint.advance(Phase::TagsCreated);
+    checkpoint.floating_tags = floating_tags.iter().map(|t| t.to_string()).collect();
 
     let hook_contexts: Vec<(HookContext, usize)> = Vec::new();
     let mut files_to_commit: Vec<String> = Vec::new();
@@ -377,6 +387,24 @@ fn a_successful_push_lands_the_tag_then_publishes_it() {
         "the release is created exactly once, after the tag landed"
     );
     assert_eq!(forge_results.len(), 1);
+}
+
+#[test]
+fn a_resumed_push_force_pushes_the_floating_tags_the_checkpoint_recorded() {
+    let harness = Harness::new();
+    let tag = "app@v1.0.0";
+    harness.git(&["tag", "-a", tag, "-m", "app 1.0.0"]);
+    harness.git(&["tag", "-a", "app@v1", "-m", "Release 1.0.0"]);
+
+    let tags = vec![tag_to_create(tag, "app", "1.0.0")];
+    let forge = RecordingForge::default();
+    let (result, _) = run_publish_phase_with_floating(&harness, &tags, &forge, &["app@v1"]);
+
+    result.expect("the resumed push should succeed");
+
+    let mut remote = harness.remote_tags();
+    remote.sort();
+    assert_eq!(remote, vec!["app@v1".to_string(), tag.to_string()]);
 }
 
 #[test]

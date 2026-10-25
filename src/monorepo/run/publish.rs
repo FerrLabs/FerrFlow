@@ -28,10 +28,14 @@ pub(super) struct Publisher<'a> {
 impl Publisher<'_> {
     pub fn publish(&self, state: &mut ReleaseState, timing: &mut Timing) -> Result<()> {
         if state.any_bumped && !state.tags_to_create.is_empty() {
-            self.release(state, timing)?;
+            self.release(state, timing, false)?;
         } else if self.flags.dry_run && state.any_bumped {
             print_dry_run_hooks(&mut self.release_plan(state, None))?;
             timing.skip("release commit phase", "dry-run");
+        } else if let Some(planned) = self.interrupted_release()? {
+            state.tags_to_create = planned;
+            state.any_bumped = true;
+            self.release(state, timing, true)?;
         }
 
         if !state.any_bumped && !self.flags.draft && !self.flags.dry_run && !self.flags.shadow {
@@ -46,8 +50,28 @@ impl Publisher<'_> {
         Ok(())
     }
 
-    fn release(&self, state: &mut ReleaseState, timing: &mut Timing) -> Result<()> {
-        if !self.flags.dry_run {
+    fn interrupted_release(&self) -> Result<Option<Vec<PlannedTag>>> {
+        if self.flags.dry_run || self.flags.shadow || self.finalizing {
+            return Ok(None);
+        }
+        let Some(checkpoint) = Checkpoint::load(self.root)? else {
+            return Ok(None);
+        };
+        let Ok(head) = self.repo.head_id() else {
+            return Ok(None);
+        };
+        if !checkpoint.awaits_push_at(&head.to_string()) {
+            return Ok(None);
+        }
+        tracing::info!(
+            "  ↻ Found an interrupted release at phase {:?}; resuming",
+            checkpoint.phase
+        );
+        Ok(Some(checkpoint.planned_tags))
+    }
+
+    fn release(&self, state: &mut ReleaseState, timing: &mut Timing, resuming: bool) -> Result<()> {
+        if !self.flags.dry_run && !resuming {
             self.write_manifest(state)?;
         }
 
@@ -135,8 +159,7 @@ impl Publisher<'_> {
             .ok()
             .map(|id| id.to_string())
             .unwrap_or_default();
-        let tag_names: Vec<String> = tags_to_create.iter().map(|t| t.tag.clone()).collect();
-        resume_checkpoint(self.root, head_sha, tag_names, self.flags.verbose).map(Some)
+        resume_checkpoint(self.root, head_sha, tags_to_create, self.flags.verbose).map(Some)
     }
 
     fn summary_context(&self, released_tags: &[String]) -> HookContext {
@@ -194,11 +217,11 @@ impl Publisher<'_> {
 fn resume_checkpoint(
     root: &Path,
     head_sha: String,
-    tag_names: Vec<String>,
+    tags_to_create: &[PlannedTag],
     verbose: bool,
 ) -> Result<Checkpoint> {
     match Checkpoint::load(root)? {
-        Some(existing) if existing.head_sha == head_sha => {
+        Some(existing) if existing.head_sha == head_sha || existing.awaits_push_at(&head_sha) => {
             if verbose {
                 tracing::info!(
                     "  ↻ Found in-progress release checkpoint at phase {:?}; resuming",
@@ -216,7 +239,12 @@ fn resume_checkpoint(
             &head_sha[..8.min(head_sha.len())],
             &existing.head_sha[..8.min(existing.head_sha.len())]
         )),
-        None => Ok(Checkpoint::new(head_sha, tag_names)),
+        None => {
+            let tag_names = tags_to_create.iter().map(|t| t.tag.clone()).collect();
+            let mut checkpoint = Checkpoint::new(head_sha, tag_names);
+            checkpoint.planned_tags = tags_to_create.to_vec();
+            Ok(checkpoint)
+        }
     }
 }
 
