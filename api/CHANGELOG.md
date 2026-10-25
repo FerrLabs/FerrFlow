@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.10.13] - 2026-10-25
+
+### Bug Fixes
+
+- fix(api): restrict oidc token exchange to default branch, tags and non-PR events (#1106)
+
 ## [2026.10.12] - 2026-10-24
 
 ### Bug Fixes
