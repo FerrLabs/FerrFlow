@@ -17,8 +17,8 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::bot::{
-    app_jwt,
-    github_client::{GhError, Permissions},
+    app_jwt, exchange_policy,
+    github_client::{GhError, GithubClient, Permissions},
     oidc_verify,
 };
 use crate::error::{ApiError, ApiResult, code};
@@ -129,6 +129,11 @@ pub async fn issue_token(
         ));
     }
 
+    exchange_policy::check_event(&claims).map_err(|_| {
+        tracing::warn!(event_name = %claims.event_name, "FerrFlow OIDC event not allowed");
+        ref_not_allowed()
+    })?;
+
     let app_jwt =
         app_jwt::sign_app_jwt(&cfg.client_id, &cfg.private_key_pem, Utc::now()).map_err(|e| {
             tracing::error!(error = %e, "failed to sign FerrFlow App JWT");
@@ -149,6 +154,19 @@ pub async fn issue_token(
         .await
         .map_err(map_gh_error)?;
 
+    let default_branch = match github.default_branch(&token.token, owner, name).await {
+        Ok(branch) => branch,
+        Err(e) => {
+            revoke_quietly(github, &token.token).await;
+            return Err(map_gh_error(e));
+        }
+    };
+    if exchange_policy::check_ref(&claims, &default_branch).is_err() {
+        tracing::warn!(ref_ = %claims.ref_, %default_branch, "FerrFlow OIDC ref not allowed");
+        revoke_quietly(github, &token.token).await;
+        return Err(ref_not_allowed());
+    }
+
     Ok((
         StatusCode::OK,
         Json(TokenResponse {
@@ -157,6 +175,20 @@ pub async fn issue_token(
             repository: claims.repository,
         }),
     ))
+}
+
+async fn revoke_quietly(github: &GithubClient, token: &str) {
+    if let Err(e) = github.revoke_installation_token(token).await {
+        tracing::warn!(error = %e, "failed to revoke rejected FerrFlow installation token");
+    }
+}
+
+fn ref_not_allowed() -> ApiError {
+    ApiError::new(
+        code::REF_NOT_ALLOWED,
+        StatusCode::FORBIDDEN,
+        "only push, workflow_dispatch, schedule and release runs on the default branch or a tag may request a token",
+    )
 }
 
 fn map_gh_error(err: GhError) -> ApiError {

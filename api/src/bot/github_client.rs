@@ -64,6 +64,11 @@ struct InstallationResponse {
 }
 
 #[derive(Debug, Deserialize)]
+struct RepositoryResponse {
+    default_branch: String,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct InstallationToken {
     pub token: String,
     pub expires_at: DateTime<Utc>,
@@ -165,6 +170,46 @@ impl GithubClient {
         }
     }
 
+    pub async fn revoke_installation_token(&self, installation_token: &str) -> Result<(), GhError> {
+        let url = format!("{}/installation/token", self.base_url);
+        let resp = self
+            .http
+            .delete(&url)
+            .bearer_auth(installation_token)
+            .header(header::ACCEPT, "application/vnd.github+json")
+            .header("X-GitHub-Api-Version", "2022-11-28")
+            .send()
+            .await
+            .map_err(|e| GhError::Upstream(anyhow!(e)))?;
+        match resp.status() {
+            StatusCode::NO_CONTENT | StatusCode::OK => Ok(()),
+            s => Err(GhError::Upstream(anyhow!(
+                "unexpected status from token revocation: {s}"
+            ))),
+        }
+    }
+
+    pub async fn default_branch(
+        &self,
+        installation_token: &str,
+        owner: &str,
+        repo: &str,
+    ) -> Result<String, GhError> {
+        let url = format!("{}/repos/{}/{}", self.base_url, owner, repo);
+        let resp = self.send_get(&url, installation_token).await?;
+        match resp.status() {
+            StatusCode::OK => resp
+                .json::<RepositoryResponse>()
+                .await
+                .map(|r| r.default_branch)
+                .map_err(|e| GhError::Upstream(anyhow!(e))),
+            s if is_rate_limited(s, &resp) => Err(GhError::RateLimited),
+            s => Err(GhError::Upstream(anyhow!(
+                "unexpected status from repository lookup: {s}"
+            ))),
+        }
+    }
+
     async fn send_get(&self, url: &str, app_jwt: &str) -> Result<reqwest::Response, GhError> {
         self.http
             .get(url)
@@ -213,6 +258,13 @@ mod tests {
         }"#;
         let parsed: InstallationResponse = serde_json::from_str(body).unwrap();
         assert_eq!(parsed.id, 12_345_678);
+    }
+
+    #[test]
+    fn repository_response_extracts_default_branch() {
+        let body = r#"{ "id": 1, "name": "FerrFlow", "default_branch": "develop" }"#;
+        let parsed: RepositoryResponse = serde_json::from_str(body).unwrap();
+        assert_eq!(parsed.default_branch, "develop");
     }
 
     #[test]

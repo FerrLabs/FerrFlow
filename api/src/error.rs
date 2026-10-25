@@ -13,6 +13,7 @@ pub mod code {
     pub const NOT_CONFIGURED: &str = "FERRFLOW_NOT_CONFIGURED";
     pub const OIDC_INVALID: &str = "FERRFLOW_OIDC_INVALID";
     pub const REPO_MISMATCH: &str = "FERRFLOW_REPO_MISMATCH";
+    pub const REF_NOT_ALLOWED: &str = "FERRFLOW_REF_NOT_ALLOWED";
     pub const INSTALL_NOT_FOUND: &str = "FERRFLOW_INSTALL_NOT_FOUND";
     pub const RATE_LIMITED: &str = "FERRFLOW_RATE_LIMITED";
     pub const GITHUB_UPSTREAM: &str = "FERRFLOW_GITHUB_UPSTREAM";

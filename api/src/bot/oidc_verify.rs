@@ -53,6 +53,7 @@ pub struct GhaClaims {
     pub repository_owner: String,
     #[serde(rename = "ref")]
     pub ref_: String,
+    pub event_name: String,
     pub workflow: String,
     pub run_id: String,
     pub actor: String,
@@ -136,6 +137,7 @@ mod tests {
             "repository": "FerrLabs/FerrFlow",
             "repository_owner": "FerrLabs",
             "ref": "refs/heads/main",
+            "event_name": "push",
             "workflow": "Release",
             "run_id": "123456",
             "actor": "BryanFRD",

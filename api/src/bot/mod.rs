@@ -10,6 +10,7 @@
 //! at rest anywhere.
 
 pub mod app_jwt;
+pub mod exchange_policy;
 pub mod github_client;
 pub mod jwks;
 pub mod oidc_verify;
