@@ -6,6 +6,7 @@ use crate::changelog::GitLog;
 use crate::config::{Config, PackageConfig, VersioningStrategy};
 use crate::conventional_commits::BumpType;
 use crate::hooks::{HookCommit, HookContext, capture_version};
+use crate::prerelease::PrereleaseContext;
 
 use super::super::util::tags_for_package;
 use super::plan::{PackagePlan, SkipReason};
@@ -139,12 +140,17 @@ pub(super) struct Pass<'a> {
     pub config: &'a Config,
     pub root: &'a Path,
     pub all_tags: &'a [String],
-    pub channel: Option<&'a str>,
+    pub prerelease_ctx: &'a PrereleaseContext,
+    pub short_hash: &'a str,
     pub dry_run: bool,
     pub run_commands: bool,
 }
 
 impl Pass<'_> {
+    pub(super) fn channel(&self) -> Option<&str> {
+        self.prerelease_ctx.channel.as_deref()
+    }
+
     pub(super) fn resolve(&self, candidate: &Candidate<'_>) -> Result<Resolved> {
         let Some(command) = candidate
             .pkg
@@ -165,7 +171,7 @@ impl Pass<'_> {
             proposed: candidate.proposed,
             bump: candidate.bump,
             is_prerelease: candidate.is_prerelease,
-            channel: self.channel,
+            channel: self.channel(),
             dry_run: self.dry_run,
             commits: candidate.commits,
         })?;
