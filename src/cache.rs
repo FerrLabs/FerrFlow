@@ -32,10 +32,15 @@ pub struct CacheKey {
 
 impl CacheKey {
     fn filename(&self) -> String {
-        format!(
-            "{}-{}-{}-{}-{}.json",
-            self.head, self.tags_hash, self.config_hash, self.files_hash, self.variant
-        )
+        let joined = [
+            self.head.as_str(),
+            &self.tags_hash,
+            &self.config_hash,
+            &self.files_hash,
+            self.variant,
+        ]
+        .join("\n");
+        format!("{}.json", sha256_hex(joined.as_bytes()))
     }
 }
 
@@ -303,6 +308,23 @@ mod tests {
             variant: "json",
         };
         assert_ne!(base, json_variant.filename());
+    }
+
+    #[test]
+    fn a_full_size_key_round_trips_with_a_seven_digit_pid_suffix() {
+        let hash = "a".repeat(64);
+        let k = CacheKey {
+            head: hash.clone(),
+            tags_hash: hash.clone(),
+            config_hash: hash.clone(),
+            files_hash: hash,
+            variant: "text",
+        };
+        assert!(k.filename().len() + ".4194304.tmp".len() <= 255);
+
+        let dir = tempfile::tempdir().unwrap();
+        write(dir.path(), &k, &sample());
+        assert!(read(dir.path(), &k).is_some());
     }
 
     #[test]
