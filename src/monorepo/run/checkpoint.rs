@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use super::summary::PlannedTag;
 use crate::error_code::{self, ErrorCodeExt};
 
 const CHECKPOINT_FILENAME: &str = "ferrflow.checkpoint.json";
@@ -91,6 +92,10 @@ pub struct Checkpoint {
     pub forge_releases: Vec<RecordedRelease>,
     #[serde(default)]
     pub published: Vec<RecordedPublish>,
+    #[serde(default)]
+    pub planned_tags: Vec<PlannedTag>,
+    #[serde(default)]
+    pub floating_tags: Vec<String>,
 }
 
 impl Checkpoint {
@@ -108,6 +113,8 @@ impl Checkpoint {
             created_tags: Vec::new(),
             forge_releases: Vec::new(),
             published: Vec::new(),
+            planned_tags: Vec::new(),
+            floating_tags: Vec::new(),
         }
     }
 
@@ -184,6 +191,13 @@ impl Checkpoint {
         }
     }
 
+    pub fn awaits_push_at(&self, head_sha: &str) -> bool {
+        self.is_done(Phase::CommitDone)
+            && !self.is_done(Phase::PostPublishDone)
+            && !self.planned_tags.is_empty()
+            && self.commit_sha.as_deref() == Some(head_sha)
+    }
+
     pub fn is_done(&self, phase: Phase) -> bool {
         self.phase >= phase
     }
@@ -258,6 +272,62 @@ mod tests {
         std::fs::write(Checkpoint::path(dir.path()), payload).unwrap();
         let err = Checkpoint::load(dir.path()).expect_err("schema mismatch expected");
         assert!(format!("{err:?}").contains("schema"));
+    }
+
+    fn planned(tag: &str) -> PlannedTag {
+        PlannedTag {
+            tag: tag.to_string(),
+            message: String::new(),
+            body: String::new(),
+            package: "app".to_string(),
+            version: "1.1.0".to_string(),
+            commit_count: 1,
+            is_prerelease: false,
+        }
+    }
+
+    fn committed(phase: Phase) -> Checkpoint {
+        let mut cp = Checkpoint::new("before".into(), vec!["v1.1.0".into()]);
+        cp.planned_tags = vec![planned("v1.1.0")];
+        cp.commit_sha = Some("release".into());
+        cp.advance(phase);
+        cp
+    }
+
+    #[test]
+    fn a_committed_release_awaits_its_push_at_the_release_commit() {
+        assert!(committed(Phase::TagsCreated).awaits_push_at("release"));
+        assert!(committed(Phase::CommitDone).awaits_push_at("release"));
+    }
+
+    #[test]
+    fn a_release_does_not_await_a_push_from_another_head() {
+        assert!(!committed(Phase::TagsCreated).awaits_push_at("before"));
+        assert!(!committed(Phase::TagsCreated).awaits_push_at("elsewhere"));
+    }
+
+    #[test]
+    fn a_release_before_its_commit_or_after_its_last_phase_awaits_nothing() {
+        assert!(!committed(Phase::Pending).awaits_push_at("release"));
+        assert!(!committed(Phase::PostPublishDone).awaits_push_at("release"));
+    }
+
+    #[test]
+    fn a_checkpoint_without_planned_tags_awaits_nothing() {
+        let mut cp = committed(Phase::TagsCreated);
+        cp.planned_tags.clear();
+        assert!(!cp.awaits_push_at("release"));
+    }
+
+    #[test]
+    fn planned_tags_and_floating_tags_survive_the_disk() {
+        let dir = init_test_repo();
+        let mut cp = committed(Phase::TagsCreated);
+        cp.floating_tags = vec!["v1".into()];
+        cp.save(dir.path()).unwrap();
+        let loaded = Checkpoint::load(dir.path()).unwrap().unwrap();
+        assert_eq!(loaded.planned_tags, vec![planned("v1.1.0")]);
+        assert_eq!(loaded.floating_tags, vec!["v1".to_string()]);
     }
 
     #[test]

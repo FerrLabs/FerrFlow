@@ -66,7 +66,11 @@ pub(super) fn execute_release(plan: &mut ReleasePlan<'_>) -> Result<()> {
         release_parts: &release_parts,
         skip_ci,
     };
-    let mut floating_tag_names: Vec<String> = Vec::new();
+    let mut floating_tag_names: Vec<String> = plan
+        .checkpoint
+        .as_ref()
+        .map(|cp| cp.floating_tags.clone())
+        .unwrap_or_default();
 
     if !plan.dry_run {
         commit_and_tag(plan, &commit, &mut floating_tag_names)?;
@@ -139,7 +143,11 @@ fn commit_and_tag(
             "  ↻ Resumed: skipping tag creation (already done)",
             |plan| {
                 create_release_tags(plan)?;
-                create_and_move_floating_tags(plan, floating_tag_names)
+                create_and_move_floating_tags(plan, floating_tag_names)?;
+                if let Some(cp) = plan.checkpoint.as_mut() {
+                    cp.floating_tags = floating_tag_names.clone();
+                }
+                Ok(())
             },
         )?;
     }

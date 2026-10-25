@@ -1,6 +1,6 @@
 use colored::Colorize;
-#[derive(Debug, Clone)]
-pub(super) struct PlannedTag {
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub(crate) struct PlannedTag {
     pub tag: String,
     pub message: String,
     pub body: String,
