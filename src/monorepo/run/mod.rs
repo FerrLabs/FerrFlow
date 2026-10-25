@@ -105,7 +105,7 @@ pub(crate) fn run_shadow_release(root: &Path, config: &Config, verbose: bool) ->
         force_unlock: false,
     };
     let mut timing = Timing::new(false);
-    run_with_flags(root, config, flags, access, &[], &[], &mut timing).map(|_| ())
+    run_with_flags(root, config, flags, access, &[], &[], &mut timing).map(|out| out.print())
 }
 
 fn run_with_flags(
