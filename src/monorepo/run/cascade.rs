@@ -38,7 +38,7 @@ pub(super) fn run_dependency_cascade(
     sink: &mut CascadeSink<'_>,
     captured_metadata: &mut std::collections::HashMap<String, String>,
 ) -> anyhow::Result<()> {
-    let (config, root, channel, dry_run) = (pass.config, pass.root, pass.channel, pass.dry_run);
+    let (config, root, channel, dry_run) = (pass.config, pass.root, pass.channel(), pass.dry_run);
     let settled = settle(config, sink.bumped);
     // These packages were not in `bump_order`, so `capture` never saw them and
     // their commands are missing from the map. Without this they released with
@@ -582,7 +582,6 @@ mod tests {
                 config: &config,
                 root: dir.path(),
                 all_tags: &[],
-                channel: None,
                 prerelease_ctx: &PrereleaseContext::resolve(None, "main", None).unwrap(),
                 short_hash: "deadbee",
                 dry_run: false,
@@ -640,7 +639,6 @@ mod tests {
                 config: &config,
                 root: dir.path(),
                 all_tags: &[],
-                channel: None,
                 prerelease_ctx: &PrereleaseContext::resolve(None, "main", None).unwrap(),
                 short_hash: "deadbee",
                 dry_run: true,
@@ -694,7 +692,6 @@ mod tests {
                 config: &config,
                 root: dir.path(),
                 all_tags: &all_tags,
-                channel: Some("beta"),
                 prerelease_ctx: &prerelease_ctx,
                 short_hash: "deadbee",
                 dry_run: true,

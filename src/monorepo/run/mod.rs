@@ -213,7 +213,6 @@ fn version_pass<'a>(
         config,
         root,
         all_tags: &inputs.all_tags,
-        channel: inputs.prerelease_ctx.channel.as_deref(),
         prerelease_ctx: &inputs.prerelease_ctx,
         short_hash: &inputs.short_hash,
         dry_run: flags.dry_run,
