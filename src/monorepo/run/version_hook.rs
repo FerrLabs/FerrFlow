@@ -6,6 +6,7 @@ use crate::changelog::GitLog;
 use crate::config::{Config, PackageConfig, VersioningStrategy};
 use crate::conventional_commits::BumpType;
 use crate::hooks::{HookCommit, HookContext, capture_version};
+use crate::prerelease::PrereleaseContext;
 
 use super::super::util::tags_for_package;
 use super::plan::{PackagePlan, SkipReason};
@@ -140,6 +141,8 @@ pub(super) struct Pass<'a> {
     pub root: &'a Path,
     pub all_tags: &'a [String],
     pub channel: Option<&'a str>,
+    pub prerelease_ctx: &'a PrereleaseContext,
+    pub short_hash: &'a str,
     pub dry_run: bool,
     pub run_commands: bool,
 }

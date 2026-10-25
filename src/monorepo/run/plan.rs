@@ -409,7 +409,14 @@ pub(super) fn compute_plan(
 
         let base_version =
             compute_next_version(&current_version, bump, pkg_strategy, version_template)?;
-        let (new_version, is_prerelease) = with_prerelease_suffix(pkg, inputs, base_version);
+        let (new_version, is_prerelease) = with_prerelease_suffix(
+            pkg,
+            inputs.config,
+            inputs.prerelease_ctx,
+            inputs.all_tags,
+            inputs.short_hash,
+            base_version,
+        );
 
         (new_version, is_prerelease, commits, bump)
     };
@@ -479,22 +486,19 @@ fn resolve_current_version(
     Ok((current_version, last_tag, source))
 }
 
-fn with_prerelease_suffix(
+pub(super) fn with_prerelease_suffix(
     pkg: &PackageConfig,
-    inputs: &PlanInputs<'_>,
+    config: &Config,
+    prerelease_ctx: &PrereleaseContext,
+    all_tags: &[String],
+    short_hash: &str,
     base_version: String,
 ) -> (String, bool) {
-    if !inputs.prerelease_ctx.is_prerelease() {
+    if !prerelease_ctx.is_prerelease() {
         return (base_version, false);
     }
-    let config = inputs.config;
     let tag_prefix = pkg.tag_prefix(&config.workspace, config.is_monorepo());
-    match inputs.prerelease_ctx.compute_identifier(
-        &base_version,
-        &tag_prefix,
-        inputs.all_tags,
-        inputs.short_hash,
-    ) {
+    match prerelease_ctx.compute_identifier(&base_version, &tag_prefix, all_tags, short_hash) {
         Some(resolved) => (format!("{base_version}{}", resolved.full_suffix), true),
         None => (base_version, false),
     }

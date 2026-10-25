@@ -12,6 +12,7 @@ use crate::versioning::compute_next_version;
 use super::super::types::CheckPackage;
 use super::super::util::tags_for_package;
 use super::super::version_source::VersionSource;
+use super::plan::with_prerelease_suffix;
 use super::release_json::ReleasedPackage;
 use super::summary::PlannedTag;
 use super::version_hook::{Candidate, Resolved};
@@ -37,13 +38,7 @@ pub(super) fn run_dependency_cascade(
     sink: &mut CascadeSink<'_>,
     captured_metadata: &mut std::collections::HashMap<String, String>,
 ) -> anyhow::Result<()> {
-    let (config, root, all_tags, channel, dry_run) = (
-        pass.config,
-        pass.root,
-        pass.all_tags,
-        pass.channel,
-        pass.dry_run,
-    );
+    let (config, root, channel, dry_run) = (pass.config, pass.root, pass.channel, pass.dry_run);
     let settled = settle(config, sink.bumped);
     // These packages were not in `bump_order`, so `capture` never saw them and
     // their commands are missing from the map. Without this they released with
@@ -61,9 +56,7 @@ pub(super) fn run_dependency_cascade(
         .collect();
     super::build_metadata::capture_more(config, &cascaded, root, dry_run, captured_metadata)?;
     for (pkg_idx, bump) in settled.order {
-        let Some(mut release) =
-            resolve_cascaded(config, root, all_tags, &settled.state, pkg_idx, bump)
-        else {
+        let Some(mut release) = resolve_cascaded(pass, &settled.state, pkg_idx, bump) else {
             continue;
         };
         if !release.settle(pass)? {
@@ -92,16 +85,16 @@ struct CascadedRelease<'a> {
     tag: String,
     dep_trigger: Vec<&'a str>,
     version_pending: bool,
+    is_prerelease: bool,
 }
 
 fn resolve_cascaded<'a>(
-    config: &'a Config,
-    root: &Path,
-    all_tags: &[String],
+    pass: &super::version_hook::Pass<'a>,
     state: &HashMap<String, BumpType>,
     pkg_idx: usize,
     bump: BumpType,
 ) -> Option<CascadedRelease<'a>> {
+    let (config, root, all_tags) = (pass.config, pass.root, pass.all_tags);
     let pkg = &config.packages[pkg_idx];
     let vf = pkg.versioned_files.first()?;
     let current_version = read_version(vf, root).ok()?;
@@ -110,8 +103,16 @@ fn resolve_cascaded<'a>(
         tags_for_package(all_tags, &pkg_tag_prefix)
     });
     let version_template = pkg.effective_version_template(&config.workspace);
-    let new_version =
+    let base_version =
         compute_next_version(&current_version, bump, strategy, version_template).ok()?;
+    let (new_version, is_prerelease) = with_prerelease_suffix(
+        pkg,
+        config,
+        pass.prerelease_ctx,
+        all_tags,
+        pass.short_hash,
+        base_version,
+    );
     if current_version == new_version {
         return None;
     }
@@ -135,6 +136,7 @@ fn resolve_cascaded<'a>(
         tag,
         dep_trigger,
         version_pending: false,
+        is_prerelease,
     })
 }
 
@@ -145,7 +147,7 @@ impl CascadedRelease<'_> {
             current: &self.current_version,
             proposed: &self.new_version,
             bump: self.bump,
-            is_prerelease: false,
+            is_prerelease: self.is_prerelease,
             commits: &[],
         })?;
         Ok(match resolved {
@@ -177,7 +179,7 @@ impl CascadedRelease<'_> {
             bump_type: self.bump.to_string(),
             tag: self.tag.clone(),
             commit_count: 0,
-            prerelease: false,
+            prerelease: self.is_prerelease,
             version_source: self.version_source(),
             forge_release_url: None,
             forge_release_id: None,
@@ -192,7 +194,7 @@ impl CascadedRelease<'_> {
             bump_type: self.bump.to_string(),
             tag: (!self.version_pending).then(|| self.tag.clone()),
             channel: channel.map(str::to_string),
-            prerelease: false,
+            prerelease: self.is_prerelease,
             version_source: self.version_source(),
             commits: vec![],
         }
@@ -211,7 +213,7 @@ impl CascadedRelease<'_> {
             package: pkg.name.clone(),
             version: self.new_version.clone(),
             commit_count: 0,
-            is_prerelease: false,
+            is_prerelease: self.is_prerelease,
         });
         sink.bumped.insert(pkg.name.clone(), self.bump);
         sink.bumped_versions
@@ -416,6 +418,7 @@ fn push_once(files: &mut Vec<String>, path: &str) {
 mod tests {
     use super::super::version_hook::Pass;
     use super::*;
+    use crate::prerelease::PrereleaseContext;
 
     fn workspace() -> tempfile::TempDir {
         let dir = tempfile::tempdir().unwrap();
@@ -580,6 +583,8 @@ mod tests {
                 root: dir.path(),
                 all_tags: &[],
                 channel: None,
+                prerelease_ctx: &PrereleaseContext::resolve(None, "main", None).unwrap(),
+                short_hash: "deadbee",
                 dry_run: false,
                 run_commands: false,
             },
@@ -636,6 +641,8 @@ mod tests {
                 root: dir.path(),
                 all_tags: &[],
                 channel: None,
+                prerelease_ctx: &PrereleaseContext::resolve(None, "main", None).unwrap(),
+                short_hash: "deadbee",
                 dry_run: true,
                 run_commands: false,
             },
@@ -652,6 +659,61 @@ mod tests {
             cli.starts_with(&format!("{year}.")),
             "cascaded package ignored its versionTemplate: got {cli}"
         );
+    }
+
+    #[test]
+    fn a_cascade_in_a_prerelease_run_stays_a_prerelease() {
+        let dir = workspace();
+        let config = Config::load(dir.path(), None).unwrap();
+        let prerelease_ctx = PrereleaseContext::resolve(Some("beta"), "main", None).unwrap();
+        let all_tags = vec!["cli@v1.1.0-beta.1".to_string()];
+
+        let mut any_bumped = false;
+        let mut json_packages = Vec::new();
+        let mut released = Vec::new();
+        let mut files_to_commit = Vec::new();
+        let mut files_per_package = HashMap::new();
+        let mut tags_to_create = Vec::new();
+        let mut pkg_outputs = Vec::new();
+        let mut bumped = HashMap::from([("core".to_string(), BumpType::Minor)]);
+        let mut bumped_versions = HashMap::from([("core".to_string(), "1.1.0-beta.1".to_string())]);
+        let mut sink = CascadeSink {
+            any_bumped: &mut any_bumped,
+            json_packages: &mut json_packages,
+            released: &mut released,
+            files_to_commit: &mut files_to_commit,
+            files_per_package: &mut files_per_package,
+            tags_to_create: &mut tags_to_create,
+            pkg_outputs: &mut pkg_outputs,
+            bumped: &mut bumped,
+            bumped_versions: &mut bumped_versions,
+        };
+
+        run_dependency_cascade(
+            &Pass {
+                config: &config,
+                root: dir.path(),
+                all_tags: &all_tags,
+                channel: Some("beta"),
+                prerelease_ctx: &prerelease_ctx,
+                short_hash: "deadbee",
+                dry_run: true,
+                run_commands: false,
+            },
+            false,
+            false,
+            &mut sink,
+            &mut std::collections::HashMap::new(),
+        )
+        .unwrap();
+
+        let cli = tags_to_create
+            .iter()
+            .find(|t| t.package == "cli")
+            .expect("cli should be cascaded");
+        assert_eq!(cli.version, "1.1.0-beta.2");
+        assert!(cli.is_prerelease);
+        assert_eq!(bumped_versions.get("cli").unwrap(), "1.1.0-beta.2");
     }
 
     #[test]
