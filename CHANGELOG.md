@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.33.3] - 2026-10-25
+
+### Bug Fixes
+
+- fix(cascade): keep dependents of a prerelease run on the prerelease channel (#1348)
+
 ## [7.33.2] - 2026-10-24
 
 ### Bug Fixes
