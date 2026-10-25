@@ -50,14 +50,9 @@ pub fn truncate_version(version: &str, level: FloatingTagLevel) -> Option<String
     let parts: Vec<&str> = v.split('.').collect();
 
     match level {
-        FloatingTagLevel::Major => Some(parts[0].to_string()),
-        FloatingTagLevel::Minor => {
-            if parts.len() < 2 {
-                None
-            } else {
-                Some(format!("{}.{}", parts[0], parts[1]))
-            }
-        }
+        FloatingTagLevel::Major if parts.len() > 1 => Some(parts[0].to_string()),
+        FloatingTagLevel::Minor if parts.len() > 2 => Some(format!("{}.{}", parts[0], parts[1])),
+        _ => None,
     }
 }
 
