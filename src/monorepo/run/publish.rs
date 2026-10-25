@@ -27,15 +27,22 @@ pub(super) struct Publisher<'a> {
 
 impl Publisher<'_> {
     pub fn publish(&self, state: &mut ReleaseState, timing: &mut Timing) -> Result<()> {
-        if state.any_bumped && !state.tags_to_create.is_empty() {
+        if let Some(planned) = self.interrupted_release()? {
+            state.hook_contexts = resumed_hook_contexts(
+                self.config,
+                self.root,
+                &planned,
+                self.all_packages,
+                self.flags.dry_run,
+            );
+            state.tags_to_create = planned;
+            state.any_bumped = true;
+            self.release(state, timing, true)?;
+        } else if state.any_bumped && !state.tags_to_create.is_empty() {
             self.release(state, timing, false)?;
         } else if self.flags.dry_run && state.any_bumped {
             print_dry_run_hooks(&mut self.release_plan(state, None))?;
             timing.skip("release commit phase", "dry-run");
-        } else if let Some(planned) = self.interrupted_release()? {
-            state.tags_to_create = planned;
-            state.any_bumped = true;
-            self.release(state, timing, true)?;
         }
 
         if !state.any_bumped && !self.flags.draft && !self.flags.dry_run && !self.flags.shadow {
@@ -248,9 +255,101 @@ fn resume_checkpoint(
     }
 }
 
+fn resumed_hook_contexts(
+    config: &Config,
+    root: &Path,
+    tags: &[PlannedTag],
+    all_packages: &[HookPackage],
+    dry_run: bool,
+) -> Vec<(HookContext, usize)> {
+    tags.iter()
+        .filter_map(|t| {
+            let pkg_idx = config.packages.iter().position(|p| p.name == t.package)?;
+            let pkg = &config.packages[pkg_idx];
+            let ctx = HookContext {
+                package: t.package.clone(),
+                old_version: String::new(),
+                new_version: t.version.clone(),
+                bump_type: String::new(),
+                tag: t.tag.clone(),
+                dry_run,
+                package_path: root
+                    .join(pkg.path.trim_start_matches("./"))
+                    .to_string_lossy()
+                    .into_owned(),
+                channel: None,
+                error_code: None,
+                monorepo: config.is_monorepo(),
+                is_prerelease: t.is_prerelease,
+                changelog: t.body.clone(),
+                commits: Vec::new(),
+                bumped_files: Vec::new(),
+                all_packages: all_packages.to_vec(),
+                release_url: None,
+            };
+            Some((ctx, pkg_idx))
+        })
+        .collect()
+}
+
 pub(super) fn short_head(repo: &Repository) -> String {
     repo.head_id()
         .ok()
         .map(|id| id.to_string()[..7.min(id.to_string().len())].to_string())
         .unwrap_or_default()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn planned(package: &str, tag: &str, version: &str) -> PlannedTag {
+        PlannedTag {
+            tag: tag.to_string(),
+            message: String::new(),
+            body: "notes".to_string(),
+            package: package.to_string(),
+            version: version.to_string(),
+            commit_count: 1,
+            is_prerelease: false,
+        }
+    }
+
+    fn config_with(names: &[&str]) -> Config {
+        Config {
+            packages: names
+                .iter()
+                .map(|n| {
+                    serde_json::from_str(&format!(r#"{{"name":"{n}","path":"{n}"}}"#)).unwrap()
+                })
+                .collect(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn each_planned_tag_gets_a_context_bound_to_its_package() {
+        let config = config_with(&["api", "web"]);
+        let tags = [
+            planned("web", "web@v2.0.0", "2.0.0"),
+            planned("api", "api@v1.1.0", "1.1.0"),
+        ];
+
+        let contexts = resumed_hook_contexts(&config, Path::new("/repo"), &tags, &[], false);
+
+        assert_eq!(contexts.len(), 2);
+        assert_eq!((contexts[0].0.package.as_str(), contexts[0].1), ("web", 1));
+        assert_eq!(contexts[0].0.tag, "web@v2.0.0");
+        assert_eq!(contexts[0].0.new_version, "2.0.0");
+        assert_eq!((contexts[1].0.package.as_str(), contexts[1].1), ("api", 0));
+        assert_eq!(contexts[1].0.changelog, "notes");
+    }
+
+    #[test]
+    fn a_planned_tag_for_a_removed_package_is_dropped() {
+        let config = config_with(&["api"]);
+        let tags = [planned("gone", "gone@v1.0.0", "1.0.0")];
+
+        assert!(resumed_hook_contexts(&config, Path::new("/repo"), &tags, &[], false).is_empty());
+    }
 }
