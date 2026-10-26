@@ -291,10 +291,10 @@ fn truncate_calver_minor() {
 }
 
 #[test]
-fn truncate_sequential_major() {
+fn truncate_sequential_major_returns_none() {
     assert_eq!(
         super::truncate_version("42", super::FloatingTagLevel::Major),
-        Some("42".to_string())
+        None
     );
 }
 
@@ -386,11 +386,17 @@ fn calver_seq_non_numeric_seq() {
 
 #[test]
 fn truncate_single_component() {
-    assert_eq!(
-        truncate_version("42", FloatingTagLevel::Major),
-        Some("42".to_string())
-    );
+    assert_eq!(truncate_version("42", FloatingTagLevel::Major), None);
     assert_eq!(truncate_version("42", FloatingTagLevel::Minor), None);
+}
+
+#[test]
+fn truncate_two_part_version_has_no_minor_alias() {
+    assert_eq!(
+        truncate_version("2026.3", FloatingTagLevel::Major),
+        Some("2026".to_string())
+    );
+    assert_eq!(truncate_version("2026.3", FloatingTagLevel::Minor), None);
 }
 
 #[test]

@@ -287,6 +287,8 @@ floating_tags = [&quot;major&quot;]
 
 When releasing `v1.2.3`, FerrFlow creates or moves a `v1` tag pointing to the same commit. With `["major", "minor"]`, both `v1` and `v1.2` tags are maintained.
 
+A level only applies when it is shorter than the version itself. With `sequential` versioning the release tag is already `v4`, so `"major"` creates nothing, and a `{year}.{seq}` version such as `2026.3` gets a `2026` alias but no minor one. A numeric tag counts as a floating tag only when a longer release tag under the same prefix extends it (`v1` next to `v1.2.3`), so sequential and two-part release tags are always read as releases.
+
 If a floating tag would move backward (e.g. releasing a `v1.1.0` hotfix when `v1.2.0` already exists), FerrFlow blocks the release. Use `--force` to override this check.
 
 ### Orphaned tag strategy

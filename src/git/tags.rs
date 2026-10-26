@@ -83,11 +83,10 @@ impl TagIndex {
         if !matches!(strategy, OrphanedTagStrategy::Warn) {
             return None;
         }
+        let floating = self.floating_tag_names(prefix);
         self.entries
             .iter()
-            .filter(|e| {
-                e.reachable && e.name.starts_with(prefix) && !is_floating_tag(&e.name, prefix)
-            })
+            .filter(|e| e.reachable && e.name.starts_with(prefix) && !floating.contains(&e.name))
             .max_by_key(|e| e.time)
             .map(|e| e.name.clone())
     }
@@ -100,30 +99,25 @@ impl TagIndex {
         if !matches!(strategy, OrphanedTagStrategy::Warn) {
             return None;
         }
-        let mut best: Option<(&str, semver::Version)> = None;
+        let floating = self.floating_tag_names(prefix);
+        let mut best: Option<(&str, TagVersion)> = None;
         for entry in &self.entries {
             if !entry.reachable
                 || !entry.name.starts_with(prefix)
                 || is_prerelease_tag(&entry.name, prefix)
-                || is_floating_tag(&entry.name, prefix)
+                || floating.contains(&entry.name)
             {
                 continue;
             }
-            let version_str = entry
-                .name
-                .strip_prefix(prefix)
-                .map(|s| s.strip_prefix('v').unwrap_or(s))
-                .unwrap_or(&entry.name);
-            let parsed = match semver::Version::parse(version_str) {
-                Ok(v) => v,
-                Err(_) => continue,
+            let Some(parsed) = parse_tag_version(&entry.name, prefix) else {
+                continue;
             };
             match &best {
                 Some((_, existing)) if *existing >= parsed => {}
                 _ => best = Some((entry.name.as_str(), parsed)),
             }
         }
-        best.map(|(name, version)| (name.to_string(), version.to_string()))
+        best.map(|(name, version)| (name.to_string(), version.text))
     }
 
     pub fn find_last_tag_commit(
@@ -134,11 +128,10 @@ impl TagIndex {
         if !matches!(strategy, OrphanedTagStrategy::Warn) {
             return None;
         }
+        let floating = self.floating_tag_names(prefix);
         self.entries
             .iter()
-            .filter(|e| {
-                e.reachable && e.name.starts_with(prefix) && !is_floating_tag(&e.name, prefix)
-            })
+            .filter(|e| e.reachable && e.name.starts_with(prefix) && !floating.contains(&e.name))
             .max_by_key(|e| e.time)
             .map(|e| e.commit_oid)
     }
@@ -151,16 +144,21 @@ impl TagIndex {
         if !matches!(strategy, OrphanedTagStrategy::Warn) {
             return None;
         }
+        let floating = self.floating_tag_names(prefix);
         self.entries
             .iter()
             .filter(|e| {
                 e.reachable
                     && e.name.starts_with(prefix)
                     && !is_prerelease_tag(&e.name, prefix)
-                    && !is_floating_tag(&e.name, prefix)
+                    && !floating.contains(&e.name)
             })
             .max_by_key(|e| e.time)
             .map(|e| e.commit_oid)
+    }
+
+    fn floating_tag_names(&self, prefix: &str) -> HashSet<String> {
+        floating_tag_names(self.entries.iter().map(|e| e.name.as_str()), prefix)
     }
 }
 
@@ -284,14 +282,24 @@ pub(super) fn find_matching_commit(
     None
 }
 
-pub(super) fn is_floating_tag(tag_name: &str, prefix: &str) -> bool {
-    let version_part = tag_name.strip_prefix(prefix).unwrap_or(tag_name);
-    if version_part.is_empty() {
-        return false;
+pub(super) fn floating_tag_names<'a>(
+    tag_names: impl IntoIterator<Item = &'a str>,
+    prefix: &str,
+) -> HashSet<String> {
+    let versions: HashSet<&str> = tag_names
+        .into_iter()
+        .filter_map(|name| name.strip_prefix(prefix))
+        .collect();
+    let mut floating = HashSet::new();
+    for version in &versions {
+        for (end, _) in version.match_indices('.') {
+            let head = &version[..end];
+            if versions.contains(head) && head.bytes().all(|b| b.is_ascii_digit() || b == b'.') {
+                floating.insert(format!("{prefix}{head}"));
+            }
+        }
     }
-    let is_numeric = version_part.chars().all(|c| c.is_ascii_digit() || c == '.');
-    let dot_count = version_part.chars().filter(|&c| c == '.').count();
-    is_numeric && dot_count <= 1
+    floating
 }
 
 pub(super) fn is_prerelease_tag(tag_name: &str, prefix: &str) -> bool {
@@ -454,26 +462,49 @@ fn prefixed_tags(
     stable_only: bool,
 ) -> Result<Vec<(String, ObjectId)>> {
     let references = repo.references()?;
-    let tags = references
+    let tags: Vec<(String, ObjectId)> = references
         .tags()?
         .flatten()
         .filter_map(|reference| {
             let name = String::from_utf8_lossy(reference.name().shorten()).into_owned();
-            let wanted = name.starts_with(prefix)
-                && !is_floating_tag(&name, prefix)
-                && !(stable_only && is_prerelease_tag(&name, prefix));
-            wanted.then(|| (name, reference.id().detach()))
+            name.starts_with(prefix)
+                .then(|| (name, reference.id().detach()))
         })
         .collect();
-    Ok(tags)
+    let floating = floating_tag_names(tags.iter().map(|(name, _)| name.as_str()), prefix);
+    Ok(tags
+        .into_iter()
+        .filter(|(name, _)| {
+            !floating.contains(name) && !(stable_only && is_prerelease_tag(name, prefix))
+        })
+        .collect())
 }
 
-fn parse_tag_semver(tag_name: &str, prefix: &str) -> Option<semver::Version> {
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+pub(super) struct TagVersion {
+    parts: Vec<u64>,
+    pub text: String,
+}
+
+pub(super) fn parse_tag_version(tag_name: &str, prefix: &str) -> Option<TagVersion> {
     let version = tag_name
         .strip_prefix(prefix)
         .map(|s| s.strip_prefix('v').unwrap_or(s))
         .unwrap_or(tag_name);
-    semver::Version::parse(version).ok()
+    let core = version.split_once('+').map_or(version, |(core, _)| core);
+    let parts = core
+        .split('.')
+        .map(|part| {
+            if part.is_empty() || !part.bytes().all(|b| b.is_ascii_digit()) {
+                return None;
+            }
+            part.parse().ok()
+        })
+        .collect::<Option<Vec<u64>>>()?;
+    Some(TagVersion {
+        parts,
+        text: version.to_string(),
+    })
 }
 
 pub(super) fn take_unreported(tags: Vec<String>, seen: &mut HashSet<String>) -> Vec<String> {
@@ -564,10 +595,10 @@ pub fn find_highest_semver_tag_with_cache(
     ancestors: Option<&HashSet<ObjectId>>,
 ) -> Result<Option<(String, String)>> {
     let walk = TagWalk::new(repo, strategy, ancestors, false)?;
-    let mut highest: Option<(String, semver::Version)> = None;
+    let mut highest: Option<(String, TagVersion)> = None;
 
     for (tag_name, raw_oid) in prefixed_tags(repo, prefix, true)? {
-        let Some(parsed) = parse_tag_semver(&tag_name, prefix) else {
+        let Some(parsed) = parse_tag_version(&tag_name, prefix) else {
             continue;
         };
         if !matches!(walk.place(&tag_name, raw_oid), Placement::At { .. }) {
@@ -581,7 +612,7 @@ pub fn find_highest_semver_tag_with_cache(
         }
     }
 
-    Ok(highest.map(|(name, version)| (name, version.to_string())))
+    Ok(highest.map(|(name, version)| (name, version.text)))
 }
 
 pub(super) fn find_last_tag_commit(

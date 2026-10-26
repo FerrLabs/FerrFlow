@@ -5,7 +5,7 @@ use super::auth::{
 use super::push::{local_tag_target_sha, parse_ls_remote_tags, remote_tag_target_shas};
 use super::repo::Repository;
 use super::retry::{is_transient_git_error, retry_transient};
-use super::tags::{find_highest_semver_tag, find_last_tag, is_floating_tag, is_prerelease_tag};
+use super::tags::{find_highest_semver_tag, find_last_tag, floating_tag_names, is_prerelease_tag};
 use super::*;
 use crate::config::{ForgeKind, OrphanedTagStrategy};
 use crate::error_code;
@@ -1735,25 +1735,86 @@ fn is_prerelease_tag_detection() {
 }
 
 #[test]
-fn is_floating_tag_detection() {
-    assert!(is_floating_tag("v2", "v"));
-    assert!(is_floating_tag("v2.3", "v"));
-    assert!(is_floating_tag("v10", "v"));
-    assert!(is_floating_tag("v0", "v"));
+fn floating_tags_are_the_leading_parts_of_a_longer_release() {
+    let tags = [
+        "v2",
+        "v2.3",
+        "v2.3.1",
+        "v10",
+        "v10.20.30",
+        "v0.1.0",
+        "v3.0.0-rc.1",
+        "v",
+        "api@v1",
+        "api@v1.2",
+        "api@v1.2.3",
+    ];
+    let floating = floating_tag_names(tags, "v");
+    for tag in ["v2", "v2.3", "v10"] {
+        assert!(floating.contains(tag), "{tag} should be floating");
+    }
+    for tag in [
+        "v2.3.1",
+        "v10.20.30",
+        "v0.1.0",
+        "v3.0.0-rc.1",
+        "v",
+        "api@v1",
+    ] {
+        assert!(!floating.contains(tag), "{tag} should be a release");
+    }
 
-    assert!(!is_floating_tag("v2.14.1", "v"));
-    assert!(!is_floating_tag("v0.1.0", "v"));
-    assert!(!is_floating_tag("v1.0.0", "v"));
-    assert!(!is_floating_tag("v10.20.30", "v"));
+    let floating = floating_tag_names(tags, "api@v");
+    assert!(floating.contains("api@v1"));
+    assert!(floating.contains("api@v1.2"));
+    assert!(!floating.contains("api@v1.2.3"));
+}
 
-    assert!(is_floating_tag("api@v1", "api@v"));
-    assert!(is_floating_tag("api@v1.2", "api@v"));
-    assert!(!is_floating_tag("api@v1.2.3", "api@v"));
+#[test]
+fn sequential_and_two_part_tags_are_releases() {
+    assert!(floating_tag_names(["v1", "v2", "v3"], "v").is_empty());
+    assert!(floating_tag_names(["v2026.1", "v2026.2"], "v").is_empty());
+    assert_eq!(
+        floating_tag_names(["v2026", "v2026.1", "v2026.2"], "v"),
+        ["v2026".to_string()].into_iter().collect()
+    );
+}
 
-    assert!(!is_floating_tag("v2.0.0-beta.1", "v"));
-    assert!(!is_floating_tag("v1.0.0-rc.1", "v"));
+#[test]
+fn find_highest_tag_reads_sequential_tags() {
+    let (dir, repo) = init_repo();
+    for (file, tag) in [("a.txt", "v1"), ("b.txt", "v2"), ("c.txt", "v10")] {
+        create_commit_in_repo(&repo, dir.path(), file, "feat: change");
+        create_lightweight_tag(&repo, tag);
+    }
 
-    assert!(!is_floating_tag("v", "v"));
+    let (tag_name, version) = find_highest_semver_tag(&repo, "v", OrphanedTagStrategy::Warn)
+        .unwrap()
+        .unwrap();
+    assert_eq!((tag_name.as_str(), version.as_str()), ("v10", "10"));
+
+    let last = find_last_tag(&repo, "v", OrphanedTagStrategy::Warn)
+        .unwrap()
+        .unwrap();
+    assert_eq!(last.name, "v10");
+}
+
+#[test]
+fn find_highest_tag_reads_two_part_tags() {
+    let (dir, repo) = init_repo();
+    for (file, tag) in [
+        ("a.txt", "v2025.9"),
+        ("b.txt", "v2026.1"),
+        ("c.txt", "v2026.2"),
+    ] {
+        create_commit_in_repo(&repo, dir.path(), file, "feat: change");
+        create_lightweight_tag(&repo, tag);
+    }
+
+    let (tag_name, version) = find_highest_semver_tag(&repo, "v", OrphanedTagStrategy::Warn)
+        .unwrap()
+        .unwrap();
+    assert_eq!((tag_name.as_str(), version.as_str()), ("v2026.2", "2026.2"));
 }
 
 #[test]
@@ -2482,4 +2543,26 @@ fn a_tag_already_reported_is_not_reported_again() {
 
     let third = super::tags::take_unreported(vec!["v2.2.0".to_string()], &mut seen);
     assert_eq!(third, vec!["v2.2.0".to_string()], "a new tag still reports");
+}
+
+#[test]
+fn tag_index_reads_sequential_tags() {
+    let (dir, repo) = init_repo();
+    for (file, tag) in [("a.txt", "v1"), ("b.txt", "v2"), ("c.txt", "v3")] {
+        create_commit_in_repo(&repo, dir.path(), file, "feat: change");
+        create_lightweight_tag(&repo, tag);
+    }
+    create_commit_in_repo(&repo, dir.path(), "d.txt", "feat: new");
+
+    let index = TagIndex::build(&repo).unwrap();
+    assert_eq!(
+        index.find_highest_semver_tag("v", OrphanedTagStrategy::Warn),
+        Some(("v3".to_string(), "3".to_string()))
+    );
+    assert_eq!(
+        index
+            .find_last_tag_name("v", OrphanedTagStrategy::Warn)
+            .as_deref(),
+        Some("v3")
+    );
 }
