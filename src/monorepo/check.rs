@@ -64,7 +64,7 @@ pub fn check(
 
     crate::git::write_commit_graph_if_absent(&repo);
 
-    if let (Some(key), Some(out)) = (&cache_key, &out) {
+    if let Some(key) = &cache_key {
         cache::write(
             &cache_dir,
             key,
@@ -75,9 +75,7 @@ pub fn check(
         );
     }
 
-    if let Some(out) = out {
-        out.print();
-    }
+    out.print();
 
     if comment {
         post_preview_comment(&repo, &config, &root);
@@ -122,7 +120,5 @@ pub(super) fn plan_json(config_path: Option<&Path>, channel: Option<&str>) -> Re
         &mut timing,
     )?;
 
-    Ok(out
-        .and_then(|o| o.json)
-        .unwrap_or_else(|| r#"{"packages":[]}"#.to_string()))
+    Ok(out.json.unwrap_or_else(|| r#"{"packages":[]}"#.to_string()))
 }

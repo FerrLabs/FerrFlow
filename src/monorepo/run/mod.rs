@@ -63,7 +63,7 @@ pub(super) fn run_release_logic(
     force_unlock: bool,
     version_commands: bool,
     timing: &mut Timing,
-) -> Result<Option<RunOutput>> {
+) -> Result<RunOutput> {
     let flags = RunFlags {
         dry_run,
         verbose,
@@ -105,7 +105,7 @@ pub(crate) fn run_shadow_release(root: &Path, config: &Config, verbose: bool) ->
         force_unlock: false,
     };
     let mut timing = Timing::new(false);
-    run_with_flags(root, config, flags, access, &[], &[], &mut timing).map(|_| ())
+    run_with_flags(root, config, flags, access, &[], &[], &mut timing).map(|out| out.print())
 }
 
 fn run_with_flags(
@@ -116,9 +116,9 @@ fn run_with_flags(
     force_versions: &[String],
     excluded: &[String],
     timing: &mut Timing,
-) -> Result<Option<RunOutput>> {
+) -> Result<RunOutput> {
     if config.packages.is_empty() {
-        return finish(flags.dry_run, output::empty_config(flags)?);
+        return output::empty_config(flags);
     }
 
     if let Err(errors) = config.validate_groups() {
@@ -181,7 +181,7 @@ fn run_with_flags(
     timing.record("per-package compute", compute_start.elapsed());
 
     if flags.json {
-        return finish(flags.dry_run, output::check(state)?);
+        return output::check(state);
     }
 
     let publisher = Publisher {
@@ -195,12 +195,14 @@ fn run_with_flags(
     };
     publisher.publish(&mut state, timing)?;
 
-    if flags.release_json {
-        let out = output::release_json(&inputs.repo, state, &inputs.target_branch, flags.dry_run)?;
-        return finish(flags.dry_run, out);
-    }
-
-    finish(flags.dry_run, output::text(state, config, flags))
+    let published = std::mem::take(&mut state.published);
+    let mut out = if flags.release_json {
+        output::release_json(&inputs.repo, state, &inputs.target_branch, flags.dry_run)?
+    } else {
+        output::text(state, config, flags)
+    };
+    out.releases = published;
+    Ok(out)
 }
 
 fn version_pass<'a>(
@@ -329,15 +331,6 @@ pub(super) fn collect_dry_run_diffs(
         }
     }
     diffs
-}
-
-fn finish(dry_run: bool, out: RunOutput) -> Result<Option<RunOutput>> {
-    if dry_run {
-        Ok(Some(out))
-    } else {
-        out.print();
-        Ok(None)
-    }
 }
 
 pub(super) fn refresh_lockfiles(

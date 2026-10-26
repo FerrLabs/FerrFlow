@@ -75,20 +75,40 @@ L'action écrit la clé sous `RUNNER_TEMP`, le temps du job, et elle n'atteint n
 
 ## Accéder à la sortie de la release
 
-L'action expose la nouvelle version en output que vous pouvez utiliser dans les étapes suivantes :
+En mode `release`, l'action expose deux outputs :
+
+| Output     | Valeur                                                                                                         |
+| ---------- | -------------------------------------------------------------------------------------------------------------- |
+| `released` | `"true"` si au moins un package a été tagué, sinon `"false"`. Toujours `"false"` en dry run                    |
+| `releases` | Tableau JSON des packages tagués, par exemple `[{"name":"api","version":"1.3.0","tag":"api@v1.3.0"}]`, ou `[]` |
+
+Conditionnez les étapes post-release sur `released` :
 
 ```yaml
-- uses: FerrLabs/ferrflow@v5
-  id: ferrflow
+- uses: FerrLabs/ferrflow@v7
+  id: release
   env:
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-- name: Build Docker image
-  if: steps.ferrflow.outputs.version != ''
-  run: |
-    docker build -t myimage:${{ steps.ferrflow.outputs.version }} .
-    docker push myimage:${{ steps.ferrflow.outputs.version }}
+- name: Publish
+  if: steps.release.outputs.released == 'true'
+  run: npm publish
 ```
+
+Dans un monorepo, lisez `releases` pour agir sur chaque package publié :
+
+```yaml
+- name: Build released packages
+  if: steps.release.outputs.released == 'true'
+  env:
+    RELEASES: ${{ steps.release.outputs.releases }}
+  run: |
+    echo "$RELEASES" | jq -r '.[].name' | while read -r pkg; do
+      pnpm --filter "$pkg" build
+    done
+```
+
+Avec `releaseCommitMode: "pr"`, le run qui ouvre seulement la pull request de release ne tague rien et renvoie `released=false`. C'est le run qui tague la release mergée qui la signale.
 
 ## Skip CI sur les commits de release
 

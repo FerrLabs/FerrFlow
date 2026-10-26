@@ -18,6 +18,8 @@ ferrflow release [OPTIONS]
 | `--channel <NAME>`          | Canal de pré-release à utiliser (ex. `beta`, `rc`, `dev`)                                                                                                                                   |
 | `--draft`                   | Créer les releases en brouillon (GitHub uniquement). Un `ferrflow release` ultérieur sans `--draft` détecte et publie automatiquement les brouillons existants                              |
 | `--force-unlock`            | Forcer la levée d'un verrou `.git/ferrflow.lock` existant. À n'utiliser que si aucun autre `ferrflow release` n'est en cours : par exemple après un crash ayant laissé le fichier de verrou |
+| `--output-format <FORMAT>`  | Après le run, écrire si une release a eu lieu et quels packages ont été tagués : `github` (ajouté à `$GITHUB_OUTPUT`), `dotenv` (`FERRFLOW_RELEASED` / `FERRFLOW_RELEASES`) ou `json`       |
+| `--output-file <PATH>`      | Destination de `--output-format`. Obligatoire pour `dotenv` et `json` ; `github` utilise `$GITHUB_OUTPUT` par défaut                                                                        |
 
 **Ce que ça fait :**
 

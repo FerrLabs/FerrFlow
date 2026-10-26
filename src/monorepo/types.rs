@@ -1,3 +1,4 @@
+use super::release_output::PublishedRelease;
 use super::version_source::VersionSource;
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -29,6 +30,7 @@ pub(super) struct CheckResult {
 pub(super) struct RunOutput {
     pub json: Option<String>,
     pub text_lines: Vec<String>,
+    pub releases: Vec<PublishedRelease>,
 }
 
 impl RunOutput {

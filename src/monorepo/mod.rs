@@ -1,6 +1,7 @@
 mod check;
 pub(crate) mod preview;
 mod release;
+pub(crate) mod release_output;
 pub(crate) mod run;
 mod types;
 mod util;

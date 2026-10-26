@@ -1,4 +1,6 @@
 use colored::Colorize;
+
+use super::super::release_output::PublishedRelease;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub(crate) struct PlannedTag {
     pub tag: String,
@@ -8,6 +10,16 @@ pub(crate) struct PlannedTag {
     pub version: String,
     pub commit_count: i32,
     pub is_prerelease: bool,
+}
+
+impl PlannedTag {
+    pub fn published(&self) -> PublishedRelease {
+        PublishedRelease {
+            name: self.package.clone(),
+            version: self.version.clone(),
+            tag: self.tag.clone(),
+        }
+    }
 }
 
 pub(super) fn untouched_hint(skipped: usize, recover_missed_releases: bool) -> Option<String> {

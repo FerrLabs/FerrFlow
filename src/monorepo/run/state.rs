@@ -5,6 +5,7 @@ use crate::conventional_commits::BumpType;
 use crate::forge::ReleaseResult;
 use crate::hooks::HookContext;
 
+use super::super::release_output::PublishedRelease;
 use super::super::types::CheckPackage;
 use super::cascade::CascadeSink;
 use super::context::RunFlags;
@@ -28,6 +29,7 @@ pub(super) struct ReleaseState {
     pub shared_outputs: Vec<String>,
     pub untouched_skipped: usize,
     pub forge_results: Vec<(String, ReleaseResult)>,
+    pub published: Vec<PublishedRelease>,
 }
 
 impl ReleaseState {

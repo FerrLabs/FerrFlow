@@ -22,16 +22,19 @@ pub(super) fn empty_config(flags: RunFlags) -> Result<RunOutput> {
                 .to_json()?,
             ),
             text_lines: Vec::new(),
+            releases: Vec::new(),
         });
     }
     if flags.json {
         return Ok(RunOutput {
             json: Some(serde_json::to_string(&CheckResult { packages: vec![] })?),
             text_lines: Vec::new(),
+            releases: Vec::new(),
         });
     }
     Ok(RunOutput {
         json: None,
+        releases: Vec::new(),
         text_lines: vec![
             "No packages configured. Run `ferrflow init` to create a ferrflow config."
                 .yellow()
@@ -46,6 +49,7 @@ pub(super) fn check(state: ReleaseState) -> Result<RunOutput> {
             packages: state.json_packages,
         })?),
         text_lines: Vec::new(),
+        releases: Vec::new(),
     })
 }
 
@@ -80,6 +84,7 @@ pub(super) fn release_json(
     Ok(RunOutput {
         json: Some(payload.to_json()?),
         text_lines: Vec::new(),
+        releases: Vec::new(),
     })
 }
 
@@ -105,6 +110,7 @@ pub(super) fn text(mut state: ReleaseState, config: &Config, flags: RunFlags) ->
     RunOutput {
         json: None,
         text_lines,
+        releases: Vec::new(),
     }
 }
 

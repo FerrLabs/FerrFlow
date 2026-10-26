@@ -42,6 +42,12 @@ pub(super) struct ReleasePlan<'a> {
     pub forge: Option<&'a dyn Forge>,
 }
 
+impl ReleasePlan<'_> {
+    pub fn creates_tags(&self) -> bool {
+        !self.dry_run && !self.shadow && release_commit_mode(self) != ReleaseCommitMode::Pr
+    }
+}
+
 pub(super) fn execute_release(plan: &mut ReleasePlan<'_>) -> Result<()> {
     run_pre_commit_hooks(plan)?;
 
