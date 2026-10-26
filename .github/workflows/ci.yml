@@ -192,7 +192,7 @@ jobs:
 
       - name: Generate fixtures
         if: steps.fixture-cache.outputs.cache-hit != 'true'
-        uses: FerrLabs/Fixtures@7b04ba1b93ababf2b557ca4521a243c23217ef0a # v1.2.2 (packed repos)
+        uses: FerrLabs/Fixtures@05adbf91396ffb3f05ceda4cdf3ad6755292fc37 # v1.4.1 (packed repos)
         with:
           definitions: tests/fixtures/definitions
 
@@ -571,7 +571,7 @@ jobs:
           lookup-only: true
       - name: Generate benchmark fixtures
         if: steps.bench-cache.outputs.cache-hit != 'true'
-        uses: FerrLabs/Fixtures@7b04ba1b93ababf2b557ca4521a243c23217ef0a # v1.2.2 (packed repos)
+        uses: FerrLabs/Fixtures@05adbf91396ffb3f05ceda4cdf3ad6755292fc37 # v1.4.1 (packed repos)
         with:
           definitions: benchmarks/fixtures/definitions
           generated-dir: bench-fixtures
@@ -649,7 +649,7 @@ jobs:
           key: bench-npm-cache-${{ hashFiles('.github/workflows/ci.yml', 'benchmarks/fixtures/definitions/*.json') }}
           restore-keys: |
             bench-npm-cache-
-      - uses: FerrLabs/Benchmarks@db1353fe328ac827ac3e1583167e43443c308655 # v5.6.3 (competitors bucketed as release-dry-run for a like-for-like head-to-head)
+      - uses: FerrLabs/Benchmarks@e908f5c933523dab5be56983278c8683e7eeb445 # v5.6.4 (competitors bucketed as release-dry-run for a like-for-like head-to-head)
         with:
           type: full
           definitions: benchmarks/fixtures/definitions
@@ -687,7 +687,7 @@ jobs:
         with:
           pattern: bench-partial-*
           path: partials/
-      - uses: FerrLabs/Benchmarks@db1353fe328ac827ac3e1583167e43443c308655 # v5.6.3 (competitors bucketed as release-dry-run for a like-for-like head-to-head)
+      - uses: FerrLabs/Benchmarks@e908f5c933523dab5be56983278c8683e7eeb445 # v5.6.4 (competitors bucketed as release-dry-run for a like-for-like head-to-head)
         with:
           type: full
           definitions: benchmarks/fixtures/definitions
