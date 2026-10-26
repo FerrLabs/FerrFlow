@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.34.1] - 2026-10-26
+
+### Bug Fixes
+
+- fix(versioning): read sequential and two-part release tags as releases (#1351)
+
 ## [7.34.0] - 2026-10-26
 
 ### Features
