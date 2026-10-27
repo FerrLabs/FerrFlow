@@ -53,6 +53,47 @@ Avec `releaseCommitMode: "pr"`, le clone reçoit le commit et les tags qui arriv
 
 ---
 
+## `ferrflow snapshot`
+
+Donner à chaque package qui a des changements en attente une version de pré-release jetable, pour un build de preview de PR.
+
+```bash
+ferrflow snapshot --tag <SUFFIXE> [--from-zero] [--no-git] [--run-hooks]
+```
+
+| Option            | Description                                                                           |
+| ----------------- | ------------------------------------------------------------------------------------- |
+| `--tag <SUFFIXE>` | Suffixe de pré-release, par exemple `pr-123`. Doit être une pré-release semver valide |
+| `--from-zero`     | Utiliser `0.0.0-<SUFFIXE>.<sha>` au lieu de la prochaine version calculée             |
+| `--no-git`        | Ne pas exiger un working tree propre, pour un checkout déjà modifié par la CI         |
+| `--run-hooks`     | Exécuter les hooks `pre_publish` et `post_publish` avec la version snapshot           |
+
+La prochaine version est calculée à partir de tous les commits depuis la dernière release de chaque package, puis sa partie pré-release est remplacée : `1.3.0` devient `1.3.0-pr-123.abc1234`, où `abc1234` est le commit HEAD abrégé. Seuls les fichiers versionnés sont écrits. Pas de changelog, de commit, de tag ni de push, et les publishers configurés ne tournent pas, donc rien ne peut déplacer un dist-tag `latest`. Avec `--dry-run`, rien n'est écrit.
+
+La commande affiche un objet JSON sur stdout :
+
+```json
+{
+  "tag": "pr-123",
+  "commit": "abc1234",
+  "dry_run": false,
+  "packages": [
+    {
+      "name": "cli",
+      "version": "1.3.0-pr-123.abc1234",
+      "previous_version": "1.2.0"
+    }
+  ]
+}
+```
+
+```bash
+ferrflow snapshot --tag "pr-$PR_NUMBER" > snapshot.json
+npm publish --tag "pr-$PR_NUMBER"
+```
+
+---
+
 ## `ferrflow check`
 
 Prévisualiser ce que `ferrflow release` ferait sans effectuer de changements.
