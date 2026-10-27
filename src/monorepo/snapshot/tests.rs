@@ -277,3 +277,55 @@ fn hooks_do_not_run_unless_asked() {
 
     assert!(!root.join("hooks.log").exists());
 }
+
+#[test]
+fn lockfile_follows_the_snapshot_version_when_update_lockfiles_is_on() {
+    if std::process::Command::new("cargo")
+        .arg("--version")
+        .output()
+        .is_err()
+    {
+        return;
+    }
+    let (dir, _repo) = init_repo();
+    let root = dir.path();
+    std::fs::create_dir_all(root.join("src")).unwrap();
+    std::fs::write(root.join("src/lib.rs"), "").unwrap();
+    std::fs::write(
+        root.join("Cargo.toml"),
+        "[package]\nname = \"alpha\"\nversion = \"1.0.0\"\nedition = \"2021\"\n\n[dependencies]\n",
+    )
+    .unwrap();
+    std::fs::write(
+        root.join(".ferrflow"),
+        r#"{"workspace": {"releaseCommitMode": "none", "updateLockfiles": true}, "package": [
+            {"name": "alpha", "path": ".", "versionedFiles": [{"path": "Cargo.toml", "format": "toml"}]}
+        ]}"#,
+    )
+    .unwrap();
+    let gen_lock = std::process::Command::new("cargo")
+        .current_dir(root)
+        .args(["generate-lockfile", "--offline"])
+        .output()
+        .unwrap();
+    assert!(gen_lock.status.success());
+    git(root, &["add", "."]);
+    git(root, &["commit", "-m", "chore: init"]);
+    git(root, &["tag", "v1.0.0"]);
+    commit_file(
+        root,
+        "src/lib.rs",
+        "pub fn x() {}",
+        "feat: x",
+        1_900_000_000,
+    );
+    let config = Config::load(root, Some(&root.join(".ferrflow"))).unwrap();
+
+    let report = run(root, config, &opts("pr-3")).unwrap();
+
+    let lock = std::fs::read_to_string(root.join("Cargo.lock")).unwrap();
+    assert!(
+        lock.contains(&format!("version = \"{}\"", report.packages[0].version)),
+        "Cargo.lock must carry the snapshot version:\n{lock}"
+    );
+}

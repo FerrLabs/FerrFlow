@@ -99,7 +99,7 @@ ferrflow snapshot --tag <SUFFIX> [--from-zero] [--no-git] [--run-hooks]
 | `--no-git`       | Skip the clean working tree check, for checkouts CI already modified     |
 | `--run-hooks`    | Run the `pre_publish` and `post_publish` hooks with the snapshot version |
 
-The next version is computed from every commit since each package's last release, then its pre-release part is replaced: `1.3.0` becomes `1.3.0-pr-123.abc1234`, where `abc1234` is the short HEAD commit. Only versioned files are written. There is no changelog, commit, tag or push, and configured publishers do not run, so nothing can move a `latest` dist-tag. With `--dry-run` nothing is written.
+The next version is computed from every commit since each package's last release, then its pre-release part is replaced: `1.3.0` becomes `1.3.0-pr-123.abc1234`, where `abc1234` is the short HEAD commit. Only versioned files are written, plus lockfiles when `updateLockfiles` is on. There is no changelog, commit, tag or push, and configured publishers do not run, so nothing can move a `latest` dist-tag. With `--dry-run` nothing is written.
 
 It prints one JSON object on stdout:
 

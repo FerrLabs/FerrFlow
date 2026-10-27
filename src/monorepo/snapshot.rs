@@ -9,6 +9,7 @@ use crate::git::{get_repo_root, open_repo};
 use crate::hooks::{HookContext, HookPackage, HookPoint, resolve_hook, resolve_policy, run_hook};
 
 use super::check::plan_json_at;
+use super::run::refresh_lockfiles;
 use super::types::{CheckPackage, CheckResult};
 use super::util::collect_dirty_files;
 
@@ -78,8 +79,12 @@ fn run(root: &Path, mut config: Config, opts: &SnapshotOptions<'_>) -> Result<Sn
 
     if !opts.dry_run {
         for pkg in &packages {
-            for vf in &package_config(&config, &pkg.name)?.versioned_files {
+            let pkg_config = package_config(&config, &pkg.name)?;
+            for vf in &pkg_config.versioned_files {
                 write_version(vf, root, &pkg.version)?;
+            }
+            if pkg_config.effective_update_lockfiles(&config.workspace) {
+                refresh_lockfiles(pkg_config, root, &mut Vec::new(), &mut Vec::new());
             }
         }
     }
