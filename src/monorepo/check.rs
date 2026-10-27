@@ -101,11 +101,13 @@ pub(super) fn plan_json(config_path: Option<&Path>, channel: Option<&str>) -> Re
     let repo = open_repo(&std::env::current_dir()?)?;
     let root = get_repo_root(&repo)?;
     let config = Config::load(&root, config_path)?;
-    let mut timing = Timing::new(false);
+    plan_json_at(&root, &config, channel)
+}
 
+pub(super) fn plan_json_at(root: &Path, config: &Config, channel: Option<&str>) -> Result<String> {
     let out = run_release_logic(
-        &root,
-        &config,
+        root,
+        config,
         true,
         false,
         true,
@@ -117,7 +119,7 @@ pub(super) fn plan_json(config_path: Option<&Path>, channel: Option<&str>) -> Re
         false,
         false,
         false,
-        &mut timing,
+        &mut Timing::new(false),
     )?;
 
     Ok(out.json.unwrap_or_else(|| r#"{"packages":[]}"#.to_string()))

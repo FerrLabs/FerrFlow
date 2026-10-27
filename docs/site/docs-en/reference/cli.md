@@ -84,6 +84,47 @@ At the end it lists the commits, the files written and the tags created, then de
 
 ---
 
+## `ferrflow snapshot`
+
+Stamp every package with pending changes with a throwaway pre-release version, for a PR preview build.
+
+```bash
+ferrflow snapshot --tag <SUFFIX> [--from-zero] [--no-git] [--run-hooks]
+```
+
+| Flag             | Description                                                              |
+| ---------------- | ------------------------------------------------------------------------ |
+| `--tag <SUFFIX>` | Pre-release suffix, e.g. `pr-123`. Must be a valid semver pre-release    |
+| `--from-zero`    | Use `0.0.0-<SUFFIX>.<sha>` instead of the computed next version          |
+| `--no-git`       | Skip the clean working tree check, for checkouts CI already modified     |
+| `--run-hooks`    | Run the `pre_publish` and `post_publish` hooks with the snapshot version |
+
+The next version is computed from every commit since each package's last release, then its pre-release part is replaced: `1.3.0` becomes `1.3.0-pr-123.abc1234`, where `abc1234` is the short HEAD commit. Only versioned files are written, plus lockfiles when `updateLockfiles` is on. There is no changelog, commit, tag or push, and configured publishers do not run, so nothing can move a `latest` dist-tag. With `--dry-run` nothing is written.
+
+It prints one JSON object on stdout:
+
+```json
+{
+  "tag": "pr-123",
+  "commit": "abc1234",
+  "dry_run": false,
+  "packages": [
+    {
+      "name": "cli",
+      "version": "1.3.0-pr-123.abc1234",
+      "previous_version": "1.2.0"
+    }
+  ]
+}
+```
+
+```bash
+ferrflow snapshot --tag "pr-$PR_NUMBER" > snapshot.json
+npm publish --tag "pr-$PR_NUMBER"
+```
+
+---
+
 ## `ferrflow check`
 
 Preview what `ferrflow release` would do without making any changes.
