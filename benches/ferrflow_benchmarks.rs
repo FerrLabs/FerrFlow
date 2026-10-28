@@ -182,7 +182,7 @@ fn bench_config_loading(c: &mut Criterion) {
             let dir = TempDir::new().unwrap();
             let config_path = dir.path().join(".ferrflow");
             std::fs::write(&config_path, generate_config_json(num_pkgs)).unwrap();
-            std::process::Command::new("git")
+            ferrflow::git_cmd::command()
                 .args(["init", "-q"])
                 .current_dir(dir.path())
                 .output()
@@ -200,7 +200,7 @@ fn run_git(dir: &std::path::Path, args: &[&str]) -> String {
 
 fn run_git_with_stdin(dir: &std::path::Path, args: &[&str], stdin: Option<&[u8]>) -> String {
     use std::io::Write;
-    let mut cmd = std::process::Command::new("git");
+    let mut cmd = ferrflow::git_cmd::command();
     cmd.current_dir(dir).args(args);
     cmd.env("GIT_AUTHOR_NAME", "bench");
     cmd.env("GIT_AUTHOR_EMAIL", "bench@test.com");
@@ -384,7 +384,7 @@ fn bench_validate(c: &mut Criterion) {
                 .unwrap();
             }
 
-            std::process::Command::new("git")
+            ferrflow::git_cmd::command()
                 .args(["init", "-q"])
                 .current_dir(dir.path())
                 .output()
