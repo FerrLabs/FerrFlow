@@ -43,7 +43,7 @@ jobs:
 
   # Coverage lives here rather than in ci.yml because the reusable scan
   # downloads the report from an artifact in the same run, and artifacts do
-  # not cross workflow runs. Tarpaulin is slow, so it runs once and feeds
+  # not cross workflow runs. Coverage is slow, so it runs once and feeds
   # both Sonar and Codecov instead of once per workflow.
   coverage:
     name: Coverage
@@ -51,12 +51,14 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          components: llvm-tools-preview
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
       - uses: taiki-e/install-action@67729d5c413db75907f0ad1e39bb04b9c868ff60 # v2
         with:
-          tool: cargo-tarpaulin
+          tool: cargo-llvm-cov
       - name: Generate coverage
-        run: cargo tarpaulin --out xml --skip-clean
+        run: cargo llvm-cov --cobertura --output-path cobertura.xml
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: coverage-cobertura
