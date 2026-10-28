@@ -14,6 +14,7 @@ mod error_report;
 mod forge;
 mod formats;
 mod git;
+mod git_cmd;
 mod hooks;
 mod http;
 mod logging;
@@ -72,7 +73,7 @@ fn main() {
 mod test_utils {
     use std::path::Path;
     use std::process::Command;
-    use std::sync::Mutex;
+    use std::sync::{Mutex, OnceLock};
 
     pub static CWD_LOCK: Mutex<()> = Mutex::new(());
     pub static ENV_LOCK: Mutex<()> = Mutex::new(());
@@ -89,8 +90,27 @@ mod test_utils {
         result
     }
 
+    pub fn git_command() -> Command {
+        static LOCAL_ENV_VARS: OnceLock<Vec<String>> = OnceLock::new();
+        let vars = LOCAL_ENV_VARS.get_or_init(|| {
+            let out = Command::new("git")
+                .args(["rev-parse", "--local-env-vars"])
+                .output()
+                .expect("git should be on PATH");
+            String::from_utf8_lossy(&out.stdout)
+                .lines()
+                .map(str::to_owned)
+                .collect()
+        });
+        let mut cmd = Command::new("git");
+        for var in vars {
+            cmd.env_remove(var);
+        }
+        cmd
+    }
+
     pub fn git(dir: &Path, args: &[&str]) -> String {
-        let out = Command::new("git")
+        let out = git_command()
             .current_dir(dir)
             .args(args)
             .output()
@@ -104,7 +124,7 @@ mod test_utils {
     }
 
     pub fn git_with_env(dir: &Path, args: &[&str], env: &[(&str, &str)]) -> String {
-        let mut cmd = Command::new("git");
+        let mut cmd = git_command();
         cmd.current_dir(dir).args(args);
         for (k, v) in env {
             cmd.env(k, v);

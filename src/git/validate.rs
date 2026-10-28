@@ -80,7 +80,7 @@ mod tests {
                 ensure_safe_refname_fragment(bad, "tag").is_err(),
                 "should reject {bad:?}"
             );
-            let accepted = std::process::Command::new("git")
+            let accepted = crate::test_utils::git_command()
                 .arg("check-ref-format")
                 .arg(format!("refs/tags/{bad}"))
                 .status()

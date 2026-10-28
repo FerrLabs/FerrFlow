@@ -223,11 +223,9 @@ mod tests {
     use super::*;
 
     fn git(dir: &Path, args: &[&str]) {
-        let status = std::process::Command::new("git")
+        let status = crate::test_utils::git_command()
             .current_dir(dir)
             .args(args)
-            .env_remove("GIT_DIR")
-            .env_remove("GIT_WORK_TREE")
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())
             .status()

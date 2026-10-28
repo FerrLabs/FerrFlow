@@ -1,5 +1,4 @@
 use std::path::Path;
-use std::process::Command;
 
 use crate::config::{Config, ForgeKind, GENERIC_TOKEN_ENV_VAR};
 use crate::forge::{Probe, resolve_forge};
@@ -463,7 +462,7 @@ pub(super) fn identity_check(identity: Option<String>, on_actions: bool) -> Chec
 }
 
 fn dirty_count(root: &Path) -> Option<usize> {
-    let output = Command::new("git")
+    let output = crate::git_cmd::command()
         .current_dir(root)
         .args(["status", "--porcelain"])
         .output()
