@@ -1069,7 +1069,7 @@ mod tests {
                 content.len()
             ));
         }
-        let mut child = std::process::Command::new("git")
+        let mut child = crate::test_utils::git_command()
             .current_dir(dir)
             .args(["fast-import", "--quiet"])
             .stdin(std::process::Stdio::piped())

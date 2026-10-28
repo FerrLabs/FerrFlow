@@ -36,7 +36,7 @@ pub(super) fn collect_dirty_files(repo: &crate::git::Repository) -> HashSet<Stri
         Some(p) => p,
         None => return files,
     };
-    let output = std::process::Command::new("git")
+    let output = crate::git_cmd::command()
         .current_dir(workdir)
         .args(["status", "--porcelain=v1", "-z", "--no-renames"])
         .output();

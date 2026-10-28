@@ -7,7 +7,7 @@ pub struct GoModVersionFile;
 
 impl VersionFile for GoModVersionFile {
     fn read_version(&self, file_path: &Path) -> Result<String> {
-        let mut cmd = std::process::Command::new("git");
+        let mut cmd = crate::git_cmd::command();
         cmd.args([
             "describe",
             "--tags",
@@ -74,7 +74,6 @@ impl VersionFile for GoModVersionFile {
 mod tests {
     use super::*;
     use std::path::Path;
-    use std::process::Command;
 
     #[test]
     fn write_version_is_noop() {
@@ -96,9 +95,10 @@ mod tests {
                 "config email",
             ),
             (vec!["config", "user.name", "Test"], "config name"),
+            (vec!["config", "tag.gpgsign", "false"], "config tag.gpgsign"),
             (vec!["commit", "--allow-empty", "-m", "initial"], "commit"),
         ] {
-            let out = Command::new("git")
+            let out = crate::test_utils::git_command()
                 .args(args)
                 .current_dir(repo)
                 .output()
@@ -132,7 +132,7 @@ mod tests {
         let repo = dir.path();
         init_repo(repo);
 
-        let tag_out = Command::new("git")
+        let tag_out = crate::test_utils::git_command()
             .args(["tag", "v1.2.3"])
             .current_dir(repo)
             .output()

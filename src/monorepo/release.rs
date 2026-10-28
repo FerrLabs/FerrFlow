@@ -161,7 +161,7 @@ fn cleanup_failed_release_attempt(
         crate::git::collect_all_tags(&repo).into_iter().collect();
     if let Some(workdir) = repo.workdir() {
         for tag in after.difference(pre_attempt_tags) {
-            let _ = std::process::Command::new("git")
+            let _ = crate::git_cmd::command()
                 .current_dir(workdir)
                 .args(["tag", "-d", tag])
                 .output();
@@ -186,7 +186,7 @@ mod tests {
     use std::collections::HashSet;
 
     fn git(dir: &Path, args: &[&str]) -> String {
-        let out = std::process::Command::new("git")
+        let out = crate::test_utils::git_command()
             .current_dir(dir)
             .args(args)
             .env("GIT_AUTHOR_NAME", "t")

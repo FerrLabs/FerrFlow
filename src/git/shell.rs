@@ -1,6 +1,5 @@
 use anyhow::{Context, Result, anyhow};
 use std::path::Path;
-use std::process::Command;
 
 use super::auth::scrub_trace_env;
 
@@ -13,7 +12,7 @@ pub(super) fn run_git_with_env(
     args: &[&str],
     extra_env: &[(&str, &str)],
 ) -> Result<String> {
-    let mut cmd = Command::new("git");
+    let mut cmd = crate::git_cmd::command();
     cmd.current_dir(workdir);
     scrub_trace_env(&mut cmd);
     for (k, v) in extra_env {
