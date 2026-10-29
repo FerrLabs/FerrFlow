@@ -1,5 +1,12 @@
 # Changelog
 
+## [2026.10.18] - 2026-10-29
+
+### Bug Fixes
+
+- fix(deps): update dependency @ferrlabs/ui-ng to ^1.46.0 (#1116)
+- fix(deps): update dependency @ferrflow/doc to v7.35.1 (#1115)
+
 ## [2026.10.17] - 2026-10-26
 
 ### Bug Fixes
