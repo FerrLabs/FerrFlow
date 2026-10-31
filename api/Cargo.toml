@@ -7,6 +7,9 @@ publish = false
 authors = ["FerrLabs"]
 rust-version = "1.88"
 
+[features]
+fuzzing = []
+
 [dependencies]
 axum = { version = "0.8", features = ["macros"] }
 tower-http = { version = "0.7", features = ["cors", "trace", "compression-gzip"] }

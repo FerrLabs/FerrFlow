@@ -7,7 +7,7 @@ use crate::state::AppState;
 
 mod health;
 mod latest;
-mod marketplace;
+pub(crate) mod marketplace;
 mod openapi;
 mod preview;
 mod schema;

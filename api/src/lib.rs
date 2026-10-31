@@ -2,6 +2,8 @@ pub mod bot;
 pub mod config;
 pub mod engine;
 pub mod error;
+#[cfg(feature = "fuzzing")]
+pub mod fuzzing;
 pub mod routes;
 pub mod state;
 

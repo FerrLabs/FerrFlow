@@ -39,7 +39,7 @@ struct Plan {
     name: String,
 }
 
-fn signature_matches(secret: &str, body: &[u8], header: &str) -> bool {
+pub(crate) fn signature_matches(secret: &str, body: &[u8], header: &str) -> bool {
     let Some(hex_digest) = header.strip_prefix(SIGNATURE_PREFIX) else {
         return false;
     };
