@@ -197,7 +197,11 @@ fn find_comment_pages_through_notes_until_the_marker() {
         .collect();
     let server = FakeServer::start(vec![
         Reply::json(200, json!(first_page)),
-        Reply::json(200, json!([{ "id": 500, "body": "x <!-- ferrflow --> y" }])),
+        Reply::json(
+            200,
+            json!([{ "id": 500, "body": "x <!-- ferrflow --> y", "author": { "username": "me" } }]),
+        ),
+        Reply::json(200, json!({ "username": "me" })),
     ]);
 
     let found = forge(&server)
@@ -209,6 +213,45 @@ fn find_comment_pages_through_notes_until_the_marker() {
     assert_eq!(
         requests[1].path,
         format!("{PROJECT}/merge_requests/15/notes?per_page=100&page=2")
+    );
+}
+
+#[test]
+fn find_comment_skips_notes_from_someone_else() {
+    let server = FakeServer::start(vec![
+        Reply::json(
+            200,
+            json!([
+                { "id": 9, "body": "<!-- ferrflow -->", "author": { "username": "someone" } },
+                { "id": 8, "body": "<!-- ferrflow -->", "author": { "username": "me" } },
+                { "id": 7, "body": "<!-- ferrflow -->", "author": { "username": "me" } },
+            ]),
+        ),
+        Reply::json(200, json!({ "username": "me" })),
+    ]);
+
+    let found = forge(&server)
+        .find_comment(15, "<!-- ferrflow -->")
+        .unwrap();
+
+    assert_eq!(found, Some(8));
+}
+
+#[test]
+fn find_comment_matches_nothing_when_the_token_cannot_read_its_user() {
+    let server = FakeServer::start(vec![
+        Reply::json(
+            200,
+            json!([{ "id": 8, "body": "<!-- ferrflow -->", "author": { "username": "me" } }]),
+        ),
+        Reply::json(401, json!({})),
+    ]);
+
+    assert_eq!(
+        forge(&server)
+            .find_comment(15, "<!-- ferrflow -->")
+            .unwrap(),
+        None
     );
 }
 

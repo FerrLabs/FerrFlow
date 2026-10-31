@@ -6,9 +6,33 @@ use super::ReleaseResult;
 
 const MAX_PAGES: u32 = 100;
 
+#[derive(Clone, Copy)]
+enum Unidentified {
+    AnyBot,
+    Nobody,
+}
+
+enum CommentOwner {
+    Login(String),
+    Unidentified(Unidentified),
+}
+
+impl CommentOwner {
+    fn wrote(&self, comment: &serde_json::Value) -> bool {
+        let author = &comment["user"];
+        match self {
+            Self::Login(login) => author["login"].as_str() == Some(login),
+            Self::Unidentified(Unidentified::AnyBot) => author["type"].as_str() == Some("Bot"),
+            Self::Unidentified(Unidentified::Nobody) => false,
+        }
+    }
+}
+
 pub(super) struct RestClient<'a> {
     agent: &'a ureq::Agent,
     repo_url: String,
+    user_url: String,
+    unidentified: Unidentified,
     auth: (&'static str, String),
     extra_headers: &'static [(&'static str, &'static str)],
     page_size_param: &'static str,
@@ -20,6 +44,8 @@ impl<'a> RestClient<'a> {
         Self {
             agent,
             repo_url: format!("{api_base}/repos/{slug}"),
+            user_url: format!("{api_base}/user"),
+            unidentified: Unidentified::AnyBot,
             auth: ("Authorization", format!("Bearer {token}")),
             extra_headers: &[
                 ("Accept", "application/vnd.github+json"),
@@ -34,6 +60,8 @@ impl<'a> RestClient<'a> {
         Self {
             agent,
             repo_url: format!("{api_base}/repos/{slug}"),
+            user_url: format!("{api_base}/user"),
+            unidentified: Unidentified::Nobody,
             auth: ("Authorization", format!("token {token}")),
             extra_headers: &[],
             page_size_param: "limit",
@@ -119,13 +147,46 @@ impl<'a> RestClient<'a> {
     pub fn find_comment(&self, pr_id: u64, marker: &str, what: &str) -> Result<Option<u64>> {
         let comments =
             self.paginated_json_array(&format!("{}/issues/{pr_id}/comments", self.repo_url), what)?;
-        Ok(comments.iter().find_map(|comment| {
-            comment["body"]
-                .as_str()
-                .is_some_and(|body| body.contains(marker))
-                .then(|| comment["id"].as_u64())
-                .flatten()
-        }))
+        let mut marked = comments
+            .iter()
+            .rev()
+            .filter(|comment| {
+                comment["body"]
+                    .as_str()
+                    .is_some_and(|body| body.contains(marker))
+            })
+            .peekable();
+        if marked.peek().is_none() {
+            return Ok(None);
+        }
+        let owner = self.comment_owner()?;
+        Ok(marked
+            .find(|comment| owner.wrote(comment))
+            .and_then(|comment| comment["id"].as_u64()))
+    }
+
+    fn comment_owner(&self) -> Result<CommentOwner> {
+        match self.get(&self.user_url).call() {
+            Ok(mut response) => {
+                let user: serde_json::Value = response
+                    .body_mut()
+                    .read_json()
+                    .context("Failed to parse the token's user")?;
+                let login = user["login"]
+                    .as_str()
+                    .context("The token's user has no login")?;
+                Ok(CommentOwner::Login(login.to_string()))
+            }
+            Err(ureq::Error::StatusCode(401 | 403)) => {
+                if matches!(self.unidentified, Unidentified::Nobody) {
+                    tracing::warn!(
+                        "Warning: the token cannot read its own user, posting a new comment instead of updating one"
+                    );
+                }
+                Ok(CommentOwner::Unidentified(self.unidentified))
+            }
+            Err(e) => Err(e).context("Failed to read the token's user"),
+        }
     }
 
     pub fn create_comment(&self, pr_id: u64, body: &str) -> Result<()> {
