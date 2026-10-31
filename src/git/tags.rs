@@ -86,7 +86,9 @@ impl TagIndex {
         let floating = self.floating_tag_names(prefix);
         self.entries
             .iter()
-            .filter(|e| e.reachable && e.name.starts_with(prefix) && !floating.contains(&e.name))
+            .filter(|e| {
+                e.reachable && is_version_tag(&e.name, prefix) && !floating.contains(&e.name)
+            })
             .max_by_key(|e| e.time)
             .map(|e| e.name.clone())
     }
@@ -131,7 +133,9 @@ impl TagIndex {
         let floating = self.floating_tag_names(prefix);
         self.entries
             .iter()
-            .filter(|e| e.reachable && e.name.starts_with(prefix) && !floating.contains(&e.name))
+            .filter(|e| {
+                e.reachable && is_version_tag(&e.name, prefix) && !floating.contains(&e.name)
+            })
             .max_by_key(|e| e.time)
             .map(|e| e.commit_oid)
     }
@@ -149,7 +153,7 @@ impl TagIndex {
             .iter()
             .filter(|e| {
                 e.reachable
-                    && e.name.starts_with(prefix)
+                    && is_version_tag(&e.name, prefix)
                     && !is_prerelease_tag(&e.name, prefix)
                     && !floating.contains(&e.name)
             })
@@ -300,6 +304,18 @@ pub(super) fn floating_tag_names<'a>(
         }
     }
     floating
+}
+
+pub(super) fn is_version_tag(tag_name: &str, prefix: &str) -> bool {
+    let Some(rest) = tag_name.strip_prefix(prefix) else {
+        return false;
+    };
+    let rest = rest.strip_prefix('v').unwrap_or(rest);
+    let core = rest.split(['-', '+']).next().unwrap_or(rest);
+    !core.is_empty()
+        && core
+            .split('.')
+            .all(|part| !part.is_empty() && part.bytes().all(|b| b.is_ascii_digit()))
 }
 
 pub(super) fn is_prerelease_tag(tag_name: &str, prefix: &str) -> bool {
@@ -467,8 +483,7 @@ fn prefixed_tags(
         .flatten()
         .filter_map(|reference| {
             let name = String::from_utf8_lossy(reference.name().shorten()).into_owned();
-            name.starts_with(prefix)
-                .then(|| (name, reference.id().detach()))
+            is_version_tag(&name, prefix).then(|| (name, reference.id().detach()))
         })
         .collect();
     let floating = floating_tag_names(tags.iter().map(|(name, _)| name.as_str()), prefix);
