@@ -1,6 +1,6 @@
 <div align="center">
 
-# FerrFlow
+<h1><img src=".github/logo.svg" alt="" width="48" height="48" align="absmiddle"> FerrFlow</h1>
 
 **Universal semantic versioning for monorepos and classic repos.**
 
@@ -8,13 +8,14 @@ Reads your [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/
 updates your version files, writes the changelog, and cuts the tagged release. Any language, any repo layout.
 
 [![Latest release](https://img.shields.io/github/v/release/FerrLabs/FerrFlow)](https://github.com/FerrLabs/FerrFlow/releases/latest)
-[![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-%23FE5196?logo=conventionalcommits&logoColor=white)](https://www.conventionalcommits.org/en/v1.0.0/)
+[![CI](https://github.com/FerrLabs/FerrFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/FerrLabs/FerrFlow/actions/workflows/ci.yml)
 [![Quality Gate](https://sonar.ferrlabs.com/api/project_badges/measure?project=ferrflow&metric=alert_status&token=sqb_53f0d93466bd01a6c6a94a15125d5aa8390c67fa)](https://sonar.ferrlabs.com/dashboard?id=ferrflow)
 [![Maintainability](https://sonar.ferrlabs.com/api/project_badges/measure?project=ferrflow&metric=sqale_rating&token=sqb_53f0d93466bd01a6c6a94a15125d5aa8390c67fa)](https://sonar.ferrlabs.com/dashboard?id=ferrflow)
 [![Security](https://sonar.ferrlabs.com/api/project_badges/measure?project=ferrflow&metric=security_rating&token=sqb_53f0d93466bd01a6c6a94a15125d5aa8390c67fa)](https://sonar.ferrlabs.com/dashboard?id=ferrflow)
 [![License](https://img.shields.io/github/license/FerrLabs/FerrFlow)](LICENSE)
-[![Socket Badge](https://badge.socket.dev/cargo/package/ferrflow/latest)](https://socket.dev/cargo/package/ferrflow)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/FerrLabs/FerrFlow/badge)](https://scorecard.dev/viewer/?uri=github.com/FerrLabs/FerrFlow)
+[![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-%23FE5196?logo=conventionalcommits&logoColor=white)](https://www.conventionalcommits.org/en/v1.0.0/)
+[![Socket Badge](https://badge.socket.dev/cargo/package/ferrflow/latest)](https://socket.dev/cargo/package/ferrflow)
 
 [Documentation](https://ferrflow.com/docs) | [Changelog](https://ferrflow.com/changelog/) | [GitHub App](https://github.com/apps/ferrflow)
 
