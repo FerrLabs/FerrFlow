@@ -2566,3 +2566,56 @@ fn tag_index_reads_sequential_tags() {
         Some("v3")
     );
 }
+
+#[test]
+fn prefix_sharing_tag_without_a_version_is_not_the_last_tag() {
+    let (dir, repo) = init_repo();
+    create_commit_in_repo(&repo, dir.path(), "a.txt", "feat: first");
+    create_lightweight_tag(&repo, "v1.0.0");
+    create_commit_in_repo(&repo, dir.path(), "b.txt", "feat!: breaking");
+    create_lightweight_tag(&repo, "vendor-sync");
+    create_commit_in_repo(&repo, dir.path(), "c.txt", "fix: third");
+    let v1 = git(dir.path(), &["rev-parse", "v1.0.0^{commit}"]);
+
+    let idx = TagIndex::build(&repo).unwrap();
+    let last = idx
+        .find_last_tag_commit("v", OrphanedTagStrategy::Warn)
+        .unwrap();
+    assert_eq!(last.to_string(), v1.trim());
+
+    let found = find_last_tag_name(&repo, "v", OrphanedTagStrategy::Warn).unwrap();
+    assert_eq!(found, Some("v1.0.0".to_string()));
+}
+
+#[test]
+fn tag_of_a_sibling_package_is_not_the_last_tag() {
+    let (dir, repo) = init_repo();
+    create_commit_in_repo(&repo, dir.path(), "a.txt", "feat: first");
+    create_lightweight_tag(&repo, "core-1.0.0");
+    create_commit_in_repo(&repo, dir.path(), "b.txt", "feat(core): second");
+    create_commit_in_repo(&repo, dir.path(), "c.txt", "chore: third");
+    create_lightweight_tag(&repo, "core-utils-1.0.1");
+    let first = git(dir.path(), &["rev-parse", "core-1.0.0^{commit}"]);
+
+    let idx = TagIndex::build(&repo).unwrap();
+    let last = idx
+        .find_last_tag_commit("core-", OrphanedTagStrategy::Warn)
+        .unwrap();
+    assert_eq!(last.to_string(), first.trim());
+}
+
+#[test]
+fn prerelease_and_v_prefixed_versions_still_count_as_tags() {
+    let (dir, repo) = init_repo();
+    create_commit_in_repo(&repo, dir.path(), "a.txt", "feat: first");
+    create_lightweight_tag(&repo, "pkg-v1.0.0");
+    create_commit_in_repo(&repo, dir.path(), "b.txt", "feat: second");
+    create_lightweight_tag(&repo, "pkg-v1.1.0-beta.1");
+    let beta = git(dir.path(), &["rev-parse", "pkg-v1.1.0-beta.1^{commit}"]);
+
+    let idx = TagIndex::build(&repo).unwrap();
+    let last = idx
+        .find_last_tag_commit("pkg-", OrphanedTagStrategy::Warn)
+        .unwrap();
+    assert_eq!(last.to_string(), beta.trim());
+}
