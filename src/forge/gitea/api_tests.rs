@@ -111,21 +111,43 @@ fn publish_release_patches_draft_false() {
 }
 
 #[test]
-fn find_comment_matches_the_marker_on_the_issue_thread() {
-    let server = FakeServer::start(vec![Reply::json(
-        200,
-        json!([
-            { "id": 1, "body": "hello" },
-            { "id": 2, "body": "<!-- ferrflow --> preview" },
-        ]),
-    )]);
+fn find_comment_only_matches_the_tokens_own_comments() {
+    let server = FakeServer::start(vec![
+        Reply::json(
+            200,
+            json!([
+                { "id": 1, "body": "hello", "user": { "login": "me" } },
+                { "id": 2, "body": "<!-- ferrflow --> preview", "user": { "login": "me" } },
+                { "id": 3, "body": "<!-- ferrflow --> quoted", "user": { "login": "someone" } },
+            ]),
+        ),
+        Reply::json(200, json!({ "login": "me" })),
+    ]);
 
     let found = forge(&server).find_comment(8, "<!-- ferrflow -->").unwrap();
 
     assert_eq!(found, Some(2));
+    let requests = server.requests();
     assert_eq!(
-        server.only_request().path,
+        requests[0].path,
         "/repos/owner/repo/issues/8/comments?limit=50&page=1"
+    );
+    assert_eq!(requests[1].path, "/user");
+}
+
+#[test]
+fn find_comment_matches_nothing_when_the_token_cannot_read_its_user() {
+    let server = FakeServer::start(vec![
+        Reply::json(
+            200,
+            json!([{ "id": 2, "body": "<!-- ferrflow -->", "user": { "login": "me", "type": "Bot" } }]),
+        ),
+        Reply::json(403, json!({})),
+    ]);
+
+    assert_eq!(
+        forge(&server).find_comment(8, "<!-- ferrflow -->").unwrap(),
+        None
     );
 }
 
