@@ -1,5 +1,5 @@
 # Build stage
-FROM rust:1.99-alpine@sha256:b1d5dd5a22a09404d3e798c0cf051b689077360374eb505fa5bb93c479693d87 AS builder
+FROM rust:1.99-alpine@sha256:f432d4b8663fbc50b29e33846bf6a1fb9f17f142023598899d641cddf57c6b22 AS builder
 RUN apk add --no-cache musl-dev openssl-dev openssl-libs-static pkgconfig cmake make
 ENV OPENSSL_NO_VENDOR=1
 WORKDIR /app
