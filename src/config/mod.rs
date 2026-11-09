@@ -39,9 +39,9 @@ pub use package::{
 #[allow(unused_imports)]
 pub use types::{
     BranchChannelConfig, BuildMetadata, ChannelValue, DockerSign, ForgeKind, GENERIC_TOKEN_ENV_VAR,
-    HooksConfig, NestedPackages, OnFailure, OrphanedTagStrategy, PrereleaseIdentifier,
-    PublisherConfig, RegistryConfig, ReleaseCommitBody, ReleaseCommitMode, ReleaseCommitScope,
-    VersionSourcePolicy, all_token_env_vars,
+    HooksConfig, NestedPackages, OnFailure, OrphanedTagStrategy, PreMajorBump, PreMajorRules,
+    PrereleaseIdentifier, PublisherConfig, RegistryConfig, ReleaseCommitBody, ReleaseCommitMode,
+    ReleaseCommitScope, VersionSourcePolicy, all_token_env_vars,
 };
 #[allow(unused_imports)]
 pub use workspace::{

@@ -391,6 +391,21 @@ versioning = "calver"  # override: date-based
 | `sequential` | `N` | `42` | Simple incrementing build number |
 | `zerover` | `0.MINOR.PATCH` | `0.15.2` | Permanently unstable, never hits 1.0 |
 
+### Pre-1.0 bump rules
+
+By default a `semver` project jumps to `1.0.0` on its first breaking change. Set `preMajor` to stay in 0.x: while the current major is `0`, a breaking change bumps what `breaking` says and a `feat` bumps what `feat` says (`minor` or `patch`). `fix` is unchanged.
+
+```toml
+[workspace]
+versioning = "semver"
+
+[workspace.preMajor]
+breaking = "minor"
+feat = "patch"
+```
+
+From `0.5.0`: `feat!` gives `0.6.0`, `feat` and `fix` give `0.5.1`. This matches release-please's `bump-minor-pre-major` plus `bump-patch-for-minor-pre-major`. From `1.0.0` on it has no effect, and `ferrflow release --force-version 1.0.0` leaves 0.x. Packages can override it with their own `preMajor`. Unset keeps the standard rules.
+
 ## Tag Template
 
 By default, FerrFlow tags single-repo releases as `v1.2.3` and monorepo releases as `api@v1.2.3`. Customize with `tag_template` at the workspace or package level using `{name}` and `{version}` placeholders.

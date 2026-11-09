@@ -134,6 +134,32 @@ export interface FerrFlowConfiguration {
      */
     versioning?: 'semver' | 'calver' | 'calver-short' | 'calver-seq' | 'calver-short-seq' | 'sequential' | 'zerover';
     /**
+     * While the current major is 0 on a `semver` project, remaps the bump: `breaking` replaces what a breaking change bumps (normally major) and `feat` replaces what a `feat` bumps (normally minor). `{"breaking": "minor", "feat": "patch"}` matches release-please's bump-minor-pre-major and bump-patch-for-minor-pre-major. No effect from 1.0.0 on, leave 0.x with `ferrflow release --force-version 1.0.0`. Omit for the standard semver rules.
+     */
+    preMajor?: {
+      /**
+       * Bump a breaking change takes while the current major is 0.
+       */
+      breaking?: 'minor' | 'patch';
+      /**
+       * Bump a `feat` commit takes while the current major is 0.
+       */
+      feat?: 'minor' | 'patch';
+    };
+    /**
+     * Snake_case form of `preMajor`, both spellings are accepted. While the current major is 0 on a `semver` project, remaps the bump: `breaking` replaces what a breaking change bumps (normally major) and `feat` replaces what a `feat` bumps (normally minor). `{"breaking": "minor", "feat": "patch"}` matches release-please's bump-minor-pre-major and bump-patch-for-minor-pre-major. No effect from 1.0.0 on, leave 0.x with `ferrflow release --force-version 1.0.0`. Omit for the standard semver rules.
+     */
+    pre_major?: {
+      /**
+       * Bump a breaking change takes while the current major is 0.
+       */
+      breaking?: 'minor' | 'patch';
+      /**
+       * Bump a `feat` commit takes while the current major is 0.
+       */
+      feat?: 'minor' | 'patch';
+    };
+    /**
      * Version format built from named variables. Variables: year, short_year, month, padded_month, day, padded_day, week, padded_week, quarter, seq, major, minor, patch. Each must be separated by a literal so the previous version can be read back. The literals cannot carry whitespace, control characters, or the characters git reserves in a ref name (~ ^ : ? * [ backslash), because the version becomes a git tag. Takes precedence over 'versioning'.
      */
     versionTemplate?: string;
@@ -454,6 +480,32 @@ export interface FerrFlowConfiguration {
      * Versioning strategy for this package. Overrides workspace default.
      */
     versioning?: 'semver' | 'calver' | 'calver-short' | 'calver-seq' | 'calver-short-seq' | 'sequential' | 'zerover';
+    /**
+     * Per-package override for workspace.preMajor. While the current major is 0 on a `semver` project, remaps the bump: `breaking` replaces what a breaking change bumps (normally major) and `feat` replaces what a `feat` bumps (normally minor). `{"breaking": "minor", "feat": "patch"}` matches release-please's bump-minor-pre-major and bump-patch-for-minor-pre-major. No effect from 1.0.0 on, leave 0.x with `ferrflow release --force-version 1.0.0`. Omit for the standard semver rules.
+     */
+    preMajor?: {
+      /**
+       * Bump a breaking change takes while the current major is 0.
+       */
+      breaking?: 'minor' | 'patch';
+      /**
+       * Bump a `feat` commit takes while the current major is 0.
+       */
+      feat?: 'minor' | 'patch';
+    };
+    /**
+     * Snake_case form of `preMajor`, both spellings are accepted. Per-package override for workspace.preMajor. While the current major is 0 on a `semver` project, remaps the bump: `breaking` replaces what a breaking change bumps (normally major) and `feat` replaces what a `feat` bumps (normally minor). `{"breaking": "minor", "feat": "patch"}` matches release-please's bump-minor-pre-major and bump-patch-for-minor-pre-major. No effect from 1.0.0 on, leave 0.x with `ferrflow release --force-version 1.0.0`. Omit for the standard semver rules.
+     */
+    pre_major?: {
+      /**
+       * Bump a breaking change takes while the current major is 0.
+       */
+      breaking?: 'minor' | 'patch';
+      /**
+       * Bump a `feat` commit takes while the current major is 0.
+       */
+      feat?: 'minor' | 'patch';
+    };
     /**
      * Version format built from named variables. Variables: year, short_year, month, padded_month, day, padded_day, week, padded_week, quarter, seq, major, minor, patch. Each must be separated by a literal so the previous version can be read back. The literals cannot carry whitespace, control characters, or the characters git reserves in a ref name (~ ^ : ? * [ backslash), because the version becomes a git tag. Overrides workspace default. Takes precedence over 'versioning'.
      */

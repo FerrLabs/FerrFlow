@@ -277,6 +277,28 @@ mod tests {
     }
 
     #[test]
+    fn pre_major_is_not_reported_in_either_spelling_but_its_typos_are() {
+        assert!(
+            reported(json!({
+                "workspace": {
+                    "preMajor": { "breaking": "minor", "feat": "patch" }
+                },
+                "package": [{
+                    "name": "core",
+                    "path": ".",
+                    "pre_major": { "feat": "patch" }
+                }]
+            }))
+            .is_empty()
+        );
+        let found = reported(json!({
+            "workspace": { "preMajor": { "breakin": "minor" } }
+        }));
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].0, "workspace.preMajor.breakin");
+    }
+
+    #[test]
     fn included_fragments_are_checked_against_the_package_schema() {
         let found = find_unknown_keys::<PackageConfig>(
             json!({ "name": "core", "versionedFiless": [] }),

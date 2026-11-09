@@ -2,7 +2,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::conventional_commits::BumpType;
 
-use super::types::{BuildMetadata, HooksConfig, PublisherConfig, VersionSourcePolicy};
+use super::types::{
+    BuildMetadata, HooksConfig, PreMajorRules, PublisherConfig, VersionSourcePolicy,
+};
 use super::workspace::WorkspaceConfig;
 
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
@@ -18,6 +20,8 @@ pub struct PackageConfig {
     #[serde(default, alias = "dependsOn")]
     pub depends_on: Vec<Dependency>,
     pub versioning: Option<VersioningStrategy>,
+    #[serde(default, alias = "preMajor")]
+    pub pre_major: Option<PreMajorRules>,
     #[serde(alias = "tagTemplate")]
     pub tag_template: Option<String>,
     #[serde(alias = "versionTemplate")]
@@ -200,6 +204,10 @@ impl PackageConfig {
             .or(workspace.versioning)
             .or_else(|| crate::versioning::detect_strategy_from_tags(&tags()))
             .unwrap_or_default()
+    }
+
+    pub fn effective_pre_major(&self, workspace: &WorkspaceConfig) -> Option<PreMajorRules> {
+        self.pre_major.or(workspace.pre_major)
     }
 
     pub fn effective_version_template<'a>(

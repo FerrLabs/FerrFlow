@@ -125,6 +125,52 @@
         "zerover"
       ]
     },
+    "preMajor": {
+      "type": "object",
+      "description": "Per-package override for workspace.preMajor. While the current major is 0 on a `semver` project, remaps the bump: `breaking` replaces what a breaking change bumps (normally major) and `feat` replaces what a `feat` bumps (normally minor). `{\"breaking\": \"minor\", \"feat\": \"patch\"}` matches release-please's bump-minor-pre-major and bump-patch-for-minor-pre-major. No effect from 1.0.0 on, leave 0.x with `ferrflow release --force-version 1.0.0`. Omit for the standard semver rules.",
+      "properties": {
+        "breaking": {
+          "type": "string",
+          "enum": [
+            "minor",
+            "patch"
+          ],
+          "description": "Bump a breaking change takes while the current major is 0."
+        },
+        "feat": {
+          "type": "string",
+          "enum": [
+            "minor",
+            "patch"
+          ],
+          "description": "Bump a `feat` commit takes while the current major is 0."
+        }
+      },
+      "additionalProperties": false
+    },
+    "pre_major": {
+      "type": "object",
+      "description": "Snake_case form of `preMajor`, both spellings are accepted. Per-package override for workspace.preMajor. While the current major is 0 on a `semver` project, remaps the bump: `breaking` replaces what a breaking change bumps (normally major) and `feat` replaces what a `feat` bumps (normally minor). `{\"breaking\": \"minor\", \"feat\": \"patch\"}` matches release-please's bump-minor-pre-major and bump-patch-for-minor-pre-major. No effect from 1.0.0 on, leave 0.x with `ferrflow release --force-version 1.0.0`. Omit for the standard semver rules.",
+      "properties": {
+        "breaking": {
+          "type": "string",
+          "enum": [
+            "minor",
+            "patch"
+          ],
+          "description": "Bump a breaking change takes while the current major is 0."
+        },
+        "feat": {
+          "type": "string",
+          "enum": [
+            "minor",
+            "patch"
+          ],
+          "description": "Bump a `feat` commit takes while the current major is 0."
+        }
+      },
+      "additionalProperties": false
+    },
     "versionTemplate": {
       "type": "string",
       "description": "Version format built from named variables. Variables: year, short_year, month, padded_month, day, padded_day, week, padded_week, quarter, seq, major, minor, patch. Each must be separated by a literal so the previous version can be read back. The literals cannot carry whitespace, control characters, or the characters git reserves in a ref name (~ ^ : ? * [ backslash), because the version becomes a git tag. Overrides workspace default. Takes precedence over 'versioning'.",
