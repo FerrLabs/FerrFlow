@@ -519,7 +519,12 @@ mod release_please_avante {
         std::fs::create_dir(&dir).unwrap();
         let (json, report) = migrate_avante(&dir);
 
-        assert_eq!(json["workspace"]["versioning"], "zerover");
+        assert_eq!(
+            json["workspace"]["preMajor"],
+            serde_json::json!({"breaking": "minor", "feat": "patch"})
+        );
+        assert!(json["workspace"].get("versioning").is_none());
+        assert!(json["package"][0].get("preMajor").is_none());
         assert_eq!(json["workspace"]["releaseCommitMode"], "pr");
         assert_eq!(json["workspace"]["autoMergeReleases"], false);
         assert_eq!(json["workspace"]["update_lockfiles"], true);
@@ -539,10 +544,12 @@ mod release_please_avante {
 
         assert!(
             report
-                .warnings
+                .mapped
                 .iter()
-                .any(|w| w.contains("bump-patch-for-minor-pre-major") && w.contains("#1376"))
+                .any(|m| m.contains("preMajor.breaking"))
         );
+        assert!(report.mapped.iter().any(|m| m.contains("preMajor.feat")));
+        assert!(report.warnings.iter().all(|w| !w.contains("zerover")));
     }
 
     #[test]

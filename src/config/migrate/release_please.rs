@@ -4,8 +4,8 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use crate::config::Config;
-use crate::config::package::{FileFormat, PackageConfig, VersionedFile, VersioningStrategy};
-use crate::config::types::ReleaseCommitMode;
+use crate::config::package::{FileFormat, PackageConfig, VersionedFile};
+use crate::config::types::{PreMajorBump, PreMajorRules, ReleaseCommitMode};
 use crate::config::workspace::WorkspaceConfig;
 use crate::error_code::{self, ErrorCodeExt};
 use crate::formats::lockfiles::Manifest;
@@ -138,9 +138,9 @@ pub(super) fn build(raw: &str) -> Result<(Config, MigrationReport)> {
     let mut pre_major = Vec::new();
     for (path, entry) in entries {
         packages.push(build_package(path, entry, default_type, &mut report));
-        pre_major.push(report_pre_major_flags(path, entry, &rp, &mut report));
+        pre_major.push(pre_major_rules(path, entry, &rp, &mut report));
     }
-    apply_zerover(&mut packages, &pre_major, &mut workspace);
+    apply_pre_major(&mut packages, &pre_major, &mut workspace);
     enable_lockfile_updates(&packages, &mut workspace, &mut report);
 
     Ok((
@@ -268,12 +268,12 @@ fn add_extra_file(
     versioned_files.push(vf);
 }
 
-fn report_pre_major_flags(
+fn pre_major_rules(
     path: &str,
     entry: &PackageEntry,
     rp: &ReleasePleaseConfig,
     report: &mut MigrationReport,
-) -> bool {
+) -> Option<PreMajorRules> {
     let minor = entry
         .bump_minor_pre_major
         .or(rp.bump_minor_pre_major)
@@ -284,32 +284,34 @@ fn report_pre_major_flags(
         .unwrap_or(false);
     if minor {
         report.mapped.push(format!(
-            "package {path}: bump-minor-pre-major → versioning: zerover"
-        ));
-        report.warnings.push(format!(
-            "package {path}: zerover is the closest match for bump-minor-pre-major but not the \
-             same: release-please applies the rule only while the version is below 1.0.0, zerover \
-             keeps the major at 0 for good and never reaches 1.0.0."
+            "package {path}: bump-minor-pre-major → preMajor.breaking: minor"
         ));
     }
     if patch {
-        report.warnings.push(format!(
-            "package {path}: bump-patch-for-minor-pre-major has no ferrflow equivalent yet \
-             (tracked in #1376). Features will bump the same as other pre-1.0 changes."
+        report.mapped.push(format!(
+            "package {path}: bump-patch-for-minor-pre-major → preMajor.feat: patch"
         ));
     }
-    minor
+    let rules = PreMajorRules {
+        breaking: minor.then_some(PreMajorBump::Minor),
+        feat: patch.then_some(PreMajorBump::Patch),
+    };
+    (rules != PreMajorRules::default()).then_some(rules)
 }
 
-fn apply_zerover(packages: &mut [PackageConfig], flags: &[bool], workspace: &mut WorkspaceConfig) {
-    if !flags.is_empty() && flags.iter().all(|f| *f) {
-        workspace.versioning = Some(VersioningStrategy::Zerover);
+fn apply_pre_major(
+    packages: &mut [PackageConfig],
+    rules: &[Option<PreMajorRules>],
+    workspace: &mut WorkspaceConfig,
+) {
+    if let Some(first) = rules.first().copied().flatten()
+        && rules.iter().all(|r| *r == Some(first))
+    {
+        workspace.pre_major = Some(first);
         return;
     }
-    for (package, flagged) in packages.iter_mut().zip(flags) {
-        if *flagged {
-            package.versioning = Some(VersioningStrategy::Zerover);
-        }
+    for (package, rule) in packages.iter_mut().zip(rules) {
+        package.pre_major = *rule;
     }
 }
 
@@ -427,7 +429,7 @@ fn apply_plugin(plugin: &Plugin, workspace: &mut WorkspaceConfig, report: &mut M
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::package::VersioningStrategy;
+    use crate::config::types::{PreMajorBump, PreMajorRules};
 
     fn build_ok(raw: &str) -> (Config, MigrationReport) {
         build(raw).expect("valid release-please config")
@@ -703,43 +705,96 @@ mod tests {
         }));
     }
 
+    fn rules(breaking: Option<PreMajorBump>, feat: Option<PreMajorBump>) -> Option<PreMajorRules> {
+        Some(PreMajorRules { breaking, feat })
+    }
+
     #[test]
-    fn bump_minor_pre_major_on_the_only_package_sets_workspace_zerover() {
+    fn bump_minor_pre_major_alone_sets_workspace_breaking_minor() {
         let (cfg, report) = build_ok(
             r#"{"packages": {".": {"release-type": "node", "bump-minor-pre-major": true}}}"#,
         );
-        assert_eq!(cfg.workspace.versioning, Some(VersioningStrategy::Zerover));
-        assert!(cfg.packages[0].versioning.is_none());
+        assert_eq!(
+            cfg.workspace.pre_major,
+            rules(Some(PreMajorBump::Minor), None)
+        );
+        assert_eq!(cfg.workspace.versioning, None);
+        assert_eq!(cfg.packages[0].pre_major, None);
         assert!(
             report
-                .warnings
+                .mapped
                 .iter()
-                .any(|w| w.contains("zerover") && w.contains("1.0.0"))
+                .any(|m| m.contains("preMajor.breaking: minor"))
+        );
+        assert!(report.warnings.iter().all(|w| !w.contains("zerover")));
+    }
+
+    #[test]
+    fn bump_patch_for_minor_pre_major_alone_sets_workspace_feat_patch() {
+        let (cfg, report) = build_ok(
+            r#"{"packages": {".": {"release-type": "node", "bump-patch-for-minor-pre-major": true}}}"#,
+        );
+        assert_eq!(
+            cfg.workspace.pre_major,
+            rules(None, Some(PreMajorBump::Patch))
+        );
+        assert!(
+            report
+                .mapped
+                .iter()
+                .any(|m| m.contains("preMajor.feat: patch"))
+        );
+        assert!(report.warnings.iter().all(|w| !w.contains("#1376")));
+    }
+
+    #[test]
+    fn both_flags_set_both_rules() {
+        let (cfg, _) = build_ok(
+            r#"{"packages": {".": {"release-type": "node", "bump-minor-pre-major": true, "bump-patch-for-minor-pre-major": true}}}"#,
+        );
+        assert_eq!(
+            cfg.workspace.pre_major,
+            rules(Some(PreMajorBump::Minor), Some(PreMajorBump::Patch))
         );
     }
 
     #[test]
-    fn bump_minor_pre_major_on_some_packages_sets_package_zerover() {
+    fn no_flags_leave_pre_major_unset() {
+        let (cfg, _) = build_ok(r#"{"packages": {".": {"release-type": "node"}}}"#);
+        assert_eq!(cfg.workspace.pre_major, None);
+        assert_eq!(cfg.packages[0].pre_major, None);
+    }
+
+    #[test]
+    fn flags_on_some_packages_are_placed_per_package() {
         let (cfg, _) = build_ok(
             r#"{"packages": {
                 "a": {"release-type": "node", "bump-minor-pre-major": true},
-                "b": {"release-type": "node"}
+                "b": {"release-type": "node", "bump-patch-for-minor-pre-major": true},
+                "c": {"release-type": "node"}
             }}"#,
         );
-        assert_eq!(cfg.workspace.versioning, None);
+        assert_eq!(cfg.workspace.pre_major, None);
         assert_eq!(
-            cfg.packages[0].versioning,
-            Some(VersioningStrategy::Zerover)
+            cfg.packages[0].pre_major,
+            rules(Some(PreMajorBump::Minor), None)
         );
-        assert_eq!(cfg.packages[1].versioning, None);
+        assert_eq!(
+            cfg.packages[1].pre_major,
+            rules(None, Some(PreMajorBump::Patch))
+        );
+        assert_eq!(cfg.packages[2].pre_major, None);
     }
 
     #[test]
-    fn top_level_bump_minor_pre_major_applies_to_every_package() {
+    fn top_level_flags_apply_to_every_package() {
         let (cfg, _) = build_ok(
             r#"{"bump-minor-pre-major": true, "packages": {"a": {"release-type": "node"}, "b": {"release-type": "node"}}}"#,
         );
-        assert_eq!(cfg.workspace.versioning, Some(VersioningStrategy::Zerover));
+        assert_eq!(
+            cfg.workspace.pre_major,
+            rules(Some(PreMajorBump::Minor), None)
+        );
     }
 
     #[test]
@@ -747,22 +802,8 @@ mod tests {
         let (cfg, _) = build_ok(
             r#"{"bump-minor-pre-major": true, "packages": {"a": {"release-type": "node", "bump-minor-pre-major": false}}}"#,
         );
-        assert_eq!(cfg.workspace.versioning, None);
-        assert_eq!(cfg.packages[0].versioning, None);
-    }
-
-    #[test]
-    fn bump_patch_for_minor_pre_major_warns_and_points_to_1376() {
-        let (cfg, report) = build_ok(
-            r#"{"packages": {".": {"release-type": "node", "bump-patch-for-minor-pre-major": true}}}"#,
-        );
-        assert_eq!(cfg.workspace.versioning, None);
-        assert!(
-            report
-                .warnings
-                .iter()
-                .any(|w| w.contains("bump-patch-for-minor-pre-major") && w.contains("#1376"))
-        );
+        assert_eq!(cfg.workspace.pre_major, None);
+        assert_eq!(cfg.packages[0].pre_major, None);
     }
 
     #[test]
