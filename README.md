@@ -192,6 +192,8 @@ ferrflow migrate --from semantic-release
 
 It maps `tagFormat`, `branches`, and the common plugins (`changelog`, `exec`, `github`/`gitlab`) to their FerrFlow equivalents, and prints a summary of what mapped, what was ignored, and what needs manual review. Anything without a FerrFlow equivalent is surfaced, never guessed. JSON `.releaserc` is supported today; YAML `.releaserc` and JS `release.config.js` are reported as unsupported rather than mis-parsed.
 
+`ferrflow migrate --from release-please` also maps `extra-files` (`generic` markers to a `txt` selector, `toml` on `Cargo.toml` and `json` on `$.version` to their formats), `bump-minor-pre-major` and `bump-patch-for-minor-pre-major` to `preMajor` (`breaking: minor`, `feat: patch`), and writes `autoMergeReleases: false` since release-please never merges its release PR. Lockfile updates are enabled when a versioned manifest has one. Entries it cannot express are listed under "Review manually". Only non-default keys are written.
+
 ### JSON Schema
 
 Add `$schema` to get autocompletion and validation in VS Code, WebStorm, and any JSON-aware editor:
