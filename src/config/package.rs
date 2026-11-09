@@ -288,7 +288,7 @@ impl PackageConfig {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct VersionedFile {
     pub path: String,
     pub format: FileFormat,

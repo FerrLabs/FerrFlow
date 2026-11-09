@@ -482,3 +482,103 @@ mod end_to_end {
         assert!(!dir.path().join("ferrflow.json").exists());
     }
 }
+
+mod release_please_avante {
+    use super::super::{Migration, Source, emit, release_please};
+    use crate::formats::VersionFile;
+    use crate::formats::txt::TxtVersionFile;
+    use std::path::PathBuf;
+
+    const AVANTE: &str = r#"{"packages":{".":{"prerelease":false,"bump-patch-for-minor-pre-major":true,"bump-minor-pre-major":true,"release-type":"go","include-component-in-tag":false,"extra-files":[{"type":"generic","path":"lua/avante/version.lua"},{"type":"generic","path":"README.md"},{"type":"toml","path":"Cargo.toml","jsonpath":"$.workspace.package.version"}]}}}"#;
+
+    fn migrate_avante(dir: &std::path::Path) -> (serde_json::Value, super::MigrationReport) {
+        let _guard = crate::test_utils::CWD_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        let saved = std::env::current_dir().unwrap();
+        std::env::set_current_dir(dir).unwrap();
+        let built = release_please::build(AVANTE);
+        std::env::set_current_dir(saved).unwrap();
+        let (config, report) = built.unwrap();
+        let migration = Migration::new(
+            Source::ReleasePlease,
+            PathBuf::from("release-please-config.json"),
+            config,
+            report,
+        );
+        let (_, content) = emit(&migration, dir, true).unwrap();
+        (serde_json::from_str(&content).unwrap(), migration.report)
+    }
+
+    #[test]
+    fn avante_config_produces_the_expected_ferrflow_json() {
+        let root = tempfile::tempdir().unwrap();
+        let dir = root.path().join("avante.nvim");
+        std::fs::create_dir(&dir).unwrap();
+        let (json, report) = migrate_avante(&dir);
+
+        assert_eq!(json["workspace"]["versioning"], "zerover");
+        assert_eq!(json["workspace"]["releaseCommitMode"], "pr");
+        assert_eq!(json["workspace"]["autoMergeReleases"], false);
+        assert_eq!(json["workspace"]["update_lockfiles"], true);
+        assert!(json["workspace"].get("commitFormats").is_none());
+        assert_eq!(json["package"][0]["name"], "avante.nvim");
+        assert_eq!(json["package"][0]["path"], ".");
+        assert!(json["package"][0].get("hooks").is_none());
+
+        let files = json["package"][0]["versionedFiles"].as_array().unwrap();
+        assert_eq!(files.len(), 3);
+        assert_eq!(files[0]["path"], "lua/avante/version.lua");
+        assert_eq!(files[0]["format"], "txt");
+        assert_eq!(files[1]["path"], "README.md");
+        assert_eq!(files[2]["path"], "Cargo.toml");
+        assert_eq!(files[2]["format"], "toml");
+        assert!(files[2].get("selector").is_none());
+
+        assert!(
+            report
+                .warnings
+                .iter()
+                .any(|w| w.contains("bump-patch-for-minor-pre-major") && w.contains("#1376"))
+        );
+    }
+
+    #[test]
+    fn avante_generated_selector_reads_and_rewrites_both_marker_lines() {
+        let root = tempfile::tempdir().unwrap();
+        let (json, _) = migrate_avante(root.path());
+        let selector = json["package"][0]["versionedFiles"][0]["selector"]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        let lua = root.path().join("version.lua");
+        std::fs::write(&lua, "return \"0.5.0\" -- x-release-please-version\n").unwrap();
+        let readme = root.path().join("README.md");
+        std::fs::write(
+            &readme,
+            "```lua\n  {\n    version='v0.5.0'  -- use the latest tagged releases x-release-please-version\n  }\n```\n",
+        )
+        .unwrap();
+
+        for file in [&lua, &readme] {
+            assert_eq!(
+                TxtVersionFile
+                    .read_version_with_selector(file, Some(&selector))
+                    .unwrap(),
+                "0.5.0"
+            );
+            TxtVersionFile
+                .write_version_with_selector(file, "0.6.0", Some(&selector))
+                .unwrap();
+        }
+        assert_eq!(
+            std::fs::read_to_string(&lua).unwrap(),
+            "return \"0.6.0\" -- x-release-please-version\n"
+        );
+        assert_eq!(
+            std::fs::read_to_string(&readme).unwrap(),
+            "```lua\n  {\n    version='v0.6.0'  -- use the latest tagged releases x-release-please-version\n  }\n```\n"
+        );
+    }
+}
