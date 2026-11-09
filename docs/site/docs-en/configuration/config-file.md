@@ -1083,7 +1083,7 @@ permissions:
   id-token: write
 ```
 
-The token endpoint is derived from the registry url, so TestPyPI and a private index work unchanged. A non-https registry url is refused: the exchange must not happen in the clear.
+The token endpoint is derived from the registry url, and the OIDC audience is read from the index (`/_/oidc/audience`), so TestPyPI and a private Warehouse index work unchanged. If that lookup fails, pypi.org falls back to the `pypi` audience; any other index is reported as not supporting trusted publishing. A non-https registry url is refused: the exchange must not happen in the clear.
 
 `trustedPublishing` and a registry `tokenEnv` are mutually exclusive. Setting both is a configuration error, reported before anything is published, rather than a silent choice between two credentials.
 
