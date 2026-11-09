@@ -1,6 +1,74 @@
 use super::util::*;
 use crate::config::PackageConfig;
 
+mod versioned_file_validation {
+    use crate::error_code::{self, code_from_error};
+    use crate::test_utils::{commit_file, git, init_repo, with_cwd};
+    use crate::timing::Timing;
+    use std::path::Path;
+
+    fn setup(dir: &Path, selector: &str) {
+        std::fs::write(
+            dir.join("Cargo.toml"),
+            "[package]\nname = \"app\"\nversion = \"0.5.0\"\n",
+        )
+        .unwrap();
+        std::fs::write(dir.join("version.lua"), "return \"0.5.0\" -- version\n").unwrap();
+        let config = serde_json::json!({"package": [{
+            "name": "app",
+            "path": ".",
+            "versionedFiles": [
+                {"path": "Cargo.toml", "format": "toml"},
+                {"path": "version.lua", "format": "txt", "selector": selector},
+            ],
+        }]});
+        std::fs::write(dir.join(".ferrflow"), config.to_string()).unwrap();
+    }
+
+    fn run_check(dir: &Path) -> anyhow::Result<()> {
+        let config = dir.join(".ferrflow");
+        with_cwd(dir, || {
+            super::super::check(
+                Some(&config),
+                false,
+                false,
+                None,
+                false,
+                &mut Timing::new(false),
+            )
+        })
+    }
+
+    fn repo_with_feature(selector: &str) -> tempfile::TempDir {
+        let (dir, _repo) = init_repo();
+        setup(dir.path(), selector);
+        commit_file(dir.path(), "seed.txt", "x", "chore: seed", 1_900_000_000);
+        git(dir.path(), &["tag", "v0.5.0"]);
+        commit_file(dir.path(), "a.txt", "x", "feat: a", 1_950_000_000);
+        dir
+    }
+
+    #[test]
+    fn a_selector_that_matches_nothing_fails_check_with_e4702() {
+        let dir = repo_with_feature("return \"([^\"]+)\" -- NOPE");
+
+        let err = run_check(dir.path()).unwrap_err();
+
+        assert_eq!(
+            code_from_error(&err),
+            Some(error_code::TXT_VERSION_NOT_FOUND.to_string())
+        );
+        assert!(format!("{err:#}").contains("version.lua"));
+    }
+
+    #[test]
+    fn matching_selectors_pass_check() {
+        let dir = repo_with_feature("return \"([^\"]+)\" -- version");
+
+        run_check(dir.path()).unwrap();
+    }
+}
+
 mod cache_flow {
     use crate::cache;
     use crate::git::open_repo;

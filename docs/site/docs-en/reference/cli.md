@@ -127,7 +127,7 @@ npm publish --tag "pr-$PR_NUMBER"
 
 ## `ferrflow check`
 
-Preview what `ferrflow release` would do without making any changes.
+Preview what `ferrflow release` would do without making any changes. Every versioned file of every package is read first, so a file that cannot be read (for example a `txt` selector that matches nothing, error `E4702`) fails the check instead of the release.
 
 ```bash
 ferrflow check [OPTIONS]
@@ -460,7 +460,7 @@ ferrflow doctor [OPTIONS]
 | `--format <FMT>` | `human` (default) or `json`                                           |
 | `--online`       | Also probe the forge API (GitHub rate limit / auth, self-hosted forge detection); requires a token |
 
-The report groups checks into five sections — **Repo** (git repository, commit history, clean working tree, git identity, remote, tags), **Config** (which config file wins, whether it parses, plus the full `ferrflow validate` check suite), **Versioning** (strategy, each package's on-disk version, and whether its lockfile agrees with it), **Forge** (detected forge, and whether the token that forge actually uses is in the environment; with `--online` the forge is also probed for a self-hosted host), and **CI** (workflow files, and whether a workflow pins the `FerrLabs/FerrFlow` action). Every check reports green, a warning, or an error.
+The report groups checks into five sections — **Repo** (git repository, commit history, clean working tree, git identity, remote, tags), **Config** (which config file wins, whether it parses, plus the full `ferrflow validate` check suite), **Versioning** (strategy, each package's on-disk version, a pass or fail line for every versioned file, and whether its lockfile agrees with it), **Forge** (detected forge, and whether the token that forge actually uses is in the environment; with `--online` the forge is also probed for a self-hosted host), and **CI** (workflow files, and whether a workflow pins the `FerrLabs/FerrFlow` action). Every check reports green, a warning, or an error.
 
 Two of the **Versioning** checks are about lockfiles, and both matter for anything that builds with `--locked`. A lockfile recording a different version than the manifest beside it is reported outright, since that combination makes `cargo build --locked` refuse to run. A lockfile that is not covered by [`updateLockfiles`](/docs/configuration/config-file/) is flagged before it drifts, because nothing will keep it in step on the next release. Version comparison applies to `Cargo.lock`: pnpm, yarn, poetry, uv, bundler and mix lock dependencies without restating the version of the package that owns them, so there is nothing to compare, and those get the `updateLockfiles` check only.
 

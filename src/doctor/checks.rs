@@ -192,6 +192,11 @@ pub(super) fn versioning_section(config: Option<&Config>, root: &Path) -> Sectio
             .and_then(|vf| read_version(vf, root).ok())
             .unwrap_or_else(|| "unknown".to_string());
         checks.push(Check::ok(pkg.name.clone(), Some(format!("v{version}"))));
+        checks.extend(
+            pkg.versioned_files
+                .iter()
+                .map(|vf| versioned_file_check(&pkg.name, vf, root)),
+        );
         if let Some(check) = lockfile_check(config, pkg, root, &version) {
             checks.push(check);
         }
@@ -203,6 +208,14 @@ pub(super) fn versioning_section(config: Option<&Config>, root: &Path) -> Sectio
     ));
 
     Section::new("Versioning", checks)
+}
+
+fn versioned_file_check(package: &str, vf: &crate::config::VersionedFile, root: &Path) -> Check {
+    let name = format!("{package}: {}", vf.path);
+    match read_version(vf, root) {
+        Ok(version) => Check::ok(name, Some(format!("v{version}"))),
+        Err(err) => Check::error(name, Some(format!("{err:#}"))),
+    }
 }
 
 fn lockfile_check(
