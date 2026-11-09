@@ -1,10 +1,9 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use colored::Colorize;
 use std::path::Path;
 
 use crate::cache::{self, CachedRun};
 use crate::config::Config;
-use crate::formats::{get_handler, read_version};
 use crate::git::{get_repo_root, open_repo};
 use crate::timing::Timing;
 
@@ -23,8 +22,6 @@ pub fn check(
     let repo = timing.stage("open_repo", || open_repo(&std::env::current_dir()?))?;
     let root = get_repo_root(&repo)?;
     let config = timing.stage("load config", || Config::load(&root, config_path))?;
-
-    verify_versioned_files(&config, &root)?;
 
     if !json {
         tracing::info!("{}", "FerrFlow — Check (dry run)".bold().blue());
@@ -85,19 +82,6 @@ pub fn check(
     }
 
     Ok(())
-}
-
-fn verify_versioned_files(config: &Config, root: &Path) -> Result<()> {
-    config
-        .packages
-        .iter()
-        .flat_map(|pkg| pkg.versioned_files.iter().map(move |vf| (pkg, vf)))
-        .filter(|(_, vf)| get_handler(&vf.format).modifies_file())
-        .try_for_each(|(pkg, vf)| {
-            read_version(vf, root)
-                .map(drop)
-                .with_context(|| format!("package {}: cannot read {}", pkg.name, vf.path))
-        })
 }
 
 fn print_cached(hit: &CachedRun) {

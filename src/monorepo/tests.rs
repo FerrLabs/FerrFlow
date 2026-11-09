@@ -76,6 +76,51 @@ mod versioned_file_validation {
         run_check(dir.path()).unwrap();
     }
 
+    fn two_package_repo_with_misplaced_sdk_file(
+        commit_message: &str,
+        touched: &str,
+    ) -> tempfile::TempDir {
+        let (dir, _repo) = init_repo();
+        for pkg in ["api", "sdk"] {
+            std::fs::create_dir_all(dir.path().join(pkg)).unwrap();
+            std::fs::write(
+                dir.path().join(pkg).join("Cargo.toml"),
+                format!("[package]\nname = \"{pkg}\"\nversion = \"0.5.0\"\n"),
+            )
+            .unwrap();
+        }
+        let config = serde_json::json!({"package": [
+            {"name": "api", "path": "api", "versionedFiles": [{"path": "api/Cargo.toml", "format": "toml"}]},
+            {"name": "sdk", "path": "sdk", "versionedFiles": [{"path": "Cargo.toml", "format": "toml"}]},
+        ]});
+        std::fs::write(dir.path().join(".ferrflow"), config.to_string()).unwrap();
+        commit_file(dir.path(), "seed.txt", "x", "chore: seed", 1_900_000_000);
+        git(dir.path(), &["tag", "api@v0.5.0"]);
+        git(dir.path(), &["tag", "sdk@v0.5.0"]);
+        commit_file(dir.path(), touched, "x", commit_message, 1_950_000_000);
+        dir
+    }
+
+    #[test]
+    fn an_untouched_package_with_a_missing_versioned_file_does_not_fail_check() {
+        let dir = two_package_repo_with_misplaced_sdk_file("feat(api): a", "api/a.txt");
+
+        run_check(dir.path()).unwrap();
+    }
+
+    #[test]
+    fn a_missing_versioned_file_keeps_its_e1024_diagnosis_and_path_hint() {
+        let dir = two_package_repo_with_misplaced_sdk_file("feat(sdk): a", "sdk/a.txt");
+
+        let err = run_check(dir.path()).unwrap_err();
+
+        assert_eq!(
+            code_from_error(&err),
+            Some(error_code::CONFIG_MISSING_VERSIONED_FILE.to_string())
+        );
+        assert!(format!("{err:#}").contains("Did you mean \"sdk/Cargo.toml\""));
+    }
+
     #[test]
     fn matching_selectors_pass_check() {
         let dir = repo_with_feature("return \"([^\"]+)\" -- version");

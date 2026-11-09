@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use anyhow::{Context, Result, anyhow};
 
 use crate::changelog::GitLog;
 use crate::config::{Config, OrphanedTagStrategy, PackageConfig, VersioningStrategy};
@@ -335,6 +335,17 @@ fn ensure_versioned_files_exist(pkg: &PackageConfig, root: &Path) -> Result<()> 
     .error_code(error_code::CONFIG_MISSING_VERSIONED_FILE)
 }
 
+fn ensure_versioned_files_readable(pkg: &PackageConfig, root: &Path) -> Result<()> {
+    pkg.versioned_files
+        .iter()
+        .filter(|vf| crate::formats::get_handler(&vf.format).modifies_file())
+        .try_for_each(|vf| {
+            crate::formats::read_version(vf, root)
+                .map(drop)
+                .with_context(|| format!("package {}: cannot read {}", pkg.name, vf.path))
+        })
+}
+
 fn suggested_versioned_path(pkg: &PackageConfig, path: &str) -> Option<String> {
     let prefix = pkg.path.trim_end_matches('/');
     if prefix.is_empty() || prefix == "." || Path::new(path).starts_with(prefix) {
@@ -435,6 +446,7 @@ pub(super) fn compute_plan(
     let tag = pkg.tag_for_version(&config.workspace, is_monorepo, &new_version);
 
     ensure_versioned_files_exist(pkg, inputs.root)?;
+    ensure_versioned_files_readable(pkg, inputs.root)?;
 
     Ok(PackagePlan::Bump(Box::new(PackageBump {
         recovered,
