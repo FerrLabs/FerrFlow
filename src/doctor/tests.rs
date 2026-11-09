@@ -144,6 +144,33 @@ mod end_to_end {
     }
 
     #[test]
+    fn every_versioned_file_is_reported_with_its_own_status() {
+        let (dir, repo) = init_repo();
+        let root = dir.path();
+        write(
+            root,
+            "Cargo.toml",
+            "[package]\nname = \"app\"\nversion = \"1.0.0\"\n",
+        );
+        write(root, "version.lua", "return \"1.0.0\" -- version\n");
+        write(
+            root,
+            ".ferrflow",
+            r#"{"package":[{"name":"app","path":".","versionedFiles":[
+                {"path":"Cargo.toml","format":"toml"},
+                {"path":"version.lua","format":"txt","selector":"return \"([^\"]+)\" -- NOPE"}
+            ]}]}"#,
+        );
+        commit_file(root, "seed.txt", "x", "chore: seed", 1_900_000_000);
+
+        let config = Config::load(&get_repo_root(&repo).unwrap(), None).ok();
+        let section = checks::versioning_section(config.as_ref(), root);
+
+        assert_eq!(find(&section, "app: Cargo.toml").status, Status::Ok);
+        assert_eq!(find(&section, "app: version.lua").status, Status::Error);
+    }
+
+    #[test]
     fn clean_configured_repo_is_all_green() {
         let (dir, repo) = init_repo();
         let root = dir.path();
