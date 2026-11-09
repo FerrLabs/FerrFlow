@@ -4,7 +4,7 @@ use std::path::Path;
 
 use crate::cache::{self, CachedRun};
 use crate::config::Config;
-use crate::formats::read_version;
+use crate::formats::{get_handler, read_version};
 use crate::git::{get_repo_root, open_repo};
 use crate::timing::Timing;
 
@@ -92,6 +92,7 @@ fn verify_versioned_files(config: &Config, root: &Path) -> Result<()> {
         .packages
         .iter()
         .flat_map(|pkg| pkg.versioned_files.iter().map(move |vf| (pkg, vf)))
+        .filter(|(_, vf)| get_handler(&vf.format).modifies_file())
         .try_for_each(|(pkg, vf)| {
             read_version(vf, root)
                 .map(drop)

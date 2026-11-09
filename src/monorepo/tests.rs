@@ -62,6 +62,21 @@ mod versioned_file_validation {
     }
 
     #[test]
+    fn an_untagged_go_module_does_not_fail_check() {
+        let (dir, _repo) = init_repo();
+        std::fs::write(dir.path().join("go.mod"), "module example.com/app\n").unwrap();
+        let config = serde_json::json!({"package": [{
+            "name": "app",
+            "path": ".",
+            "versionedFiles": [{"path": "go.mod", "format": "gomod"}],
+        }]});
+        std::fs::write(dir.path().join(".ferrflow"), config.to_string()).unwrap();
+        commit_file(dir.path(), "a.txt", "x", "feat: a", 1_950_000_000);
+
+        run_check(dir.path()).unwrap();
+    }
+
+    #[test]
     fn matching_selectors_pass_check() {
         let dir = repo_with_feature("return \"([^\"]+)\" -- version");
 

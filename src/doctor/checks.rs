@@ -3,7 +3,7 @@ use std::path::Path;
 use crate::config::{Config, ForgeKind, GENERIC_TOKEN_ENV_VAR};
 use crate::forge::{Probe, resolve_forge};
 use crate::formats::lockfiles::{LockfileState, inspect_for_manifest};
-use crate::formats::read_version;
+use crate::formats::{get_handler, read_version};
 use crate::git::{
     Repository, collect_all_tags, commit_identity, get_remote_url, on_github_actions,
 };
@@ -195,6 +195,7 @@ pub(super) fn versioning_section(config: Option<&Config>, root: &Path) -> Sectio
         checks.extend(
             pkg.versioned_files
                 .iter()
+                .filter(|vf| get_handler(&vf.format).modifies_file())
                 .map(|vf| versioned_file_check(&pkg.name, vf, root)),
         );
         if let Some(check) = lockfile_check(config, pkg, root, &version) {
