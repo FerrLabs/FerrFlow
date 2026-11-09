@@ -4,6 +4,13 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.35.5] - 2026-11-09
+
+### Bug Fixes
+
+- fix(check): validate every versioned file selector before release (#1378)
+- fix(crate): publish only the Rust sources to crates.io (#1381)
+
 ## [7.35.4] - 2026-11-09
 
 ### Bug Fixes
