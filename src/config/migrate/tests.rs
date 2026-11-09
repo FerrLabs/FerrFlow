@@ -483,23 +483,23 @@ mod end_to_end {
     }
 }
 
-const AVANTE_CONFIG: &str = r#"{"packages":{".":{"prerelease":false,"bump-patch-for-minor-pre-major":true,"bump-minor-pre-major":true,"release-type":"go","include-component-in-tag":false,"extra-files":[{"type":"generic","path":"lua/avante/version.lua"},{"type":"generic","path":"README.md"},{"type":"toml","path":"Cargo.toml","jsonpath":"$.workspace.package.version"}]}}}"#;
+const PLUGIN_CONFIG: &str = r#"{"packages":{".":{"prerelease":false,"bump-patch-for-minor-pre-major":true,"bump-minor-pre-major":true,"release-type":"go","include-component-in-tag":false,"extra-files":[{"type":"generic","path":"lua/quillmark/version.lua"},{"type":"generic","path":"README.md"},{"type":"toml","path":"Cargo.toml","jsonpath":"$.workspace.package.version"}]}}}"#;
 
-mod release_please_avante {
+mod release_please_lua_plugin {
     use super::super::{Migration, Source, emit, release_please};
     use crate::formats::VersionFile;
     use crate::formats::txt::TxtVersionFile;
     use std::path::PathBuf;
 
-    use super::AVANTE_CONFIG as AVANTE;
+    use super::PLUGIN_CONFIG as PLUGIN;
 
-    fn migrate_avante(dir: &std::path::Path) -> (serde_json::Value, super::MigrationReport) {
+    fn migrate_plugin(dir: &std::path::Path) -> (serde_json::Value, super::MigrationReport) {
         let _guard = crate::test_utils::CWD_LOCK
             .lock()
             .unwrap_or_else(|e| e.into_inner());
         let saved = std::env::current_dir().unwrap();
         std::env::set_current_dir(dir).unwrap();
-        let built = release_please::build(AVANTE);
+        let built = release_please::build(PLUGIN);
         std::env::set_current_dir(saved).unwrap();
         let (config, report) = built.unwrap();
         let migration = Migration::new(
@@ -513,11 +513,11 @@ mod release_please_avante {
     }
 
     #[test]
-    fn avante_config_produces_the_expected_ferrflow_json() {
+    fn lua_plugin_config_produces_the_expected_ferrflow_json() {
         let root = tempfile::tempdir().unwrap();
-        let dir = root.path().join("avante.nvim");
+        let dir = root.path().join("quillmark.nvim");
         std::fs::create_dir(&dir).unwrap();
-        let (json, report) = migrate_avante(&dir);
+        let (json, report) = migrate_plugin(&dir);
 
         assert_eq!(
             json["workspace"]["preMajor"],
@@ -529,13 +529,13 @@ mod release_please_avante {
         assert_eq!(json["workspace"]["autoMergeReleases"], false);
         assert_eq!(json["workspace"]["update_lockfiles"], true);
         assert!(json["workspace"].get("commitFormats").is_none());
-        assert_eq!(json["package"][0]["name"], "avante.nvim");
+        assert_eq!(json["package"][0]["name"], "quillmark.nvim");
         assert_eq!(json["package"][0]["path"], ".");
         assert!(json["package"][0].get("hooks").is_none());
 
         let files = json["package"][0]["versionedFiles"].as_array().unwrap();
         assert_eq!(files.len(), 3);
-        assert_eq!(files[0]["path"], "lua/avante/version.lua");
+        assert_eq!(files[0]["path"], "lua/quillmark/version.lua");
         assert_eq!(files[0]["format"], "txt");
         assert_eq!(files[1]["path"], "README.md");
         assert_eq!(files[2]["path"], "Cargo.toml");
@@ -553,9 +553,9 @@ mod release_please_avante {
     }
 
     #[test]
-    fn avante_generated_selector_reads_and_rewrites_both_marker_lines() {
+    fn lua_plugin_generated_selector_reads_and_rewrites_both_marker_lines() {
         let root = tempfile::tempdir().unwrap();
-        let (json, _) = migrate_avante(root.path());
+        let (json, _) = migrate_plugin(root.path());
         let selector = json["package"][0]["versionedFiles"][0]["selector"]
             .as_str()
             .unwrap()
@@ -566,7 +566,7 @@ mod release_please_avante {
         let readme = root.path().join("README.md");
         std::fs::write(
             &readme,
-            "```lua\n  {\n    version='v0.5.0'  -- use the latest tagged releases x-release-please-version\n  }\n```\n",
+            "```lua\n  {\n    version='v0.5.0'  -- pinned release x-release-please-version\n  }\n```\n",
         )
         .unwrap();
 
@@ -587,14 +587,14 @@ mod release_please_avante {
         );
         assert_eq!(
             std::fs::read_to_string(&readme).unwrap(),
-            "```lua\n  {\n    version='v0.6.0'  -- use the latest tagged releases x-release-please-version\n  }\n```\n"
+            "```lua\n  {\n    version='v0.6.0'  -- pinned release x-release-please-version\n  }\n```\n"
         );
     }
 }
 
 mod round_trip {
     use super::super::{Migration, Source, changesets, emit, release_please, standard_version};
-    use super::{AVANTE_CONFIG, build};
+    use super::{PLUGIN_CONFIG, build};
     use crate::config::Config;
     use crate::config::format::{ConfigFileFormat, format_handler};
     use std::path::PathBuf;
@@ -619,7 +619,7 @@ mod round_trip {
 
         let mut cases: Vec<(&str, Config, super::MigrationReport)> = Vec::new();
         for (label, raw) in [
-            ("release-please avante", AVANTE_CONFIG),
+            ("release-please lua plugin", PLUGIN_CONFIG),
             (
                 "release-please plain",
                 r#"{"packages": {".": {"release-type": "node"}}}"#,

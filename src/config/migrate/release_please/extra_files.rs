@@ -83,8 +83,7 @@ mod tests {
     use tempfile::NamedTempFile;
 
     const LUA_LINE: &str = "return \"0.5.0\" -- x-release-please-version\n";
-    const README_LINE: &str =
-        "    version='v0.5.0'  -- use the latest tagged releases x-release-please-version\n";
+    const README_LINE: &str = "    version='v0.5.0'  -- pinned release x-release-please-version\n";
 
     fn generic_selector() -> String {
         match map(".", &json!({"type": "generic", "path": "f"})) {
@@ -125,7 +124,7 @@ mod tests {
             .unwrap();
         assert_eq!(
             std::fs::read_to_string(f.path()).unwrap(),
-            "    version='v0.6.0'  -- use the latest tagged releases x-release-please-version\n"
+            "    version='v0.6.0'  -- pinned release x-release-please-version\n"
         );
     }
 
