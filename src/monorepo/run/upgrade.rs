@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::config::Config;
 use crate::conventional_commits::BumpType;
-use crate::versioning::compute_next_version;
+use crate::versioning::{apply_pre_major, compute_next_version};
 
 use super::super::util::tags_for_package;
 use super::plan::{PackageBump, PackagePlan};
@@ -75,14 +75,24 @@ fn settle_raises(
             // A package with no plan of its own is left to the cascade proper,
             // which runs after the release loop. It still has to enter the
             // walk, or what depends on it never learns that it moved.
+            let mut bump = bump;
             if matches!(plans[idx], Some(PackagePlan::Bump(_))) {
-                let Some(version) = raised_version(config, all_tags, plans, idx, bump) else {
+                let Some((effective, version)) = raised_version(config, all_tags, plans, idx, bump)
+                else {
                     // The raise cannot be applied, so it must not be recorded
                     // either: a dependent settling on it would cascade off a
                     // version this package never takes.
                     blocked.insert(idx);
                     continue;
                 };
+                let held = state
+                    .get(&config.packages[idx].name)
+                    .copied()
+                    .unwrap_or(BumpType::None);
+                if effective <= held {
+                    continue;
+                }
+                bump = effective;
                 raised.insert(idx, (bump, version));
             }
             state.insert(config.packages[idx].name.clone(), bump);
@@ -120,7 +130,7 @@ fn raised_version(
     plans: &[Option<PackagePlan>],
     idx: usize,
     bump: BumpType,
-) -> Option<String> {
+) -> Option<(BumpType, String)> {
     let pkg = &config.packages[idx];
     let Some(PackagePlan::Bump(plan)) = plans.get(idx)? else {
         return None;
@@ -128,8 +138,15 @@ fn raised_version(
     let prefix = pkg.tag_prefix(&config.workspace, true);
     let strategy =
         pkg.effective_versioning(&config.workspace, || tags_for_package(all_tags, &prefix));
+    let bump = apply_pre_major(
+        pkg.effective_pre_major(&config.workspace),
+        strategy,
+        &plan.current_version,
+        bump,
+    );
     let template = pkg.effective_version_template(&config.workspace);
-    compute_next_version(&plan.current_version, bump, strategy, template).ok()
+    let version = compute_next_version(&plan.current_version, bump, strategy, template).ok()?;
+    Some((bump, version))
 }
 
 #[cfg(test)]
@@ -170,6 +187,54 @@ mod tests {
             { "name": "web", "path": "web", "dependsOn": ["api"] }
         ]
     }"#;
+
+    #[test]
+    fn a_raise_from_a_breaking_dependency_follows_pre_major_below_one_zero() {
+        let config: Config = serde_json::from_str(
+            r#"{
+                "workspace": { "preMajor": { "breaking": "minor" } },
+                "package": [
+                    { "name": "engine", "path": "engine" },
+                    { "name": "viewer", "path": "viewer", "dependsOn": ["engine"] }
+                ]
+            }"#,
+        )
+        .expect("valid config");
+        let mut plans = vec![
+            plan_for("1.2.0", "2.0.0", BumpType::Major),
+            plan_for("0.3.0", "0.3.1", BumpType::Patch),
+        ];
+
+        apply_cascade_upgrades(&config, &[], &mut plans);
+
+        let (bump, version, _) = bump_of(&plans, 1).expect("viewer still has a plan");
+        assert_eq!(bump, BumpType::Minor);
+        assert_eq!(version, "0.4.0");
+    }
+
+    #[test]
+    fn a_raise_that_pre_major_flattens_to_the_held_bump_changes_nothing() {
+        let config: Config = serde_json::from_str(
+            r#"{
+                "workspace": { "preMajor": { "breaking": "minor" } },
+                "package": [
+                    { "name": "engine", "path": "engine" },
+                    { "name": "viewer", "path": "viewer", "dependsOn": ["engine"] }
+                ]
+            }"#,
+        )
+        .expect("valid config");
+        let mut plans = vec![
+            plan_for("1.2.0", "2.0.0", BumpType::Major),
+            plan_for("0.3.0", "0.4.0", BumpType::Minor),
+        ];
+
+        apply_cascade_upgrades(&config, &[], &mut plans);
+
+        let (bump, version, _) = bump_of(&plans, 1).expect("viewer still has a plan");
+        assert_eq!(bump, BumpType::Minor);
+        assert_eq!(version, "0.4.0");
+    }
 
     #[test]
     fn a_packages_own_patch_is_raised_by_a_dependency_taking_a_minor() {
