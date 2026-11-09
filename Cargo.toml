@@ -21,6 +21,7 @@ homepage = "https://github.com/FerrLabs/FerrFlow"
 keywords = ["semver", "versioning", "monorepo", "changelog", "release"]
 categories = ["command-line-utilities", "development-tools"]
 readme = "README.md"
+include = ["/src/**/*", "/schema/*.json", "/README.md", "/LICENSE", "/CHANGELOG.md"]
 
 [[bin]]
 name = "ferrflow"
