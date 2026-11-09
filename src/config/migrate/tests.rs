@@ -483,13 +483,15 @@ mod end_to_end {
     }
 }
 
+const AVANTE_CONFIG: &str = r#"{"packages":{".":{"prerelease":false,"bump-patch-for-minor-pre-major":true,"bump-minor-pre-major":true,"release-type":"go","include-component-in-tag":false,"extra-files":[{"type":"generic","path":"lua/avante/version.lua"},{"type":"generic","path":"README.md"},{"type":"toml","path":"Cargo.toml","jsonpath":"$.workspace.package.version"}]}}}"#;
+
 mod release_please_avante {
     use super::super::{Migration, Source, emit, release_please};
     use crate::formats::VersionFile;
     use crate::formats::txt::TxtVersionFile;
     use std::path::PathBuf;
 
-    const AVANTE: &str = r#"{"packages":{".":{"prerelease":false,"bump-patch-for-minor-pre-major":true,"bump-minor-pre-major":true,"release-type":"go","include-component-in-tag":false,"extra-files":[{"type":"generic","path":"lua/avante/version.lua"},{"type":"generic","path":"README.md"},{"type":"toml","path":"Cargo.toml","jsonpath":"$.workspace.package.version"}]}}}"#;
+    use super::AVANTE_CONFIG as AVANTE;
 
     fn migrate_avante(dir: &std::path::Path) -> (serde_json::Value, super::MigrationReport) {
         let _guard = crate::test_utils::CWD_LOCK
@@ -580,5 +582,83 @@ mod release_please_avante {
             std::fs::read_to_string(&readme).unwrap(),
             "```lua\n  {\n    version='v0.6.0'  -- use the latest tagged releases x-release-please-version\n  }\n```\n"
         );
+    }
+}
+
+mod round_trip {
+    use super::super::{Migration, Source, changesets, emit, release_please, standard_version};
+    use super::{AVANTE_CONFIG, build};
+    use crate::config::Config;
+    use crate::config::format::{ConfigFileFormat, format_handler};
+    use std::path::PathBuf;
+
+    fn assert_round_trips(label: &str, config: Config, report: super::MigrationReport) {
+        let migration = Migration::new(Source::ReleasePlease, PathBuf::from("src"), config, report);
+        let dir = tempfile::tempdir().unwrap();
+        let (_, content) = emit(&migration, dir.path(), true).unwrap();
+        let reloaded = format_handler(ConfigFileFormat::Json)
+            .parse(&content)
+            .unwrap_or_else(|e| panic!("{label}: emitted config does not load: {e:#}"));
+        assert_eq!(
+            serde_json::to_value(&reloaded).unwrap(),
+            serde_json::to_value(&migration.config).unwrap(),
+            "{label}: reloaded config differs from the migrated one\n{content}"
+        );
+    }
+
+    #[test]
+    fn every_migrator_output_reloads_to_the_same_config() {
+        let changesets_root = tempfile::tempdir().unwrap();
+
+        let mut cases: Vec<(&str, Config, super::MigrationReport)> = Vec::new();
+        for (label, raw) in [
+            ("release-please avante", AVANTE_CONFIG),
+            (
+                "release-please plain",
+                r#"{"packages": {".": {"release-type": "node"}}}"#,
+            ),
+            (
+                "release-please monorepo",
+                r#"{"include-component-in-tag": true, "bump-minor-pre-major": true,
+                    "plugins": [{"type": "linked-versions", "groupName": "g", "components": ["a", "b"]}],
+                    "packages": {"a": {"release-type": "rust"}, "b": {"release-type": "node", "changelog-path": "X.md"}}}"#,
+            ),
+            ("release-please empty", r#"{}"#),
+        ] {
+            let (c, r) = release_please::build(raw).unwrap();
+            cases.push((label, c, r));
+        }
+        for (label, raw) in [
+            ("semantic-release minimal", "{}"),
+            (
+                "semantic-release full",
+                r#"{"tagFormat": "v${version}", "branches": ["main", {"name": "beta", "prerelease": true}],
+                    "plugins": [["@semantic-release/exec", {"prepareCmd": "x", "successCmd": "y"}], "@semantic-release/gitlab"]}"#,
+            ),
+        ] {
+            let (c, r) = build(raw);
+            cases.push((label, c, r));
+        }
+        for (label, raw) in [
+            ("changesets minimal", "{}"),
+            ("changesets base branch", r#"{"baseBranch": "develop"}"#),
+        ] {
+            let (c, r) = changesets::build(raw, changesets_root.path()).unwrap();
+            cases.push((label, c, r));
+        }
+        for (label, raw) in [
+            ("standard-version minimal", "{}"),
+            (
+                "standard-version bump files",
+                r#"{"tagPrefix": "release-", "bumpFiles": [{"filename": "package.json", "type": "json"}, {"filename": "VERSION", "type": "plain-text"}]}"#,
+            ),
+        ] {
+            let (c, r) = standard_version::build(raw).unwrap();
+            cases.push((label, c, r));
+        }
+
+        for (label, config, report) in cases {
+            assert_round_trips(label, config, report);
+        }
     }
 }

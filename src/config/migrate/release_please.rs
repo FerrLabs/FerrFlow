@@ -197,20 +197,20 @@ fn build_package(
                 ));
                 vec![vf]
             }
-            None => {
-                report.warnings.push(format!(
-                    "package {path}: release-type {} has no direct ferrflow file mapping — set \
-                     `versionedFiles` by hand.",
-                    rt.unwrap_or("(none)")
-                ));
-                Vec::new()
-            }
+            None => Vec::new(),
         }
     };
 
     let mut versioned_files = versioned_files;
     for extra in &entry.extra_files {
         add_extra_file(path, extra, &mut versioned_files, report);
+    }
+    if versioned_files.is_empty() && entry.version_file.is_none() {
+        report.warnings.push(format!(
+            "package {path}: release-type {} has no direct ferrflow file mapping — set \
+             `versionedFiles` by hand.",
+            rt.unwrap_or("(none)")
+        ));
     }
 
     PackageConfig {
@@ -516,6 +516,20 @@ mod tests {
         let (cfg, report) = build_ok(r#"{"packages": {".": {"release-type": "go"}}}"#);
         assert!(cfg.packages[0].versioned_files.is_empty());
         assert!(report.warnings.iter().any(|w| w.contains("go")));
+    }
+
+    #[test]
+    fn unmappable_release_type_does_not_warn_when_extra_files_fill_versioned_files() {
+        let (cfg, report) = build_ok(
+            r#"{"packages": {".": {"release-type": "go", "extra-files": ["README.md"]}}}"#,
+        );
+        assert_eq!(cfg.packages[0].versioned_files.len(), 1);
+        assert!(
+            !report
+                .warnings
+                .iter()
+                .any(|w| w.contains("no direct ferrflow file mapping"))
+        );
     }
 
     #[test]
