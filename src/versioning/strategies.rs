@@ -105,6 +105,73 @@ pub(super) fn bump_zerover(current: &str, bump: BumpType) -> Result<String> {
     Ok(v.to_string())
 }
 
+#[cfg(kani)]
+mod proofs {
+    use super::*;
+
+    fn any_bump() -> BumpType {
+        match kani::any::<u8>() % 4 {
+            0 => BumpType::Major,
+            1 => BumpType::Minor,
+            2 => BumpType::Patch,
+            _ => BumpType::None,
+        }
+    }
+
+    #[kani::proof]
+    fn semver_bump_never_goes_backwards() {
+        let (major, minor, patch): (u64, u64, u64) = (kani::any(), kani::any(), kani::any());
+        let bump = any_bump();
+        match bump_core(major, minor, patch, bump) {
+            Some(next) => {
+                let before = (major, minor, patch);
+                if bump == BumpType::None {
+                    assert!(next == before);
+                } else {
+                    assert!(next > before);
+                }
+            }
+            None => {
+                let at_max = match bump {
+                    BumpType::Major => major == u64::MAX,
+                    BumpType::Minor => minor == u64::MAX,
+                    BumpType::Patch => patch == u64::MAX,
+                    BumpType::None => false,
+                };
+                assert!(at_max);
+            }
+        }
+    }
+
+    #[kani::proof]
+    fn zerover_bump_stays_below_one_and_never_goes_backwards() {
+        let (minor, patch): (u64, u64) = (kani::any(), kani::any());
+        let bump = any_bump();
+        if let Some((major, next_minor, next_patch)) = bump_core_zero(minor, patch, bump) {
+            assert!(major == 0);
+            if bump == BumpType::None {
+                assert!((next_minor, next_patch) == (minor, patch));
+            } else {
+                assert!((next_minor, next_patch) > (minor, patch));
+            }
+        }
+    }
+
+    #[kani::proof]
+    fn zerover_overflows_only_at_the_maximum_component() {
+        let (minor, patch): (u64, u64) = (kani::any(), kani::any());
+        let bump = any_bump();
+        if bump_core_zero(minor, patch, bump).is_none() {
+            let at_max = match bump {
+                BumpType::Major | BumpType::Minor => minor == u64::MAX,
+                BumpType::Patch => patch == u64::MAX,
+                BumpType::None => false,
+            };
+            assert!(at_max);
+        }
+    }
+}
+
 #[cfg(test)]
 mod zerover_tests {
     use super::*;
