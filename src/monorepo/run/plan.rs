@@ -11,7 +11,6 @@ use crate::git::{
     get_commits_since_last_tag,
 };
 use crate::prerelease::PrereleaseContext;
-use crate::versioning::{apply_pre_major, compute_next_version};
 use gix::ObjectId;
 use rayon::prelude::*;
 use std::collections::{HashMap, HashSet};
@@ -397,24 +396,18 @@ pub(super) fn compute_plan(
             .map(|c| determine_bump(&c.message, &config.workspace.commit_formats))
             .max()
             .unwrap_or(BumpType::None);
-        let bump = apply_pre_major(
-            pkg.effective_pre_major(&config.workspace),
-            pkg_strategy,
-            &current_version,
-            bump,
-        );
-
-        let version_template = pkg.effective_version_template(&config.workspace);
-
-        if bump == BumpType::None && version_template.is_none() && !is_date_or_seq(pkg_strategy) {
+        if bump == BumpType::None
+            && pkg.effective_version_template(&config.workspace).is_none()
+            && !is_date_or_seq(pkg_strategy)
+        {
             return Ok(PackagePlan::Skipped {
                 reason: SkipReason::NoReleasableCommits,
                 recovered,
             });
         }
 
-        let base_version =
-            compute_next_version(&current_version, bump, pkg_strategy, version_template)?;
+        let (bump, base_version) =
+            pkg.next_version(&config.workspace, pkg_strategy, &current_version, bump)?;
         let (new_version, is_prerelease) = with_prerelease_suffix(
             pkg,
             inputs.config,

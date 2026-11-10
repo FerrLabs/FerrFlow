@@ -2,7 +2,6 @@ use std::collections::{HashMap, HashSet};
 
 use crate::config::Config;
 use crate::conventional_commits::BumpType;
-use crate::versioning::{apply_pre_major, compute_next_version};
 
 use super::super::util::tags_for_package;
 use super::plan::{PackageBump, PackagePlan};
@@ -138,15 +137,8 @@ fn raised_version(
     let prefix = pkg.tag_prefix(&config.workspace, true);
     let strategy =
         pkg.effective_versioning(&config.workspace, || tags_for_package(all_tags, &prefix));
-    let bump = apply_pre_major(
-        pkg.effective_pre_major(&config.workspace),
-        strategy,
-        &plan.current_version,
-        bump,
-    );
-    let template = pkg.effective_version_template(&config.workspace);
-    let version = compute_next_version(&plan.current_version, bump, strategy, template).ok()?;
-    Some((bump, version))
+    pkg.next_version(&config.workspace, strategy, &plan.current_version, bump)
+        .ok()
 }
 
 #[cfg(test)]

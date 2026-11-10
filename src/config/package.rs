@@ -210,6 +210,24 @@ impl PackageConfig {
         self.pre_major.or(workspace.pre_major)
     }
 
+    pub fn next_version(
+        &self,
+        workspace: &WorkspaceConfig,
+        strategy: VersioningStrategy,
+        current: &str,
+        bump: BumpType,
+    ) -> anyhow::Result<(BumpType, String)> {
+        let bump = crate::versioning::apply_pre_major(
+            self.effective_pre_major(workspace),
+            strategy,
+            current,
+            bump,
+        );
+        let template = self.effective_version_template(workspace);
+        let version = crate::versioning::compute_next_version(current, bump, strategy, template)?;
+        Ok((bump, version))
+    }
+
     pub fn effective_version_template<'a>(
         &'a self,
         workspace: &'a WorkspaceConfig,

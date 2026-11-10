@@ -7,7 +7,6 @@ use crate::config::{Config, PackageConfig, PropagatePolicy, VersionedFile};
 use crate::conventional_commits::BumpType;
 use crate::formats::dependents::{plan_dependency_update, supports_dependency_updates};
 use crate::formats::{get_handler, read_version, write_version};
-use crate::versioning::{apply_pre_major, compute_next_version};
 
 use super::super::types::CheckPackage;
 use super::super::util::tags_for_package;
@@ -102,15 +101,9 @@ fn resolve_cascaded<'a>(
     let strategy = pkg.effective_versioning(&config.workspace, || {
         tags_for_package(all_tags, &pkg_tag_prefix)
     });
-    let bump = apply_pre_major(
-        pkg.effective_pre_major(&config.workspace),
-        strategy,
-        &current_version,
-        bump,
-    );
-    let version_template = pkg.effective_version_template(&config.workspace);
-    let base_version =
-        compute_next_version(&current_version, bump, strategy, version_template).ok()?;
+    let (bump, base_version) = pkg
+        .next_version(&config.workspace, strategy, &current_version, bump)
+        .ok()?;
     let (new_version, is_prerelease) = with_prerelease_suffix(
         pkg,
         config,
