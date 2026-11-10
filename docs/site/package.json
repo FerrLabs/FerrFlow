@@ -1,6 +1,6 @@
 {
   "name": "@ferrflow/doc",
-  "version": "7.35.6",
+  "version": "7.36.0",
   "description": "Documentation for FerrFlow, the universal semantic versioning CLI. Rendered at ferrflow.com/docs.",
   "license": "MIT",
   "repository": {

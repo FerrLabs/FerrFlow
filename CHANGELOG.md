@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.36.0] - 2026-11-10
+
+### Features
+
+- feat(versioning): opt-in pre-1.0 bump rules (#1379)
+
 ## [7.35.6] - 2026-11-09
 
 ### Refactoring
