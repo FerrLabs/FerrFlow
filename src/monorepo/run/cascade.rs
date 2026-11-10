@@ -7,7 +7,6 @@ use crate::config::{Config, PackageConfig, PropagatePolicy, VersionedFile};
 use crate::conventional_commits::BumpType;
 use crate::formats::dependents::{plan_dependency_update, supports_dependency_updates};
 use crate::formats::{get_handler, read_version, write_version};
-use crate::versioning::compute_next_version;
 
 use super::super::types::CheckPackage;
 use super::super::util::tags_for_package;
@@ -102,9 +101,9 @@ fn resolve_cascaded<'a>(
     let strategy = pkg.effective_versioning(&config.workspace, || {
         tags_for_package(all_tags, &pkg_tag_prefix)
     });
-    let version_template = pkg.effective_version_template(&config.workspace);
-    let base_version =
-        compute_next_version(&current_version, bump, strategy, version_template).ok()?;
+    let (bump, base_version) = pkg
+        .next_version(&config.workspace, strategy, &current_version, bump)
+        .ok()?;
     let (new_version, is_prerelease) = with_prerelease_suffix(
         pkg,
         config,
@@ -549,6 +548,79 @@ mod tests {
         )
         .unwrap();
         dir
+    }
+
+    #[test]
+    fn a_cascaded_breaking_bump_follows_pre_major_below_one_zero() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        for (name, version) in [("engine", "1.2.0"), ("viewer", "0.3.0")] {
+            std::fs::create_dir(root.join(name)).unwrap();
+            std::fs::write(
+                root.join(format!("{name}/package.json")),
+                format!("{{\n  \"name\": \"{name}\",\n  \"version\": \"{version}\"\n}}\n"),
+            )
+            .unwrap();
+        }
+        std::fs::write(
+            root.join("ferrflow.json"),
+            r#"{
+  "workspace": { "preMajor": { "breaking": "minor" } },
+  "package": [
+    { "name": "engine", "path": "engine",
+      "versionedFiles": [{ "path": "engine/package.json", "format": "json" }] },
+    { "name": "viewer", "path": "viewer", "dependsOn": [{ "name": "engine", "propagate": "same" }],
+      "versionedFiles": [{ "path": "viewer/package.json", "format": "json" }] }
+  ]
+}
+"#,
+        )
+        .unwrap();
+        let config = Config::load(root, None).unwrap();
+
+        let mut any_bumped = false;
+        let mut json_packages = Vec::new();
+        let mut released = Vec::new();
+        let mut files_to_commit = Vec::new();
+        let mut files_per_package = HashMap::new();
+        let mut tags_to_create = Vec::new();
+        let mut pkg_outputs = Vec::new();
+        let mut bumped = HashMap::from([("engine".to_string(), BumpType::Major)]);
+        let mut bumped_versions = HashMap::from([("engine".to_string(), "2.0.0".to_string())]);
+        let mut sink = CascadeSink {
+            any_bumped: &mut any_bumped,
+            json_packages: &mut json_packages,
+            released: &mut released,
+            files_to_commit: &mut files_to_commit,
+            files_per_package: &mut files_per_package,
+            tags_to_create: &mut tags_to_create,
+            pkg_outputs: &mut pkg_outputs,
+            bumped: &mut bumped,
+            bumped_versions: &mut bumped_versions,
+        };
+
+        run_dependency_cascade(
+            &Pass {
+                config: &config,
+                root,
+                all_tags: &[],
+                prerelease_ctx: &PrereleaseContext::resolve(None, "main", None).unwrap(),
+                short_hash: "deadbee",
+                dry_run: false,
+                run_commands: false,
+            },
+            false,
+            false,
+            &mut sink,
+            &mut std::collections::HashMap::new(),
+        )
+        .unwrap();
+
+        let written = std::fs::read_to_string(root.join("viewer/package.json")).unwrap();
+        assert!(
+            written.contains("\"version\": \"0.4.0\""),
+            "a 0.x dependent left 0.x through the cascade: {written}"
+        );
     }
 
     #[test]

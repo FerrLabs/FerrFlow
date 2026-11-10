@@ -1800,3 +1800,89 @@ fn exclusive_mode_only_excludes_packages_inside_the_outer_path() {
     assert!(nested_of(&config, "web").is_empty());
     assert!(nested_of(&config, "plugin").is_empty());
 }
+
+fn pre_major(breaking: PreMajorBump, feat: PreMajorBump) -> PreMajorRules {
+    PreMajorRules {
+        breaking: Some(breaking),
+        feat: Some(feat),
+    }
+}
+
+#[test]
+fn parse_pre_major_json_camel_and_snake_case() {
+    for key in ["preMajor", "pre_major"] {
+        let json = format!(
+            r#"{{"workspace": {{"{key}": {{"breaking": "minor", "feat": "patch"}}}},
+                "package": [{{"name": "a", "path": ".", "{key}": {{"feat": "patch"}}}}]}}"#
+        );
+        let config: Config = serde_json::from_str(&json).unwrap();
+        assert_eq!(
+            config.workspace.pre_major,
+            Some(pre_major(PreMajorBump::Minor, PreMajorBump::Patch))
+        );
+        assert_eq!(
+            config.packages[0].pre_major,
+            Some(PreMajorRules {
+                breaking: None,
+                feat: Some(PreMajorBump::Patch)
+            })
+        );
+    }
+}
+
+#[test]
+fn parse_pre_major_toml_and_json5() {
+    let toml = r#"
+[workspace.preMajor]
+breaking = "minor"
+feat = "patch"
+"#;
+    let config: Config = toml_edit::de::from_str(toml).unwrap();
+    assert_eq!(
+        config.workspace.pre_major,
+        Some(pre_major(PreMajorBump::Minor, PreMajorBump::Patch))
+    );
+
+    let json5 = r#"{ workspace: { preMajor: { breaking: "patch" } } }"#;
+    let config: Config = json5::from_str(json5).unwrap();
+    assert_eq!(
+        config.workspace.pre_major,
+        Some(PreMajorRules {
+            breaking: Some(PreMajorBump::Patch),
+            feat: None
+        })
+    );
+}
+
+#[test]
+fn pre_major_is_unset_by_default() {
+    let config: Config =
+        serde_json::from_str(r#"{"package": [{"name": "a", "path": "."}]}"#).unwrap();
+    assert_eq!(config.workspace.pre_major, None);
+    assert_eq!(config.packages[0].pre_major, None);
+}
+
+#[test]
+fn pre_major_rejects_a_level_other_than_minor_or_patch() {
+    let json = r#"{"workspace": {"preMajor": {"breaking": "major"}}}"#;
+    assert!(serde_json::from_str::<Config>(json).is_err());
+}
+
+#[test]
+fn effective_pre_major_package_overrides_workspace() {
+    let ws = WorkspaceConfig {
+        pre_major: Some(pre_major(PreMajorBump::Minor, PreMajorBump::Patch)),
+        ..WorkspaceConfig::default()
+    };
+    let inheriting = PackageConfig {
+        name: "a".into(),
+        path: ".".into(),
+        ..Default::default()
+    };
+    let overriding = PackageConfig {
+        pre_major: Some(pre_major(PreMajorBump::Patch, PreMajorBump::Minor)),
+        ..inheriting.clone()
+    };
+    assert_eq!(inheriting.effective_pre_major(&ws), ws.pre_major);
+    assert_eq!(overriding.effective_pre_major(&ws), overriding.pre_major);
+}

@@ -4,7 +4,8 @@ use super::commit_formats::CommitFormats;
 use super::package::{FloatingTagLevel, VersioningStrategy};
 use super::types::{
     BranchChannelConfig, ForgeKind, HooksConfig, NestedPackages, OrphanedTagStrategy,
-    RegistryConfig, ReleaseCommitBody, ReleaseCommitMode, ReleaseCommitScope, VersionSourcePolicy,
+    PreMajorRules, RegistryConfig, ReleaseCommitBody, ReleaseCommitMode, ReleaseCommitScope,
+    VersionSourcePolicy,
 };
 use std::collections::BTreeMap;
 
@@ -16,6 +17,8 @@ pub struct WorkspaceConfig {
     pub branch: String,
     #[serde(default)]
     pub versioning: Option<VersioningStrategy>,
+    #[serde(default, alias = "preMajor")]
+    pub pre_major: Option<PreMajorRules>,
     #[serde(alias = "tagTemplate")]
     pub tag_template: Option<String>,
     #[serde(alias = "versionTemplate")]
@@ -89,6 +92,7 @@ impl Default for WorkspaceConfig {
             remote: default_remote(),
             branch: default_branch(),
             versioning: Default::default(),
+            pre_major: None,
             tag_template: Default::default(),
             version_template: Default::default(),
             build_metadata: Default::default(),

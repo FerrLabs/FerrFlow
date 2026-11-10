@@ -11,7 +11,6 @@ use crate::git::{
     get_commits_since_last_tag,
 };
 use crate::prerelease::PrereleaseContext;
-use crate::versioning::compute_next_version;
 use gix::ObjectId;
 use rayon::prelude::*;
 use std::collections::{HashMap, HashSet};
@@ -408,18 +407,18 @@ pub(super) fn compute_plan(
             .map(|c| determine_bump(&c.message, &config.workspace.commit_formats))
             .max()
             .unwrap_or(BumpType::None);
-
-        let version_template = pkg.effective_version_template(&config.workspace);
-
-        if bump == BumpType::None && version_template.is_none() && !is_date_or_seq(pkg_strategy) {
+        if bump == BumpType::None
+            && pkg.effective_version_template(&config.workspace).is_none()
+            && !is_date_or_seq(pkg_strategy)
+        {
             return Ok(PackagePlan::Skipped {
                 reason: SkipReason::NoReleasableCommits,
                 recovered,
             });
         }
 
-        let base_version =
-            compute_next_version(&current_version, bump, pkg_strategy, version_template)?;
+        let (bump, base_version) =
+            pkg.next_version(&config.workspace, pkg_strategy, &current_version, bump)?;
         let (new_version, is_prerelease) = with_prerelease_suffix(
             pkg,
             inputs.config,
@@ -764,6 +763,74 @@ mod tests {
                 .any(|p| matches!(p, PlanSummary::Bump { .. })),
             "fixture should produce at least one bump"
         );
+    }
+
+    #[test]
+    fn pre_major_remaps_the_bump_below_one_zero_and_leaves_later_majors_alone() {
+        let (dir, repo) = init_repo();
+        let root = dir.path().to_path_buf();
+        write_pkg(&root, "young", "0.5.0");
+        write_pkg(&root, "mature", "1.0.0");
+        std::fs::write(
+            root.join(".ferrflow"),
+            r#"{"workspace":{"preMajor":{"breaking":"minor","feat":"patch"}},"package":[
+                {"name":"young","path":"young","versionedFiles":[{"path":"young/Cargo.toml","format":"toml"}]},
+                {"name":"mature","path":"mature","versionedFiles":[{"path":"mature/Cargo.toml","format":"toml"}]}
+            ]}"#,
+        )
+        .unwrap();
+        git(&root, &["add", "-A"]);
+        commit_file(&root, "seed.txt", "x", "chore: seed", 1_950_000_000);
+        git(&root, &["tag", "young@v0.5.0"]);
+        git(&root, &["tag", "mature@v1.0.0"]);
+        std::fs::create_dir_all(root.join("mature")).unwrap();
+        std::fs::write(root.join("mature/a.rs"), "x").unwrap();
+        git(&root, &["add", "--", "mature/a.rs"]);
+        commit_file(&root, "young/a.rs", "x", "feat!: break both", 1_950_000_100);
+
+        let config = Config::load(&root, Some(&root.join(".ferrflow"))).unwrap();
+        let commit_walk =
+            crate::git::CommitWalkCache::new(config.workspace.effective_commit_skip_markers());
+        let fx = Fixture {
+            _dir: dir,
+            repo,
+            config,
+            root: root.clone(),
+            cache: ChangedFilesCache::default(),
+            commit_files: CommitFilesCache::default(),
+            commit_walk,
+        };
+        let all_tags = collect_all_tags(&fx.repo);
+        let head_ancestors = build_head_ancestors(&fx.repo).ok();
+        let tag_index = TagIndex::build(&fx.repo).ok();
+        let prerelease_ctx = PrereleaseContext::resolve(None, "main", None).unwrap();
+        let forced: Vec<Forced<'_>> = Vec::new();
+        let changed_files = get_changed_files(&fx.repo).unwrap();
+        let inputs = build_inputs(
+            &fx,
+            &tag_index,
+            &head_ancestors,
+            &all_tags,
+            &prerelease_ctx,
+            &forced,
+            &changed_files,
+        );
+
+        let PackagePlan::Bump(young) = plan_for(&fx, &inputs, "young") else {
+            panic!(
+                "young should bump: {:?}",
+                plan_for(&fx, &inputs, "young").summary()
+            );
+        };
+        assert_eq!(young.new_version, "0.6.0");
+        assert_eq!(young.bump, BumpType::Minor);
+        assert_eq!(young.strategy_label, "minor");
+
+        let PackagePlan::Bump(mature) = plan_for(&fx, &inputs, "mature") else {
+            panic!("mature should bump");
+        };
+        assert_eq!(mature.new_version, "2.0.0");
+        assert_eq!(mature.bump, BumpType::Major);
     }
 
     fn plan_for(fx: &Fixture, inputs: &PlanInputs<'_>, name: &str) -> PackagePlan {

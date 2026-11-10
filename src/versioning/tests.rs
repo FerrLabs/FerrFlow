@@ -670,3 +670,175 @@ fn calver_short_seq_is_reachable_through_compute_next_version() {
 
     assert_eq!(v, format!("{}.{}.1", now.format("%y"), now.format("%-m")));
 }
+
+fn pre_major_rules() -> Option<PreMajorRules> {
+    Some(PreMajorRules {
+        breaking: Some(PreMajorBump::Minor),
+        feat: Some(PreMajorBump::Patch),
+    })
+}
+
+fn next_with_pre_major(
+    rules: Option<PreMajorRules>,
+    strategy: VersioningStrategy,
+    current: &str,
+    bump: BumpType,
+) -> String {
+    let bump = apply_pre_major(rules, strategy, current, bump);
+    compute_next_version(current, bump, strategy, None).unwrap()
+}
+
+#[test]
+fn pre_major_below_one_remaps_breaking_to_minor() {
+    assert_eq!(
+        next_with_pre_major(
+            pre_major_rules(),
+            VersioningStrategy::Semver,
+            "0.5.0",
+            BumpType::Major
+        ),
+        "0.6.0"
+    );
+}
+
+#[test]
+fn pre_major_below_one_remaps_feat_to_patch() {
+    assert_eq!(
+        next_with_pre_major(
+            pre_major_rules(),
+            VersioningStrategy::Semver,
+            "0.5.0",
+            BumpType::Minor
+        ),
+        "0.5.1"
+    );
+}
+
+#[test]
+fn pre_major_leaves_fix_as_patch() {
+    assert_eq!(
+        next_with_pre_major(
+            pre_major_rules(),
+            VersioningStrategy::Semver,
+            "0.5.0",
+            BumpType::Patch
+        ),
+        "0.5.1"
+    );
+}
+
+#[test]
+fn pre_major_keeps_no_bump_unchanged() {
+    assert_eq!(
+        apply_pre_major(
+            pre_major_rules(),
+            VersioningStrategy::Semver,
+            "0.5.0",
+            BumpType::None
+        ),
+        BumpType::None
+    );
+}
+
+#[test]
+fn pre_major_has_no_effect_from_one_zero_zero() {
+    for (bump, expected) in [
+        (BumpType::Major, "2.0.0"),
+        (BumpType::Minor, "1.1.0"),
+        (BumpType::Patch, "1.0.1"),
+    ] {
+        assert_eq!(
+            next_with_pre_major(pre_major_rules(), VersioningStrategy::Semver, "1.0.0", bump),
+            expected
+        );
+    }
+}
+
+#[test]
+fn unset_pre_major_keeps_the_standard_rules() {
+    assert_eq!(
+        next_with_pre_major(None, VersioningStrategy::Semver, "0.5.0", BumpType::Major),
+        "1.0.0"
+    );
+    assert_eq!(
+        next_with_pre_major(None, VersioningStrategy::Semver, "0.5.0", BumpType::Minor),
+        "0.6.0"
+    );
+}
+
+#[test]
+fn pre_major_with_a_single_key_only_remaps_that_key() {
+    let breaking_only = Some(PreMajorRules {
+        breaking: Some(PreMajorBump::Minor),
+        feat: None,
+    });
+    assert_eq!(
+        next_with_pre_major(
+            breaking_only,
+            VersioningStrategy::Semver,
+            "0.5.0",
+            BumpType::Major
+        ),
+        "0.6.0"
+    );
+    assert_eq!(
+        next_with_pre_major(
+            breaking_only,
+            VersioningStrategy::Semver,
+            "0.5.0",
+            BumpType::Minor
+        ),
+        "0.6.0"
+    );
+}
+
+#[test]
+fn pre_major_can_remap_breaking_to_patch() {
+    let rules = Some(PreMajorRules {
+        breaking: Some(PreMajorBump::Patch),
+        feat: None,
+    });
+    assert_eq!(
+        next_with_pre_major(rules, VersioningStrategy::Semver, "0.5.0", BumpType::Major),
+        "0.5.1"
+    );
+}
+
+#[test]
+fn pre_major_only_applies_to_the_semver_strategy() {
+    assert_eq!(
+        next_with_pre_major(
+            pre_major_rules(),
+            VersioningStrategy::Zerover,
+            "0.5.0",
+            BumpType::Minor
+        ),
+        "0.6.0"
+    );
+}
+
+#[test]
+fn pre_major_accepts_a_v_prefixed_current_version() {
+    assert_eq!(
+        apply_pre_major(
+            pre_major_rules(),
+            VersioningStrategy::Semver,
+            "v0.5.0",
+            BumpType::Major
+        ),
+        BumpType::Minor
+    );
+}
+
+#[test]
+fn pre_major_ignores_an_unparseable_current_version() {
+    assert_eq!(
+        apply_pre_major(
+            pre_major_rules(),
+            VersioningStrategy::Semver,
+            "garbage",
+            BumpType::Major
+        ),
+        BumpType::Major
+    );
+}

@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use crate::config::{FloatingTagLevel, VersioningStrategy};
+use crate::config::{FloatingTagLevel, PreMajorBump, PreMajorRules, VersioningStrategy};
 use crate::conventional_commits::BumpType;
 
 mod detect;
@@ -38,6 +38,32 @@ pub fn compute_next_version(
         VersioningStrategy::CalverShortSeq => calver_seq_version(current, "%y"),
         VersioningStrategy::Sequential => bump_sequential(current),
         VersioningStrategy::Zerover => bump_zerover(current, bump),
+    }
+}
+
+pub fn apply_pre_major(
+    rules: Option<PreMajorRules>,
+    strategy: VersioningStrategy,
+    current: &str,
+    bump: BumpType,
+) -> BumpType {
+    let Some(rules) = rules else {
+        return bump;
+    };
+    let pre_major = strategy == VersioningStrategy::Semver
+        && semver::Version::parse(current.trim_start_matches('v')).is_ok_and(|v| v.major == 0);
+    if !pre_major {
+        return bump;
+    }
+    let level = match bump {
+        BumpType::Major => rules.breaking,
+        BumpType::Minor => rules.feat,
+        BumpType::Patch | BumpType::None => None,
+    };
+    match level {
+        Some(PreMajorBump::Minor) => BumpType::Minor,
+        Some(PreMajorBump::Patch) => BumpType::Patch,
+        None => bump,
     }
 }
 

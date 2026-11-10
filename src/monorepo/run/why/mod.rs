@@ -7,7 +7,6 @@ use crate::conventional_commits::{BumpType, determine_bump};
 use crate::formats::read_version;
 use crate::git::{collect_all_tags, get_changed_files, get_repo_root, open_repo};
 use crate::prerelease::PrereleaseContext;
-use crate::versioning::compute_next_version;
 
 use super::super::util::tags_for_package;
 use super::super::version_source::VersionSource;
@@ -355,9 +354,8 @@ fn bump_leaves_version_unchanged(
             let strategy = pkg.effective_versioning(&config.workspace, || {
                 tags_for_package(inputs.all_tags, &pkg.tag_prefix(&config.workspace, true))
             });
-            let version_template = pkg.effective_version_template(&config.workspace);
-            compute_next_version(&current, bump, strategy, version_template)
-                .is_ok_and(|next| next == current)
+            pkg.next_version(&config.workspace, strategy, &current, bump)
+                .is_ok_and(|(_, next)| next == current)
         })
 }
 
@@ -438,14 +436,9 @@ fn decide(
 
     if let Some(bump) = cascade.get(&pkg.name).copied()
         && bump != BumpType::None
-        && let Some(next) = read_version_for_cascade(pkg, root).and_then(|current| {
-            compute_next_version(
-                &current,
-                bump,
-                strategy,
-                pkg.effective_version_template(&config.workspace),
-            )
-            .ok()
+        && let Some((bump, next)) = read_version_for_cascade(pkg, root).and_then(|current| {
+            pkg.next_version(&config.workspace, strategy, &current, bump)
+                .ok()
         })
         && next != current_version
     {

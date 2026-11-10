@@ -5,11 +5,15 @@ use std::path::PathBuf;
 
 use crate::config::Config;
 use crate::config::package::{FileFormat, PackageConfig, VersionedFile};
-use crate::config::types::ReleaseCommitMode;
+use crate::config::types::{PreMajorBump, PreMajorRules, ReleaseCommitMode};
 use crate::config::workspace::WorkspaceConfig;
 use crate::error_code::{self, ErrorCodeExt};
+use crate::formats::lockfiles::Manifest;
 
 use super::{Migration, MigrationReport, Source};
+
+mod extra_files;
+use extra_files::Mapped;
 
 pub(super) const CONFIG_FILE: &str = "release-please-config.json";
 
@@ -38,6 +42,10 @@ struct ReleasePleaseConfig {
     tag_separator: Option<String>,
     #[serde(default, rename = "separate-pull-requests")]
     separate_pull_requests: Option<bool>,
+    #[serde(default, rename = "bump-minor-pre-major")]
+    bump_minor_pre_major: Option<bool>,
+    #[serde(default, rename = "bump-patch-for-minor-pre-major")]
+    bump_patch_for_minor_pre_major: Option<bool>,
     #[serde(default)]
     plugins: Vec<Plugin>,
 }
@@ -54,6 +62,12 @@ struct PackageEntry {
     changelog_path: Option<String>,
     #[serde(default, rename = "version-file")]
     version_file: Option<String>,
+    #[serde(default, rename = "extra-files")]
+    extra_files: Vec<serde_json::Value>,
+    #[serde(default, rename = "bump-minor-pre-major")]
+    bump_minor_pre_major: Option<bool>,
+    #[serde(default, rename = "bump-patch-for-minor-pre-major")]
+    bump_patch_for_minor_pre_major: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -81,6 +95,10 @@ pub(super) fn build(raw: &str) -> Result<(Config, MigrationReport)> {
     report
         .mapped
         .push("release-please PR flow → releaseCommitMode: pr".to_string());
+    workspace.auto_merge_releases = false;
+    report
+        .mapped
+        .push("release-please never merges its release PR → autoMergeReleases: false".to_string());
 
     if rp.include_component_in_tag.unwrap_or(false) {
         let sep = rp.tag_separator.as_deref().unwrap_or("-");
@@ -104,24 +122,26 @@ pub(super) fn build(raw: &str) -> Result<(Config, MigrationReport)> {
     }
 
     let default_type = rp.release_type.as_deref();
-    let mut packages = Vec::new();
-    for (path, entry) in &rp.packages {
-        packages.push(build_package(path, entry, default_type, &mut report));
-    }
-
-    if packages.is_empty() {
-        packages.push(build_package(
-            ".",
-            &PackageEntry::default(),
-            default_type,
-            &mut report,
-        ));
+    let fallback = PackageEntry::default();
+    let entries: Vec<(&str, &PackageEntry)> = if rp.packages.is_empty() {
         report.warnings.push(
-            "no `packages` in the config — scaffolded a single root package. Add entries if this \
+            "no `packages` in the config. Scaffolded a single root package. Add entries if this \
              is a monorepo."
                 .to_string(),
         );
+        vec![(".", &fallback)]
+    } else {
+        rp.packages.iter().map(|(p, e)| (p.as_str(), e)).collect()
+    };
+
+    let mut packages = Vec::new();
+    let mut pre_major = Vec::new();
+    for (path, entry) in entries {
+        packages.push(build_package(path, entry, default_type, &mut report));
+        pre_major.push(pre_major_rules(path, entry, &rp, &mut report));
     }
+    apply_pre_major(&mut packages, &pre_major, &mut workspace);
+    enable_lockfile_updates(&packages, &mut workspace, &mut report);
 
     Ok((
         Config {
@@ -177,16 +197,21 @@ fn build_package(
                 ));
                 vec![vf]
             }
-            None => {
-                report.warnings.push(format!(
-                    "package {path}: release-type {} has no direct ferrflow file mapping — set \
-                     `versionedFiles` by hand.",
-                    rt.unwrap_or("(none)")
-                ));
-                Vec::new()
-            }
+            None => Vec::new(),
         }
     };
+
+    let mut versioned_files = versioned_files;
+    for extra in &entry.extra_files {
+        add_extra_file(path, extra, &mut versioned_files, report);
+    }
+    if versioned_files.is_empty() && entry.version_file.is_none() {
+        report.warnings.push(format!(
+            "package {path}: release-type {} has no direct ferrflow file mapping — set \
+             `versionedFiles` by hand.",
+            rt.unwrap_or("(none)")
+        ));
+    }
 
     PackageConfig {
         name,
@@ -199,6 +224,112 @@ fn build_package(
                 .unwrap_or_else(|| "CHANGELOG.md".to_string()),
         ),
         ..Default::default()
+    }
+}
+
+fn add_extra_file(
+    pkg_path: &str,
+    extra: &serde_json::Value,
+    versioned_files: &mut Vec<VersionedFile>,
+    report: &mut MigrationReport,
+) {
+    let (vf, generic) = match extra_files::map(pkg_path, extra) {
+        Mapped::Generic(vf) => (vf, true),
+        Mapped::Direct(vf) => (vf, false),
+        Mapped::Manual(msg) => {
+            report.warnings.push(msg);
+            return;
+        }
+    };
+    if versioned_files.contains(&vf) {
+        report.mapped.push(format!(
+            "package {pkg_path}: extra-files {} already covered",
+            vf.path
+        ));
+        return;
+    }
+    if generic {
+        report.mapped.push(format!(
+            "package {pkg_path}: extra-files {} (generic) → txt selector on `x-release-please-version`",
+            vf.path
+        ));
+        report.warnings.push(format!(
+            "package {pkg_path}: {} is matched on single lines carrying `x-release-please-version`. \
+             The `x-release-please-start-version` ... `x-release-please-end` block form is not \
+             supported, review manually if the file uses it.",
+            vf.path
+        ));
+    } else {
+        report.mapped.push(format!(
+            "package {pkg_path}: extra-files {} → {:?}",
+            vf.path, vf.format
+        ));
+    }
+    versioned_files.push(vf);
+}
+
+fn pre_major_rules(
+    path: &str,
+    entry: &PackageEntry,
+    rp: &ReleasePleaseConfig,
+    report: &mut MigrationReport,
+) -> Option<PreMajorRules> {
+    let minor = entry
+        .bump_minor_pre_major
+        .or(rp.bump_minor_pre_major)
+        .unwrap_or(false);
+    let patch = entry
+        .bump_patch_for_minor_pre_major
+        .or(rp.bump_patch_for_minor_pre_major)
+        .unwrap_or(false);
+    if minor {
+        report.mapped.push(format!(
+            "package {path}: bump-minor-pre-major → preMajor.breaking: minor"
+        ));
+    }
+    if patch {
+        report.mapped.push(format!(
+            "package {path}: bump-patch-for-minor-pre-major → preMajor.feat: patch"
+        ));
+    }
+    let rules = PreMajorRules {
+        breaking: minor.then_some(PreMajorBump::Minor),
+        feat: patch.then_some(PreMajorBump::Patch),
+    };
+    (rules != PreMajorRules::default()).then_some(rules)
+}
+
+fn apply_pre_major(
+    packages: &mut [PackageConfig],
+    rules: &[Option<PreMajorRules>],
+    workspace: &mut WorkspaceConfig,
+) {
+    if let Some(first) = rules.first().copied().flatten()
+        && rules.iter().all(|r| *r == Some(first))
+    {
+        workspace.pre_major = Some(first);
+        return;
+    }
+    for (package, rule) in packages.iter_mut().zip(rules) {
+        package.pre_major = *rule;
+    }
+}
+
+fn enable_lockfile_updates(
+    packages: &[PackageConfig],
+    workspace: &mut WorkspaceConfig,
+    report: &mut MigrationReport,
+) {
+    let has_lockfile = packages
+        .iter()
+        .flat_map(|p| &p.versioned_files)
+        .filter_map(|vf| vf.path.rsplit('/').next())
+        .any(|name| Manifest::from_manifest_filename(name).is_some());
+    if has_lockfile {
+        workspace.update_lockfiles = true;
+        report
+            .mapped
+            .push("versioned manifest with a lockfile → updateLockfiles: true".to_string());
     }
 }
 
@@ -298,6 +429,7 @@ fn apply_plugin(plugin: &Plugin, workspace: &mut WorkspaceConfig, report: &mut M
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::types::{PreMajorBump, PreMajorRules};
 
     fn build_ok(raw: &str) -> (Config, MigrationReport) {
         build(raw).expect("valid release-please config")
@@ -386,6 +518,20 @@ mod tests {
         let (cfg, report) = build_ok(r#"{"packages": {".": {"release-type": "go"}}}"#);
         assert!(cfg.packages[0].versioned_files.is_empty());
         assert!(report.warnings.iter().any(|w| w.contains("go")));
+    }
+
+    #[test]
+    fn unmappable_release_type_does_not_warn_when_extra_files_fill_versioned_files() {
+        let (cfg, report) = build_ok(
+            r#"{"packages": {".": {"release-type": "go", "extra-files": ["README.md"]}}}"#,
+        );
+        assert_eq!(cfg.packages[0].versioned_files.len(), 1);
+        assert!(
+            !report
+                .warnings
+                .iter()
+                .any(|w| w.contains("no direct ferrflow file mapping"))
+        );
     }
 
     #[test]
@@ -503,5 +649,197 @@ mod tests {
             r#"{"packages": {".": {"release-type": "node"}}, "plugins": ["node-workspace"]}"#,
         );
         assert!(report.ignored.iter().any(|i| i.contains("node-workspace")));
+    }
+
+    #[test]
+    fn extra_files_map_alongside_the_release_type_file() {
+        let (cfg, report) = build_ok(
+            r#"{"packages": {".": {"release-type": "rust", "extra-files": [
+                {"type": "generic", "path": "README.md"},
+                {"type": "json", "path": "manifest.json", "jsonpath": "$.version"}
+            ]}}}"#,
+        );
+        let files = &cfg.packages[0].versioned_files;
+        assert_eq!(files.len(), 3);
+        assert_eq!(files[1].path, "README.md");
+        assert!(matches!(files[1].format, FileFormat::Txt));
+        assert!(files[1].selector.is_some());
+        assert_eq!(files[2].path, "manifest.json");
+        assert!(matches!(files[2].format, FileFormat::Json));
+        assert!(report.mapped.iter().any(|m| m.contains("README.md")));
+    }
+
+    #[test]
+    fn generic_extra_file_warns_about_the_block_form() {
+        let (_, report) = build_ok(
+            r#"{"packages": {".": {"release-type": "simple", "extra-files": ["README.md"]}}}"#,
+        );
+        assert!(
+            report
+                .warnings
+                .iter()
+                .any(|w| w.contains("x-release-please-start-version") && w.contains("README.md"))
+        );
+    }
+
+    #[test]
+    fn extra_file_duplicating_the_release_type_file_is_not_added_twice() {
+        let (cfg, _) = build_ok(
+            r#"{"packages": {".": {"release-type": "rust", "extra-files": [
+                {"type": "toml", "path": "Cargo.toml", "jsonpath": "$.package.version"}
+            ]}}}"#,
+        );
+        assert_eq!(cfg.packages[0].versioned_files.len(), 1);
+    }
+
+    #[test]
+    fn unsupported_extra_files_are_reported_with_the_exact_entry() {
+        let (cfg, report) = build_ok(
+            r#"{"packages": {"svc": {"release-type": "simple", "extra-files": [
+                {"type": "yaml", "path": "chart.yaml", "jsonpath": "$.version"}
+            ]}}}"#,
+        );
+        assert_eq!(cfg.packages[0].versioned_files.len(), 1);
+        assert!(report.warnings.iter().any(|w| {
+            w.contains(r#"{"type":"yaml","path":"chart.yaml","jsonpath":"$.version"}"#)
+        }));
+    }
+
+    fn rules(breaking: Option<PreMajorBump>, feat: Option<PreMajorBump>) -> Option<PreMajorRules> {
+        Some(PreMajorRules { breaking, feat })
+    }
+
+    #[test]
+    fn bump_minor_pre_major_alone_sets_workspace_breaking_minor() {
+        let (cfg, report) = build_ok(
+            r#"{"packages": {".": {"release-type": "node", "bump-minor-pre-major": true}}}"#,
+        );
+        assert_eq!(
+            cfg.workspace.pre_major,
+            rules(Some(PreMajorBump::Minor), None)
+        );
+        assert_eq!(cfg.workspace.versioning, None);
+        assert_eq!(cfg.packages[0].pre_major, None);
+        assert!(
+            report
+                .mapped
+                .iter()
+                .any(|m| m.contains("preMajor.breaking: minor"))
+        );
+        assert!(report.warnings.iter().all(|w| !w.contains("zerover")));
+    }
+
+    #[test]
+    fn bump_patch_for_minor_pre_major_alone_sets_workspace_feat_patch() {
+        let (cfg, report) = build_ok(
+            r#"{"packages": {".": {"release-type": "node", "bump-patch-for-minor-pre-major": true}}}"#,
+        );
+        assert_eq!(
+            cfg.workspace.pre_major,
+            rules(None, Some(PreMajorBump::Patch))
+        );
+        assert!(
+            report
+                .mapped
+                .iter()
+                .any(|m| m.contains("preMajor.feat: patch"))
+        );
+        assert!(report.warnings.iter().all(|w| !w.contains("#1376")));
+    }
+
+    #[test]
+    fn both_flags_set_both_rules() {
+        let (cfg, _) = build_ok(
+            r#"{"packages": {".": {"release-type": "node", "bump-minor-pre-major": true, "bump-patch-for-minor-pre-major": true}}}"#,
+        );
+        assert_eq!(
+            cfg.workspace.pre_major,
+            rules(Some(PreMajorBump::Minor), Some(PreMajorBump::Patch))
+        );
+    }
+
+    #[test]
+    fn no_flags_leave_pre_major_unset() {
+        let (cfg, _) = build_ok(r#"{"packages": {".": {"release-type": "node"}}}"#);
+        assert_eq!(cfg.workspace.pre_major, None);
+        assert_eq!(cfg.packages[0].pre_major, None);
+    }
+
+    #[test]
+    fn flags_on_some_packages_are_placed_per_package() {
+        let (cfg, _) = build_ok(
+            r#"{"packages": {
+                "a": {"release-type": "node", "bump-minor-pre-major": true},
+                "b": {"release-type": "node", "bump-patch-for-minor-pre-major": true},
+                "c": {"release-type": "node"}
+            }}"#,
+        );
+        assert_eq!(cfg.workspace.pre_major, None);
+        assert_eq!(
+            cfg.packages[0].pre_major,
+            rules(Some(PreMajorBump::Minor), None)
+        );
+        assert_eq!(
+            cfg.packages[1].pre_major,
+            rules(None, Some(PreMajorBump::Patch))
+        );
+        assert_eq!(cfg.packages[2].pre_major, None);
+    }
+
+    #[test]
+    fn top_level_flags_apply_to_every_package() {
+        let (cfg, _) = build_ok(
+            r#"{"bump-minor-pre-major": true, "packages": {"a": {"release-type": "node"}, "b": {"release-type": "node"}}}"#,
+        );
+        assert_eq!(
+            cfg.workspace.pre_major,
+            rules(Some(PreMajorBump::Minor), None)
+        );
+    }
+
+    #[test]
+    fn package_flag_false_overrides_the_top_level_flag() {
+        let (cfg, _) = build_ok(
+            r#"{"bump-minor-pre-major": true, "packages": {"a": {"release-type": "node", "bump-minor-pre-major": false}}}"#,
+        );
+        assert_eq!(cfg.workspace.pre_major, None);
+        assert_eq!(cfg.packages[0].pre_major, None);
+    }
+
+    #[test]
+    fn release_please_disables_auto_merge() {
+        let (cfg, report) = build_ok(r#"{"packages": {".": {"release-type": "node"}}}"#);
+        assert!(!cfg.workspace.auto_merge_releases);
+        assert!(
+            report
+                .mapped
+                .iter()
+                .any(|m| m.contains("autoMergeReleases"))
+        );
+    }
+
+    #[test]
+    fn manifests_with_a_lockfile_enable_lockfile_updates() {
+        let (cfg, _) = build_ok(r#"{"packages": {".": {"release-type": "rust"}}}"#);
+        assert!(cfg.workspace.update_lockfiles);
+    }
+
+    #[test]
+    fn lockfile_updates_stay_off_without_a_lockfile_manifest() {
+        let (cfg, _) = build_ok(
+            r#"{"packages": {".": {"release-type": "simple", "extra-files": ["README.md"]}}}"#,
+        );
+        assert!(!cfg.workspace.update_lockfiles);
+    }
+
+    #[test]
+    fn package_name_wins_over_component_and_path() {
+        let (cfg, _) = build_ok(
+            r#"{"packages": {"x": {"release-type": "node", "package-name": "pn", "component": "c"}}}"#,
+        );
+        assert_eq!(cfg.packages[0].name, "pn");
+        let (cfg, _) =
+            build_ok(r#"{"packages": {"x": {"release-type": "node", "component": "c"}}}"#);
+        assert_eq!(cfg.packages[0].name, "c");
     }
 }
