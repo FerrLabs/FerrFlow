@@ -3,6 +3,9 @@ members = [".", "ferrflow-wasm"]
 exclude = ["__fixtures__", "fuzz"]
 resolver = "3"
 
+[workspace.lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
+
 # The codebase keeps unit tests inline before the impl block in formats/*.rs
 # (cleaner test-first reading order). Suppressing the lint workspace-wide
 # avoids reorganising every format file just to satisfy clippy.
