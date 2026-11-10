@@ -92,6 +92,7 @@ windows-sys = { version = "0.61", optional = true, features = ["Win32_Foundation
 [dev-dependencies]
 cargo-husky = { version = "1", default-features = false, features = ["user-hooks"] }
 criterion = { version = "0.8", features = ["html_reports"] }
+proptest.workspace = true
 
 [[bench]]
 name = "ferrflow_benchmarks"
@@ -117,3 +118,6 @@ codegen-units = 1
 # forces unwind back on for test/bench profiles, so the test harness and
 # criterion are unaffected.
 panic = "abort"
+
+[workspace.dependencies]
+proptest = "1"

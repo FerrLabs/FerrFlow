@@ -63,6 +63,11 @@ jobs:
       - name: Typecheck the published types and their misuse cases
         run: npx --yes -p typescript@5 tsc --noEmit --strict --skipLibCheck false --module nodenext --moduleResolution nodenext npm/types-check.ts
 
+  kani:
+    name: Kani
+    uses: FerrLabs/.github/.github/workflows/reusable-kani.yml@ca4906e7dbab75e0ea8129a3f9a3a68cb722c2a0 # main
+    if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):')
+
   msrv:
     name: MSRV
     if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):')
@@ -696,7 +701,7 @@ jobs:
 
   release:
     name: Release
-    needs: [test, fixture-monorepo, fixture-single, fixture-config, fixture-advanced, benchmark-aggregate]
+    needs: [test, kani, fixture-monorepo, fixture-single, fixture-config, fixture-advanced, benchmark-aggregate]
     runs-on: ubuntu-latest
     concurrency:
       group: release-${{ github.workflow }}-${{ github.ref }}
@@ -704,6 +709,7 @@ jobs:
     if: |
       always() &&
       needs.test.result == 'success' &&
+      needs.kani.result == 'success' &&
       needs.fixture-monorepo.result == 'success' &&
       needs.fixture-single.result == 'success' &&
       needs.fixture-config.result == 'success' &&
