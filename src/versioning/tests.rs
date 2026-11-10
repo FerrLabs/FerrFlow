@@ -1,4 +1,6 @@
-use super::strategies::{bump_semver, calver_seq_version, calver_version};
+use super::strategies::{
+    bump_semver, bump_sequential, bump_zerover, calver_seq_version, calver_version,
+};
 use super::*;
 
 #[test]
@@ -841,4 +843,34 @@ fn pre_major_ignores_an_unparseable_current_version() {
         ),
         BumpType::Major
     );
+}
+
+#[test]
+fn bump_past_u64_max_is_an_error_not_a_wrap() {
+    let max = u64::MAX;
+    assert!(bump_semver(&format!("{max}.0.0"), BumpType::Major).is_err());
+    assert!(bump_semver(&format!("0.{max}.0"), BumpType::Minor).is_err());
+    assert!(bump_semver(&format!("0.0.{max}"), BumpType::Patch).is_err());
+    assert!(bump_zerover(&format!("0.{max}.0"), BumpType::Major).is_err());
+    assert!(bump_sequential(&max.to_string()).is_err());
+}
+
+#[test]
+fn bump_at_u64_max_without_incrementing_that_part_succeeds() {
+    let max = u64::MAX;
+    assert_eq!(
+        bump_semver(&format!("0.0.{max}"), BumpType::Minor).unwrap(),
+        "0.1.0"
+    );
+    assert_eq!(
+        bump_semver(&format!("0.0.{max}"), BumpType::None).unwrap(),
+        format!("0.0.{max}")
+    );
+}
+
+#[test]
+fn calver_seq_past_u32_max_is_an_error() {
+    let now = chrono::Utc::now();
+    let current = format!("{}.{}.{}", now.format("%Y"), now.format("%-m"), u32::MAX);
+    assert!(calver_seq_version(&current, "%Y").is_err());
 }
