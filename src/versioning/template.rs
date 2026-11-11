@@ -2,6 +2,7 @@ use anyhow::{Result, bail};
 use chrono::{DateTime, Datelike, Utc};
 use regex::Regex;
 
+use super::strategies::overflow;
 use crate::conventional_commits::BumpType;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -213,7 +214,7 @@ impl VersionTemplate {
             .collect()
     }
 
-    pub fn render(&self, current: &str, bump: BumpType, now: DateTime<Utc>) -> String {
+    pub fn render(&self, current: &str, bump: BumpType, now: DateTime<Utc>) -> Result<String> {
         let previous = self.read_back(current);
 
         let calendar_rolled = previous.as_ref().is_none_or(|vals| {
@@ -231,20 +232,24 @@ impl VersionTemplate {
         let seq = if calendar_rolled {
             1
         } else {
-            previous_of(Var::Seq).unwrap_or(0) + 1
+            previous_of(Var::Seq)
+                .unwrap_or(0)
+                .checked_add(1)
+                .ok_or_else(overflow)?
         };
 
         let major = previous_of(Var::Major).unwrap_or(0);
         let minor = previous_of(Var::Minor).unwrap_or(0);
         let patch = previous_of(Var::Patch).unwrap_or(0);
         let (major, minor, patch) = match bump {
-            BumpType::Major => (major + 1, 0, 0),
-            BumpType::Minor => (major, minor + 1, 0),
-            BumpType::Patch => (major, minor, patch + 1),
+            BumpType::Major => (major.checked_add(1).ok_or_else(overflow)?, 0, 0),
+            BumpType::Minor => (major, minor.checked_add(1).ok_or_else(overflow)?, 0),
+            BumpType::Patch => (major, minor, patch.checked_add(1).ok_or_else(overflow)?),
             BumpType::None => (major, minor, patch),
         };
 
-        self.segments
+        Ok(self
+            .segments
             .iter()
             .map(|segment| match segment {
                 Segment::Literal(text) => text.clone(),
@@ -254,7 +259,7 @@ impl VersionTemplate {
                 Segment::Var(Var::Patch) => patch.to_string(),
                 Segment::Var(var) => var.render_calendar(now),
             })
-            .collect()
+            .collect())
     }
 }
 
@@ -263,7 +268,7 @@ pub fn validate(template: &str) -> Result<()> {
 }
 
 pub fn render(current: &str, bump: BumpType, template: &str) -> Result<String> {
-    Ok(VersionTemplate::parse(template)?.render(current, bump, Utc::now()))
+    VersionTemplate::parse(template)?.render(current, bump, Utc::now())
 }
 
 #[cfg(test)]
@@ -279,6 +284,67 @@ mod tests {
         VersionTemplate::parse(template)
             .unwrap()
             .render(current, bump, now)
+            .unwrap()
+    }
+
+    fn render_err(template: &str, current: &str, bump: BumpType) -> String {
+        VersionTemplate::parse(template)
+            .unwrap()
+            .render(current, bump, at(2026, 8, 5))
+            .unwrap_err()
+            .to_string()
+    }
+
+    const MAX: &str = "18446744073709551615";
+
+    #[test]
+    fn seq_at_u64_max_errors() {
+        let current = format!("2026.8.{MAX}");
+        let err = render_err("{year}.{month}.{seq}", &current, BumpType::None);
+        assert!(err.contains("overflow"), "{err}");
+    }
+
+    #[test]
+    fn major_at_u64_max_errors_on_major_bump() {
+        let current = format!("{MAX}.0.0");
+        let err = render_err("{major}.{minor}.{patch}", &current, BumpType::Major);
+        assert!(err.contains("overflow"), "{err}");
+    }
+
+    #[test]
+    fn minor_at_u64_max_errors_on_minor_bump() {
+        let current = format!("1.{MAX}.0");
+        let err = render_err("{major}.{minor}.{patch}", &current, BumpType::Minor);
+        assert!(err.contains("overflow"), "{err}");
+    }
+
+    #[test]
+    fn patch_at_u64_max_errors_on_patch_bump() {
+        let current = format!("1.2.{MAX}");
+        let err = render_err("{major}.{minor}.{patch}", &current, BumpType::Patch);
+        assert!(err.contains("overflow"), "{err}");
+    }
+
+    #[test]
+    fn a_component_at_u64_max_that_is_not_incremented_still_renders() {
+        let now = at(2026, 8, 5);
+        let template = "{major}.{minor}.{patch}";
+        assert_eq!(
+            render_at(template, &format!("1.2.{MAX}"), BumpType::Minor, now),
+            "1.3.0"
+        );
+        assert_eq!(
+            render_at(template, &format!("1.{MAX}.{MAX}"), BumpType::Major, now),
+            "2.0.0"
+        );
+        assert_eq!(
+            render_at(template, &format!("{MAX}.1.1"), BumpType::Patch, now),
+            format!("{MAX}.1.2")
+        );
+        assert_eq!(
+            render_at(template, &format!("{MAX}.{MAX}.{MAX}"), BumpType::None, now),
+            format!("{MAX}.{MAX}.{MAX}")
+        );
     }
 
     #[test]
