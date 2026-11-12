@@ -196,7 +196,7 @@ impl VersionTemplate {
         for segment in &self.segments {
             match segment {
                 Segment::Literal(text) => pattern.push_str(&regex::escape(text)),
-                Segment::Var(_) => pattern.push_str(r"(\d+)"),
+                Segment::Var(_) => pattern.push_str(r"([0-9]+)"),
             }
         }
         pattern.push('$');
@@ -340,6 +340,19 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn non_ascii_digits_are_not_read_back() {
+        assert_eq!(
+            render_at(
+                "{major}.{minor}.{patch}",
+                "\u{661}.2.3",
+                BumpType::Major,
+                at(2026, 8, 5)
+            ),
+            "1.0.0"
+        );
     }
 
     #[test]
