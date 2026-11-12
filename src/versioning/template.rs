@@ -2,6 +2,7 @@ use anyhow::{Result, bail};
 use chrono::{DateTime, Datelike, Utc};
 use regex::Regex;
 
+use super::strategies::{bump_core, overflow};
 use crate::conventional_commits::BumpType;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -190,31 +191,35 @@ impl VersionTemplate {
         })
     }
 
-    fn read_back(&self, current: &str) -> Option<Vec<(Var, u64)>> {
+    fn read_back(&self, current: &str) -> Result<Option<Vec<(Var, u64)>>> {
         let mut pattern = String::from("^");
         for segment in &self.segments {
             match segment {
                 Segment::Literal(text) => pattern.push_str(&regex::escape(text)),
-                Segment::Var(_) => pattern.push_str(r"(\d+)"),
+                Segment::Var(_) => pattern.push_str(r"([0-9]+)"),
             }
         }
         pattern.push('$');
 
-        let re = Regex::new(&pattern).ok()?;
+        let re = Regex::new(&pattern)?;
         let bare = current.trim_start_matches('v');
         let prefixed = format!("v{bare}");
-        let caps = re
+        let Some(caps) = re
             .captures(current)
             .or_else(|| re.captures(bare))
-            .or_else(|| re.captures(&prefixed))?;
+            .or_else(|| re.captures(&prefixed))
+        else {
+            return Ok(None);
+        };
         self.vars()
-            .enumerate()
-            .map(|(i, var)| caps.get(i + 1)?.as_str().parse().ok().map(|n| (var, n)))
-            .collect()
+            .zip(caps.iter().skip(1).flatten())
+            .map(|(var, m)| Ok((var, m.as_str().parse().map_err(|_| overflow())?)))
+            .collect::<Result<_>>()
+            .map(Some)
     }
 
-    pub fn render(&self, current: &str, bump: BumpType, now: DateTime<Utc>) -> String {
-        let previous = self.read_back(current);
+    pub fn render(&self, current: &str, bump: BumpType, now: DateTime<Utc>) -> Result<String> {
+        let previous = self.read_back(current)?;
 
         let calendar_rolled = previous.as_ref().is_none_or(|vals| {
             vals.iter()
@@ -231,20 +236,19 @@ impl VersionTemplate {
         let seq = if calendar_rolled {
             1
         } else {
-            previous_of(Var::Seq).unwrap_or(0) + 1
+            previous_of(Var::Seq)
+                .unwrap_or(0)
+                .checked_add(1)
+                .ok_or_else(overflow)?
         };
 
         let major = previous_of(Var::Major).unwrap_or(0);
         let minor = previous_of(Var::Minor).unwrap_or(0);
         let patch = previous_of(Var::Patch).unwrap_or(0);
-        let (major, minor, patch) = match bump {
-            BumpType::Major => (major + 1, 0, 0),
-            BumpType::Minor => (major, minor + 1, 0),
-            BumpType::Patch => (major, minor, patch + 1),
-            BumpType::None => (major, minor, patch),
-        };
+        let (major, minor, patch) = bump_core(major, minor, patch, bump).ok_or_else(overflow)?;
 
-        self.segments
+        Ok(self
+            .segments
             .iter()
             .map(|segment| match segment {
                 Segment::Literal(text) => text.clone(),
@@ -254,7 +258,7 @@ impl VersionTemplate {
                 Segment::Var(Var::Patch) => patch.to_string(),
                 Segment::Var(var) => var.render_calendar(now),
             })
-            .collect()
+            .collect())
     }
 }
 
@@ -263,7 +267,7 @@ pub fn validate(template: &str) -> Result<()> {
 }
 
 pub fn render(current: &str, bump: BumpType, template: &str) -> Result<String> {
-    Ok(VersionTemplate::parse(template)?.render(current, bump, Utc::now()))
+    VersionTemplate::parse(template)?.render(current, bump, Utc::now())
 }
 
 #[cfg(test)]
@@ -279,6 +283,98 @@ mod tests {
         VersionTemplate::parse(template)
             .unwrap()
             .render(current, bump, now)
+            .unwrap()
+    }
+
+    fn render_err(template: &str, current: &str, bump: BumpType) -> String {
+        VersionTemplate::parse(template)
+            .unwrap()
+            .render(current, bump, at(2026, 8, 5))
+            .unwrap_err()
+            .to_string()
+    }
+
+    const MAX: &str = "18446744073709551615";
+
+    #[test]
+    fn seq_at_u64_max_errors() {
+        let current = format!("2026.8.{MAX}");
+        let err = render_err("{year}.{month}.{seq}", &current, BumpType::None);
+        assert!(err.contains("overflow"), "{err}");
+    }
+
+    #[test]
+    fn major_at_u64_max_errors_on_major_bump() {
+        let current = format!("{MAX}.0.0");
+        let err = render_err("{major}.{minor}.{patch}", &current, BumpType::Major);
+        assert!(err.contains("overflow"), "{err}");
+    }
+
+    #[test]
+    fn minor_at_u64_max_errors_on_minor_bump() {
+        let current = format!("1.{MAX}.0");
+        let err = render_err("{major}.{minor}.{patch}", &current, BumpType::Minor);
+        assert!(err.contains("overflow"), "{err}");
+    }
+
+    #[test]
+    fn patch_at_u64_max_errors_on_patch_bump() {
+        let current = format!("1.2.{MAX}");
+        let err = render_err("{major}.{minor}.{patch}", &current, BumpType::Patch);
+        assert!(err.contains("overflow"), "{err}");
+    }
+
+    #[test]
+    fn a_component_past_u64_max_errors_instead_of_resetting() {
+        let over = "18446744073709551616";
+        for (template, current) in [
+            ("{major}.{minor}.{patch}", format!("{over}.0.0")),
+            ("{major}.{minor}.{patch}", format!("1.{over}.0")),
+            ("{year}.{month}.{seq}", format!("2026.8.{over}")),
+        ] {
+            for bump in [BumpType::Major, BumpType::Patch, BumpType::None] {
+                let err = render_err(template, &current, bump);
+                assert!(
+                    err.contains("overflow"),
+                    "{template} {current} {bump:?}: {err}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn non_ascii_digits_are_not_read_back() {
+        assert_eq!(
+            render_at(
+                "{major}.{minor}.{patch}",
+                "\u{661}.2.3",
+                BumpType::Major,
+                at(2026, 8, 5)
+            ),
+            "1.0.0"
+        );
+    }
+
+    #[test]
+    fn a_component_at_u64_max_that_is_not_incremented_still_renders() {
+        let now = at(2026, 8, 5);
+        let template = "{major}.{minor}.{patch}";
+        assert_eq!(
+            render_at(template, &format!("1.2.{MAX}"), BumpType::Minor, now),
+            "1.3.0"
+        );
+        assert_eq!(
+            render_at(template, &format!("1.{MAX}.{MAX}"), BumpType::Major, now),
+            "2.0.0"
+        );
+        assert_eq!(
+            render_at(template, &format!("{MAX}.1.1"), BumpType::Patch, now),
+            format!("{MAX}.1.2")
+        );
+        assert_eq!(
+            render_at(template, &format!("{MAX}.{MAX}.{MAX}"), BumpType::None, now),
+            format!("{MAX}.{MAX}.{MAX}")
+        );
     }
 
     #[test]

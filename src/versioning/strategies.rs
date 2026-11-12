@@ -5,7 +5,7 @@ use semver::Version;
 use crate::conventional_commits::BumpType;
 use crate::error_code::{self, ErrorCodeExt};
 
-fn overflow() -> anyhow::Error {
+pub(super) fn overflow() -> anyhow::Error {
     anyhow!("Version component overflow: cannot bump past the maximum value")
 }
 
