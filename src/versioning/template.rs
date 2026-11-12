@@ -2,7 +2,7 @@ use anyhow::{Result, bail};
 use chrono::{DateTime, Datelike, Utc};
 use regex::Regex;
 
-use super::strategies::overflow;
+use super::strategies::{bump_core, overflow};
 use crate::conventional_commits::BumpType;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -191,7 +191,7 @@ impl VersionTemplate {
         })
     }
 
-    fn read_back(&self, current: &str) -> Option<Vec<(Var, u64)>> {
+    fn read_back(&self, current: &str) -> Result<Option<Vec<(Var, u64)>>> {
         let mut pattern = String::from("^");
         for segment in &self.segments {
             match segment {
@@ -201,21 +201,25 @@ impl VersionTemplate {
         }
         pattern.push('$');
 
-        let re = Regex::new(&pattern).ok()?;
+        let re = Regex::new(&pattern)?;
         let bare = current.trim_start_matches('v');
         let prefixed = format!("v{bare}");
-        let caps = re
+        let Some(caps) = re
             .captures(current)
             .or_else(|| re.captures(bare))
-            .or_else(|| re.captures(&prefixed))?;
+            .or_else(|| re.captures(&prefixed))
+        else {
+            return Ok(None);
+        };
         self.vars()
-            .enumerate()
-            .map(|(i, var)| caps.get(i + 1)?.as_str().parse().ok().map(|n| (var, n)))
-            .collect()
+            .zip(caps.iter().skip(1).flatten())
+            .map(|(var, m)| Ok((var, m.as_str().parse().map_err(|_| overflow())?)))
+            .collect::<Result<_>>()
+            .map(Some)
     }
 
     pub fn render(&self, current: &str, bump: BumpType, now: DateTime<Utc>) -> Result<String> {
-        let previous = self.read_back(current);
+        let previous = self.read_back(current)?;
 
         let calendar_rolled = previous.as_ref().is_none_or(|vals| {
             vals.iter()
@@ -241,12 +245,7 @@ impl VersionTemplate {
         let major = previous_of(Var::Major).unwrap_or(0);
         let minor = previous_of(Var::Minor).unwrap_or(0);
         let patch = previous_of(Var::Patch).unwrap_or(0);
-        let (major, minor, patch) = match bump {
-            BumpType::Major => (major.checked_add(1).ok_or_else(overflow)?, 0, 0),
-            BumpType::Minor => (major, minor.checked_add(1).ok_or_else(overflow)?, 0),
-            BumpType::Patch => (major, minor, patch.checked_add(1).ok_or_else(overflow)?),
-            BumpType::None => (major, minor, patch),
-        };
+        let (major, minor, patch) = bump_core(major, minor, patch, bump).ok_or_else(overflow)?;
 
         Ok(self
             .segments
@@ -323,6 +322,24 @@ mod tests {
         let current = format!("1.2.{MAX}");
         let err = render_err("{major}.{minor}.{patch}", &current, BumpType::Patch);
         assert!(err.contains("overflow"), "{err}");
+    }
+
+    #[test]
+    fn a_component_past_u64_max_errors_instead_of_resetting() {
+        let over = "18446744073709551616";
+        for (template, current) in [
+            ("{major}.{minor}.{patch}", format!("{over}.0.0")),
+            ("{major}.{minor}.{patch}", format!("1.{over}.0")),
+            ("{year}.{month}.{seq}", format!("2026.8.{over}")),
+        ] {
+            for bump in [BumpType::Major, BumpType::Patch, BumpType::None] {
+                let err = render_err(template, &current, bump);
+                assert!(
+                    err.contains("overflow"),
+                    "{template} {current} {bump:?}: {err}"
+                );
+            }
+        }
     }
 
     #[test]
