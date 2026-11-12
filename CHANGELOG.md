@@ -4,6 +4,13 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.36.1] - 2026-11-12
+
+### Bug Fixes
+
+- fix(versioning): error on u64 overflow in version template render (#1388)
+- fix(deps): bump rustix to 1.1.6 for RUSTSEC-2026-0486 (#1389)
+
 ## [7.36.0] - 2026-11-10
 
 ### Features
