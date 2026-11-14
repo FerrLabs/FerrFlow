@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.36.3] - 2026-11-14
+
+### Bug Fixes
+
+- perf(commits): replace regexes in commit parsing and tag detection with hand-written parsers (#1399)
+
 ## [7.36.2] - 2026-11-14
 
 ### Bug Fixes
