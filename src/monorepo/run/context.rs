@@ -1,7 +1,6 @@
 use anyhow::Result;
 use colored::Colorize;
 use gix::ObjectId;
-use rayon::prelude::*;
 use std::collections::HashSet;
 use std::path::Path;
 
@@ -125,7 +124,6 @@ impl ReleaseInputs {
         forced: &[Forced<'_>],
         excluded: &[String],
     ) -> Result<Vec<Option<PackagePlan>>> {
-        let thread_safe_repo = self.repo.clone().into_sync();
         let changed_files_cache = plan::ChangedFilesCache::default();
         let commit_files_cache = plan::CommitFilesCache::default();
         let commit_walk =
@@ -151,11 +149,8 @@ impl ReleaseInputs {
         };
         let plans: Vec<PackagePlan> = config
             .packages
-            .par_iter()
-            .map(|pkg| {
-                let repo = thread_safe_repo.to_thread_local();
-                compute_plan(&repo, pkg, &plan_inputs)
-            })
+            .iter()
+            .map(|pkg| compute_plan(&self.repo, pkg, &plan_inputs))
             .collect::<Result<Vec<_>>>()?;
 
         let mut plans: Vec<Option<PackagePlan>> = plans.into_iter().map(Some).collect();

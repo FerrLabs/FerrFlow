@@ -158,10 +158,10 @@ fn files_for_commit_cached(
     files
 }
 
-const PARALLEL_PREFETCH_THRESHOLD: usize = 256;
+const PARALLEL_PREFETCH_THRESHOLD: usize = 768;
 
 fn prefetch_commit_files(repo: &Repository, commits: &[GitLog], cache: &CommitFilesCache) {
-    if rayon::current_num_threads() < 2 {
+    if crate::concurrency::max_jobs() < 2 {
         return;
     }
     let missing: Vec<ObjectId> = {
@@ -172,7 +172,7 @@ fn prefetch_commit_files(repo: &Repository, commits: &[GitLog], cache: &CommitFi
             .filter(|id| !known.contains_key(id))
             .collect()
     };
-    if missing.len() < PARALLEL_PREFETCH_THRESHOLD {
+    if missing.len() < PARALLEL_PREFETCH_THRESHOLD || rayon::current_num_threads() < 2 {
         return;
     }
 
