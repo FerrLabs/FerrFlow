@@ -65,7 +65,7 @@ jobs:
 
   kani:
     name: Kani
-    uses: FerrLabs/.github/.github/workflows/reusable-kani.yml@ca4906e7dbab75e0ea8129a3f9a3a68cb722c2a0 # main
+    uses: FerrLabs/.github/.github/workflows/reusable-kani.yml@7c51d18aedc7e04f1a8360e68c0c0933fd773ac0 # main
     if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):')
 
   msrv:
