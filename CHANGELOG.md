@@ -4,6 +4,13 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.36.2] - 2026-11-14
+
+### Bug Fixes
+
+- perf(commits): decode commit messages only for commits that survive scoping (#1397)
+- perf(monorepo): plan inline and skip rayon when it cannot help (#1398)
+
 ## [7.36.1] - 2026-11-12
 
 ### Bug Fixes
