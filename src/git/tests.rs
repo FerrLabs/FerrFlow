@@ -724,7 +724,7 @@ fn get_changed_files_since_tag_nested_paths_are_full_and_unquoted() {
 fn assert_walks_agree(repo: &Repository, cache: &CommitWalkCache, stop: Option<gix::ObjectId>) {
     let markers = crate::config::default_commit_skip_markers();
     let direct = get_commits_since_oid(repo, stop, &markers).unwrap();
-    let cached = cache.commits_since(repo, stop).unwrap();
+    let cached = cache.decode(repo, &cache.commit_ids_since(repo, stop).unwrap());
     let pairs = |logs: &[GitLog]| {
         logs.iter()
             .map(|l| (l.hash.clone(), l.message.clone()))
@@ -797,9 +797,42 @@ fn commit_walk_cache_applies_skip_markers() {
     for _ in 0..3 {
         assert_walks_agree(&repo, &cache, Some(stop));
     }
-    let cached = cache.commits_since(&repo, Some(stop)).unwrap();
+    let cached = cache.decode(&repo, &cache.commit_ids_since(&repo, Some(stop)).unwrap());
     assert!(cached.iter().all(|l| !l.message.contains("[skip ci]")));
     assert!(cached.iter().any(|l| l.message.contains("feat: c")));
+}
+
+#[test]
+fn commit_walk_cache_decodes_exactly_the_requested_commits() {
+    let (dir, repo) = init_repo();
+    create_commit_in_repo(&repo, dir.path(), "a.txt", "feat: a");
+    let stop = repo.head_id().unwrap().detach();
+    create_commit_in_repo(&repo, dir.path(), "b.txt", "fix: b");
+    create_commit_in_repo(&repo, dir.path(), "c.txt", "chore: c [skip ci]");
+    create_commit_in_repo(&repo, dir.path(), "d.txt", "feat: d");
+
+    let cache = CommitWalkCache::new(crate::config::default_commit_skip_markers());
+    for round in 0..4 {
+        let ids = cache.commit_ids_since(&repo, Some(stop)).unwrap();
+        assert_eq!(
+            ids.len(),
+            3,
+            "round {round}: ids are not filtered by skip markers"
+        );
+
+        let picked = [ids[0], ids[2]];
+        let logs = cache.decode(&repo, &picked);
+        let subjects: Vec<_> = logs.iter().map(|l| l.message.trim().to_string()).collect();
+        assert_eq!(subjects, vec!["feat: d", "fix: b"], "round {round}");
+        assert_eq!(logs[0].id, picked[0].to_string());
+        assert_eq!(logs[1].hash, picked[1].to_string()[..8]);
+
+        assert!(
+            cache.decode(&repo, &[ids[1]]).is_empty(),
+            "round {round}: skipped"
+        );
+        assert!(cache.decode(&repo, &[]).is_empty());
+    }
 }
 
 #[test]

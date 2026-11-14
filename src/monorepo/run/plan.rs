@@ -160,7 +160,7 @@ fn files_for_commit_cached(
 
 const PARALLEL_PREFETCH_THRESHOLD: usize = 768;
 
-fn prefetch_commit_files(repo: &Repository, commits: &[GitLog], cache: &CommitFilesCache) {
+fn prefetch_commit_files(repo: &Repository, commits: &[ObjectId], cache: &CommitFilesCache) {
     if crate::concurrency::max_jobs() < 2 {
         return;
     }
@@ -168,7 +168,7 @@ fn prefetch_commit_files(repo: &Repository, commits: &[GitLog], cache: &CommitFi
         let known = cache.lock().expect("commit-files cache poisoned");
         commits
             .iter()
-            .filter_map(|c| ObjectId::from_hex(c.id.as_bytes()).ok())
+            .copied()
             .filter(|id| !known.contains_key(id))
             .collect()
     };
@@ -194,12 +194,12 @@ fn prefetch_commit_files(repo: &Repository, commits: &[GitLog], cache: &CommitFi
         .extend(fetched);
 }
 
-fn scope_commits_to_package(
+fn scope_commit_ids_to_package(
     repo: &Repository,
     pkg: &PackageConfig,
     inputs: &PlanInputs<'_>,
-    commits: Vec<GitLog>,
-) -> Vec<GitLog> {
+    commits: Vec<ObjectId>,
+) -> Vec<ObjectId> {
     if !inputs.config.is_monorepo() {
         return commits;
     }
@@ -207,13 +207,29 @@ fn scope_commits_to_package(
     let nested = inputs.config.nested_package_paths(pkg);
     commits
         .into_iter()
-        .filter(|c| {
-            let Ok(id) = ObjectId::from_hex(c.id.as_bytes()) else {
-                return true;
-            };
+        .filter(|&id| {
             let files = files_for_commit_cached(repo, id, inputs.commit_files_cache);
             files.is_empty() || pkg.is_touched_by(&files, true, &nested)
         })
+        .collect()
+}
+
+fn scope_commits_to_package(
+    repo: &Repository,
+    pkg: &PackageConfig,
+    inputs: &PlanInputs<'_>,
+    commits: Vec<GitLog>,
+) -> Vec<GitLog> {
+    let ids = commits
+        .iter()
+        .filter_map(|c| ObjectId::from_hex(c.id.as_bytes()).ok())
+        .collect();
+    let kept: HashSet<ObjectId> = scope_commit_ids_to_package(repo, pkg, inputs, ids)
+        .into_iter()
+        .collect();
+    commits
+        .into_iter()
+        .filter(|c| ObjectId::from_hex(c.id.as_bytes()).is_ok_and(|id| kept.contains(&id)))
         .collect()
 }
 
@@ -281,22 +297,32 @@ pub(super) fn commits_for_package(
     let strategy = config.workspace.orphaned_tag_strategy;
     let skip_markers = config.workspace.effective_commit_skip_markers();
 
+    let walk_stop = if inputs.prerelease_ctx.is_prerelease() {
+        inputs
+            .tag_index
+            .filter(|_| strategy == OrphanedTagStrategy::Warn)
+            .map(|idx| idx.find_last_tag_commit(&tag_search_prefix, strategy))
+    } else {
+        inputs
+            .tag_index
+            .filter(|_| strategy == OrphanedTagStrategy::Warn)
+            .map(|idx| idx.find_last_stable_tag_commit(&tag_search_prefix, strategy))
+    };
+
+    if let Some(stop) = walk_stop {
+        let ids = inputs.commit_walk.commit_ids_since(repo, stop)?;
+        let ids = scope_commit_ids_to_package(repo, pkg, inputs, ids);
+        return Ok(inputs.commit_walk.decode(repo, &ids));
+    }
+
     let commits = if inputs.prerelease_ctx.is_prerelease() {
-        if let (Some(idx), OrphanedTagStrategy::Warn) = (inputs.tag_index, strategy) {
-            let stop = idx.find_last_tag_commit(&tag_search_prefix, strategy);
-            inputs.commit_walk.commits_since(repo, stop)
-        } else {
-            get_commits_since_last_tag(
-                repo,
-                &tag_search_prefix,
-                strategy,
-                &skip_markers,
-                inputs.head_ancestors,
-            )
-        }
-    } else if let (Some(idx), OrphanedTagStrategy::Warn) = (inputs.tag_index, strategy) {
-        let stop = idx.find_last_stable_tag_commit(&tag_search_prefix, strategy);
-        inputs.commit_walk.commits_since(repo, stop)
+        get_commits_since_last_tag(
+            repo,
+            &tag_search_prefix,
+            strategy,
+            &skip_markers,
+            inputs.head_ancestors,
+        )
     } else {
         get_commits_since_last_stable_tag(
             repo,
@@ -1179,6 +1205,13 @@ mod tests {
             .collect()
     }
 
+    fn commit_ids(commits: &[GitLog]) -> Vec<ObjectId> {
+        commits
+            .iter()
+            .map(|c| ObjectId::from_hex(c.id.as_bytes()).unwrap())
+            .collect()
+    }
+
     fn in_pool<T: Send>(threads: usize, f: impl FnOnce() -> T + Send) -> T {
         rayon::ThreadPoolBuilder::new()
             .num_threads(threads)
@@ -1199,7 +1232,7 @@ mod tests {
         let prefetched = CommitFilesCache::default();
         in_pool(4, || {
             let worker = crate::git::open_repo(dir.path()).unwrap();
-            prefetch_commit_files(&worker, &commits, &prefetched);
+            prefetch_commit_files(&worker, &commit_ids(&commits), &prefetched);
         });
         let prefetched = prefetched.into_inner().unwrap();
         assert_eq!(
@@ -1235,7 +1268,7 @@ mod tests {
         let cache = CommitFilesCache::default();
         in_pool(1, || {
             let worker = crate::git::open_repo(dir.path()).unwrap();
-            prefetch_commit_files(&worker, &commits, &cache);
+            prefetch_commit_files(&worker, &commit_ids(&commits), &cache);
         });
         assert!(
             cache.lock().unwrap().is_empty(),
@@ -1254,7 +1287,7 @@ mod tests {
         let cache = CommitFilesCache::default();
         in_pool(4, || {
             let worker = crate::git::open_repo(dir.path()).unwrap();
-            prefetch_commit_files(&worker, &commits, &cache);
+            prefetch_commit_files(&worker, &commit_ids(&commits), &cache);
         });
         assert!(cache.lock().unwrap().is_empty());
     }
