@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.36.5] - 2026-11-15
+
+### Bug Fixes
+
+- fix(versioning): use the ISO year for year variables in week templates (#1402)
+
 ## [7.36.4] - 2026-11-15
 
 ### Bug Fixes
