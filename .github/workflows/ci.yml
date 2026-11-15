@@ -390,26 +390,16 @@ jobs:
       - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
       - name: Compile bench binary (no run)
-        run: cargo bench --bench ferrflow_benchmarks --no-run
-      - name: Locate compiled binary
-        id: locate
         run: |
           set -euo pipefail
-          # criterion + cargo emit a hashed binary name like
-          # ferrflow_benchmarks-1234abcd. Pick the most recent matching
-          # executable and skip dSYMs, .d files, and pdbs.
-          bin=$(find target/release/deps -maxdepth 1 -type f \
-                  -name 'ferrflow_benchmarks-*' \
-                  ! -name '*.d' ! -name '*.pdb' ! -name '*.dSYM' \
-                  -printf '%T@ %p\n' \
-                | sort -nr | head -n1 | cut -d' ' -f2-)
+          bin=$(cargo bench --bench ferrflow_benchmarks --no-run --message-format=json \
+                | jq -r 'select(.reason == "compiler-artifact" and .target.name == "ferrflow_benchmarks" and .executable != null) | .executable' \
+                | tail -n1)
           if [ -z "$bin" ] || [ ! -x "$bin" ]; then
-            echo "::error::could not find compiled bench binary under target/release/deps"
-            ls -la target/release/deps/ferrflow_benchmarks-* 2>/dev/null || true
+            echo "::error::could not find compiled bench binary"
             exit 1
           fi
-          echo "bin=$bin" >> "$GITHUB_OUTPUT"
-          # Strip the hash so the matrix doesn't have to re-derive it.
+          mkdir -p target/release/deps
           cp "$bin" target/release/deps/ferrflow_benchmarks
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
