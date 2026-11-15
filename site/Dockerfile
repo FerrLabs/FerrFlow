@@ -12,6 +12,7 @@ COPY site/package.json ./site/
 
 RUN pnpm install --frozen-lockfile --filter @ferrflow/site...
 
+COPY docs/site ./docs/site
 COPY site ./site
 
 ENV NODE_OPTIONS=--max-old-space-size=4096

@@ -8,11 +8,10 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
-import { createRequire } from 'node:module';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const PACKAGE = '@ferrflow/doc';
+const SOURCE = 'docs/site';
 
 const FRONTMATTER = /^---\r?\n[\s\S]*?\r?\n---/;
 const SLUG_LINE = /^slug:.*\r?\n/m;
@@ -32,7 +31,7 @@ const contentDir = join(siteRoot, 'src/content');
 
 function fail(message) {
   console.error(`[docs] ${message}`);
-  console.error(`[docs] ferrflow.com renders its documentation from ${PACKAGE}.`);
+  console.error(`[docs] ferrflow.com renders its documentation from ${SOURCE}.`);
   console.error('[docs] Refusing to build, because an empty content directory');
   console.error('[docs] would publish a site with no documentation and no error.');
   process.exitCode = 1;
@@ -48,13 +47,12 @@ try {
 }
 
 try {
-  const require = createRequire(import.meta.url);
-  const packageRoot = dirname(require.resolve(`${PACKAGE}/package.json`));
-  const { version } = require(`${PACKAGE}/package.json`);
+  const packageRoot = join(siteRoot, '../docs/site');
+  const { version } = JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8'));
 
   const versions = readdirSync(packageRoot).filter((name) => name.startsWith('docs-'));
   if (versions.length === 0) {
-    throw new Error(`${PACKAGE}@${version} carries no docs-* directory`);
+    throw new Error(`${SOURCE}@${version} carries no docs-* directory`);
   }
 
   // Stage beside the live directories first, so the slow half cannot fail with
@@ -102,7 +100,7 @@ try {
   for (const [from, to] of DATA_FILES) {
     const source = join(packageRoot, from);
     if (!existsSync(source)) {
-      throw new Error(`${PACKAGE}@${version} carries no ${from}`);
+      throw new Error(`${SOURCE}@${version} carries no ${from}`);
     }
     const destination = join(siteRoot, to);
     if (statSync(source).isDirectory()) {
@@ -134,24 +132,24 @@ try {
 
   const changelogSource = join(packageRoot, 'changelog');
   if (!existsSync(changelogSource)) {
-    throw new Error(`${PACKAGE}@${version} carries no changelog directory`);
+    throw new Error(`${SOURCE}@${version} carries no changelog directory`);
   }
   const entries = readdirSync(changelogSource).filter((name) => name.endsWith('.md'));
   if (entries.length === 0) {
-    throw new Error(`${PACKAGE}@${version} carries no changelog entry`);
+    throw new Error(`${SOURCE}@${version} carries no changelog entry`);
   }
   const changelogIncoming = join(contentDir, 'changelog.incoming');
   rmSync(changelogIncoming, { recursive: true, force: true });
   cpSync(changelogSource, changelogIncoming, { recursive: true });
   rmSync(join(contentDir, 'changelog'), { recursive: true, force: true });
   renameSync(changelogIncoming, join(contentDir, 'changelog'));
-  console.log(`[docs] ${entries.length} changelog entries from ${PACKAGE}@${version}`);
+  console.log(`[docs] ${entries.length} changelog entries from ${SOURCE}@${version}`);
 
   const pages = versions.reduce((total, name) => total + countPages(join(packageRoot, name)), 0);
   console.log(
-    `[docs] ${pages} pages from ${PACKAGE}@${version} across ${versions.length} versions`,
+    `[docs] ${pages} pages from ${SOURCE}@${version} across ${versions.length} versions`,
   );
-  console.log(`[docs] benchmarks and schema from ${PACKAGE}@${version}`);
+  console.log(`[docs] benchmarks and schema from ${SOURCE}@${version}`);
 } catch (error) {
   fail(error.message);
 }

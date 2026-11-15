@@ -1,12 +1,12 @@
-# Fetched from FerrLabs/FerrFlow-Docs by scripts/fetch-docs.mjs, which every
-# build and dev run invokes first. The docs are public and edited there.
+# Copied from docs/site by scripts/sync-docs.mjs, which every
+# build and dev run invokes first.
 src/content/docs-*
 
-# Copied from @ferrflow/doc by scripts/sync-docs.mjs, which every build and
+# Copied from docs/site by scripts/sync-docs.mjs, which every build and
 # dev run invokes first. Entries are written in FerrLabs/FerrFlow.
 src/content/changelog*
 
-# Written from @ferrflow/doc by scripts/sync-docs.mjs, which every build and
+# Written from docs/site by scripts/sync-docs.mjs, which every build and
 # dev run invokes first. Committing it meant every Renovate bump of that
 # package landed with the served copy describing the previous version.
 public/schema/

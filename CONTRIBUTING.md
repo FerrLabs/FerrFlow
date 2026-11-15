@@ -107,8 +107,8 @@ docs: update CLI reference
 ### Documentation
 
 Developer notes live in `docs/`. The pages rendered at
-[ferrflow.com/docs](https://ferrflow.com/docs) live in `docs/site/`, published as
-`@ferrflow/doc` on each release tag and consumed by the site as a dependency.
+[ferrflow.com/docs](https://ferrflow.com/docs) live in `docs/site/`. The site build
+reads them from there directly, so a docs change shows up in the site in the same pull request.
 
 When you add or change a feature, update `docs/site/docs-en/` in the same pull request. That is the
 point of keeping them here: a flag and the sentence describing it are reviewed together and cannot
