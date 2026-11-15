@@ -64,6 +64,29 @@ impl GitLabForge {
             what,
         )
     }
+
+    fn token_username(&self) -> Result<Option<String>> {
+        let response = self
+            .agent
+            .get(format!("{}/user", self.api_base))
+            .header(self.token_kind.header(), &self.token)
+            .header("User-Agent", "ferrflow")
+            .call();
+        match response {
+            Ok(mut response) => {
+                let user: serde_json::Value = response
+                    .body_mut()
+                    .read_json()
+                    .context("Failed to parse the token's user")?;
+                let username = user["username"]
+                    .as_str()
+                    .context("The token's user has no username")?;
+                Ok(Some(username.to_string()))
+            }
+            Err(ureq::Error::StatusCode(401 | 403)) => Ok(None),
+            Err(e) => Err(e).context("Failed to read the token's user"),
+        }
+    }
 }
 
 impl Forge for GitLabForge {
@@ -227,15 +250,22 @@ impl Forge for GitLabForge {
             mr_id
         );
         let notes = self.paginated_json_array(&base_url, "MR notes")?;
-        for note in notes {
-            if let Some(body) = note["body"].as_str()
-                && body.contains(marker)
-                && let Some(id) = note["id"].as_u64()
-            {
-                return Ok(Some(id));
-            }
+        let mut marked = notes
+            .iter()
+            .filter(|note| note["body"].as_str().is_some_and(|b| b.contains(marker)))
+            .peekable();
+        if marked.peek().is_none() {
+            return Ok(None);
         }
-        Ok(None)
+        let Some(username) = self.token_username()? else {
+            tracing::warn!(
+                "Warning: the token cannot read its own user, posting a new note instead of updating one"
+            );
+            return Ok(None);
+        };
+        Ok(marked
+            .find(|note| note["author"]["username"].as_str() == Some(username.as_str()))
+            .and_then(|note| note["id"].as_u64()))
     }
 
     fn create_comment(&self, mr_id: u64, body: &str) -> Result<()> {

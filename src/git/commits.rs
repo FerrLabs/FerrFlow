@@ -38,6 +38,13 @@ pub fn get_commits_since_oid(
     last_tag_oid: Option<ObjectId>,
     skip_markers: &[String],
 ) -> Result<Vec<GitLog>> {
+    Ok(walk_commit_ids(repo, last_tag_oid)?
+        .into_iter()
+        .filter_map(|id| decode_commit(repo, id, skip_markers))
+        .collect())
+}
+
+pub fn walk_commit_ids(repo: &Repository, last_tag_oid: Option<ObjectId>) -> Result<Vec<ObjectId>> {
     let head = repo.head_id()?.detach();
     let mut platform = repo
         .rev_walk([head])
@@ -46,31 +53,24 @@ pub fn get_commits_since_oid(
     if let Some(stop) = last_tag_oid {
         platform = platform.with_hidden([stop]);
     }
-    let walk = platform.all()?;
-
-    let mut commits = Vec::new();
-    for info in walk {
-        let info = info?;
-        let commit = match repo.find_commit(info.id) {
-            Ok(c) => c,
-            Err(_) => continue,
-        };
-        let raw = match commit.message_raw() {
-            Ok(m) => m,
-            Err(_) => continue,
-        };
-        let message = String::from_utf8_lossy(raw).into_owned();
-        if subject_has_skip_marker(&message, skip_markers) {
-            continue;
-        }
-        commits.push(GitLog {
-            id: info.id.to_string(),
-            hash: info.id.to_string()[..8].to_string(),
-            message,
-        });
+    let mut ids = Vec::new();
+    for info in platform.all()? {
+        ids.push(info?.id);
     }
+    Ok(ids)
+}
 
-    Ok(commits)
+pub fn decode_commit(repo: &Repository, id: ObjectId, skip_markers: &[String]) -> Option<GitLog> {
+    let commit = repo.find_commit(id).ok()?;
+    let message = String::from_utf8_lossy(commit.message_raw().ok()?).into_owned();
+    if subject_has_skip_marker(&message, skip_markers) {
+        return None;
+    }
+    Some(GitLog {
+        id: id.to_string(),
+        hash: id.to_string()[..8].to_string(),
+        message,
+    })
 }
 
 /// Commits reachable from `to` but not `from` — the range `from..to`, newest

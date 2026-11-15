@@ -14,6 +14,7 @@ use super::types::{
 use super::workspace::WorkspaceConfig;
 
 mod changesets;
+mod prune;
 mod release_please;
 mod standard_version;
 
@@ -96,9 +97,10 @@ pub fn migrate(from: Option<Source>, dry_run: bool) -> Result<()> {
 }
 
 fn emit(migration: &Migration, dir: &Path, dry_run: bool) -> Result<(String, String)> {
-    let handler = format_handler(ConfigFileFormat::Json);
-    let content = handler.serialize(&migration.config)?;
-    let filename = handler.filename().to_string();
+    let filename = format_handler(ConfigFileFormat::Json)
+        .filename()
+        .to_string();
+    let content = prune::to_pretty_json(&migration.config)?;
     if !dry_run {
         std::fs::write(dir.join(&filename), &content)?;
     }
@@ -377,7 +379,15 @@ pub(super) fn default_package_name() -> String {
         .ok()
         .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
         .and_then(|v| v.get("name").and_then(|n| n.as_str()).map(str::to_string))
+        .or_else(current_dir_name)
         .unwrap_or_else(|| "app".to_string())
+}
+
+fn current_dir_name() -> Option<String> {
+    std::env::current_dir()
+        .ok()?
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
 }
 
 fn convert_tag_format(tag_format: &str) -> String {

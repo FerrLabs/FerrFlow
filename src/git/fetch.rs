@@ -15,7 +15,7 @@ pub fn fetch_tags(repo: &Repository, remote: Remote<'_>) -> Result<()> {
     let url = get_remote_url(repo, remote_name)
         .ok_or_else(|| anyhow!("Remote '{remote_name}' not found"))?;
 
-    let mut cmd = std::process::Command::new("git");
+    let mut cmd = crate::git_cmd::command();
     cmd.current_dir(workdir);
     configure_git_command(&mut cmd, &url, forge);
     cmd.args(["fetch", "--tags", remote_name]);

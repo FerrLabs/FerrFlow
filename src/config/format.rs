@@ -43,6 +43,7 @@ pub(crate) fn snake_to_camel(s: &str) -> String {
 
 const CAMEL_CASE_KEYS: &[&str] = &[
     "tag_template",
+    "pre_major",
     "versioned_files",
     "shared_paths",
     "nested_packages",

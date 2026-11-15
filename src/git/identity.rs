@@ -61,10 +61,49 @@ fn ensure_commit_identity_with_env(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_utils::ENV_LOCK;
+
+    const INHERITED_IDENTITY_ENV: [&str; 7] = [
+        "GIT_AUTHOR_NAME",
+        "GIT_AUTHOR_EMAIL",
+        "GIT_COMMITTER_NAME",
+        "GIT_COMMITTER_EMAIL",
+        "EMAIL",
+        "GIT_CONFIG_PARAMETERS",
+        "GIT_CONFIG_COUNT",
+    ];
+
+    struct IdentityEnvGuard {
+        _lock: std::sync::MutexGuard<'static, ()>,
+        saved: Vec<(&'static str, std::ffi::OsString)>,
+    }
+
+    impl IdentityEnvGuard {
+        fn clear() -> Self {
+            let lock = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+            let saved = INHERITED_IDENTITY_ENV
+                .into_iter()
+                .filter_map(|var| std::env::var_os(var).map(|v| (var, v)))
+                .collect();
+            for var in INHERITED_IDENTITY_ENV {
+                unsafe { std::env::remove_var(var) };
+            }
+            Self { _lock: lock, saved }
+        }
+    }
+
+    impl Drop for IdentityEnvGuard {
+        fn drop(&mut self) {
+            for (var, value) in &self.saved {
+                unsafe { std::env::set_var(var, value) };
+            }
+        }
+    }
 
     struct IsolatedRepo {
         dir: tempfile::TempDir,
         global_config: String,
+        _env: IdentityEnvGuard,
     }
 
     impl IsolatedRepo {
@@ -75,6 +114,7 @@ mod tests {
             let repo = Self {
                 global_config: global.to_string_lossy().into_owned(),
                 dir,
+                _env: IdentityEnvGuard::clear(),
             };
             repo.git(&["init", "-q"]);
             repo.git(&["config", "--local", "user.useConfigOnly", "true"]);

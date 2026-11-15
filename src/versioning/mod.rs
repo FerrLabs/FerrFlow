@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use crate::config::{FloatingTagLevel, VersioningStrategy};
+use crate::config::{FloatingTagLevel, PreMajorBump, PreMajorRules, VersioningStrategy};
 use crate::conventional_commits::BumpType;
 
 mod detect;
@@ -8,6 +8,7 @@ mod strategies;
 mod template;
 
 pub use detect::detect_strategy_from_tags;
+pub use template::ordering_warning as version_template_ordering_warning;
 pub use template::validate as validate_version_template;
 
 use strategies::{bump_semver, bump_sequential, bump_zerover, calver_seq_version, calver_version};
@@ -41,6 +42,32 @@ pub fn compute_next_version(
     }
 }
 
+pub fn apply_pre_major(
+    rules: Option<PreMajorRules>,
+    strategy: VersioningStrategy,
+    current: &str,
+    bump: BumpType,
+) -> BumpType {
+    let Some(rules) = rules else {
+        return bump;
+    };
+    let pre_major = strategy == VersioningStrategy::Semver
+        && semver::Version::parse(current.trim_start_matches('v')).is_ok_and(|v| v.major == 0);
+    if !pre_major {
+        return bump;
+    }
+    let level = match bump {
+        BumpType::Major => rules.breaking,
+        BumpType::Minor => rules.feat,
+        BumpType::Patch | BumpType::None => None,
+    };
+    match level {
+        Some(PreMajorBump::Minor) => BumpType::Minor,
+        Some(PreMajorBump::Patch) => BumpType::Patch,
+        None => bump,
+    }
+}
+
 pub fn bump_version(current: &str, bump: BumpType) -> Result<String> {
     strategies::bump_semver(current, bump)
 }
@@ -50,14 +77,9 @@ pub fn truncate_version(version: &str, level: FloatingTagLevel) -> Option<String
     let parts: Vec<&str> = v.split('.').collect();
 
     match level {
-        FloatingTagLevel::Major => Some(parts[0].to_string()),
-        FloatingTagLevel::Minor => {
-            if parts.len() < 2 {
-                None
-            } else {
-                Some(format!("{}.{}", parts[0], parts[1]))
-            }
-        }
+        FloatingTagLevel::Major if parts.len() > 1 => Some(parts[0].to_string()),
+        FloatingTagLevel::Minor if parts.len() > 2 => Some(format!("{}.{}", parts[0], parts[1])),
+        _ => None,
     }
 }
 

@@ -1,10 +1,9 @@
 use std::path::Path;
-use std::process::Command;
 
 use crate::config::{Config, ForgeKind, GENERIC_TOKEN_ENV_VAR};
 use crate::forge::{Probe, resolve_forge};
 use crate::formats::lockfiles::{LockfileState, inspect_for_manifest};
-use crate::formats::read_version;
+use crate::formats::{get_handler, read_version};
 use crate::git::{
     Repository, collect_all_tags, commit_identity, get_remote_url, on_github_actions,
 };
@@ -193,6 +192,12 @@ pub(super) fn versioning_section(config: Option<&Config>, root: &Path) -> Sectio
             .and_then(|vf| read_version(vf, root).ok())
             .unwrap_or_else(|| "unknown".to_string());
         checks.push(Check::ok(pkg.name.clone(), Some(format!("v{version}"))));
+        checks.extend(
+            pkg.versioned_files
+                .iter()
+                .filter(|vf| get_handler(&vf.format).modifies_file())
+                .map(|vf| versioned_file_check(&pkg.name, vf, root)),
+        );
         if let Some(check) = lockfile_check(config, pkg, root, &version) {
             checks.push(check);
         }
@@ -204,6 +209,14 @@ pub(super) fn versioning_section(config: Option<&Config>, root: &Path) -> Sectio
     ));
 
     Section::new("Versioning", checks)
+}
+
+fn versioned_file_check(package: &str, vf: &crate::config::VersionedFile, root: &Path) -> Check {
+    let name = format!("{package}: {}", vf.path);
+    match read_version(vf, root) {
+        Ok(version) => Check::ok(name, Some(format!("v{version}"))),
+        Err(err) => Check::error(name, Some(format!("{err:#}"))),
+    }
 }
 
 fn lockfile_check(
@@ -463,7 +476,7 @@ pub(super) fn identity_check(identity: Option<String>, on_actions: bool) -> Chec
 }
 
 fn dirty_count(root: &Path) -> Option<usize> {
-    let output = Command::new("git")
+    let output = crate::git_cmd::command()
         .current_dir(root)
         .args(["status", "--porcelain"])
         .output()

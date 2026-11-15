@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use anyhow::{Context, Result, anyhow};
 
 use crate::changelog::GitLog;
 use crate::config::{Config, OrphanedTagStrategy, PackageConfig, VersioningStrategy};
@@ -11,7 +11,6 @@ use crate::git::{
     get_commits_since_last_tag,
 };
 use crate::prerelease::PrereleaseContext;
-use crate::versioning::compute_next_version;
 use gix::ObjectId;
 use rayon::prelude::*;
 use std::collections::{HashMap, HashSet};
@@ -159,21 +158,21 @@ fn files_for_commit_cached(
     files
 }
 
-const PARALLEL_PREFETCH_THRESHOLD: usize = 256;
+const PARALLEL_PREFETCH_THRESHOLD: usize = 768;
 
-fn prefetch_commit_files(repo: &Repository, commits: &[GitLog], cache: &CommitFilesCache) {
-    if rayon::current_num_threads() < 2 {
+fn prefetch_commit_files(repo: &Repository, commits: &[ObjectId], cache: &CommitFilesCache) {
+    if crate::concurrency::max_jobs() < 2 {
         return;
     }
     let missing: Vec<ObjectId> = {
         let known = cache.lock().expect("commit-files cache poisoned");
         commits
             .iter()
-            .filter_map(|c| ObjectId::from_hex(c.id.as_bytes()).ok())
+            .copied()
             .filter(|id| !known.contains_key(id))
             .collect()
     };
-    if missing.len() < PARALLEL_PREFETCH_THRESHOLD {
+    if missing.len() < PARALLEL_PREFETCH_THRESHOLD || rayon::current_num_threads() < 2 {
         return;
     }
 
@@ -195,12 +194,12 @@ fn prefetch_commit_files(repo: &Repository, commits: &[GitLog], cache: &CommitFi
         .extend(fetched);
 }
 
-fn scope_commits_to_package(
+fn scope_commit_ids_to_package(
     repo: &Repository,
     pkg: &PackageConfig,
     inputs: &PlanInputs<'_>,
-    commits: Vec<GitLog>,
-) -> Vec<GitLog> {
+    commits: Vec<ObjectId>,
+) -> Vec<ObjectId> {
     if !inputs.config.is_monorepo() {
         return commits;
     }
@@ -208,13 +207,29 @@ fn scope_commits_to_package(
     let nested = inputs.config.nested_package_paths(pkg);
     commits
         .into_iter()
-        .filter(|c| {
-            let Ok(id) = ObjectId::from_hex(c.id.as_bytes()) else {
-                return true;
-            };
+        .filter(|&id| {
             let files = files_for_commit_cached(repo, id, inputs.commit_files_cache);
             files.is_empty() || pkg.is_touched_by(&files, true, &nested)
         })
+        .collect()
+}
+
+fn scope_commits_to_package(
+    repo: &Repository,
+    pkg: &PackageConfig,
+    inputs: &PlanInputs<'_>,
+    commits: Vec<GitLog>,
+) -> Vec<GitLog> {
+    let ids = commits
+        .iter()
+        .filter_map(|c| ObjectId::from_hex(c.id.as_bytes()).ok())
+        .collect();
+    let kept: HashSet<ObjectId> = scope_commit_ids_to_package(repo, pkg, inputs, ids)
+        .into_iter()
+        .collect();
+    commits
+        .into_iter()
+        .filter(|c| ObjectId::from_hex(c.id.as_bytes()).is_ok_and(|id| kept.contains(&id)))
         .collect()
 }
 
@@ -282,22 +297,32 @@ pub(super) fn commits_for_package(
     let strategy = config.workspace.orphaned_tag_strategy;
     let skip_markers = config.workspace.effective_commit_skip_markers();
 
+    let walk_stop = if inputs.prerelease_ctx.is_prerelease() {
+        inputs
+            .tag_index
+            .filter(|_| strategy == OrphanedTagStrategy::Warn)
+            .map(|idx| idx.find_last_tag_commit(&tag_search_prefix, strategy))
+    } else {
+        inputs
+            .tag_index
+            .filter(|_| strategy == OrphanedTagStrategy::Warn)
+            .map(|idx| idx.find_last_stable_tag_commit(&tag_search_prefix, strategy))
+    };
+
+    if let Some(stop) = walk_stop {
+        let ids = inputs.commit_walk.commit_ids_since(repo, stop)?;
+        let ids = scope_commit_ids_to_package(repo, pkg, inputs, ids);
+        return Ok(inputs.commit_walk.decode(repo, &ids));
+    }
+
     let commits = if inputs.prerelease_ctx.is_prerelease() {
-        if let (Some(idx), OrphanedTagStrategy::Warn) = (inputs.tag_index, strategy) {
-            let stop = idx.find_last_tag_commit(&tag_search_prefix, strategy);
-            inputs.commit_walk.commits_since(repo, stop)
-        } else {
-            get_commits_since_last_tag(
-                repo,
-                &tag_search_prefix,
-                strategy,
-                &skip_markers,
-                inputs.head_ancestors,
-            )
-        }
-    } else if let (Some(idx), OrphanedTagStrategy::Warn) = (inputs.tag_index, strategy) {
-        let stop = idx.find_last_stable_tag_commit(&tag_search_prefix, strategy);
-        inputs.commit_walk.commits_since(repo, stop)
+        get_commits_since_last_tag(
+            repo,
+            &tag_search_prefix,
+            strategy,
+            &skip_markers,
+            inputs.head_ancestors,
+        )
     } else {
         get_commits_since_last_stable_tag(
             repo,
@@ -333,6 +358,17 @@ fn ensure_versioned_files_exist(pkg: &PackageConfig, root: &Path) -> Result<()> 
         path = vf.path,
     ))
     .error_code(error_code::CONFIG_MISSING_VERSIONED_FILE)
+}
+
+fn ensure_versioned_files_readable(pkg: &PackageConfig, root: &Path) -> Result<()> {
+    pkg.versioned_files
+        .iter()
+        .filter(|vf| crate::formats::get_handler(&vf.format).modifies_file())
+        .try_for_each(|vf| {
+            crate::formats::read_version(vf, root)
+                .map(drop)
+                .with_context(|| format!("package {}: cannot read {}", pkg.name, vf.path))
+        })
 }
 
 fn suggested_versioned_path(pkg: &PackageConfig, path: &str) -> Option<String> {
@@ -397,18 +433,18 @@ pub(super) fn compute_plan(
             .map(|c| determine_bump(&c.message, &config.workspace.commit_formats))
             .max()
             .unwrap_or(BumpType::None);
-
-        let version_template = pkg.effective_version_template(&config.workspace);
-
-        if bump == BumpType::None && version_template.is_none() && !is_date_or_seq(pkg_strategy) {
+        if bump == BumpType::None
+            && pkg.effective_version_template(&config.workspace).is_none()
+            && !is_date_or_seq(pkg_strategy)
+        {
             return Ok(PackagePlan::Skipped {
                 reason: SkipReason::NoReleasableCommits,
                 recovered,
             });
         }
 
-        let base_version =
-            compute_next_version(&current_version, bump, pkg_strategy, version_template)?;
+        let (bump, base_version) =
+            pkg.next_version(&config.workspace, pkg_strategy, &current_version, bump)?;
         let (new_version, is_prerelease) = with_prerelease_suffix(
             pkg,
             inputs.config,
@@ -435,6 +471,7 @@ pub(super) fn compute_plan(
     let tag = pkg.tag_for_version(&config.workspace, is_monorepo, &new_version);
 
     ensure_versioned_files_exist(pkg, inputs.root)?;
+    ensure_versioned_files_readable(pkg, inputs.root)?;
 
     Ok(PackagePlan::Bump(Box::new(PackageBump {
         recovered,
@@ -754,6 +791,74 @@ mod tests {
         );
     }
 
+    #[test]
+    fn pre_major_remaps_the_bump_below_one_zero_and_leaves_later_majors_alone() {
+        let (dir, repo) = init_repo();
+        let root = dir.path().to_path_buf();
+        write_pkg(&root, "young", "0.5.0");
+        write_pkg(&root, "mature", "1.0.0");
+        std::fs::write(
+            root.join(".ferrflow"),
+            r#"{"workspace":{"preMajor":{"breaking":"minor","feat":"patch"}},"package":[
+                {"name":"young","path":"young","versionedFiles":[{"path":"young/Cargo.toml","format":"toml"}]},
+                {"name":"mature","path":"mature","versionedFiles":[{"path":"mature/Cargo.toml","format":"toml"}]}
+            ]}"#,
+        )
+        .unwrap();
+        git(&root, &["add", "-A"]);
+        commit_file(&root, "seed.txt", "x", "chore: seed", 1_950_000_000);
+        git(&root, &["tag", "young@v0.5.0"]);
+        git(&root, &["tag", "mature@v1.0.0"]);
+        std::fs::create_dir_all(root.join("mature")).unwrap();
+        std::fs::write(root.join("mature/a.rs"), "x").unwrap();
+        git(&root, &["add", "--", "mature/a.rs"]);
+        commit_file(&root, "young/a.rs", "x", "feat!: break both", 1_950_000_100);
+
+        let config = Config::load(&root, Some(&root.join(".ferrflow"))).unwrap();
+        let commit_walk =
+            crate::git::CommitWalkCache::new(config.workspace.effective_commit_skip_markers());
+        let fx = Fixture {
+            _dir: dir,
+            repo,
+            config,
+            root: root.clone(),
+            cache: ChangedFilesCache::default(),
+            commit_files: CommitFilesCache::default(),
+            commit_walk,
+        };
+        let all_tags = collect_all_tags(&fx.repo);
+        let head_ancestors = build_head_ancestors(&fx.repo).ok();
+        let tag_index = TagIndex::build(&fx.repo).ok();
+        let prerelease_ctx = PrereleaseContext::resolve(None, "main", None).unwrap();
+        let forced: Vec<Forced<'_>> = Vec::new();
+        let changed_files = get_changed_files(&fx.repo).unwrap();
+        let inputs = build_inputs(
+            &fx,
+            &tag_index,
+            &head_ancestors,
+            &all_tags,
+            &prerelease_ctx,
+            &forced,
+            &changed_files,
+        );
+
+        let PackagePlan::Bump(young) = plan_for(&fx, &inputs, "young") else {
+            panic!(
+                "young should bump: {:?}",
+                plan_for(&fx, &inputs, "young").summary()
+            );
+        };
+        assert_eq!(young.new_version, "0.6.0");
+        assert_eq!(young.bump, BumpType::Minor);
+        assert_eq!(young.strategy_label, "minor");
+
+        let PackagePlan::Bump(mature) = plan_for(&fx, &inputs, "mature") else {
+            panic!("mature should bump");
+        };
+        assert_eq!(mature.new_version, "2.0.0");
+        assert_eq!(mature.bump, BumpType::Major);
+    }
+
     fn plan_for(fx: &Fixture, inputs: &PlanInputs<'_>, name: &str) -> PackagePlan {
         let pkg = fx
             .config
@@ -1069,7 +1174,7 @@ mod tests {
                 content.len()
             ));
         }
-        let mut child = std::process::Command::new("git")
+        let mut child = crate::test_utils::git_command()
             .current_dir(dir)
             .args(["fast-import", "--quiet"])
             .stdin(std::process::Stdio::piped())
@@ -1100,6 +1205,13 @@ mod tests {
             .collect()
     }
 
+    fn commit_ids(commits: &[GitLog]) -> Vec<ObjectId> {
+        commits
+            .iter()
+            .map(|c| ObjectId::from_hex(c.id.as_bytes()).unwrap())
+            .collect()
+    }
+
     fn in_pool<T: Send>(threads: usize, f: impl FnOnce() -> T + Send) -> T {
         rayon::ThreadPoolBuilder::new()
             .num_threads(threads)
@@ -1120,7 +1232,7 @@ mod tests {
         let prefetched = CommitFilesCache::default();
         in_pool(4, || {
             let worker = crate::git::open_repo(dir.path()).unwrap();
-            prefetch_commit_files(&worker, &commits, &prefetched);
+            prefetch_commit_files(&worker, &commit_ids(&commits), &prefetched);
         });
         let prefetched = prefetched.into_inner().unwrap();
         assert_eq!(
@@ -1156,7 +1268,7 @@ mod tests {
         let cache = CommitFilesCache::default();
         in_pool(1, || {
             let worker = crate::git::open_repo(dir.path()).unwrap();
-            prefetch_commit_files(&worker, &commits, &cache);
+            prefetch_commit_files(&worker, &commit_ids(&commits), &cache);
         });
         assert!(
             cache.lock().unwrap().is_empty(),
@@ -1175,7 +1287,7 @@ mod tests {
         let cache = CommitFilesCache::default();
         in_pool(4, || {
             let worker = crate::git::open_repo(dir.path()).unwrap();
-            prefetch_commit_files(&worker, &commits, &cache);
+            prefetch_commit_files(&worker, &commit_ids(&commits), &cache);
         });
         assert!(cache.lock().unwrap().is_empty());
     }

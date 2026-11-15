@@ -5,7 +5,7 @@ use super::auth::{
 use super::push::{local_tag_target_sha, parse_ls_remote_tags, remote_tag_target_shas};
 use super::repo::Repository;
 use super::retry::{is_transient_git_error, retry_transient};
-use super::tags::{find_highest_semver_tag, find_last_tag, is_floating_tag, is_prerelease_tag};
+use super::tags::{find_highest_semver_tag, find_last_tag, floating_tag_names, is_prerelease_tag};
 use super::*;
 use crate::config::{ForgeKind, OrphanedTagStrategy};
 use crate::error_code;
@@ -724,7 +724,7 @@ fn get_changed_files_since_tag_nested_paths_are_full_and_unquoted() {
 fn assert_walks_agree(repo: &Repository, cache: &CommitWalkCache, stop: Option<gix::ObjectId>) {
     let markers = crate::config::default_commit_skip_markers();
     let direct = get_commits_since_oid(repo, stop, &markers).unwrap();
-    let cached = cache.commits_since(repo, stop).unwrap();
+    let cached = cache.decode(repo, &cache.commit_ids_since(repo, stop).unwrap());
     let pairs = |logs: &[GitLog]| {
         logs.iter()
             .map(|l| (l.hash.clone(), l.message.clone()))
@@ -797,9 +797,42 @@ fn commit_walk_cache_applies_skip_markers() {
     for _ in 0..3 {
         assert_walks_agree(&repo, &cache, Some(stop));
     }
-    let cached = cache.commits_since(&repo, Some(stop)).unwrap();
+    let cached = cache.decode(&repo, &cache.commit_ids_since(&repo, Some(stop)).unwrap());
     assert!(cached.iter().all(|l| !l.message.contains("[skip ci]")));
     assert!(cached.iter().any(|l| l.message.contains("feat: c")));
+}
+
+#[test]
+fn commit_walk_cache_decodes_exactly_the_requested_commits() {
+    let (dir, repo) = init_repo();
+    create_commit_in_repo(&repo, dir.path(), "a.txt", "feat: a");
+    let stop = repo.head_id().unwrap().detach();
+    create_commit_in_repo(&repo, dir.path(), "b.txt", "fix: b");
+    create_commit_in_repo(&repo, dir.path(), "c.txt", "chore: c [skip ci]");
+    create_commit_in_repo(&repo, dir.path(), "d.txt", "feat: d");
+
+    let cache = CommitWalkCache::new(crate::config::default_commit_skip_markers());
+    for round in 0..4 {
+        let ids = cache.commit_ids_since(&repo, Some(stop)).unwrap();
+        assert_eq!(
+            ids.len(),
+            3,
+            "round {round}: ids are not filtered by skip markers"
+        );
+
+        let picked = [ids[0], ids[2]];
+        let logs = cache.decode(&repo, &picked);
+        let subjects: Vec<_> = logs.iter().map(|l| l.message.trim().to_string()).collect();
+        assert_eq!(subjects, vec!["feat: d", "fix: b"], "round {round}");
+        assert_eq!(logs[0].id, picked[0].to_string());
+        assert_eq!(logs[1].hash, picked[1].to_string()[..8]);
+
+        assert!(
+            cache.decode(&repo, &[ids[1]]).is_empty(),
+            "round {round}: skipped"
+        );
+        assert!(cache.decode(&repo, &[]).is_empty());
+    }
 }
 
 #[test]
@@ -1735,25 +1768,86 @@ fn is_prerelease_tag_detection() {
 }
 
 #[test]
-fn is_floating_tag_detection() {
-    assert!(is_floating_tag("v2", "v"));
-    assert!(is_floating_tag("v2.3", "v"));
-    assert!(is_floating_tag("v10", "v"));
-    assert!(is_floating_tag("v0", "v"));
+fn floating_tags_are_the_leading_parts_of_a_longer_release() {
+    let tags = [
+        "v2",
+        "v2.3",
+        "v2.3.1",
+        "v10",
+        "v10.20.30",
+        "v0.1.0",
+        "v3.0.0-rc.1",
+        "v",
+        "api@v1",
+        "api@v1.2",
+        "api@v1.2.3",
+    ];
+    let floating = floating_tag_names(tags, "v");
+    for tag in ["v2", "v2.3", "v10"] {
+        assert!(floating.contains(tag), "{tag} should be floating");
+    }
+    for tag in [
+        "v2.3.1",
+        "v10.20.30",
+        "v0.1.0",
+        "v3.0.0-rc.1",
+        "v",
+        "api@v1",
+    ] {
+        assert!(!floating.contains(tag), "{tag} should be a release");
+    }
 
-    assert!(!is_floating_tag("v2.14.1", "v"));
-    assert!(!is_floating_tag("v0.1.0", "v"));
-    assert!(!is_floating_tag("v1.0.0", "v"));
-    assert!(!is_floating_tag("v10.20.30", "v"));
+    let floating = floating_tag_names(tags, "api@v");
+    assert!(floating.contains("api@v1"));
+    assert!(floating.contains("api@v1.2"));
+    assert!(!floating.contains("api@v1.2.3"));
+}
 
-    assert!(is_floating_tag("api@v1", "api@v"));
-    assert!(is_floating_tag("api@v1.2", "api@v"));
-    assert!(!is_floating_tag("api@v1.2.3", "api@v"));
+#[test]
+fn sequential_and_two_part_tags_are_releases() {
+    assert!(floating_tag_names(["v1", "v2", "v3"], "v").is_empty());
+    assert!(floating_tag_names(["v2026.1", "v2026.2"], "v").is_empty());
+    assert_eq!(
+        floating_tag_names(["v2026", "v2026.1", "v2026.2"], "v"),
+        ["v2026".to_string()].into_iter().collect()
+    );
+}
 
-    assert!(!is_floating_tag("v2.0.0-beta.1", "v"));
-    assert!(!is_floating_tag("v1.0.0-rc.1", "v"));
+#[test]
+fn find_highest_tag_reads_sequential_tags() {
+    let (dir, repo) = init_repo();
+    for (file, tag) in [("a.txt", "v1"), ("b.txt", "v2"), ("c.txt", "v10")] {
+        create_commit_in_repo(&repo, dir.path(), file, "feat: change");
+        create_lightweight_tag(&repo, tag);
+    }
 
-    assert!(!is_floating_tag("v", "v"));
+    let (tag_name, version) = find_highest_semver_tag(&repo, "v", OrphanedTagStrategy::Warn)
+        .unwrap()
+        .unwrap();
+    assert_eq!((tag_name.as_str(), version.as_str()), ("v10", "10"));
+
+    let last = find_last_tag(&repo, "v", OrphanedTagStrategy::Warn)
+        .unwrap()
+        .unwrap();
+    assert_eq!(last.name, "v10");
+}
+
+#[test]
+fn find_highest_tag_reads_two_part_tags() {
+    let (dir, repo) = init_repo();
+    for (file, tag) in [
+        ("a.txt", "v2025.9"),
+        ("b.txt", "v2026.1"),
+        ("c.txt", "v2026.2"),
+    ] {
+        create_commit_in_repo(&repo, dir.path(), file, "feat: change");
+        create_lightweight_tag(&repo, tag);
+    }
+
+    let (tag_name, version) = find_highest_semver_tag(&repo, "v", OrphanedTagStrategy::Warn)
+        .unwrap()
+        .unwrap();
+    assert_eq!((tag_name.as_str(), version.as_str()), ("v2026.2", "2026.2"));
 }
 
 #[test]
@@ -2482,4 +2576,79 @@ fn a_tag_already_reported_is_not_reported_again() {
 
     let third = super::tags::take_unreported(vec!["v2.2.0".to_string()], &mut seen);
     assert_eq!(third, vec!["v2.2.0".to_string()], "a new tag still reports");
+}
+
+#[test]
+fn tag_index_reads_sequential_tags() {
+    let (dir, repo) = init_repo();
+    for (file, tag) in [("a.txt", "v1"), ("b.txt", "v2"), ("c.txt", "v3")] {
+        create_commit_in_repo(&repo, dir.path(), file, "feat: change");
+        create_lightweight_tag(&repo, tag);
+    }
+    create_commit_in_repo(&repo, dir.path(), "d.txt", "feat: new");
+
+    let index = TagIndex::build(&repo).unwrap();
+    assert_eq!(
+        index.find_highest_semver_tag("v", OrphanedTagStrategy::Warn),
+        Some(("v3".to_string(), "3".to_string()))
+    );
+    assert_eq!(
+        index
+            .find_last_tag_name("v", OrphanedTagStrategy::Warn)
+            .as_deref(),
+        Some("v3")
+    );
+}
+
+#[test]
+fn prefix_sharing_tag_without_a_version_is_not_the_last_tag() {
+    let (dir, repo) = init_repo();
+    create_commit_in_repo(&repo, dir.path(), "a.txt", "feat: first");
+    create_lightweight_tag(&repo, "v1.0.0");
+    create_commit_in_repo(&repo, dir.path(), "b.txt", "feat!: breaking");
+    create_lightweight_tag(&repo, "vendor-sync");
+    create_commit_in_repo(&repo, dir.path(), "c.txt", "fix: third");
+    let v1 = git(dir.path(), &["rev-parse", "v1.0.0^{commit}"]);
+
+    let idx = TagIndex::build(&repo).unwrap();
+    let last = idx
+        .find_last_tag_commit("v", OrphanedTagStrategy::Warn)
+        .unwrap();
+    assert_eq!(last.to_string(), v1.trim());
+
+    let found = find_last_tag_name(&repo, "v", OrphanedTagStrategy::Warn).unwrap();
+    assert_eq!(found, Some("v1.0.0".to_string()));
+}
+
+#[test]
+fn tag_of_a_sibling_package_is_not_the_last_tag() {
+    let (dir, repo) = init_repo();
+    create_commit_in_repo(&repo, dir.path(), "a.txt", "feat: first");
+    create_lightweight_tag(&repo, "core-1.0.0");
+    create_commit_in_repo(&repo, dir.path(), "b.txt", "feat(core): second");
+    create_commit_in_repo(&repo, dir.path(), "c.txt", "chore: third");
+    create_lightweight_tag(&repo, "core-utils-1.0.1");
+    let first = git(dir.path(), &["rev-parse", "core-1.0.0^{commit}"]);
+
+    let idx = TagIndex::build(&repo).unwrap();
+    let last = idx
+        .find_last_tag_commit("core-", OrphanedTagStrategy::Warn)
+        .unwrap();
+    assert_eq!(last.to_string(), first.trim());
+}
+
+#[test]
+fn prerelease_and_v_prefixed_versions_still_count_as_tags() {
+    let (dir, repo) = init_repo();
+    create_commit_in_repo(&repo, dir.path(), "a.txt", "feat: first");
+    create_lightweight_tag(&repo, "pkg-v1.0.0");
+    create_commit_in_repo(&repo, dir.path(), "b.txt", "feat: second");
+    create_lightweight_tag(&repo, "pkg-v1.1.0-beta.1");
+    let beta = git(dir.path(), &["rev-parse", "pkg-v1.1.0-beta.1^{commit}"]);
+
+    let idx = TagIndex::build(&repo).unwrap();
+    let last = idx
+        .find_last_tag_commit("pkg-", OrphanedTagStrategy::Warn)
+        .unwrap();
+    assert_eq!(last.to_string(), beta.trim());
 }

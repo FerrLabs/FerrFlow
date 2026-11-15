@@ -6,7 +6,6 @@ use std::path::Path;
 use crate::config::{Config, PackageConfig};
 use crate::conventional_commits::BumpType;
 use crate::formats::read_version;
-use crate::versioning::compute_next_version;
 
 use super::run::graph::cascade_round;
 use super::util::tags_for_package;
@@ -64,8 +63,9 @@ impl Versions<'_> {
         let strategy = pkg.effective_versioning(&self.config.workspace, || {
             tags_for_package(self.all_tags, &prefix)
         });
-        let template = pkg.effective_version_template(&self.config.workspace);
-        compute_next_version(&current, bump, strategy, template).ok()
+        pkg.next_version(&self.config.workspace, strategy, &current, bump)
+            .ok()
+            .map(|(_, version)| version)
     }
 }
 
@@ -274,6 +274,43 @@ mod tests {
             { "name": "mobile", "path": "mobile", "dependsOn": ["api"] }
         ]
     }"#;
+
+    #[test]
+    fn a_breaking_seed_keeps_a_pre_major_dependent_below_one_zero() {
+        let dir = tempfile::tempdir().unwrap();
+        for (name, version) in [("engine", "1.2.0"), ("viewer", "0.3.0")] {
+            std::fs::create_dir_all(dir.path().join(name)).unwrap();
+            std::fs::write(
+                dir.path().join(name).join("package.json"),
+                format!(r#"{{ "name": "{name}", "version": "{version}" }}"#),
+            )
+            .unwrap();
+        }
+        let config: Config = serde_json::from_str(
+            r#"{
+                "workspace": { "preMajor": { "breaking": "minor" } },
+                "package": [
+                    { "name": "engine", "path": "engine",
+                      "versionedFiles": [{ "path": "engine/package.json", "format": "json" }] },
+                    { "name": "viewer", "path": "viewer", "dependsOn": ["engine"],
+                      "versionedFiles": [{ "path": "viewer/package.json", "format": "json" }] }
+                ]
+            }"#,
+        )
+        .expect("valid config");
+
+        let report =
+            build_report(&config, dir.path(), &[], "engine", BumpType::Major).expect("impact");
+
+        assert_eq!(
+            entry(&report, "engine").next_version.as_deref(),
+            Some("2.0.0")
+        );
+        assert_eq!(
+            entry(&report, "viewer").next_version.as_deref(),
+            Some("0.4.0")
+        );
+    }
 
     #[test]
     fn a_transitive_dependent_is_reported_further_away_than_a_direct_one() {

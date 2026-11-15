@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::sync::Mutex;
 
 use anyhow::Result;
@@ -18,7 +17,7 @@ mod floating_tags;
 mod release_commit;
 
 fn git(dir: &Path, args: &[&str]) -> String {
-    let out = Command::new("git")
+    let out = crate::test_utils::git_command()
         .current_dir(dir)
         .args(args)
         .output()

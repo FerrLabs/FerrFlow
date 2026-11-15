@@ -318,11 +318,11 @@ fn configure_bot_git_identity_in(repo_dir: &std::path::Path) {
         .unwrap_or_else(|| DEFAULT_BOT_USER_ID.to_string());
     let email = format!("{user_id}+{login}@users.noreply.github.com");
 
-    let _ = std::process::Command::new("git")
+    let _ = crate::git_cmd::command()
         .args(["config", "--local", "user.name", &login])
         .current_dir(repo_dir)
         .status();
-    let _ = std::process::Command::new("git")
+    let _ = crate::git_cmd::command()
         .args(["config", "--local", "user.email", &email])
         .current_dir(repo_dir)
         .status();
@@ -576,7 +576,7 @@ mod tests {
     }
 
     fn read_local_git_config(repo_dir: &std::path::Path, key: &str) -> Option<String> {
-        let out = std::process::Command::new("git")
+        let out = crate::test_utils::git_command()
             .args(["config", "--local", "--get", key])
             .current_dir(repo_dir)
             .output()
@@ -589,7 +589,7 @@ mod tests {
     }
 
     fn init_repo(dir: &std::path::Path) {
-        let ok = std::process::Command::new("git")
+        let ok = crate::test_utils::git_command()
             .args(["init", "-q"])
             .current_dir(dir)
             .status()
@@ -600,7 +600,7 @@ mod tests {
 
     #[test]
     fn configure_bot_git_identity_uses_hosted_defaults() {
-        if std::process::Command::new("git")
+        if crate::test_utils::git_command()
             .arg("--version")
             .status()
             .is_err()
@@ -629,7 +629,7 @@ mod tests {
 
     #[test]
     fn configure_bot_git_identity_honours_env_overrides() {
-        if std::process::Command::new("git")
+        if crate::test_utils::git_command()
             .arg("--version")
             .status()
             .is_err()
@@ -661,7 +661,7 @@ mod tests {
 
     #[test]
     fn configure_bot_git_identity_treats_blank_overrides_as_unset() {
-        if std::process::Command::new("git")
+        if crate::test_utils::git_command()
             .arg("--version")
             .status()
             .is_err()

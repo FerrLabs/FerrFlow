@@ -201,6 +201,61 @@ fn a_cascaded_package_reports_the_dependency_as_the_trigger() {
 }
 
 #[test]
+fn a_cascaded_breaking_bump_follows_pre_major_below_one_zero() {
+    let (dir, repo) = init_repo();
+    let root = dir.path().to_path_buf();
+    for (name, version) in [("engine", "1.2.0"), ("viewer", "0.3.0")] {
+        std::fs::create_dir_all(root.join(name)).unwrap();
+        std::fs::write(
+            root.join(name).join("Cargo.toml"),
+            format!("[package]\nname = \"{name}\"\nversion = \"{version}\"\n"),
+        )
+        .unwrap();
+    }
+    std::fs::write(
+        root.join("ferrflow.json"),
+        r#"{
+  "workspace": { "preMajor": { "breaking": "minor" } },
+  "package": [
+    { "name": "engine", "path": "engine", "versionedFiles": [{ "path": "engine/Cargo.toml", "format": "toml" }] },
+    { "name": "viewer", "path": "viewer", "dependsOn": ["engine"],
+      "versionedFiles": [{ "path": "viewer/Cargo.toml", "format": "toml" }] }
+  ]
+}
+"#,
+    )
+    .unwrap();
+    git(&root, &["add", "-A"]);
+    commit_file(&root, "seed.txt", "x", "chore: seed", next_ts());
+    let config = Config::load(&root, Some(&root.join("ferrflow.json"))).unwrap();
+    let fx = Fixture {
+        _dir: dir,
+        repo,
+        config,
+        root,
+    };
+    fx.tag("engine@v1.2.0");
+    fx.tag("viewer@v0.3.0");
+    fx.commit("engine/src/lib.rs", "feat!: rewrite engine");
+
+    match bump_of(&fx.explain("viewer")) {
+        Decision::Bump {
+            bump,
+            to,
+            triggered_by,
+            ..
+        } => {
+            assert_eq!((bump.as_str(), to.as_deref()), ("minor", Some("0.4.0")));
+            assert!(matches!(triggered_by, Trigger::Dependency));
+        }
+        other => panic!(
+            "expected a cascade bump, got {:?}",
+            serde_json::to_string(other)
+        ),
+    }
+}
+
+#[test]
 fn a_chore_only_history_still_lists_the_commits_it_rejected() {
     let fx = monorepo();
     fx.commit("core/src/a.rs", "chore: tidy");

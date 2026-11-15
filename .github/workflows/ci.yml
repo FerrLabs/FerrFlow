@@ -54,7 +54,7 @@ jobs:
         run: cargo nextest run --no-fail-fast
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: '24'
+          node-version: '26'
       - name: Config types match the schema
         run: |
           npm install --no-save --prefix scripts json-schema-to-typescript@15.0.4
@@ -62,6 +62,11 @@ jobs:
           git diff --exit-code npm/types/config.d.ts
       - name: Typecheck the published types and their misuse cases
         run: npx --yes -p typescript@5 tsc --noEmit --strict --skipLibCheck false --module nodenext --moduleResolution nodenext npm/types-check.ts
+
+  kani:
+    name: Kani
+    uses: FerrLabs/.github/.github/workflows/reusable-kani.yml@7c51d18aedc7e04f1a8360e68c0c0933fd773ac0 # main
+    if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):')
 
   msrv:
     name: MSRV
@@ -192,7 +197,7 @@ jobs:
 
       - name: Generate fixtures
         if: steps.fixture-cache.outputs.cache-hit != 'true'
-        uses: FerrLabs/Fixtures@7b04ba1b93ababf2b557ca4521a243c23217ef0a # v1.2.2 (packed repos)
+        uses: FerrLabs/Fixtures@75b56d6636999f0220ff109eda66f665b56884a7 # v1.4.2 (packed repos)
         with:
           definitions: tests/fixtures/definitions
 
@@ -385,26 +390,16 @@ jobs:
       - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
       - name: Compile bench binary (no run)
-        run: cargo bench --bench ferrflow_benchmarks --no-run
-      - name: Locate compiled binary
-        id: locate
         run: |
           set -euo pipefail
-          # criterion + cargo emit a hashed binary name like
-          # ferrflow_benchmarks-1234abcd. Pick the most recent matching
-          # executable and skip dSYMs, .d files, and pdbs.
-          bin=$(find target/release/deps -maxdepth 1 -type f \
-                  -name 'ferrflow_benchmarks-*' \
-                  ! -name '*.d' ! -name '*.pdb' ! -name '*.dSYM' \
-                  -printf '%T@ %p\n' \
-                | sort -nr | head -n1 | cut -d' ' -f2-)
+          bin=$(cargo bench --bench ferrflow_benchmarks --no-run --message-format=json \
+                | jq -r 'select(.reason == "compiler-artifact" and .target.name == "ferrflow_benchmarks" and .executable != null) | .executable' \
+                | tail -n1)
           if [ -z "$bin" ] || [ ! -x "$bin" ]; then
-            echo "::error::could not find compiled bench binary under target/release/deps"
-            ls -la target/release/deps/ferrflow_benchmarks-* 2>/dev/null || true
+            echo "::error::could not find compiled bench binary"
             exit 1
           fi
-          echo "bin=$bin" >> "$GITHUB_OUTPUT"
-          # Strip the hash so the matrix doesn't have to re-derive it.
+          mkdir -p target/release/deps
           cp "$bin" target/release/deps/ferrflow_benchmarks
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
@@ -571,7 +566,7 @@ jobs:
           lookup-only: true
       - name: Generate benchmark fixtures
         if: steps.bench-cache.outputs.cache-hit != 'true'
-        uses: FerrLabs/Fixtures@7b04ba1b93ababf2b557ca4521a243c23217ef0a # v1.2.2 (packed repos)
+        uses: FerrLabs/Fixtures@75b56d6636999f0220ff109eda66f665b56884a7 # v1.4.2 (packed repos)
         with:
           definitions: benchmarks/fixtures/definitions
           generated-dir: bench-fixtures
@@ -631,7 +626,7 @@ jobs:
           cp -r bench-fixtures/floor shard-fixtures/
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          node-version: '24'
+          node-version: '26'
       # Cache ~/.npm so the competitor npm-global installs that
       # `Benchmarks/scripts/run.sh` does (`npm install -g
       # @changesets/cli`, `commit-and-tag-version`, `standard-version`,
@@ -649,7 +644,7 @@ jobs:
           key: bench-npm-cache-${{ hashFiles('.github/workflows/ci.yml', 'benchmarks/fixtures/definitions/*.json') }}
           restore-keys: |
             bench-npm-cache-
-      - uses: FerrLabs/Benchmarks@db1353fe328ac827ac3e1583167e43443c308655 # v5.6.3 (competitors bucketed as release-dry-run for a like-for-like head-to-head)
+      - uses: FerrLabs/Benchmarks@97872e83eefa1528bfa3d64c9b8251011356ba2c # v5.6.5 (competitors bucketed as release-dry-run for a like-for-like head-to-head)
         with:
           type: full
           definitions: benchmarks/fixtures/definitions
@@ -687,7 +682,7 @@ jobs:
         with:
           pattern: bench-partial-*
           path: partials/
-      - uses: FerrLabs/Benchmarks@db1353fe328ac827ac3e1583167e43443c308655 # v5.6.3 (competitors bucketed as release-dry-run for a like-for-like head-to-head)
+      - uses: FerrLabs/Benchmarks@97872e83eefa1528bfa3d64c9b8251011356ba2c # v5.6.5 (competitors bucketed as release-dry-run for a like-for-like head-to-head)
         with:
           type: full
           definitions: benchmarks/fixtures/definitions
@@ -696,7 +691,7 @@ jobs:
 
   release:
     name: Release
-    needs: [test, fixture-monorepo, fixture-single, fixture-config, fixture-advanced, benchmark-aggregate]
+    needs: [test, kani, fixture-monorepo, fixture-single, fixture-config, fixture-advanced, benchmark-aggregate]
     runs-on: ubuntu-latest
     concurrency:
       group: release-${{ github.workflow }}-${{ github.ref }}
@@ -704,6 +699,7 @@ jobs:
     if: |
       always() &&
       needs.test.result == 'success' &&
+      needs.kani.result == 'success' &&
       needs.fixture-monorepo.result == 'success' &&
       needs.fixture-single.result == 'success' &&
       needs.fixture-config.result == 'success' &&

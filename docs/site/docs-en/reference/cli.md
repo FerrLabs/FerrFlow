@@ -84,9 +84,50 @@ At the end it lists the commits, the files written and the tags created, then de
 
 ---
 
+## `ferrflow snapshot`
+
+Stamp every package with pending changes with a throwaway pre-release version, for a PR preview build.
+
+```bash
+ferrflow snapshot --tag <SUFFIX> [--from-zero] [--no-git] [--run-hooks]
+```
+
+| Flag             | Description                                                              |
+| ---------------- | ------------------------------------------------------------------------ |
+| `--tag <SUFFIX>` | Pre-release suffix, e.g. `pr-123`. Must be a valid semver pre-release    |
+| `--from-zero`    | Use `0.0.0-<SUFFIX>.<sha>` instead of the computed next version          |
+| `--no-git`       | Skip the clean working tree check, for checkouts CI already modified     |
+| `--run-hooks`    | Run the `pre_publish` and `post_publish` hooks with the snapshot version |
+
+The next version is computed from every commit since each package's last release, then its pre-release part is replaced: `1.3.0` becomes `1.3.0-pr-123.abc1234`, where `abc1234` is the short HEAD commit. Only versioned files are written, plus lockfiles when `updateLockfiles` is on. There is no changelog, commit, tag or push, and configured publishers do not run, so nothing can move a `latest` dist-tag. With `--dry-run` nothing is written.
+
+It prints one JSON object on stdout:
+
+```json
+{
+  "tag": "pr-123",
+  "commit": "abc1234",
+  "dry_run": false,
+  "packages": [
+    {
+      "name": "cli",
+      "version": "1.3.0-pr-123.abc1234",
+      "previous_version": "1.2.0"
+    }
+  ]
+}
+```
+
+```bash
+ferrflow snapshot --tag "pr-$PR_NUMBER" > snapshot.json
+npm publish --tag "pr-$PR_NUMBER"
+```
+
+---
+
 ## `ferrflow check`
 
-Preview what `ferrflow release` would do without making any changes.
+Preview what `ferrflow release` would do without making any changes. Every versioned file of every package is read first, so a file that cannot be read (for example a `txt` selector that matches nothing, error `E4702`) fails the check instead of the release.
 
 ```bash
 ferrflow check [OPTIONS]
@@ -419,7 +460,7 @@ ferrflow doctor [OPTIONS]
 | `--format <FMT>` | `human` (default) or `json`                                           |
 | `--online`       | Also probe the forge API (GitHub rate limit / auth, self-hosted forge detection); requires a token |
 
-The report groups checks into five sections — **Repo** (git repository, commit history, clean working tree, git identity, remote, tags), **Config** (which config file wins, whether it parses, plus the full `ferrflow validate` check suite), **Versioning** (strategy, each package's on-disk version, and whether its lockfile agrees with it), **Forge** (detected forge, and whether the token that forge actually uses is in the environment; with `--online` the forge is also probed for a self-hosted host), and **CI** (workflow files, and whether a workflow pins the `FerrLabs/FerrFlow` action). Every check reports green, a warning, or an error.
+The report groups checks into five sections — **Repo** (git repository, commit history, clean working tree, git identity, remote, tags), **Config** (which config file wins, whether it parses, plus the full `ferrflow validate` check suite), **Versioning** (strategy, each package's on-disk version, a pass or fail line for every versioned file, and whether its lockfile agrees with it), **Forge** (detected forge, and whether the token that forge actually uses is in the environment; with `--online` the forge is also probed for a self-hosted host), and **CI** (workflow files, and whether a workflow pins the `FerrLabs/FerrFlow` action). Every check reports green, a warning, or an error.
 
 Two of the **Versioning** checks are about lockfiles, and both matter for anything that builds with `--locked`. A lockfile recording a different version than the manifest beside it is reported outright, since that combination makes `cargo build --locked` refuse to run. A lockfile that is not covered by [`updateLockfiles`](/docs/configuration/config-file/) is flagged before it drifts, because nothing will keep it in step on the next release. Version comparison applies to `Cargo.lock`: pnpm, yarn, poetry, uv, bundler and mix lock dependencies without restating the version of the package that owns them, so there is nothing to compare, and those get the `updateLockfiles` check only.
 

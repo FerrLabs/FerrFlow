@@ -86,6 +86,21 @@ pub enum VersionSourcePolicy {
     File,
 }
 
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum PreMajorBump {
+    Minor,
+    Patch,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Default)]
+pub struct PreMajorRules {
+    #[serde(default)]
+    pub breaking: Option<PreMajorBump>,
+    #[serde(default)]
+    pub feat: Option<PreMajorBump>,
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub enum OrphanedTagStrategy {

@@ -84,6 +84,22 @@ pub enum Commands {
         #[arg(long, help = "Keep the clone and print its path")]
         keep: bool,
     },
+    /// Stamp pending packages with a throwaway `<next>-<TAG>.<sha>` version for a PR preview.
+    /// Writes versioned files only: no changelog, commit, tag or push.
+    Snapshot {
+        /// Pre-release suffix, e.g. `pr-123`.
+        #[arg(long, value_name = "SUFFIX")]
+        tag: String,
+        /// Use `0.0.0-<TAG>.<sha>` instead of the computed next version.
+        #[arg(long)]
+        from_zero: bool,
+        /// Skip the clean working tree check.
+        #[arg(long)]
+        no_git: bool,
+        /// Run the pre_publish and post_publish hooks. Configured publishers are not run.
+        #[arg(long)]
+        run_hooks: bool,
+    },
     Publish {
         packages: Vec<String>,
         #[arg(short = 'a', long)]
@@ -226,6 +242,7 @@ impl Commands {
             Commands::Check { .. } => "check",
             Commands::Release { .. } => "release",
             Commands::ShadowRelease { .. } => "shadow-release",
+            Commands::Snapshot { .. } => "snapshot",
             Commands::Publish { .. } => "publish",
             Commands::Changelog => "changelog",
             Commands::Init { .. } => "init",
@@ -317,6 +334,22 @@ impl Cli {
             Commands::ShadowRelease { keep } => {
                 crate::shadow::run(self.config.as_deref(), self.verbose, keep)
             }
+            Commands::Snapshot {
+                tag,
+                from_zero,
+                no_git,
+                run_hooks,
+            } => crate::monorepo::snapshot(
+                self.config.as_deref(),
+                &crate::monorepo::SnapshotOptions {
+                    tag: &tag,
+                    from_zero,
+                    no_git,
+                    run_hooks,
+                    dry_run: self.dry_run,
+                    verbose: self.verbose,
+                },
+            ),
             Commands::Publish { packages, all } => crate::publish::run(
                 self.config.as_deref(),
                 &packages,

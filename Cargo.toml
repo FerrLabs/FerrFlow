@@ -3,6 +3,9 @@ members = [".", "ferrflow-wasm"]
 exclude = ["__fixtures__", "fuzz"]
 resolver = "3"
 
+[workspace.lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
+
 # The codebase keeps unit tests inline before the impl block in formats/*.rs
 # (cleaner test-first reading order). Suppressing the lint workspace-wide
 # avoids reorganising every format file just to satisfy clippy.
@@ -11,7 +14,7 @@ items_after_test_module = "allow"
 
 [package]
 name = "ferrflow"
-version = "7.33.4"
+version = "7.36.5"
 edition = "2024"
 rust-version = "1.88"
 description = "Universal semantic versioning for monorepos and classic repos"
@@ -21,6 +24,7 @@ homepage = "https://github.com/FerrLabs/FerrFlow"
 keywords = ["semver", "versioning", "monorepo", "changelog", "release"]
 categories = ["command-line-utilities", "development-tools"]
 readme = "README.md"
+include = ["/src/**/*", "/schema/*.json", "/README.md", "/LICENSE", "/CHANGELOG.md"]
 
 [[bin]]
 name = "ferrflow"
@@ -91,6 +95,7 @@ windows-sys = { version = "0.61", optional = true, features = ["Win32_Foundation
 [dev-dependencies]
 cargo-husky = { version = "1", default-features = false, features = ["user-hooks"] }
 criterion = { version = "0.8", features = ["html_reports"] }
+proptest = { version = "1", default-features = false, features = ["std"] }
 
 [[bench]]
 name = "ferrflow_benchmarks"

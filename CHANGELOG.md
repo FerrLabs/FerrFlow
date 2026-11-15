@@ -4,6 +4,99 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.36.5] - 2026-11-15
+
+### Bug Fixes
+
+- fix(versioning): use the ISO year for year variables in week templates (#1402)
+
+## [7.36.4] - 2026-11-15
+
+### Bug Fixes
+
+- fix(ci): read bench binary path from cargo json output (#1401)
+
+## [7.36.3] - 2026-11-14
+
+### Bug Fixes
+
+- perf(commits): replace regexes in commit parsing and tag detection with hand-written parsers (#1399)
+
+## [7.36.2] - 2026-11-14
+
+### Bug Fixes
+
+- perf(commits): decode commit messages only for commits that survive scoping (#1397)
+- perf(monorepo): plan inline and skip rayon when it cannot help (#1398)
+
+## [7.36.1] - 2026-11-12
+
+### Bug Fixes
+
+- fix(versioning): error on u64 overflow in version template render (#1388)
+- fix(deps): bump rustix to 1.1.6 for RUSTSEC-2026-0486 (#1389)
+
+## [7.36.0] - 2026-11-10
+
+### Features
+
+- feat(versioning): opt-in pre-1.0 bump rules (#1379)
+
+## [7.35.6] - 2026-11-09
+
+### Refactoring
+
+- refactor(npm): drop void operator from type checks (#1382)
+
+## [7.35.5] - 2026-11-09
+
+### Bug Fixes
+
+- fix(check): validate every versioned file selector before release (#1378)
+- fix(crate): publish only the Rust sources to crates.io (#1381)
+
+## [7.35.4] - 2026-11-09
+
+### Bug Fixes
+
+- fix(publish): read the pypi trusted publishing audience from the index (#1374)
+
+## [7.35.3] - 2026-10-31
+
+### Bug Fixes
+
+- fix(git): ignore prefix-sharing tags that are not versions (#1363)
+
+## [7.35.2] - 2026-10-31
+
+### Bug Fixes
+
+- fix(preview): only update preview comments written by the token's own identity (#1361)
+
+## [7.35.1] - 2026-10-28
+
+### Bug Fixes
+
+- fix(git): keep git commands off an inherited GIT_DIR (#1358)
+
+## [7.35.0] - 2026-10-27
+
+### Features
+
+- feat(cli): add snapshot command for PR preview versions (#1356)
+
+## [7.34.1] - 2026-10-26
+
+### Bug Fixes
+
+- fix(versioning): read sequential and two-part release tags as releases (#1351)
+
+## [7.34.0] - 2026-10-26
+
+### Features
+
+- feat(action): expose release outputs (#1353)
+
 ## [7.33.4] - 2026-10-25
 
 ### Bug Fixes

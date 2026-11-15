@@ -232,6 +232,36 @@ fn latest_tag_with_version_placeholder_is_an_error() {
 }
 
 #[test]
+fn a_week_template_mixed_with_a_calendar_unit_warns_without_failing() {
+    let mut config = make_config(vec![make_package("app", ".")]);
+    config.workspace.version_template = Some("{year}.{month}.{week}.{seq}".to_string());
+    let entries = check_version_templates(&config);
+    assert_eq!(entries.len(), 1);
+    assert_eq!(entries[0].level, ValidationLevel::Warning);
+    assert!(entries[0].message.contains("not ordered around New Year"));
+    assert!(ValidationResult::from_entries(entries).valid);
+}
+
+#[test]
+fn a_package_week_template_mixed_with_a_calendar_unit_warns() {
+    let mut package = make_package("app", ".");
+    package.version_template = Some("{year}.{padded_week}.{day}".to_string());
+    let entries = check_version_templates(&make_config(vec![package]));
+    assert_eq!(entries.len(), 1);
+    assert_eq!(entries[0].path, "app.versionTemplate");
+    assert_eq!(entries[0].level, ValidationLevel::Warning);
+}
+
+#[test]
+fn week_only_and_calendar_only_templates_do_not_warn() {
+    for template in ["{year}.{week}.{seq}", "{year}.{month}.{day}"] {
+        let mut config = make_config(vec![make_package("app", ".")]);
+        config.workspace.version_template = Some(template.to_string());
+        assert!(check_version_templates(&config).is_empty(), "{template}");
+    }
+}
+
+#[test]
 fn latest_tag_without_name_in_a_monorepo_warns() {
     let mut config = make_config(vec![
         make_package("api", "packages/api"),

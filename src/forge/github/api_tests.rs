@@ -284,24 +284,86 @@ fn a_transport_failure_on_auto_merge_uses_the_request_code() {
     assert_eq!(code(&err).as_deref(), Some("E3008"));
 }
 
+fn marked_comment(id: u64, login: &str, kind: &str) -> serde_json::Value {
+    json!({
+        "id": id,
+        "body": "<!-- ferrflow -->\npreview",
+        "user": { "login": login, "type": kind },
+    })
+}
+
 #[test]
-fn find_comment_returns_the_first_comment_carrying_the_marker() {
-    let server = FakeServer::start(vec![Reply::json(
-        200,
-        json!([
-            { "id": 1, "body": "looks good" },
-            { "id": 2, "body": "<!-- ferrflow -->\npreview" },
-            { "id": 3, "body": "<!-- ferrflow --> again" },
-        ]),
-    )]);
+fn find_comment_skips_a_foreign_comment_and_prefers_the_most_recent_own_one() {
+    let server = FakeServer::start(vec![
+        Reply::json(
+            200,
+            json!([
+                { "id": 1, "body": "looks good", "user": { "login": "me", "type": "User" } },
+                marked_comment(2, "me", "User"),
+                marked_comment(3, "me", "User"),
+                marked_comment(4, "someone", "User"),
+            ]),
+        ),
+        Reply::json(200, json!({ "login": "me" })),
+    ]);
+
+    let found = forge(&server).find_comment(5, "<!-- ferrflow -->").unwrap();
+
+    assert_eq!(found, Some(3));
+    let requests = server.requests();
+    assert_eq!(
+        requests[0].path,
+        "/repos/owner/repo/issues/5/comments?per_page=100&page=1"
+    );
+    assert_eq!(requests[1].path, "/user");
+}
+
+#[test]
+fn find_comment_is_none_when_only_someone_else_carries_the_marker() {
+    let server = FakeServer::start(vec![
+        Reply::json(200, json!([marked_comment(4, "someone", "User")])),
+        Reply::json(200, json!({ "login": "me" })),
+    ]);
+
+    assert_eq!(
+        forge(&server).find_comment(5, "<!-- ferrflow -->").unwrap(),
+        None
+    );
+}
+
+#[test]
+fn find_comment_with_an_integration_token_only_matches_bots() {
+    let server = FakeServer::start(vec![
+        Reply::json(
+            200,
+            json!([
+                marked_comment(2, "github-actions[bot]", "Bot"),
+                marked_comment(4, "someone", "User"),
+            ]),
+        ),
+        Reply::json(
+            403,
+            json!({ "message": "Resource not accessible by integration" }),
+        ),
+    ]);
 
     let found = forge(&server).find_comment(5, "<!-- ferrflow -->").unwrap();
 
     assert_eq!(found, Some(2));
-    assert_eq!(
-        server.only_request().path,
-        "/repos/owner/repo/issues/5/comments?per_page=100&page=1"
-    );
+}
+
+#[test]
+fn find_comment_propagates_a_server_error_from_the_identity_lookup() {
+    let server = FakeServer::start(vec![
+        Reply::json(200, json!([marked_comment(2, "me", "User")])),
+        Reply::json(500, json!({})),
+    ]);
+
+    let err = forge(&server)
+        .find_comment(5, "<!-- ferrflow -->")
+        .unwrap_err();
+
+    assert!(format!("{err:#}").contains("token's user"), "{err:#}");
 }
 
 #[test]

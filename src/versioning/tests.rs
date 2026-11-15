@@ -1,4 +1,6 @@
-use super::strategies::{bump_semver, calver_seq_version, calver_version};
+use super::strategies::{
+    bump_semver, bump_sequential, bump_zerover, calver_seq_version, calver_version,
+};
 use super::*;
 
 #[test]
@@ -291,10 +293,10 @@ fn truncate_calver_minor() {
 }
 
 #[test]
-fn truncate_sequential_major() {
+fn truncate_sequential_major_returns_none() {
     assert_eq!(
         super::truncate_version("42", super::FloatingTagLevel::Major),
-        Some("42".to_string())
+        None
     );
 }
 
@@ -386,11 +388,17 @@ fn calver_seq_non_numeric_seq() {
 
 #[test]
 fn truncate_single_component() {
-    assert_eq!(
-        truncate_version("42", FloatingTagLevel::Major),
-        Some("42".to_string())
-    );
+    assert_eq!(truncate_version("42", FloatingTagLevel::Major), None);
     assert_eq!(truncate_version("42", FloatingTagLevel::Minor), None);
+}
+
+#[test]
+fn truncate_two_part_version_has_no_minor_alias() {
+    assert_eq!(
+        truncate_version("2026.3", FloatingTagLevel::Major),
+        Some("2026".to_string())
+    );
+    assert_eq!(truncate_version("2026.3", FloatingTagLevel::Minor), None);
 }
 
 #[test]
@@ -663,4 +671,318 @@ fn calver_short_seq_is_reachable_through_compute_next_version() {
     .unwrap();
 
     assert_eq!(v, format!("{}.{}.1", now.format("%y"), now.format("%-m")));
+}
+
+fn pre_major_rules() -> Option<PreMajorRules> {
+    Some(PreMajorRules {
+        breaking: Some(PreMajorBump::Minor),
+        feat: Some(PreMajorBump::Patch),
+    })
+}
+
+fn next_with_pre_major(
+    rules: Option<PreMajorRules>,
+    strategy: VersioningStrategy,
+    current: &str,
+    bump: BumpType,
+) -> String {
+    let bump = apply_pre_major(rules, strategy, current, bump);
+    compute_next_version(current, bump, strategy, None).unwrap()
+}
+
+#[test]
+fn pre_major_below_one_remaps_breaking_to_minor() {
+    assert_eq!(
+        next_with_pre_major(
+            pre_major_rules(),
+            VersioningStrategy::Semver,
+            "0.5.0",
+            BumpType::Major
+        ),
+        "0.6.0"
+    );
+}
+
+#[test]
+fn pre_major_below_one_remaps_feat_to_patch() {
+    assert_eq!(
+        next_with_pre_major(
+            pre_major_rules(),
+            VersioningStrategy::Semver,
+            "0.5.0",
+            BumpType::Minor
+        ),
+        "0.5.1"
+    );
+}
+
+#[test]
+fn pre_major_leaves_fix_as_patch() {
+    assert_eq!(
+        next_with_pre_major(
+            pre_major_rules(),
+            VersioningStrategy::Semver,
+            "0.5.0",
+            BumpType::Patch
+        ),
+        "0.5.1"
+    );
+}
+
+#[test]
+fn pre_major_keeps_no_bump_unchanged() {
+    assert_eq!(
+        apply_pre_major(
+            pre_major_rules(),
+            VersioningStrategy::Semver,
+            "0.5.0",
+            BumpType::None
+        ),
+        BumpType::None
+    );
+}
+
+#[test]
+fn pre_major_has_no_effect_from_one_zero_zero() {
+    for (bump, expected) in [
+        (BumpType::Major, "2.0.0"),
+        (BumpType::Minor, "1.1.0"),
+        (BumpType::Patch, "1.0.1"),
+    ] {
+        assert_eq!(
+            next_with_pre_major(pre_major_rules(), VersioningStrategy::Semver, "1.0.0", bump),
+            expected
+        );
+    }
+}
+
+#[test]
+fn unset_pre_major_keeps_the_standard_rules() {
+    assert_eq!(
+        next_with_pre_major(None, VersioningStrategy::Semver, "0.5.0", BumpType::Major),
+        "1.0.0"
+    );
+    assert_eq!(
+        next_with_pre_major(None, VersioningStrategy::Semver, "0.5.0", BumpType::Minor),
+        "0.6.0"
+    );
+}
+
+#[test]
+fn pre_major_with_a_single_key_only_remaps_that_key() {
+    let breaking_only = Some(PreMajorRules {
+        breaking: Some(PreMajorBump::Minor),
+        feat: None,
+    });
+    assert_eq!(
+        next_with_pre_major(
+            breaking_only,
+            VersioningStrategy::Semver,
+            "0.5.0",
+            BumpType::Major
+        ),
+        "0.6.0"
+    );
+    assert_eq!(
+        next_with_pre_major(
+            breaking_only,
+            VersioningStrategy::Semver,
+            "0.5.0",
+            BumpType::Minor
+        ),
+        "0.6.0"
+    );
+}
+
+#[test]
+fn pre_major_can_remap_breaking_to_patch() {
+    let rules = Some(PreMajorRules {
+        breaking: Some(PreMajorBump::Patch),
+        feat: None,
+    });
+    assert_eq!(
+        next_with_pre_major(rules, VersioningStrategy::Semver, "0.5.0", BumpType::Major),
+        "0.5.1"
+    );
+}
+
+#[test]
+fn pre_major_only_applies_to_the_semver_strategy() {
+    assert_eq!(
+        next_with_pre_major(
+            pre_major_rules(),
+            VersioningStrategy::Zerover,
+            "0.5.0",
+            BumpType::Minor
+        ),
+        "0.6.0"
+    );
+}
+
+#[test]
+fn pre_major_accepts_a_v_prefixed_current_version() {
+    assert_eq!(
+        apply_pre_major(
+            pre_major_rules(),
+            VersioningStrategy::Semver,
+            "v0.5.0",
+            BumpType::Major
+        ),
+        BumpType::Minor
+    );
+}
+
+#[test]
+fn pre_major_ignores_an_unparseable_current_version() {
+    assert_eq!(
+        apply_pre_major(
+            pre_major_rules(),
+            VersioningStrategy::Semver,
+            "garbage",
+            BumpType::Major
+        ),
+        BumpType::Major
+    );
+}
+
+#[test]
+fn bump_past_u64_max_is_an_error_not_a_wrap() {
+    let max = u64::MAX;
+    assert!(bump_semver(&format!("{max}.0.0"), BumpType::Major).is_err());
+    assert!(bump_semver(&format!("0.{max}.0"), BumpType::Minor).is_err());
+    assert!(bump_semver(&format!("0.0.{max}"), BumpType::Patch).is_err());
+    assert!(bump_zerover(&format!("0.{max}.0"), BumpType::Major).is_err());
+    assert!(bump_sequential(&max.to_string()).is_err());
+}
+
+#[test]
+fn bump_at_u64_max_without_incrementing_that_part_succeeds() {
+    let max = u64::MAX;
+    assert_eq!(
+        bump_semver(&format!("0.0.{max}"), BumpType::Minor).unwrap(),
+        "0.1.0"
+    );
+    assert_eq!(
+        bump_semver(&format!("0.0.{max}"), BumpType::None).unwrap(),
+        format!("0.0.{max}")
+    );
+}
+
+#[test]
+fn calver_seq_past_u32_max_is_an_error() {
+    let now = chrono::Utc::now();
+    let current = format!("{}.{}.{}", now.format("%Y"), now.format("%-m"), u32::MAX);
+    assert!(calver_seq_version(&current, "%Y").is_err());
+}
+
+mod properties {
+    use super::*;
+    use proptest::prelude::*;
+    use semver::Version;
+
+    fn any_bump() -> impl Strategy<Value = BumpType> {
+        prop_oneof![
+            Just(BumpType::Major),
+            Just(BumpType::Minor),
+            Just(BumpType::Patch),
+            Just(BumpType::None),
+        ]
+    }
+
+    fn any_prerelease_and_build() -> impl Strategy<Value = String> {
+        (
+            proptest::option::of("[0-9A-Za-z]{1,8}"),
+            proptest::option::of("[0-9A-Za-z]{1,8}"),
+        )
+            .prop_map(|(pre, build)| {
+                let mut suffix = String::new();
+                if let Some(pre) = pre {
+                    suffix.push_str(&format!("-a{pre}"));
+                }
+                if let Some(build) = build {
+                    suffix.push_str(&format!("+{build}"));
+                }
+                suffix
+            })
+    }
+
+    proptest! {
+        #[test]
+        fn semver_bump_output_parses_and_is_strictly_greater(
+            major in 0..u64::MAX,
+            minor in 0..u64::MAX,
+            patch in 0..u64::MAX,
+            suffix in any_prerelease_and_build(),
+            prefixed in any::<bool>(),
+            bump in prop_oneof![Just(BumpType::Major), Just(BumpType::Minor), Just(BumpType::Patch)],
+        ) {
+            let prefix = if prefixed { "v" } else { "" };
+            let current = format!("{prefix}{major}.{minor}.{patch}{suffix}");
+            let before = Version::parse(current.trim_start_matches('v')).unwrap();
+            let after = Version::parse(&bump_semver(&current, bump).unwrap()).unwrap();
+            prop_assert!(after > before);
+            prop_assert!(after.pre.is_empty() && after.build.is_empty());
+        }
+
+        #[test]
+        fn semver_bump_none_only_strips_prerelease_and_build(
+            major in any::<u64>(),
+            minor in any::<u64>(),
+            patch in any::<u64>(),
+            suffix in any_prerelease_and_build(),
+        ) {
+            let current = format!("{major}.{minor}.{patch}{suffix}");
+            let bumped = bump_semver(&current, BumpType::None).unwrap();
+            prop_assert_eq!(&bumped, &format!("{major}.{minor}.{patch}"));
+            prop_assert_eq!(bump_semver(&bumped, BumpType::None).unwrap(), bumped);
+        }
+
+        #[test]
+        fn zerover_bump_keeps_major_zero_and_never_goes_backwards(
+            major in any::<u64>(),
+            minor in 0..u64::MAX,
+            patch in 0..u64::MAX,
+            bump in any_bump(),
+        ) {
+            let current = format!("{major}.{minor}.{patch}");
+            let after = Version::parse(&bump_zerover(&current, bump).unwrap()).unwrap();
+            prop_assert_eq!(after.major, 0);
+            if bump == BumpType::None {
+                prop_assert_eq!((after.minor, after.patch), (minor, patch));
+            } else {
+                prop_assert!((after.minor, after.patch) > (minor, patch));
+            }
+        }
+
+        #[test]
+        fn bump_functions_never_panic_on_arbitrary_input(current in "\\PC{0,40}", bump in any_bump()) {
+            let _ = bump_semver(&current, bump);
+            let _ = bump_zerover(&current, bump);
+            let _ = bump_sequential(&current);
+            let _ = calver_seq_version(&current, "%Y");
+        }
+
+        #[test]
+        fn sequential_bump_adds_exactly_one(n in 0..u64::MAX, prefixed in any::<bool>()) {
+            let current = if prefixed { format!("v{n}") } else { n.to_string() };
+            prop_assert_eq!(bump_sequential(&current).unwrap(), (n + 1).to_string());
+        }
+
+        #[test]
+        fn truncated_version_is_a_prefix_of_the_version(
+            major in any::<u64>(),
+            minor in any::<u64>(),
+            patch in any::<u64>(),
+        ) {
+            let version = format!("{major}.{minor}.{patch}");
+            prop_assert_eq!(
+                truncate_version(&version, FloatingTagLevel::Major),
+                Some(major.to_string())
+            );
+            prop_assert_eq!(
+                truncate_version(&version, FloatingTagLevel::Minor),
+                Some(format!("{major}.{minor}"))
+            );
+        }
+    }
 }

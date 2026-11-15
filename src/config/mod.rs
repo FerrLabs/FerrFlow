@@ -39,9 +39,9 @@ pub use package::{
 #[allow(unused_imports)]
 pub use types::{
     BranchChannelConfig, BuildMetadata, ChannelValue, DockerSign, ForgeKind, GENERIC_TOKEN_ENV_VAR,
-    HooksConfig, NestedPackages, OnFailure, OrphanedTagStrategy, PrereleaseIdentifier,
-    PublisherConfig, RegistryConfig, ReleaseCommitBody, ReleaseCommitMode, ReleaseCommitScope,
-    VersionSourcePolicy, all_token_env_vars,
+    HooksConfig, NestedPackages, OnFailure, OrphanedTagStrategy, PreMajorBump, PreMajorRules,
+    PrereleaseIdentifier, PublisherConfig, RegistryConfig, ReleaseCommitBody, ReleaseCommitMode,
+    ReleaseCommitScope, VersionSourcePolicy, all_token_env_vars,
 };
 #[allow(unused_imports)]
 pub use workspace::{
@@ -110,7 +110,21 @@ impl Config {
             .error_code(error_code::CONFIG_MISSING_PACKAGE_PATH)?;
         }
 
+        self.warn_unordered_version_templates();
         include::reject_duplicate_names(&self.packages)
+    }
+
+    fn warn_unordered_version_templates(&self) {
+        let templates = self.workspace.version_template.iter().chain(
+            self.packages
+                .iter()
+                .filter_map(|p| p.version_template.as_ref()),
+        );
+        for template in templates {
+            if let Some(warning) = crate::versioning::version_template_ordering_warning(template) {
+                tracing::warn!("versionTemplate {template:?} {warning}");
+            }
+        }
     }
 
     fn discover(repo_root: &Path) -> Vec<PathBuf> {

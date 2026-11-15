@@ -186,6 +186,7 @@ Paramètres globaux qui s'appliquent à tous les packages.
 | `tagTemplate`           | string  | `"v{version}"` ou `"{name}@v{version}"`                                     | Modèle de nommage des tags. Utilise les placeholders `{version}` et `{name}`. Par défaut `v{version}` pour les repos mono-package et `{name}@v{version}` pour les monorepos.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `latestTag`             | string  | aucun                                                                       | Modèle d'un tag alias flottant qui pointe toujours vers la dernière version non-préversion du package, par exemple `"latest"` ou `"{name}@latest"`. Absent par défaut. Volontairement **non** dérivé de `tagTemplate` : l'alias est un nom, pas une version, donc un `tagTemplate` en `v{version}` donne `latest`, jamais `vlatest`. En monorepo le modèle doit contenir `{name}`, sinon chaque package écrase le même ref et le dernier publié gagne. Les préversions ne le déplacent jamais, pas plus qu'un hotfix sur une ligne plus ancienne : publier 1.2.4 après 2.0.0 le laisse sur 2.0.0, sauf avec `--force`.                                                                                                                                                                                                     |
 | `versioning`            | string  | `"semver"`                                                                  | Stratégie de versionnage par défaut pour tous les packages                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `preMajor` | object | unset | Remappe le bump d'un projet `semver` tant que sa majeure vaut 0, voir [Règles de bump avant 1.0](#regles-de-bump-avant-10) |
 | `releaseCommitMode`     | string  | `"commit"`                                                                  | Gestion du commit de release : `"commit"`, `"pr"` ou `"none"`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `releaseCommitScope`    | string  | `"grouped"`                                                                 | Dans un monorepo où plusieurs packages sont bumpés en même temps, créer un seul commit `"grouped"` ou un commit `"per-package"`. N'a d'effet que quand plusieurs packages bumpent.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `releaseCommitBody`     | string  | `"none"`                                                                    | Ce que contient le corps du commit de release, sous la ligne de sujet. `"none"` conserve le sujet sur une seule ligne. `"summary"` liste une ligne par package publié avec son nombre de commits. `"full"` intègre la section de changelog écrite pour chaque package — en scope `"grouped"`, chaque section est titrée `## <package> <version>`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
@@ -328,6 +329,39 @@ versioning = &quot;calver&quot;
 </div></div>
 </div>
 
+### Règles de bump avant 1.0
+
+Par défaut, un projet `semver` passe à `1.0.0` dès son premier changement cassant. `preMajor` garde un projet 0.x en développement initial : tant que la majeure courante est `0`, un changement cassant bumpe selon `breaking` et un `feat` selon `feat` (`minor` ou `patch`). `fix` n'est pas touché. Les deux clés sont optionnelles.
+
+<div class="ferr-tabs">
+  <div class="ferr-tab" data-label="JSON"><p class="ferr-tab__label">JSON</p><div class="ferr-tab__body"><pre><code class="language-json">{
+  &quot;workspace&quot;: {
+    &quot;versioning&quot;: &quot;semver&quot;,
+    &quot;preMajor&quot;: { &quot;breaking&quot;: &quot;minor&quot;, &quot;feat&quot;: &quot;patch&quot; }
+  }
+}
+</code></pre>
+</div></div>
+  <div class="ferr-tab" data-label="TOML"><p class="ferr-tab__label">TOML</p><div class="ferr-tab__body"><pre><code class="language-toml">[workspace]
+versioning = &quot;semver&quot;
+
+[workspace.preMajor]
+breaking = &quot;minor&quot;
+feat = &quot;patch&quot;
+</code></pre>
+</div></div>
+  <div class="ferr-tab" data-label="JSON5"><p class="ferr-tab__label">JSON5</p><div class="ferr-tab__body"><pre><code class="language-json5">{
+  workspace: {
+    versioning: &quot;semver&quot;,
+    preMajor: { breaking: &quot;minor&quot;, feat: &quot;patch&quot; },
+  },
+}
+</code></pre>
+</div></div>
+</div>
+
+Depuis `0.5.0` : `feat!` donne `0.6.0`, `feat` et `fix` donnent `0.5.1`. C'est l'équivalent de `bump-minor-pre-major` et `bump-patch-for-minor-pre-major` de release-please. À partir de `1.0.0` le réglage n'a plus d'effet, et `ferrflow release --force-version 1.0.0` sort de 0.x. Il ne s'applique qu'à la stratégie `semver`, et un package peut le surcharger avec son propre `preMajor`. Non défini, les règles standard s'appliquent.
+
 ### Canaux de pré-release
 
 Le tableau `branches` associe des noms de branches (ou des motifs glob) à des canaux de pré-release. Quand FerrFlow s'exécute sur une branche correspondant à une entrée, il release sur ce canal — par exemple `1.4.0-beta.1` au lieu de `1.4.0`. C'est cette même association que l'option `--channel` de `ferrflow check` et `ferrflow release` surcharge ponctuellement.
@@ -417,6 +451,7 @@ Définit un package à versionner. Vous pouvez en avoir un ou plusieurs.
 | `changelog`     | non    | `{path}/CHANGELOG.md` | Chemin vers le fichier changelog                            |
 | `sharedPaths`   | non    | `[]`                  | Chemins qui déclenchent ce package lorsqu'ils sont modifiés |
 | `versioning`    | non    | hérité du workspace   | Surcharger la stratégie de versionnage pour ce package      |
+| `preMajor` | non | hérité du workspace | Surcharger les règles de bump avant 1.0 pour ce package |
 | `tagTemplate`   | non    | hérité du workspace   | Surcharger le modèle de tag pour ce package                 |
 | `latestTag`     | non    | hérité du workspace   | Surcharger le tag alias flottant pour ce package            |
 | `buildMetadata` | non    | hérité du workspace   | Surcharger la commande de métadonnées, ou `false` pour une version nue |

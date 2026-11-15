@@ -186,6 +186,7 @@ Global settings that apply to all packages.
 | `branch`                | string  | auto-detected                                                               | Branch to push to (detected from remote HEAD)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `tagTemplate`           | string  | `"v{version}"` or `"{name}@v{version}"`                                     | Tag naming pattern. Uses `{version}` and `{name}` placeholders. Defaults to `v{version}` for single-package repos and `{name}@v{version}` for monorepos.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `versioning`            | string  | `"semver"`                                                                  | Default versioning strategy for all packages                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `preMajor` | object | unset | Remaps the bump of a `semver` project while its major is 0, see [Pre-1.0 bump rules](#pre-10-bump-rules) |
 | `releaseCommitMode`     | string  | `"commit"`                                                                  | How to handle the release commit: `"commit"`, `"pr"`, or `"none"`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `releaseCommitScope`    | string  | `"grouped"`                                                                 | In a monorepo where several packages are bumped at once, whether to create a single `"grouped"` commit or one commit `"per-package"`. Only matters when multiple packages bump.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `releaseCommitBody`     | string  | `"none"`                                                                    | What goes in the body of the release commit, below the subject. `"none"` keeps the single-line subject. `"summary"` lists one line per released package with its commit count. `"full"` embeds the changelog section written for each package — under `"grouped"` scope each section is headed `## <package> <version>`.                                                                                                                                                                                                                                                                                                                                                                                         |
@@ -286,6 +287,8 @@ floating_tags = [&quot;major&quot;]
 </div>
 
 When releasing `v1.2.3`, FerrFlow creates or moves a `v1` tag pointing to the same commit. With `["major", "minor"]`, both `v1` and `v1.2` tags are maintained.
+
+A level only applies when it is shorter than the version itself. With `sequential` versioning the release tag is already `v4`, so `"major"` creates nothing, and a `{year}.{seq}` version such as `2026.3` gets a `2026` alias but no minor one. A numeric tag counts as a floating tag only when a longer release tag under the same prefix extends it (`v1` next to `v1.2.3`), so sequential and two-part release tags are always read as releases.
 
 If a floating tag would move backward (e.g. releasing a `v1.1.0` hotfix when `v1.2.0` already exists), FerrFlow blocks the release. Use `--force` to override this check.
 
@@ -401,6 +404,39 @@ versioning = &quot;calver&quot;
 </code></pre>
 </div></div>
 </div>
+
+### Pre-1.0 bump rules
+
+By default a `semver` project jumps to `1.0.0` on its first breaking change. `preMajor` keeps a 0.x project in initial development instead: while the current major is `0`, a breaking change bumps what `breaking` says and a `feat` bumps what `feat` says (`minor` or `patch`). `fix` is unaffected. Both keys are optional.
+
+<div class="ferr-tabs">
+  <div class="ferr-tab" data-label="JSON"><p class="ferr-tab__label">JSON</p><div class="ferr-tab__body"><pre><code class="language-json">{
+  &quot;workspace&quot;: {
+    &quot;versioning&quot;: &quot;semver&quot;,
+    &quot;preMajor&quot;: { &quot;breaking&quot;: &quot;minor&quot;, &quot;feat&quot;: &quot;patch&quot; }
+  }
+}
+</code></pre>
+</div></div>
+  <div class="ferr-tab" data-label="TOML"><p class="ferr-tab__label">TOML</p><div class="ferr-tab__body"><pre><code class="language-toml">[workspace]
+versioning = &quot;semver&quot;
+
+[workspace.preMajor]
+breaking = &quot;minor&quot;
+feat = &quot;patch&quot;
+</code></pre>
+</div></div>
+  <div class="ferr-tab" data-label="JSON5"><p class="ferr-tab__label">JSON5</p><div class="ferr-tab__body"><pre><code class="language-json5">{
+  workspace: {
+    versioning: &quot;semver&quot;,
+    preMajor: { breaking: &quot;minor&quot;, feat: &quot;patch&quot; },
+  },
+}
+</code></pre>
+</div></div>
+</div>
+
+From `0.5.0`: `feat!` gives `0.6.0`, `feat` and `fix` give `0.5.1`. This is release-please's `bump-minor-pre-major` plus `bump-patch-for-minor-pre-major`. From `1.0.0` on the setting has no effect, and `ferrflow release --force-version 1.0.0` leaves 0.x. It applies to the `semver` strategy only, and a package can override it with its own `preMajor`. Unset keeps the standard rules.
 
 ### Pre-release channels
 
@@ -576,6 +612,7 @@ Defines a package to version. You can have one or many.
 | `sharedPaths`   | no       | `[]`                     | Paths that trigger this package when changed                                                                                                                                                                                                                                  |
 | `dependsOn`     | no       | `[]`                     | Packages this package depends on. When a dependency is bumped, this package is bumped too — with the same bump type by default. Each entry is a package name, or `{ "name": "core", "propagate": "patch" }` to choose the policy (`same`, `major-on-major`, `patch`, `none`). |
 | `versioning`    | no       | inherited from workspace | Override versioning strategy for this package                                                                                                                                                                                                                                 |
+| `preMajor` | no | inherited from workspace | Override the pre-1.0 bump rules for this package |
 | `tagTemplate`   | no       | inherited from workspace | Override tag template for this package                                                                                                                                                                                                                                        |
 | `floatingTags`  | no       | inherited from workspace | Override floating tags for this package                                                                                                                                                                                                                                       |
 | `latestTag`     | no       | inherited from workspace | Override the floating alias tag for this package                                                                                                                                                                                                                              |
@@ -1081,7 +1118,7 @@ permissions:
   id-token: write
 ```
 
-The token endpoint is derived from the registry url, so TestPyPI and a private index work unchanged. A non-https registry url is refused: the exchange must not happen in the clear.
+The token endpoint is derived from the registry url, and the OIDC audience is read from the index (`/_/oidc/audience`), so TestPyPI and a private Warehouse index work unchanged. If that lookup fails, pypi.org falls back to the `pypi` audience; any other index is reported as not supporting trusted publishing. A non-https registry url is refused: the exchange must not happen in the clear.
 
 `trustedPublishing` and a registry `tokenEnv` are mutually exclusive. Setting both is a configuration error, reported before anything is published, rather than a silent choice between two credentials.
 

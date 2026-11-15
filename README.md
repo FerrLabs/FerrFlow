@@ -1,6 +1,6 @@
 <div align="center">
 
-# FerrFlow
+<h1><img src=".github/logo.svg" alt="" width="48" height="48" align="absmiddle"> FerrFlow</h1>
 
 **Universal semantic versioning for monorepos and classic repos.**
 
@@ -8,13 +8,14 @@ Reads your [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/
 updates your version files, writes the changelog, and cuts the tagged release. Any language, any repo layout.
 
 [![Latest release](https://img.shields.io/github/v/release/FerrLabs/FerrFlow)](https://github.com/FerrLabs/FerrFlow/releases/latest)
-[![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-%23FE5196?logo=conventionalcommits&logoColor=white)](https://www.conventionalcommits.org/en/v1.0.0/)
+[![CI](https://github.com/FerrLabs/FerrFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/FerrLabs/FerrFlow/actions/workflows/ci.yml)
 [![Quality Gate](https://sonar.ferrlabs.com/api/project_badges/measure?project=ferrflow&metric=alert_status&token=sqb_53f0d93466bd01a6c6a94a15125d5aa8390c67fa)](https://sonar.ferrlabs.com/dashboard?id=ferrflow)
 [![Maintainability](https://sonar.ferrlabs.com/api/project_badges/measure?project=ferrflow&metric=sqale_rating&token=sqb_53f0d93466bd01a6c6a94a15125d5aa8390c67fa)](https://sonar.ferrlabs.com/dashboard?id=ferrflow)
 [![Security](https://sonar.ferrlabs.com/api/project_badges/measure?project=ferrflow&metric=security_rating&token=sqb_53f0d93466bd01a6c6a94a15125d5aa8390c67fa)](https://sonar.ferrlabs.com/dashboard?id=ferrflow)
 [![License](https://img.shields.io/github/license/FerrLabs/FerrFlow)](LICENSE)
-[![Socket Badge](https://badge.socket.dev/cargo/package/ferrflow/latest)](https://socket.dev/cargo/package/ferrflow)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/FerrLabs/FerrFlow/badge)](https://scorecard.dev/viewer/?uri=github.com/FerrLabs/FerrFlow)
+[![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-%23FE5196?logo=conventionalcommits&logoColor=white)](https://www.conventionalcommits.org/en/v1.0.0/)
+[![Socket Badge](https://badge.socket.dev/cargo/package/ferrflow/latest)](https://socket.dev/cargo/package/ferrflow)
 
 [Documentation](https://ferrflow.com/docs) | [Changelog](https://ferrflow.com/changelog/) | [GitHub App](https://github.com/apps/ferrflow)
 
@@ -190,6 +191,8 @@ ferrflow migrate --from semantic-release
 ```
 
 It maps `tagFormat`, `branches`, and the common plugins (`changelog`, `exec`, `github`/`gitlab`) to their FerrFlow equivalents, and prints a summary of what mapped, what was ignored, and what needs manual review. Anything without a FerrFlow equivalent is surfaced, never guessed. JSON `.releaserc` is supported today; YAML `.releaserc` and JS `release.config.js` are reported as unsupported rather than mis-parsed.
+
+`ferrflow migrate --from release-please` also maps `extra-files` (`generic` markers to a `txt` selector, `toml` on `Cargo.toml` and `json` on `$.version` to their formats), `bump-minor-pre-major` and `bump-patch-for-minor-pre-major` to `preMajor` (`breaking: minor`, `feat: patch`), and writes `autoMergeReleases: false` since release-please never merges its release PR. Lockfile updates are enabled when a versioned manifest has one. Entries it cannot express are listed under "Review manually". Only non-default keys are written.
 
 ### JSON Schema
 
@@ -389,6 +392,21 @@ versioning = "calver"  # override: date-based
 | `calver-short-seq` | `YY.M.SEQ` | `25.3.3` | Compact date + sequence counter |
 | `sequential` | `N` | `42` | Simple incrementing build number |
 | `zerover` | `0.MINOR.PATCH` | `0.15.2` | Permanently unstable, never hits 1.0 |
+
+### Pre-1.0 bump rules
+
+By default a `semver` project jumps to `1.0.0` on its first breaking change. Set `preMajor` to stay in 0.x: while the current major is `0`, a breaking change bumps what `breaking` says and a `feat` bumps what `feat` says (`minor` or `patch`). `fix` is unchanged.
+
+```toml
+[workspace]
+versioning = "semver"
+
+[workspace.preMajor]
+breaking = "minor"
+feat = "patch"
+```
+
+From `0.5.0`: `feat!` gives `0.6.0`, `feat` and `fix` give `0.5.1`. This matches release-please's `bump-minor-pre-major` plus `bump-patch-for-minor-pre-major`. From `1.0.0` on it has no effect, and `ferrflow release --force-version 1.0.0` leaves 0.x. Packages can override it with their own `preMajor`. Unset keeps the standard rules.
 
 ## Tag Template
 

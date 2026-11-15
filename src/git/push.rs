@@ -54,7 +54,7 @@ pub(super) fn remote_tag_target_shas(
     if tags.is_empty() {
         return Ok(HashMap::new());
     }
-    let mut cmd = std::process::Command::new("git");
+    let mut cmd = crate::git_cmd::command();
     cmd.current_dir(workdir);
     configure_git_command(&mut cmd, push_url, forge);
     cmd.arg("ls-remote").arg("--tags").arg(push_url);
@@ -109,7 +109,7 @@ pub fn verify_remote_branch(
     let url = get_remote_url(repo, remote_name)
         .ok_or_else(|| anyhow!("Remote '{remote_name}' has no URL"))?;
 
-    let mut cmd = std::process::Command::new("git");
+    let mut cmd = crate::git_cmd::command();
     cmd.current_dir(workdir);
     configure_git_command(&mut cmd, &url, forge);
     cmd.args([
@@ -234,7 +234,7 @@ fn push_branch_once(
     let source = resolve_push_source(repo, branch);
     let refspec = format!("{}{source}:refs/heads/{branch}", mode.refspec_prefix());
 
-    let mut cmd = std::process::Command::new("git");
+    let mut cmd = crate::git_cmd::command();
     cmd.current_dir(workdir);
     configure_git_command(&mut cmd, &push_url, forge);
     cmd.arg("push").arg(&push_url).arg(&refspec);
@@ -275,7 +275,7 @@ pub fn release_branch_foreign_commit(
     let url = get_remote_url(repo, remote_name)
         .ok_or_else(|| anyhow!("Remote '{remote_name}' has no URL"))?;
 
-    let mut ls = std::process::Command::new("git");
+    let mut ls = crate::git_cmd::command();
     ls.current_dir(workdir);
     configure_git_command(&mut ls, &url, forge);
     ls.args([
@@ -299,7 +299,7 @@ pub fn release_branch_foreign_commit(
         return Ok(None);
     }
 
-    let mut fetch = std::process::Command::new("git");
+    let mut fetch = crate::git_cmd::command();
     fetch.current_dir(workdir);
     configure_git_command(&mut fetch, &url, forge);
     fetch.args(["fetch", "--quiet", &url, &format!("refs/heads/{branch}")]);
@@ -315,7 +315,7 @@ pub fn release_branch_foreign_commit(
         .error_code(error_code::GIT_INSPECT_RELEASE_BRANCH);
     }
 
-    let mut log = std::process::Command::new("git");
+    let mut log = crate::git_cmd::command();
     log.current_dir(workdir);
     log.args(["log", "--format=%s", &format!("{base}..FETCH_HEAD")]);
     let log_out = log
@@ -420,7 +420,7 @@ fn shell_push_tags(
     }
 
     let prefix = if force { "+" } else { "" };
-    let mut cmd = std::process::Command::new("git");
+    let mut cmd = crate::git_cmd::command();
     cmd.current_dir(workdir);
     configure_git_command(&mut cmd, &push_url, forge);
     cmd.arg("push").arg(&push_url);
@@ -459,7 +459,7 @@ pub fn reset_branch_to_remote(repo: &Repository, remote: Remote<'_>, branch: &st
     let push_url = get_remote_url(repo, remote_name)
         .ok_or_else(|| anyhow!("Remote '{remote_name}' has no URL"))?;
 
-    let mut fetch_cmd = std::process::Command::new("git");
+    let mut fetch_cmd = crate::git_cmd::command();
     fetch_cmd.current_dir(workdir);
     configure_git_command(&mut fetch_cmd, &push_url, forge);
     fetch_cmd.arg("fetch").arg(remote_name).arg(format!(
@@ -582,7 +582,7 @@ pub fn delete_tag_if_unchanged(
         Some(_) => {}
     }
 
-    let mut cmd = std::process::Command::new("git");
+    let mut cmd = crate::git_cmd::command();
     cmd.current_dir(workdir);
     configure_git_command(&mut cmd, &url, forge);
     cmd.args(["push", "--delete", &url, &format!("refs/tags/{tag}")]);

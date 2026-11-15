@@ -2,7 +2,6 @@ use anyhow::{Context, Result};
 use colored::Colorize;
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 use crate::config::Config;
 use crate::error_code::{self, ErrorCodeExt};
@@ -107,7 +106,7 @@ fn tag_set(dir: &Path) -> Result<BTreeSet<String>> {
 }
 
 fn git_stdout(dir: &Path, args: &[&str]) -> Result<String> {
-    let out = Command::new("git")
+    let out = crate::git_cmd::command()
         .current_dir(dir)
         .args(args)
         .output()

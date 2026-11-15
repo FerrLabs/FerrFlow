@@ -1,5 +1,4 @@
-use regex::Regex;
-use std::sync::OnceLock;
+mod scan;
 
 use crate::config::CommitFormats;
 
@@ -20,28 +19,6 @@ impl std::fmt::Display for BumpType {
             BumpType::Major => write!(f, "major"),
         }
     }
-}
-
-static BREAKING_RE: OnceLock<Regex> = OnceLock::new();
-
-fn breaking_header_re() -> &'static Regex {
-    BREAKING_RE.get_or_init(|| {
-        Regex::new(r"^(feat|fix|refactor|perf|build|chore|docs|style|test|ci)(\(.+\))?!:").unwrap()
-    })
-}
-
-static BREAKING_FOOTER_RE: OnceLock<Regex> = OnceLock::new();
-
-fn breaking_footer_re() -> &'static Regex {
-    BREAKING_FOOTER_RE.get_or_init(|| Regex::new(r"(?mi)^BREAKING[ -]CHANGE: ").unwrap())
-}
-
-static BREAKING_SCOPE_BANG_RE: OnceLock<Regex> = OnceLock::new();
-
-fn breaking_scope_bang_re() -> &'static Regex {
-    BREAKING_SCOPE_BANG_RE.get_or_init(|| {
-        Regex::new(r"^(feat|fix|refactor|perf|build|chore|docs|style|test|ci)\([^()]*!\):").unwrap()
-    })
 }
 
 pub fn determine_bump(message: &str, formats: &CommitFormats) -> BumpType {
@@ -69,9 +46,9 @@ pub fn classify_commit(message: &str, formats: &CommitFormats) -> CommitCategory
     let subject = parse_subject(message);
     let cs = formats.case_sensitive;
 
-    if breaking_header_re().is_match(subject)
-        || breaking_scope_bang_re().is_match(subject)
-        || breaking_footer_re().is_match(message)
+    if scan::is_breaking_header(subject)
+        || scan::is_scope_bang_header(subject)
+        || scan::breaking_footer_end(message).is_some()
         || formats.major.matches(subject, cs)
     {
         return CommitCategory::Breaking;
@@ -80,7 +57,7 @@ pub fn classify_commit(message: &str, formats: &CommitFormats) -> CommitCategory
         return CommitCategory::Feature;
     }
     if formats.patch.matches(subject, cs) {
-        return if refactor_header_re().is_match(subject) {
+        return if scan::is_refactor_header(subject) {
             CommitCategory::Refactor
         } else {
             CommitCategory::Fix
@@ -89,23 +66,8 @@ pub fn classify_commit(message: &str, formats: &CommitFormats) -> CommitCategory
     CommitCategory::Other
 }
 
-static REFACTOR_RE: OnceLock<Regex> = OnceLock::new();
-
-fn refactor_header_re() -> &'static Regex {
-    REFACTOR_RE.get_or_init(|| Regex::new(r"(?i)^refactor(\([^()]*\))?[:/]").unwrap())
-}
-
 pub fn parse_subject(message: &str) -> &str {
     message.lines().next().unwrap_or("").trim()
-}
-
-static HEADER_RE: OnceLock<Regex> = OnceLock::new();
-
-fn header_re() -> &'static Regex {
-    HEADER_RE.get_or_init(|| {
-        Regex::new(r"^(?P<type>[a-z]+)(?:\((?P<scope>[^()]+)\))?(?P<bang>!)?:\s*(?P<desc>.*)$")
-            .unwrap()
-    })
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -117,18 +79,17 @@ pub struct ParsedHeader<'a> {
 }
 
 pub fn parse_header(message: &str) -> Option<ParsedHeader<'_>> {
-    let subject = parse_subject(message);
-    let caps = header_re().captures(subject)?;
-    let raw_scope = caps.name("scope").map(|m| m.as_str());
-    let scope_bang = raw_scope.is_some_and(|s| s.ends_with('!'));
-    let scope = raw_scope
+    let raw = scan::parse_raw_header(parse_subject(message))?;
+    let scope_bang = raw.scope.is_some_and(|s| s.ends_with('!'));
+    let scope = raw
+        .scope
         .map(|s| s.strip_suffix('!').unwrap_or(s))
         .filter(|s| !s.is_empty());
     Some(ParsedHeader {
-        commit_type: caps.name("type")?.as_str(),
+        commit_type: raw.commit_type,
         scope,
-        breaking_bang: caps.name("bang").is_some() || scope_bang,
-        description: caps.name("desc").map(|m| m.as_str()).unwrap_or(""),
+        breaking_bang: raw.bang || scope_bang,
+        description: raw.description,
     })
 }
 
@@ -137,9 +98,8 @@ pub fn is_breaking(message: &str, formats: &CommitFormats) -> bool {
 }
 
 pub fn breaking_footer_body(message: &str) -> Option<String> {
-    let re = breaking_footer_re();
-    let mat = re.find(message)?;
-    let body = message[mat.end()..].trim();
+    let end = scan::breaking_footer_end(message)?;
+    let body = message[end..].trim();
     if body.is_empty() {
         None
     } else {
@@ -808,5 +768,118 @@ mod tests {
             checked >= 14,
             "fixture corpus looks unloaded — only {checked} messages checked"
         );
+    }
+
+    #[test]
+    fn non_ascii_scope_and_description_are_preserved() {
+        let h = parse_header("feat(日本語)!:  é déjà vu").unwrap();
+        assert_eq!(h.scope, Some("日本語"));
+        assert!(h.breaking_bang);
+        assert_eq!(h.description, "é déjà vu");
+        assert_eq!(
+            determine_bump("fix(é)!: ü", &Default::default()),
+            BumpType::Major
+        );
+        assert_eq!(
+            determine_bump("refactor(é): ü", &Default::default()),
+            BumpType::Patch
+        );
+    }
+
+    #[test]
+    fn description_strips_unicode_whitespace_after_colon() {
+        let h = parse_header("fix:\u{a0}\u{2003}x").unwrap();
+        assert_eq!(h.description, "x");
+    }
+
+    #[test]
+    fn non_ascii_type_is_not_a_header() {
+        assert!(parse_header("fëat: x").is_none());
+        assert!(parse_header("Feat: x").is_none());
+        assert!(parse_header("1feat: x").is_none());
+        assert!(parse_header(": x").is_none());
+    }
+
+    #[test]
+    fn malformed_headers_are_rejected() {
+        for bad in [
+            "feat(: x",
+            "feat(a: x",
+            "feat(a(b)): x",
+            "feat(a)(b): x",
+            "feat(a)!!: x",
+            "feat!(a): x",
+            "feat() : x",
+            "feat",
+            "feat!",
+        ] {
+            assert!(parse_header(bad).is_none(), "{bad:?}");
+        }
+    }
+
+    #[test]
+    fn empty_scope_is_rejected_by_header_but_bang_scope_is_breaking() {
+        assert!(parse_header("feat(): x").is_none());
+        assert_eq!(
+            determine_bump("feat(): x", &Default::default()),
+            BumpType::None
+        );
+        assert_eq!(
+            determine_bump("feat(!): x", &Default::default()),
+            BumpType::Major
+        );
+    }
+
+    #[test]
+    fn breaking_bang_scope_may_contain_parens_and_bang_after_close() {
+        let d = Default::default();
+        assert_eq!(determine_bump("feat(a(b))!: x", &d), BumpType::Major);
+        assert_eq!(determine_bump("feat())!: x", &d), BumpType::Major);
+        assert_eq!(determine_bump("feat()!: x", &d), BumpType::None);
+        assert_eq!(determine_bump("feat(a)!x", &d), BumpType::None);
+    }
+
+    #[test]
+    fn refactor_header_scan_handles_case_scope_and_slash() {
+        assert!(scan::is_refactor_header("REFACTOR(x)/y"));
+        assert!(scan::is_refactor_header("Refactor(x):y"));
+        assert!(!scan::is_refactor_header("refactor(x)y"));
+        assert!(!scan::is_refactor_header("refactor(a(b):y"));
+    }
+
+    #[test]
+    fn refactor_header_handles_case_scope_and_slash() {
+        let d = Default::default();
+        assert_eq!(
+            classify_commit("refactor(x): y", &d),
+            CommitCategory::Refactor
+        );
+        assert_eq!(classify_commit("Refactor/x", &d), CommitCategory::Refactor);
+        assert_eq!(classify_commit("refactor(a(b): y", &d), CommitCategory::Fix);
+        assert_eq!(classify_commit("refact", &d), CommitCategory::Other);
+        assert_eq!(classify_commit("refactoré: x", &d), CommitCategory::Other);
+    }
+
+    #[test]
+    fn breaking_footer_after_non_ascii_lines_and_crlf() {
+        let d = Default::default();
+        assert_eq!(
+            determine_bump("fix: x\n\nécrit ü\nBREAKING CHANGE: gone", &d),
+            BumpType::Major
+        );
+        assert_eq!(
+            breaking_footer_body("fix: x\n\nécrit\nbreaking-change: gone ü\nmore"),
+            Some("gone ü".to_string())
+        );
+        assert_eq!(
+            determine_bump("fix: x\r\n\r\nBREAKING CHANGE: gone", &d),
+            BumpType::Major
+        );
+        assert_eq!(
+            determine_bump("fix: x\n BREAKING CHANGE: no", &d),
+            BumpType::Patch
+        );
+        assert_eq!(breaking_footer_body("BREAKING CHANGE: "), None);
+        assert_eq!(breaking_footer_body("BREAKING CHANGE:"), None);
     }
 }
