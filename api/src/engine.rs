@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use ferrflow::changelog::{self, ChangelogRender, GitLog};
-use ferrflow::config::{self, Config, ConfigFileFormat, VersioningStrategy};
+use ferrflow::config::{self, CommitFormats, Config, ConfigFileFormat};
 use ferrflow::conventional_commits::{self, BumpType};
 use ferrflow::versioning;
 use serde::{Deserialize, Serialize};
@@ -76,6 +76,7 @@ pub fn compute_preview(
     current_versions: &BTreeMap<String, String>,
 ) -> Vec<PackagePreview> {
     let single_package = config.packages.len() == 1;
+    let formats = &config.workspace.commit_formats;
     let mut previews = Vec::new();
 
     for pkg in &config.packages {
@@ -89,7 +90,7 @@ pub fn compute_preview(
 
         let bump = assigned
             .iter()
-            .map(|c| conventional_commits::determine_bump(&c.message))
+            .map(|c| conventional_commits::determine_bump(&c.message, formats))
             .max()
             .unwrap_or(BumpType::None);
         if bump == BumpType::None {
@@ -100,15 +101,20 @@ pub fn compute_preview(
             .get(&pkg.name)
             .cloned()
             .unwrap_or_else(|| "0.0.0".to_string());
-        let strategy = pkg.versioning.unwrap_or(VersioningStrategy::Semver);
-        let next = versioning::compute_next_version(&current, bump, strategy)
+        let strategy = pkg.effective_versioning(&config.workspace, || vec![current.as_str()]);
+        let version_template = pkg.effective_version_template(&config.workspace);
+        let next = versioning::compute_next_version(&current, bump, strategy, version_template)
             .unwrap_or_else(|_| current.clone());
 
         let git_logs: Vec<GitLog> = assigned
             .iter()
-            .map(|c| GitLog {
-                hash: c.hash.clone().unwrap_or_else(|| "0000000".to_string()),
-                message: c.message.clone(),
+            .map(|c| {
+                let id = c.hash.clone().unwrap_or_else(|| "0000000".to_string());
+                GitLog {
+                    hash: id.chars().take(8).collect(),
+                    id,
+                    message: c.message.clone(),
+                }
             })
             .collect();
         let changelog =
@@ -119,7 +125,7 @@ pub fn compute_preview(
             current,
             next,
             bump: bump.to_string(),
-            commits: assigned.iter().map(|c| commit_info(c)).collect(),
+            commits: assigned.iter().map(|c| commit_info(c, formats)).collect(),
             changelog,
         });
     }
@@ -127,13 +133,13 @@ pub fn compute_preview(
     previews
 }
 
-fn commit_info(commit: &CommitInput) -> CommitInfo {
+fn commit_info(commit: &CommitInput, formats: &CommitFormats) -> CommitInfo {
     let header = conventional_commits::parse_header(&commit.message);
     CommitInfo {
         hash: commit.hash.clone().unwrap_or_default(),
         commit_type: header.as_ref().map(|h| h.commit_type.to_string()),
         scope: header.as_ref().and_then(|h| h.scope.map(str::to_string)),
-        breaking: conventional_commits::is_breaking(&commit.message),
+        breaking: conventional_commits::is_breaking(&commit.message, formats),
     }
 }
 
@@ -224,5 +230,43 @@ mod tests {
         let web = out.iter().find(|p| p.name == "web").unwrap();
         assert_eq!(web.bump, "patch");
         assert_eq!(web.next, "2.0.1");
+    }
+
+    #[test]
+    fn preview_honours_a_workspace_version_template() {
+        let cfg = parse_config(
+            r#"{"workspace":{"versionTemplate":"{major}.{minor}.{patch}-rc"},"package":[{"name":"app","path":"."}]}"#,
+            Some("json"),
+        )
+        .unwrap();
+        let versions = BTreeMap::from([("app".to_string(), "1.0.0".to_string())]);
+
+        let out = compute_preview(&cfg, &[commit("feat: x", &[])], &versions);
+
+        assert!(out[0].next.ends_with("-rc"), "{}", out[0].next);
+    }
+
+    #[test]
+    fn preview_honours_custom_commit_formats() {
+        let cfg = parse_config(
+            r#"{"workspace":{"commitFormats":{"minor":["add:*"]}},"package":[{"name":"app","path":"."}]}"#,
+            Some("json"),
+        )
+        .unwrap();
+        let versions = BTreeMap::from([("app".to_string(), "1.0.0".to_string())]);
+
+        let out = compute_preview(&cfg, &[commit("add: widget", &[])], &versions);
+
+        assert_eq!(out[0].bump, "minor");
+    }
+
+    #[test]
+    fn preview_detects_calver_from_the_current_version() {
+        let cfg = single_pkg_config();
+        let versions = BTreeMap::from([("app".to_string(), "2026.10.1".to_string())]);
+
+        let out = compute_preview(&cfg, &[commit("fix: x", &[])], &versions);
+
+        assert_ne!(out[0].next, "2026.10.2");
     }
 }

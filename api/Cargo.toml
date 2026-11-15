@@ -1,6 +1,6 @@
 [package]
 name = "ferrflow-api"
-version = "2026.10.14"
+version = "2026.11.6"
 edition = "2024"
 license = "LicenseRef-FerrLabs-Proprietary"
 publish = false
@@ -30,7 +30,7 @@ reqwest = { version = "0.13", default-features = false, features = ["rustls", "j
 # piège que ferrfleet-api et ferrlabs-api ont déjà rencontré. `rust_crypto`
 # est le backend pur Rust (pas de dépendance de build C/NASM, pas de
 # `CryptoProvider::install_default()` à appeler).
-jsonwebtoken = { version = "11", features = ["rust_crypto"] }
+jsonwebtoken = { version = "12", features = ["rust_crypto"] }
 
 hmac = "0.13"
 sha2 = "0.11"
@@ -44,9 +44,9 @@ ferrlabs-api-version = { version = "1.0.0" }
 # The FerrFlow CLI core, linked as a library so `/validate`, `/preview` and
 # `/schema` answer with the exact same code the CLI runs — there is no second
 # implementation that can drift. `default-features = false` drops the `cli`
-# feature, so none of the git/process machinery comes along. Pinned by rev:
-# a moving `main` would silently change what the API returns.
-ferrflow = { git = "https://github.com/FerrLabs/FerrFlow", rev = "6d36aa59fc4b87f8f4f578cf14744131157ead3e", default-features = false }
+# feature, so none of the git/process machinery comes along. Tracks the
+# published crate so Renovate bumps it with each FerrFlow release.
+ferrflow = { version = "7", default-features = false }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "test-util"] }

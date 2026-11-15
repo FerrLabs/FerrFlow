@@ -1,5 +1,59 @@
 # Changelog
 
+## [2026.11.10] - 2026-11-15
+
+### Bug Fixes
+
+- fix(deps): update ferrlabs npm packages (#1159)
+
+## [2026.11.8] - 2026-11-14
+
+### Bug Fixes
+
+- fix(deps): update dependency @ferrflow/doc to v7.36.1 (#1158)
+
+## [2026.11.7] - 2026-11-14
+
+### Bug Fixes
+
+- fix(telemetry): bring redaction to v6.21 (#1148)
+
+## [2026.11.6] - 2026-11-12
+
+### Bug Fixes
+
+- fix(deps): update dependency @grafana/faro-web-sdk to ~2.14.0 (#1154)
+
+## [2026.11.5] - 2026-11-11
+
+### Bug Fixes
+
+- fix(deps): update dependency @ferrflow/doc to v7.36.0 (#1151)
+
+## [2026.11.4] - 2026-11-10
+
+### Bug Fixes
+
+- fix(site): render changelog entries with the post page instead of raw markdown (#1147)
+
+## [2026.11.3] - 2026-11-10
+
+### Features
+
+- feat(site): report frontend errors and performance to Grafana Faro (#1146)
+
+## [2026.11.2] - 2026-11-01
+
+### Bug Fixes
+
+- fix(deps): update dependency @ferrlabs/ui-ng to ^1.46.1 (#1127)
+
+## [2026.11.1] - 2026-11-01
+
+### Bug Fixes
+
+- fix(deps): update dependency @ferrflow/doc to v7.35.3 (#1126)
+
 ## [2026.10.18] - 2026-10-29
 
 ### Bug Fixes

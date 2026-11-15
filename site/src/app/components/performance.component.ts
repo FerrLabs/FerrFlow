@@ -156,7 +156,6 @@ interface SrTableRow {
   template: `
     <main class="perf-main">
       <header class="perf-header">
-        <p class="eyebrow" i18n="@@perf.eyebrow">Benchmarks</p>
         <h1 i18n="@@perf.h1">How fast is <em>FerrFlow</em>?</h1>
         <p class="lead" i18n="@@perf.lead">
           Side-by-side comparison against the JavaScript ecosystem release tools, measured with
@@ -411,14 +410,6 @@ interface SrTableRow {
     }
     .perf-header {
       margin-bottom: 56px;
-    }
-    .eyebrow {
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 11px;
-      letter-spacing: 0.16em;
-      text-transform: uppercase;
-      color: #64748b;
-      margin: 0 0 12px;
     }
     h1 {
       font-size: clamp(40px, 5vw, 64px);

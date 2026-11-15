@@ -23,7 +23,6 @@ interface MonthGroup {
     <flr-site-shell [title]="metaTitle" [description]="metaDesc">
       <section class="cl-hero">
         <div class="container">
-          <p class="mono cl-eyebrow" i18n="@@changelog.eyebrow">Changelog</p>
           <h1 class="cl-title">
             <span i18n="@@changelog.titleA">What we</span><br />
             <span class="italic" i18n="@@changelog.titleB">shipped.</span>
@@ -71,13 +70,6 @@ interface MonthGroup {
   styles: `
     .cl-hero {
       padding: 96px 0 48px;
-    }
-    .cl-eyebrow {
-      font-size: 11px;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: var(--paper-ink-3);
-      margin: 0 0 24px;
     }
     .cl-title {
       font-family: var(--font-display);

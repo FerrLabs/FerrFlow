@@ -56,21 +56,7 @@ pub fn build_router(state: AppState, allowed_origins: &[String]) -> Router {
     Router::new()
         // Le contrat se négocie par l'en-tête `x-ferrflow-api-version` : les
         // routes vivent donc à la racine, sans version dans le chemin.
-        .merge(api.clone())
-        // ⚠️ DETTE À ÉCHÉANCE — RETIRER APRÈS LE 2027-02-08.
-        //
-        // Ces deux montages ne versionnent plus rien ; ils n'existent que
-        // pour les binaires FerrFlow déjà distribués, qui ont
-        // `/v1/ferrflow/token` (et, avant la bascule vers api.ferrflow.com,
-        // `/api/v1/ferrflow/token`) compilé en dur et ne peuvent pas être
-        // mis à jour à distance. Six mois suffisent largement à ce que les
-        // pipelines repassent sur une version récente.
-        //
-        // Pour retirer : supprimer les deux `.nest` ci-dessous et les tests
-        // `legacy_v1_*` plus bas. Voir la section « Dette à échéance » du
-        // CLAUDE.md à la racine.
-        .nest("/v1", api.clone())
-        .nest("/api/v1", api)
+        .merge(api)
         // Après le routage, pour lire la route résolue et non le chemin brut.
         .layer(middleware::from_fn_with_state(
             api_version_context(),
@@ -165,15 +151,13 @@ mod tests {
         );
     }
 
-    /// ⚠️ À SUPPRIMER AVEC LES MONTAGES `/v1` ET `/api/v1` — APRÈS LE
-    /// 2027-02-08. Les binaires FerrFlow déjà distribués ont ces chemins
-    /// compilés en dur ; tant qu'ils circulent, ce test protège leur CI.
+    /// Les anciens montages ne répondent plus : c'est le point de ce
+    /// changement, donc ça se teste plutôt que ça ne se suppose.
     #[tokio::test]
-    async fn legacy_v1_mounts_serve_the_same_routes() {
+    async fn the_legacy_v1_mounts_are_gone() {
         for path in ["/v1/ferrflow/health", "/api/v1/ferrflow/health"] {
-            let (status, body) = get(path).await;
-            assert_eq!(status, StatusCode::OK, "{path}");
-            assert_eq!(body["service"], "ferrflow-api", "{path}");
+            let (status, _) = get(path).await;
+            assert_eq!(status, StatusCode::NOT_FOUND, "{path}");
         }
     }
 
