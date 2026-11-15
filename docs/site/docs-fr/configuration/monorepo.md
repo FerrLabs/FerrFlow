@@ -283,6 +283,23 @@ Pour un repo mono-package, le défaut est `v{version}` (sans préfixe de nom).
 
 FerrFlow recherche le tag le plus récent correspondant au modèle pour déterminer quels commits sont nouveaux.
 
+## Release Latest sur GitHub
+
+GitHub marque une release par dépôt comme Latest, et les URL `releases/latest/download/...` pointent vers elle. Par défaut, la dernière release publiée prend le drapeau : en monorepo, n'importe quel package peut donc devenir Latest.
+
+Quand un package possède l'alias du dépôt, FerrFlow lui garde le drapeau. Un package le possède quand son `latestTag` (le sien ou celui hérité du workspace) est défini et ne contient pas `{name}`. Tous les autres packages du dépôt sont créés et publiés avec `make_latest: false`, y compris les brouillons publiés ensuite par `ferrflow release`.
+
+```json
+{
+  "package": [
+    { "name": "cli", "path": ".", "tagTemplate": "v{version}", "latestTag": "latest" },
+    { "name": "site", "path": "site", "tagTemplate": "{name}@v{version}", "latestTag": "{name}@latest" }
+  ]
+}
+```
+
+Ici `v1.4.0` peut devenir Latest et `site@v2026.11.1` jamais. Si aucun package ne possède l'alias, ou si le dépôt n'a qu'un package, rien n'est envoyé et le comportement par défaut de GitHub s'applique. GitLab, Gitea et Bitbucket n'ont pas de drapeau équivalent et ne sont pas concernés.
+
 ## Cadences indépendantes
 
 Les packages sont publiés indépendamment. Dans une seule exécution de `ferrflow release` :

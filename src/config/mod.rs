@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
 use crate::error_code::{self, ErrorCodeExt};
+use crate::forge::LatestRelease;
 
 mod commit_formats;
 mod format;
@@ -222,6 +223,21 @@ impl Config {
 
     pub fn is_monorepo(&self) -> bool {
         self.packages.len() > 1
+    }
+
+    pub fn release_latest(&self, package: &str) -> LatestRelease {
+        let Some(pkg) = self.packages.iter().find(|p| p.name == package) else {
+            return LatestRelease::Auto;
+        };
+        let someone_owns_latest = self
+            .packages
+            .iter()
+            .any(|p| p.owns_repo_latest(&self.workspace));
+        if self.is_monorepo() && someone_owns_latest && !pkg.owns_repo_latest(&self.workspace) {
+            LatestRelease::Never
+        } else {
+            LatestRelease::Auto
+        }
     }
 
     pub fn nested_package_paths(&self, pkg: &PackageConfig) -> Vec<String> {

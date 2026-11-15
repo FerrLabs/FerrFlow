@@ -316,6 +316,23 @@ For a single-package repo, the default is `v{version}` (no name prefix).
 
 FerrFlow looks for the most recent tag matching the template to determine what commits are new.
 
+## Latest release on GitHub
+
+GitHub marks one release per repository as Latest, and `releases/latest/download/...` URLs resolve to it. By default the release published last takes the flag, so in a monorepo any package can end up as Latest.
+
+When one package owns the repo-wide alias, FerrFlow keeps the flag on it. A package owns it when its `latestTag` (its own, or the inherited workspace one) is set and has no `{name}` placeholder. Every other package in the repo is created and published with `make_latest: false`, including drafts published later by `ferrflow release`.
+
+```json
+{
+  "package": [
+    { "name": "cli", "path": ".", "tagTemplate": "v{version}", "latestTag": "latest" },
+    { "name": "site", "path": "site", "tagTemplate": "{name}@v{version}", "latestTag": "{name}@latest" }
+  ]
+}
+```
+
+Here `v1.4.0` can become Latest and `site@v2026.11.1` never does. If no package owns the alias, or the repo has a single package, nothing is sent and GitHub's default applies. GitLab, Gitea and Bitbucket have no equivalent flag and are unaffected.
+
 ## Independent cadences
 
 Packages release independently. In a single `ferrflow release` run:

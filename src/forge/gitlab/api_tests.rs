@@ -3,7 +3,7 @@ use serde_json::json;
 use super::{GitLabForge, GitLabToken};
 use crate::error_code::code_from_error;
 use crate::forge::test_server::{FakeServer, Reply};
-use crate::forge::{Forge, MergeRequestResult};
+use crate::forge::{Forge, LatestRelease, MergeRequestResult};
 
 fn forge_with(server: &FakeServer, token_kind: GitLabToken) -> GitLabForge {
     GitLabForge {
@@ -36,7 +36,7 @@ fn create_release_posts_to_the_encoded_project_with_a_private_token() {
     )]);
 
     let result = forge(&server)
-        .create_release("v1.0.0", "notes", false, false)
+        .create_release("v1.0.0", "notes", false, false, LatestRelease::Auto)
         .unwrap();
 
     assert_eq!(
@@ -61,7 +61,7 @@ fn a_prerelease_is_sent_as_an_upcoming_release() {
     let server = FakeServer::start(vec![Reply::json(201, json!({}))]);
 
     forge(&server)
-        .create_release("v1.0.0-rc.1", "notes", true, false)
+        .create_release("v1.0.0-rc.1", "notes", true, false, LatestRelease::Auto)
         .unwrap();
 
     assert_eq!(server.only_request().json()["upcoming_release"], true);
@@ -72,7 +72,7 @@ fn a_ci_job_token_is_sent_in_the_job_token_header() {
     let server = FakeServer::start(vec![Reply::json(201, json!({}))]);
 
     forge_with(&server, GitLabToken::Job)
-        .create_release("v1.0.0", "notes", false, false)
+        .create_release("v1.0.0", "notes", false, false, LatestRelease::Auto)
         .unwrap();
 
     let req = server.only_request();
@@ -88,7 +88,7 @@ fn a_rejected_release_carries_the_create_release_code() {
     )]);
 
     let err = forge(&server)
-        .create_release("v1.0.0", "notes", false, false)
+        .create_release("v1.0.0", "notes", false, false, LatestRelease::Auto)
         .unwrap_err();
 
     assert_eq!(code_from_error(&err).as_deref(), Some("E3101"));

@@ -297,6 +297,13 @@ impl PackageConfig {
         (!rendered.trim().is_empty()).then_some(rendered)
     }
 
+    pub fn owns_repo_latest(&self, workspace: &WorkspaceConfig) -> bool {
+        self.latest_tag
+            .as_deref()
+            .or(workspace.latest_tag.as_deref())
+            .is_some_and(|template| !template.trim().is_empty() && !template.contains("{name}"))
+    }
+
     pub fn effective_update_lockfiles(&self, workspace: &WorkspaceConfig) -> bool {
         self.update_lockfiles.unwrap_or(workspace.update_lockfiles)
     }

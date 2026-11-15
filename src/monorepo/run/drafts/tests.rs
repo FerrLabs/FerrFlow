@@ -6,7 +6,7 @@ use anyhow::Result;
 
 use super::publish_drafts_with;
 use crate::config::Config;
-use crate::forge::{Forge, MergeRequestResult, ReleaseResult};
+use crate::forge::{Forge, LatestRelease, MergeRequestResult, ReleaseResult};
 
 #[derive(Default)]
 struct DraftForge {
@@ -14,7 +14,7 @@ struct DraftForge {
     lookup_fails_for: Vec<String>,
     publish_fails: bool,
     lookups: Mutex<Vec<String>>,
-    published: Mutex<Vec<u64>>,
+    published: Mutex<Vec<(u64, LatestRelease)>>,
 }
 
 impl Forge for DraftForge {
@@ -24,6 +24,7 @@ impl Forge for DraftForge {
         _body: &str,
         _prerelease: bool,
         _draft: bool,
+        _latest: LatestRelease,
     ) -> Result<ReleaseResult> {
         unreachable!("pending drafts are published, never created")
     }
@@ -36,11 +37,11 @@ impl Forge for DraftForge {
         Ok(self.drafts.get(tag).copied())
     }
 
-    fn publish_release(&self, release_id: u64) -> Result<()> {
+    fn publish_release(&self, release_id: u64, latest: LatestRelease) -> Result<()> {
         if self.publish_fails {
             anyhow::bail!("publish refused");
         }
-        self.published.lock().unwrap().push(release_id);
+        self.published.lock().unwrap().push((release_id, latest));
         Ok(())
     }
 
@@ -130,7 +131,10 @@ fn a_draft_for_the_current_version_is_published() {
 
     let outputs = run(&forge, &monorepo_config(), dir.path());
 
-    assert_eq!(*forge.published.lock().unwrap(), vec![7]);
+    assert_eq!(
+        *forge.published.lock().unwrap(),
+        vec![(7, LatestRelease::Auto)]
+    );
     assert_eq!(outputs.len(), 1, "{outputs:?}");
     assert!(
         outputs[0].contains("Published draft release"),
@@ -175,7 +179,10 @@ fn a_single_package_repo_looks_up_the_unprefixed_tag() {
 
     run(&forge, &config, dir.path());
 
-    assert_eq!(*forge.published.lock().unwrap(), vec![3]);
+    assert_eq!(
+        *forge.published.lock().unwrap(),
+        vec![(3, LatestRelease::Auto)]
+    );
 }
 
 #[test]
@@ -208,7 +215,35 @@ fn a_failed_lookup_moves_on_to_the_next_package() {
 
     let outputs = run(&forge, &monorepo_config(), dir.path());
 
-    assert_eq!(*forge.published.lock().unwrap(), vec![8]);
+    assert_eq!(
+        *forge.published.lock().unwrap(),
+        vec![(8, LatestRelease::Auto)]
+    );
     assert_eq!(outputs.len(), 1);
     assert!(outputs[0].contains("web@v3.0.0"), "{outputs:?}");
+}
+
+#[test]
+fn a_draft_is_published_as_not_latest_unless_its_package_owns_the_latest_tag() {
+    let dir = tempfile::tempdir().unwrap();
+    write_version(dir.path(), "api", "1.2.0");
+    write_version(dir.path(), "web", "3.0.0");
+    let config: Config = serde_json::from_str(
+        r#"{"package":[
+            {"name":"api","path":"api","latestTag":"{name}@latest","versionedFiles":[{"path":"api/package.json","format":"json"}]},
+            {"name":"web","path":"web","latestTag":"latest","versionedFiles":[{"path":"web/package.json","format":"json"}]}
+        ]}"#,
+    )
+    .unwrap();
+    let forge = DraftForge {
+        drafts: HashMap::from([("api@v1.2.0".to_string(), 7), ("web@v3.0.0".to_string(), 8)]),
+        ..Default::default()
+    };
+
+    run(&forge, &config, dir.path());
+
+    assert_eq!(
+        *forge.published.lock().unwrap(),
+        vec![(7, LatestRelease::Never), (8, LatestRelease::Auto)]
+    );
 }

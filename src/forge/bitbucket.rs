@@ -1,6 +1,6 @@
 use anyhow::{Context, Result, bail};
 
-use super::{Forge, MergeRequestResult, ReleaseResult};
+use super::{Forge, LatestRelease, MergeRequestResult, ReleaseResult};
 use crate::error_code::{self, ErrorCodeExt};
 
 const PR_UNSUPPORTED: &str = "Pull-request mode is not yet supported on Bitbucket. FerrFlow creates the release tag; \
@@ -21,6 +21,7 @@ impl Forge for BitbucketForge {
         _body: &str,
         _prerelease: bool,
         _draft: bool,
+        _latest: LatestRelease,
     ) -> Result<ReleaseResult> {
         if !self.is_cloud {
             return Ok(ReleaseResult::default());
@@ -54,7 +55,7 @@ impl Forge for BitbucketForge {
         Ok(None)
     }
 
-    fn publish_release(&self, _release_id: u64) -> Result<()> {
+    fn publish_release(&self, _release_id: u64, _latest: LatestRelease) -> Result<()> {
         Ok(())
     }
 
@@ -162,7 +163,7 @@ mod tests {
     #[test]
     fn server_release_is_tag_only_without_a_network_call() {
         let result = make_forge(false)
-            .create_release("v1.0.0", "notes", false, false)
+            .create_release("v1.0.0", "notes", false, false, LatestRelease::Auto)
             .unwrap();
         assert_eq!(result.id, None);
         assert_eq!(result.url, None);
@@ -172,7 +173,7 @@ mod tests {
     fn drafts_are_a_noop() {
         let forge = make_forge(true);
         assert_eq!(forge.find_draft_release("v1.0.0").unwrap(), None);
-        assert!(forge.publish_release(1).is_ok());
+        assert!(forge.publish_release(1, LatestRelease::Auto).is_ok());
     }
 
     #[test]

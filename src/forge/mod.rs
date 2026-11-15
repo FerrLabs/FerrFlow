@@ -20,6 +20,13 @@ pub struct MergeRequestResult {
     pub auto_merge_key: String,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum LatestRelease {
+    #[default]
+    Auto,
+    Never,
+}
+
 #[derive(Debug, Default)]
 pub struct ReleaseResult {
     pub id: Option<u64>,
@@ -73,6 +80,7 @@ pub trait Forge: Send + Sync {
         body: &str,
         prerelease: bool,
         draft: bool,
+        latest: LatestRelease,
     ) -> Result<ReleaseResult>;
     fn find_draft_release(&self, tag: &str) -> Result<Option<u64>>;
 
@@ -85,7 +93,7 @@ pub trait Forge: Send + Sync {
             "this forge cannot delete releases; remove it by hand"
         ))
     }
-    fn publish_release(&self, release_id: u64) -> Result<()>;
+    fn publish_release(&self, release_id: u64, latest: LatestRelease) -> Result<()>;
     fn create_merge_request(
         &self,
         head: &str,

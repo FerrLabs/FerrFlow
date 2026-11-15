@@ -2,8 +2,8 @@ use serde_json::json;
 
 use super::GiteaForge;
 use crate::error_code::code_from_error;
-use crate::forge::Forge;
 use crate::forge::test_server::{FakeServer, Reply};
+use crate::forge::{Forge, LatestRelease};
 
 fn forge(server: &FakeServer) -> GiteaForge {
     GiteaForge {
@@ -22,7 +22,7 @@ fn create_release_posts_the_payload_with_token_auth() {
     )]);
 
     let result = forge(&server)
-        .create_release("v1.0.0", "notes", false, true)
+        .create_release("v1.0.0", "notes", false, true, LatestRelease::Auto)
         .unwrap();
 
     assert_eq!(result.id, Some(31));
@@ -47,7 +47,7 @@ fn a_rejected_release_carries_the_create_release_code() {
     let server = FakeServer::start(vec![Reply::json(409, json!({}))]);
 
     let err = forge(&server)
-        .create_release("v1.0.0", "notes", false, false)
+        .create_release("v1.0.0", "notes", false, false, LatestRelease::Auto)
         .unwrap_err();
 
     assert_eq!(code_from_error(&err).as_deref(), Some("E3201"));
@@ -100,8 +100,8 @@ fn publish_release_patches_draft_false() {
     ]);
     let forge = forge(&server);
 
-    forge.publish_release(31).unwrap();
-    let err = forge.publish_release(32).unwrap_err();
+    forge.publish_release(31, LatestRelease::Auto).unwrap();
+    let err = forge.publish_release(32, LatestRelease::Auto).unwrap_err();
 
     assert_eq!(code_from_error(&err).as_deref(), Some("E3203"));
     let requests = server.requests();
@@ -171,4 +171,22 @@ fn create_and_update_comment_hit_the_issue_comment_endpoints() {
     assert_eq!(requests[1].method, "PATCH");
     assert_eq!(requests[1].path, "/repos/owner/repo/issues/comments/40");
     assert_eq!(requests[1].json(), json!({ "body": "second" }));
+}
+
+#[test]
+fn gitea_has_no_latest_flag_so_never_adds_make_latest() {
+    let server = FakeServer::start(vec![
+        Reply::json(201, json!({ "id": 31 })),
+        Reply::json(200, json!({})),
+    ]);
+    let forge = forge(&server);
+
+    forge
+        .create_release("site@v1", "notes", false, false, LatestRelease::Never)
+        .unwrap();
+    forge.publish_release(31, LatestRelease::Never).unwrap();
+
+    let requests = server.requests();
+    assert!(requests[0].json().get("make_latest").is_none());
+    assert_eq!(requests[1].json(), json!({ "draft": false }));
 }

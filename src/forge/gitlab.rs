@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use colored::Colorize;
 
 use super::rest::paginate;
-use super::{Forge, MergeRequestResult, ReleaseResult};
+use super::{Forge, LatestRelease, MergeRequestResult, ReleaseResult};
 use crate::error_code::{self, ErrorCodeExt};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -96,6 +96,7 @@ impl Forge for GitLabForge {
         body: &str,
         prerelease: bool,
         draft: bool,
+        _latest: LatestRelease,
     ) -> Result<ReleaseResult> {
         if draft {
             tracing::warn!(
@@ -141,7 +142,7 @@ impl Forge for GitLabForge {
         Ok(None)
     }
 
-    fn publish_release(&self, _release_id: u64) -> Result<()> {
+    fn publish_release(&self, _release_id: u64, _latest: LatestRelease) -> Result<()> {
         Ok(())
     }
 
@@ -455,7 +456,7 @@ mod tests {
             api_base: "https://gitlab.com/api/v4".to_string(),
             agent: ureq::Agent::new_with_defaults(),
         };
-        assert!(forge.publish_release(123).is_ok());
+        assert!(forge.publish_release(123, LatestRelease::Auto).is_ok());
     }
 
     #[test]

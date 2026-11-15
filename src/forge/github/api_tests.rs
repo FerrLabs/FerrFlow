@@ -3,7 +3,7 @@ use serde_json::json;
 use super::GitHubForge;
 use crate::error_code::code_from_error;
 use crate::forge::test_server::{FakeServer, Reply};
-use crate::forge::{AuthoredCommit, FileAddition, Forge, MergeRequestResult};
+use crate::forge::{AuthoredCommit, FileAddition, Forge, LatestRelease, MergeRequestResult};
 
 fn forge(server: &FakeServer) -> GitHubForge {
     GitHubForge {
@@ -33,7 +33,7 @@ fn create_release_posts_the_payload_with_bearer_auth_and_reads_id_and_url() {
     )]);
 
     let result = forge(&server)
-        .create_release("v1.2.0", "notes", true, false)
+        .create_release("v1.2.0", "notes", true, false, LatestRelease::Auto)
         .unwrap();
 
     assert_eq!(result.id, Some(55));
@@ -62,7 +62,7 @@ fn an_existing_release_is_an_error_with_the_create_release_code() {
     )]);
 
     let err = forge(&server)
-        .create_release("v1.2.0", "notes", false, false)
+        .create_release("v1.2.0", "notes", false, false, LatestRelease::Auto)
         .unwrap_err();
 
     assert_eq!(code(&err).as_deref(), Some("E3001"));
@@ -74,7 +74,7 @@ fn a_release_created_with_an_unparsable_body_still_succeeds_without_id() {
     let server = FakeServer::start(vec![Reply::raw(201, "not json")]);
 
     let result = forge(&server)
-        .create_release("v1.2.0", "notes", false, true)
+        .create_release("v1.2.0", "notes", false, true, LatestRelease::Auto)
         .unwrap();
 
     assert_eq!(result.id, None);
@@ -142,7 +142,9 @@ fn a_malformed_release_list_is_a_list_releases_error() {
 fn publish_release_patches_draft_false_on_that_release() {
     let server = FakeServer::start(vec![Reply::json(200, json!({}))]);
 
-    forge(&server).publish_release(7).unwrap();
+    forge(&server)
+        .publish_release(7, LatestRelease::Auto)
+        .unwrap();
 
     let req = server.only_request();
     assert_eq!(req.method, "PATCH");
@@ -154,7 +156,9 @@ fn publish_release_patches_draft_false_on_that_release() {
 fn a_failed_publish_carries_the_publish_code() {
     let server = FakeServer::start(vec![Reply::json(404, json!({}))]);
 
-    let err = forge(&server).publish_release(7).unwrap_err();
+    let err = forge(&server)
+        .publish_release(7, LatestRelease::Auto)
+        .unwrap_err();
 
     assert_eq!(code(&err).as_deref(), Some("E3004"));
 }
@@ -647,5 +651,58 @@ fn set_branch_encodes_a_branch_that_would_cut_the_ref_url() {
     assert_eq!(
         requests[1].json(),
         json!({ "ref": "refs/heads/release/a#b?c", "sha": "fff999" })
+    );
+}
+
+#[test]
+fn a_release_that_must_not_be_latest_sends_make_latest_false() {
+    let server = FakeServer::start(vec![Reply::json(201, json!({ "id": 9 }))]);
+
+    forge(&server)
+        .create_release(
+            "site@v2026.11.1",
+            "notes",
+            false,
+            false,
+            LatestRelease::Never,
+        )
+        .unwrap();
+
+    let body = server.only_request().json();
+    assert_eq!(body["make_latest"], "false");
+    assert_eq!(body["tag_name"], "site@v2026.11.1");
+}
+
+#[test]
+fn a_release_without_a_latest_preference_sends_no_make_latest() {
+    let server = FakeServer::start(vec![Reply::json(201, json!({ "id": 9 }))]);
+
+    forge(&server)
+        .create_release("v1.0.0", "notes", false, true, LatestRelease::Auto)
+        .unwrap();
+
+    assert_eq!(
+        server.only_request().json(),
+        json!({
+            "tag_name": "v1.0.0",
+            "name": "v1.0.0",
+            "body": "notes",
+            "draft": true,
+            "prerelease": false,
+        })
+    );
+}
+
+#[test]
+fn publishing_a_draft_that_must_not_be_latest_sends_make_latest_false() {
+    let server = FakeServer::start(vec![Reply::json(200, json!({}))]);
+
+    forge(&server)
+        .publish_release(7, LatestRelease::Never)
+        .unwrap();
+
+    assert_eq!(
+        server.only_request().json(),
+        json!({ "draft": false, "make_latest": "false" })
     );
 }
