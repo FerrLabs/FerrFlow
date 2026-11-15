@@ -2,7 +2,7 @@
 name = "ferrflow-api"
 version = "2026.11.6"
 edition = "2024"
-license = "LicenseRef-FerrLabs-Proprietary"
+license = "MPL-2.0"
 publish = false
 authors = ["FerrLabs"]
 rust-version = "1.88"

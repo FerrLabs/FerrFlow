@@ -22,7 +22,6 @@ allow = [
     "CC0-1.0",
     "CDLA-Permissive-2.0",
     "ISC",
-    "LicenseRef-FerrLabs-Proprietary",
     "MIT",
     "MIT-0",
     "MPL-2.0",
