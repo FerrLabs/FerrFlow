@@ -16,8 +16,21 @@ Thanks for your interest in contributing to FerrFlow! Here's how to get started.
 
 - [Rust](https://rustup.rs/) (stable toolchain; nightly only for fuzzing)
 - Git
+- Node 22+ and pnpm, only to work on `site/`
+
+### Packages
+
+The repository holds three packages. See [ARCHITECTURE.md](ARCHITECTURE.md) for how they relate.
+
+| Package | Path | Licence |
+| --- | --- | --- |
+| `ferrflow` (CLI and library) | root | MIT |
+| `@ferrflow/site` | `site/` | MPL-2.0 |
+| `ferrflow-api` | `api/` | MPL-2.0 |
 
 ### Build and Test
+
+CLI:
 
 ```bash
 cargo build
@@ -25,6 +38,25 @@ cargo test
 cargo clippy
 cargo fmt --check
 ```
+
+API (listens on `PORT`, default 3000):
+
+```bash
+cargo build -p ferrflow-api
+cargo test -p ferrflow-api
+cargo run -p ferrflow-api
+```
+
+Site:
+
+```bash
+pnpm install
+pnpm dev:site
+pnpm ci:local
+```
+
+`pnpm ci:local` runs the typecheck, the production build and the i18n check. The build copies
+`docs/site/` into `site/src/content/` first, so there is nothing to fetch.
 
 ### Fuzzing
 
@@ -88,6 +120,7 @@ docs: update CLI reference
 ```
 
 - Single line, no body
+- Sign off every commit with `git commit -s`; the DCO check fails without a `Signed-off-by` line
 - Scope is optional but recommended
 - Breaking changes: add `!` after type/scope (e.g. `feat(config)!: rename field`)
 
@@ -106,7 +139,7 @@ docs: update CLI reference
 
 ### Documentation
 
-Developer notes live in `docs/`. The pages rendered at
+Developer notes live in `docs/`, diagrams in `docs/diagrams/`. The pages rendered at
 [ferrflow.com/docs](https://ferrflow.com/docs) live in `docs/site/`. The site build
 reads them from there directly, so a docs change shows up in the site in the same pull request.
 
@@ -172,4 +205,5 @@ verify a downloaded binary with `gh attestation verify`.
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the [MIT License](LICENSE).
+By contributing, you agree that your contributions are licensed under the licence of the folder they land in:
+[MIT](LICENSE) for the CLI and `docs/site/`, [MPL-2.0](site/LICENSE) for `site/` and [MPL-2.0](api/LICENSE) for `api/`.
