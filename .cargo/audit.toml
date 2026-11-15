@@ -5,4 +5,6 @@ ignore = [
     # vulnerability) on a dep we don't use directly; it drifts in and out of the
     # tree with registry state, so it's ignored rather than pinned.
     "RUSTSEC-2026-0173",
+    "RUSTSEC-2023-0071",
+    "RUSTSEC-2026-0387",
 ]
