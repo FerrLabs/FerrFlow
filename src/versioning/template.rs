@@ -46,10 +46,19 @@ impl Var {
         !matches!(self, Self::Seq | Self::Major | Self::Minor | Self::Patch)
     }
 
-    fn render_calendar(self, now: DateTime<Utc>) -> String {
+    fn is_week(self) -> bool {
+        matches!(self, Self::Week | Self::PaddedWeek)
+    }
+
+    fn render_calendar(self, now: DateTime<Utc>, iso_year: bool) -> String {
+        let year = if iso_year {
+            now.iso_week().year()
+        } else {
+            now.year()
+        };
         match self {
-            Self::Year => now.year().to_string(),
-            Self::ShortYear => format!("{:02}", now.year() % 100),
+            Self::Year => year.to_string(),
+            Self::ShortYear => format!("{:02}", year.rem_euclid(100)),
             Self::Month => now.month().to_string(),
             Self::PaddedMonth => format!("{:02}", now.month()),
             Self::Day => now.day().to_string(),
@@ -191,6 +200,10 @@ impl VersionTemplate {
         })
     }
 
+    fn uses_iso_year(&self) -> bool {
+        self.vars().any(Var::is_week)
+    }
+
     fn read_back(&self, current: &str) -> Result<Option<Vec<(Var, u64)>>> {
         let mut pattern = String::from("^");
         for segment in &self.segments {
@@ -221,10 +234,11 @@ impl VersionTemplate {
     pub fn render(&self, current: &str, bump: BumpType, now: DateTime<Utc>) -> Result<String> {
         let previous = self.read_back(current)?;
 
+        let iso_year = self.uses_iso_year();
         let calendar_rolled = previous.as_ref().is_none_or(|vals| {
             vals.iter()
                 .filter(|(v, _)| v.is_calendar())
-                .any(|(v, n)| v.render_calendar(now) != n.to_string())
+                .any(|(v, n)| v.render_calendar(now, iso_year) != n.to_string())
         });
 
         let previous_of = |want: Var| {
@@ -256,7 +270,7 @@ impl VersionTemplate {
                 Segment::Var(Var::Major) => major.to_string(),
                 Segment::Var(Var::Minor) => minor.to_string(),
                 Segment::Var(Var::Patch) => patch.to_string(),
-                Segment::Var(var) => var.render_calendar(now),
+                Segment::Var(var) => var.render_calendar(now, iso_year),
             })
             .collect())
     }
@@ -396,6 +410,75 @@ mod tests {
         assert_eq!(
             render_at("{year}.Q{quarter}", "0.0", BumpType::None, now),
             "2026.Q3"
+        );
+    }
+
+    #[test]
+    fn week_templates_use_the_iso_year_at_new_year() {
+        let template = "{year}.{week}.{seq}";
+        assert_eq!(
+            render_at(template, "0.0.0", BumpType::None, at(2025, 12, 29)),
+            "2026.1.1"
+        );
+        assert_eq!(
+            render_at(template, "0.0.0", BumpType::None, at(2027, 1, 1)),
+            "2026.53.1"
+        );
+        assert_eq!(
+            render_at(
+                "{short_year}.{padded_week}",
+                "0.0",
+                BumpType::None,
+                at(2027, 1, 1)
+            ),
+            "26.53"
+        );
+        assert_eq!(
+            render_at(template, "0.0.0", BumpType::None, at(2026, 8, 5)),
+            "2026.32.1"
+        );
+    }
+
+    #[test]
+    fn week_templates_keep_seq_ordering_across_new_year() {
+        let template = "{year}.{week}.{seq}";
+        assert_eq!(
+            render_at(template, "2026.1.1", BumpType::None, at(2025, 12, 30)),
+            "2026.1.2"
+        );
+        assert_eq!(
+            render_at(template, "2026.53.2", BumpType::None, at(2027, 1, 2)),
+            "2026.53.3"
+        );
+        assert_eq!(
+            render_at(template, "2026.53.2", BumpType::None, at(2027, 1, 4)),
+            "2027.1.1"
+        );
+        assert_eq!(
+            render_at(template, "2026.32.4", BumpType::None, at(2026, 8, 6)),
+            "2026.32.5"
+        );
+    }
+
+    #[test]
+    fn templates_without_a_week_keep_the_calendar_year() {
+        assert_eq!(
+            render_at(
+                "{year}.{month}.{seq}",
+                "2025.12.1",
+                BumpType::None,
+                at(2025, 12, 29)
+            ),
+            "2025.12.2"
+        );
+        assert_eq!(
+            render_at(
+                "{year}.{month}.{day}",
+                "0.0.0",
+                BumpType::None,
+                at(2027, 1, 1)
+            ),
+            "2027.1.1"
         );
     }
 
