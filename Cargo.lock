@@ -989,7 +989,7 @@ dependencies = [
 
 [[package]]
 name = "ferrflow"
-version = "7.36.5"
+version = "7.36.6"
 dependencies = [
  "anyhow",
  "base64 0.23.1",
@@ -1051,9 +1051,9 @@ dependencies = [
 
 [[package]]
 name = "ferrflow-wasm"
-version = "7.36.5"
+version = "7.36.6"
 dependencies = [
- "ferrflow 7.36.5",
+ "ferrflow 7.36.6",
  "serde",
  "serde_json",
  "wasm-bindgen",
