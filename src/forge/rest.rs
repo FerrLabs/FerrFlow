@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use ureq::RequestBuilder;
 use ureq::typestate::{WithBody, WithoutBody};
 
-use super::ReleaseResult;
+use super::{LatestRelease, ReleaseResult};
 
 const MAX_PAGES: u32 = 100;
 
@@ -37,6 +37,7 @@ pub(super) struct RestClient<'a> {
     extra_headers: &'static [(&'static str, &'static str)],
     page_size_param: &'static str,
     page_size: u32,
+    make_latest: bool,
 }
 
 impl<'a> RestClient<'a> {
@@ -53,6 +54,7 @@ impl<'a> RestClient<'a> {
             ],
             page_size_param: "per_page",
             page_size: 100,
+            make_latest: true,
         }
     }
 
@@ -66,6 +68,7 @@ impl<'a> RestClient<'a> {
             extra_headers: &[],
             page_size_param: "limit",
             page_size: 50,
+            make_latest: false,
         }
     }
 
@@ -110,16 +113,19 @@ impl<'a> RestClient<'a> {
         body: &str,
         prerelease: bool,
         draft: bool,
+        latest: LatestRelease,
     ) -> Result<ReleaseResult> {
+        let mut payload = serde_json::json!({
+            "tag_name": tag,
+            "name": tag,
+            "body": body,
+            "draft": draft,
+            "prerelease": prerelease,
+        });
+        self.mark_latest(&mut payload, latest);
         let response: serde_json::Value = self
             .post(&format!("{}/releases", self.repo_url))
-            .send_json(serde_json::json!({
-                "tag_name": tag,
-                "name": tag,
-                "body": body,
-                "draft": draft,
-                "prerelease": prerelease,
-            }))?
+            .send_json(payload)?
             .body_mut()
             .read_json()
             .unwrap_or(serde_json::Value::Null);
@@ -138,10 +144,18 @@ impl<'a> RestClient<'a> {
         }))
     }
 
-    pub fn publish_release(&self, release_id: u64) -> Result<()> {
+    pub fn publish_release(&self, release_id: u64, latest: LatestRelease) -> Result<()> {
+        let mut payload = serde_json::json!({ "draft": false });
+        self.mark_latest(&mut payload, latest);
         self.patch(&format!("{}/releases/{release_id}", self.repo_url))
-            .send_json(serde_json::json!({ "draft": false }))?;
+            .send_json(payload)?;
         Ok(())
+    }
+
+    fn mark_latest(&self, payload: &mut serde_json::Value, latest: LatestRelease) {
+        if self.make_latest && latest == LatestRelease::Never {
+            payload["make_latest"] = serde_json::json!("false");
+        }
     }
 
     pub fn find_comment(&self, pr_id: u64, marker: &str, what: &str) -> Result<Option<u64>> {

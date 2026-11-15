@@ -5,7 +5,7 @@ use std::sync::Mutex;
 use anyhow::Result;
 
 use crate::config::Config;
-use crate::forge::{Forge, MergeRequestResult, ReleaseResult};
+use crate::forge::{Forge, LatestRelease, MergeRequestResult, ReleaseResult};
 use crate::git::{Repository, open_repo};
 use crate::hooks::HookContext;
 
@@ -117,6 +117,7 @@ impl Harness {
 #[derive(Default)]
 struct RecordingForge {
     create_calls: Mutex<Vec<String>>,
+    create_latest: Mutex<Vec<(String, LatestRelease)>>,
     mr_titles: Mutex<Vec<String>>,
     mr_requests: Mutex<Vec<(String, String, String)>>,
     updated_mrs: Mutex<Vec<u64>>,
@@ -135,8 +136,13 @@ impl Forge for RecordingForge {
         _body: &str,
         _prerelease: bool,
         _draft: bool,
+        latest: LatestRelease,
     ) -> Result<ReleaseResult> {
         self.create_calls.lock().unwrap().push(tag.to_string());
+        self.create_latest
+            .lock()
+            .unwrap()
+            .push((tag.to_string(), latest));
         Ok(ReleaseResult {
             id: Some(1),
             url: Some(format!("https://forge/{tag}")),
@@ -147,7 +153,7 @@ impl Forge for RecordingForge {
         Ok(None)
     }
 
-    fn publish_release(&self, _release_id: u64) -> Result<()> {
+    fn publish_release(&self, _release_id: u64, _latest: LatestRelease) -> Result<()> {
         Ok(())
     }
 
@@ -386,6 +392,47 @@ fn a_successful_push_lands_the_tag_then_publishes_it() {
         "the release is created exactly once, after the tag landed"
     );
     assert_eq!(forge_results.len(), 1);
+}
+
+#[test]
+fn only_the_package_owning_the_latest_tag_is_created_as_latest() {
+    let mut harness = Harness::new();
+    let monorepo: Config = serde_json::from_str(
+        r#"{"package":[
+            {"name":"ferrflow","path":".","latestTag":"latest"},
+            {"name":"site","path":"site","latestTag":"{name}@latest"},
+            {"name":"api","path":"api","latestTag":"{name}@latest"}
+        ]}"#,
+    )
+    .unwrap();
+    harness.config.packages = monorepo.packages;
+    let names = [
+        ("v1.0.0", "ferrflow"),
+        ("site@v1", "site"),
+        ("api@v1", "api"),
+    ];
+    for (tag, _) in names {
+        harness.git(&["tag", "-a", tag, "-m", tag]);
+    }
+    let tags: Vec<PlannedTag> = names
+        .iter()
+        .map(|(tag, pkg)| tag_to_create(tag, pkg, "1.0.0"))
+        .collect();
+    let forge = RecordingForge::default();
+
+    let (result, _) = run_publish_phase(&harness, &tags, &forge);
+    result.unwrap();
+
+    let mut seen = forge.create_latest.lock().unwrap().clone();
+    seen.sort_by(|a, b| a.0.cmp(&b.0));
+    assert_eq!(
+        seen,
+        vec![
+            ("api@v1".to_string(), LatestRelease::Never),
+            ("site@v1".to_string(), LatestRelease::Never),
+            ("v1.0.0".to_string(), LatestRelease::Auto),
+        ]
+    );
 }
 
 #[test]

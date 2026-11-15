@@ -2,8 +2,8 @@ use serde_json::json;
 
 use super::BitbucketForge;
 use crate::error_code::code_from_error;
-use crate::forge::Forge;
 use crate::forge::test_server::{FakeServer, Reply};
+use crate::forge::{Forge, LatestRelease};
 
 fn cloud(server: &FakeServer) -> BitbucketForge {
     BitbucketForge {
@@ -26,7 +26,7 @@ fn a_cloud_release_resolves_the_tag_and_returns_its_page() {
     )]);
 
     let result = cloud(&server)
-        .create_release("v1.0.0", "notes", false, false)
+        .create_release("v1.0.0", "notes", false, false, LatestRelease::Auto)
         .unwrap();
 
     assert_eq!(
@@ -44,7 +44,13 @@ fn a_cloud_release_encodes_a_tag_that_would_cut_the_url() {
     let server = FakeServer::start(vec![Reply::json(200, json!({}))]);
 
     cloud(&server)
-        .create_release("api@v1.0.0+build#7", "notes", false, false)
+        .create_release(
+            "api@v1.0.0+build#7",
+            "notes",
+            false,
+            false,
+            LatestRelease::Auto,
+        )
         .unwrap();
 
     assert_eq!(
@@ -61,7 +67,7 @@ fn a_missing_cloud_tag_is_a_create_release_error() {
     )]);
 
     let err = cloud(&server)
-        .create_release("v1.0.0", "notes", false, false)
+        .create_release("v1.0.0", "notes", false, false, LatestRelease::Auto)
         .unwrap_err();
 
     assert_eq!(code_from_error(&err).as_deref(), Some("E3301"));
@@ -73,7 +79,7 @@ fn a_cloud_tag_response_without_links_has_no_url() {
     let server = FakeServer::start(vec![Reply::raw(200, "not json")]);
 
     let result = cloud(&server)
-        .create_release("v1.0.0", "notes", false, false)
+        .create_release("v1.0.0", "notes", false, false, LatestRelease::Auto)
         .unwrap();
 
     assert_eq!(result.url, None);

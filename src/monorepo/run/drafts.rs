@@ -4,7 +4,7 @@ use colored::Colorize;
 use std::path::Path;
 
 use crate::config::Config;
-use crate::forge::Forge;
+use crate::forge::{Forge, LatestRelease};
 use crate::formats::read_version;
 
 use super::super::preview::build_forge_instance;
@@ -45,19 +45,23 @@ fn publish_drafts_with(
         };
         let tag = pkg.tag_for_version(&config.workspace, config.is_monorepo(), &version);
         match forge_instance.find_draft_release(&tag) {
-            Ok(Some(release_id)) => match forge_instance.publish_release(release_id) {
-                Ok(()) => {
-                    shared_outputs.push(format!(
-                        "✓ Published draft {} {}",
-                        forge_instance.release_noun(),
-                        tag.cyan()
-                    ));
+            Ok(Some(release_id)) => {
+                match forge_instance
+                    .publish_release(release_id, LatestRelease::of(config, &pkg.name))
+                {
+                    Ok(()) => {
+                        shared_outputs.push(format!(
+                            "✓ Published draft {} {}",
+                            forge_instance.release_noun(),
+                            tag.cyan()
+                        ));
+                    }
+                    Err(err) => tracing::warn!(
+                        "{}",
+                        format!("  Warning: failed to publish draft for {tag}: {err}").yellow()
+                    ),
                 }
-                Err(err) => tracing::warn!(
-                    "{}",
-                    format!("  Warning: failed to publish draft for {tag}: {err}").yellow()
-                ),
-            },
+            }
             Ok(None) => {}
             Err(err) => {
                 if verbose {

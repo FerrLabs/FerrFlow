@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 
 use super::rest::RestClient;
-use super::{Forge, MergeRequestResult, ReleaseResult};
+use super::{Forge, LatestRelease, MergeRequestResult, ReleaseResult};
 use crate::error_code::{self, ErrorCodeExt};
 
 pub struct GiteaForge {
@@ -24,9 +24,10 @@ impl Forge for GiteaForge {
         body: &str,
         prerelease: bool,
         draft: bool,
+        latest: LatestRelease,
     ) -> Result<ReleaseResult> {
         self.rest()
-            .create_release(tag, body, prerelease, draft)
+            .create_release(tag, body, prerelease, draft, latest)
             .with_context(|| format!("Failed to create Gitea release for {tag}"))
             .error_code(error_code::GITEA_CREATE_RELEASE)
     }
@@ -37,9 +38,9 @@ impl Forge for GiteaForge {
             .error_code(error_code::GITEA_LIST_RELEASES)
     }
 
-    fn publish_release(&self, release_id: u64) -> Result<()> {
+    fn publish_release(&self, release_id: u64, latest: LatestRelease) -> Result<()> {
         self.rest()
-            .publish_release(release_id)
+            .publish_release(release_id, latest)
             .with_context(|| format!("Failed to publish Gitea release {release_id}"))
             .error_code(error_code::GITEA_PUBLISH_RELEASE)
     }

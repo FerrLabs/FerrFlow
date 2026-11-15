@@ -14,7 +14,7 @@ use crate::hooks::{HookContext, HookPoint, resolve_hook, resolve_policy, run_hoo
 
 use super::checkpoint::{Checkpoint, Phase};
 use super::summary::{PlannedTag, write_github_step_summary};
-use crate::forge::{Forge, ReleaseResult};
+use crate::forge::{Forge, LatestRelease, ReleaseResult};
 use crate::monorepo::preview::{ForgeUnavailable, build_forge_instance};
 use crate::monorepo::util::{auto_stage_new_files, collect_dirty_files};
 use floating_tags::create_and_move_floating_tags;
@@ -406,7 +406,14 @@ fn publish_releases_with(plan: &mut ReleasePlan<'_>, forge: &dyn Forge) -> Resul
         plan.tags_to_create
             .par_iter()
             .map(|t| {
-                let outcome = process_release_tag(forge, &t.tag, &t.body, t.is_prerelease, draft);
+                let outcome = process_release_tag(
+                    forge,
+                    &t.tag,
+                    &t.body,
+                    t.is_prerelease,
+                    draft,
+                    LatestRelease::of(plan.config, &t.package),
+                );
                 (t.tag.clone(), t.package.clone(), outcome)
             })
             .collect()
@@ -465,13 +472,14 @@ fn process_release_tag(
     body: &str,
     is_pre: bool,
     draft: bool,
+    latest: LatestRelease,
 ) -> TagReleaseOutcome {
     let noun = forge.release_noun();
     let mut warnings = Vec::new();
 
     if !draft {
         match forge.find_draft_release(tag_name) {
-            Ok(Some(release_id)) => match forge.publish_release(release_id) {
+            Ok(Some(release_id)) => match forge.publish_release(release_id, latest) {
                 Ok(()) => {
                     return TagReleaseOutcome {
                         warnings,
@@ -496,7 +504,7 @@ fn process_release_tag(
         }
     }
 
-    match forge.create_release(tag_name, body, is_pre, draft) {
+    match forge.create_release(tag_name, body, is_pre, draft, latest) {
         Ok(result) => {
             let success_line = if draft {
                 format!("  ✓ Draft {} {}", noun, tag_name.cyan())
@@ -635,6 +643,8 @@ mod tag_release_tests {
         find_draft_errors_for: Vec<String>,
         create_fails_for: Vec<String>,
         create_calls: Mutex<Vec<String>>,
+        latest_calls: Mutex<Vec<LatestRelease>>,
+        published_latest: Mutex<Vec<LatestRelease>>,
     }
 
     impl Forge for MockForge {
@@ -644,8 +654,10 @@ mod tag_release_tests {
             _body: &str,
             _prerelease: bool,
             _draft: bool,
+            latest: LatestRelease,
         ) -> Result<ReleaseResult> {
             self.create_calls.lock().unwrap().push(tag.to_string());
+            self.latest_calls.lock().unwrap().push(latest);
             if self.create_fails_for.iter().any(|t| t == tag) {
                 anyhow::bail!("create failed for {tag}");
             }
@@ -662,7 +674,8 @@ mod tag_release_tests {
             Ok(self.drafts.get(tag).copied())
         }
 
-        fn publish_release(&self, _release_id: u64) -> Result<()> {
+        fn publish_release(&self, _release_id: u64, latest: LatestRelease) -> Result<()> {
+            self.published_latest.lock().unwrap().push(latest);
             if self.publish_fails {
                 anyhow::bail!("publish failed");
             }
@@ -718,6 +731,37 @@ mod tag_release_tests {
     }
 
     #[test]
+    fn the_latest_preference_reaches_both_create_and_publish() {
+        let forge = MockForge {
+            drafts: HashMap::from([("site@v1".to_string(), 3)]),
+            ..Default::default()
+        };
+
+        process_release_tag(
+            &forge,
+            "site@v1",
+            "body",
+            false,
+            false,
+            LatestRelease::Never,
+        );
+        process_release_tag(
+            &forge,
+            "site@v2",
+            "body",
+            false,
+            false,
+            LatestRelease::Never,
+        );
+
+        assert_eq!(
+            *forge.published_latest.lock().unwrap(),
+            [LatestRelease::Never]
+        );
+        assert_eq!(*forge.latest_calls.lock().unwrap(), [LatestRelease::Never]);
+    }
+
+    #[test]
     fn release_branch_name_is_stable_and_target_scoped() {
         assert_eq!(release_branch_name("main"), "ferrflow/release-main");
         assert_eq!(release_branch_name("main"), release_branch_name("main"));
@@ -733,7 +777,7 @@ mod tag_release_tests {
             drafts: HashMap::from([("v1".to_string(), 42)]),
             ..Default::default()
         };
-        let outcome = process_release_tag(&forge, "v1", "body", false, false);
+        let outcome = process_release_tag(&forge, "v1", "body", false, false, LatestRelease::Auto);
 
         assert!(outcome.warnings.is_empty());
         assert!(outcome.result.is_none());
@@ -753,7 +797,7 @@ mod tag_release_tests {
             publish_fails: true,
             ..Default::default()
         };
-        let outcome = process_release_tag(&forge, "v1", "body", false, false);
+        let outcome = process_release_tag(&forge, "v1", "body", false, false, LatestRelease::Auto);
 
         assert_eq!(outcome.warnings.len(), 1);
         assert!(!outcome.warnings[0].verbose_only);
@@ -769,7 +813,7 @@ mod tag_release_tests {
     #[test]
     fn creates_release_when_no_draft() {
         let forge = MockForge::default();
-        let outcome = process_release_tag(&forge, "v1", "body", false, false);
+        let outcome = process_release_tag(&forge, "v1", "body", false, false, LatestRelease::Auto);
 
         assert!(outcome.warnings.is_empty());
         assert_eq!(
@@ -785,7 +829,7 @@ mod tag_release_tests {
             create_fails_for: vec!["v1".to_string()],
             ..Default::default()
         };
-        let outcome = process_release_tag(&forge, "v1", "body", false, false);
+        let outcome = process_release_tag(&forge, "v1", "body", false, false, LatestRelease::Auto);
 
         assert_eq!(outcome.warnings.len(), 1);
         assert!(!outcome.warnings[0].verbose_only);
@@ -804,7 +848,7 @@ mod tag_release_tests {
             find_draft_errors_for: vec!["v1".to_string()],
             ..Default::default()
         };
-        let outcome = process_release_tag(&forge, "v1", "body", false, false);
+        let outcome = process_release_tag(&forge, "v1", "body", false, false, LatestRelease::Auto);
 
         assert_eq!(outcome.warnings.len(), 1);
         assert!(outcome.warnings[0].verbose_only);
@@ -817,7 +861,7 @@ mod tag_release_tests {
             drafts: HashMap::from([("v1".to_string(), 42)]),
             ..Default::default()
         };
-        let outcome = process_release_tag(&forge, "v1", "body", false, true);
+        let outcome = process_release_tag(&forge, "v1", "body", false, true, LatestRelease::Auto);
 
         assert!(outcome.warnings.is_empty());
         assert!(outcome.result.is_some());
@@ -849,7 +893,8 @@ mod tag_release_tests {
         let collected: Vec<(String, Option<String>)> = pool.install(|| {
             tags.par_iter()
                 .map(|t| {
-                    let outcome = process_release_tag(&forge, t, "body", false, false);
+                    let outcome =
+                        process_release_tag(&forge, t, "body", false, false, LatestRelease::Auto);
                     (t.to_string(), outcome.result.and_then(|r| r.url))
                 })
                 .collect()

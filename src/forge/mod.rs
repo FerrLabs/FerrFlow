@@ -2,6 +2,8 @@ pub mod bitbucket;
 pub mod gitea;
 pub mod github;
 pub mod gitlab;
+#[cfg(test)]
+mod latest_tests;
 mod rest;
 #[cfg(test)]
 pub(crate) mod test_server;
@@ -18,6 +20,30 @@ pub use crate::config::ForgeKind;
 pub struct MergeRequestResult {
     pub id: u64,
     pub auto_merge_key: String,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum LatestRelease {
+    #[default]
+    Auto,
+    Never,
+}
+
+impl LatestRelease {
+    pub fn of(config: &crate::config::Config, package: &str) -> Self {
+        let Some(pkg) = config.packages.iter().find(|p| p.name == package) else {
+            return Self::Auto;
+        };
+        let someone_owns_latest = config
+            .packages
+            .iter()
+            .any(|p| p.owns_repo_latest(&config.workspace));
+        if config.is_monorepo() && someone_owns_latest && !pkg.owns_repo_latest(&config.workspace) {
+            Self::Never
+        } else {
+            Self::Auto
+        }
+    }
 }
 
 #[derive(Debug, Default)]
@@ -73,6 +99,7 @@ pub trait Forge: Send + Sync {
         body: &str,
         prerelease: bool,
         draft: bool,
+        latest: LatestRelease,
     ) -> Result<ReleaseResult>;
     fn find_draft_release(&self, tag: &str) -> Result<Option<u64>>;
 
@@ -85,7 +112,7 @@ pub trait Forge: Send + Sync {
             "this forge cannot delete releases; remove it by hand"
         ))
     }
-    fn publish_release(&self, release_id: u64) -> Result<()>;
+    fn publish_release(&self, release_id: u64, latest: LatestRelease) -> Result<()>;
     fn create_merge_request(
         &self,
         head: &str,
