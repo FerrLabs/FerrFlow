@@ -944,6 +944,30 @@ checksum = "da7c62ceae207dd37ea5b845da6a0696c799f85e97da1ab5b7910be3c1c80223"
 [[package]]
 name = "ferrflow"
 version = "7.36.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "852ddb6f64490e7e5f4e89feba3b0ea0f57a5b65502b2c85a5f646f73bb96732"
+dependencies = [
+ "anyhow",
+ "base64",
+ "chrono",
+ "glob-match",
+ "hex",
+ "json5",
+ "regex",
+ "semver",
+ "serde",
+ "serde_ignored",
+ "serde_json",
+ "sha2",
+ "strsim",
+ "tempfile",
+ "toml_edit",
+ "tracing",
+]
+
+[[package]]
+name = "ferrflow"
+version = "7.36.6"
 dependencies = [
  "anyhow",
  "base64",
@@ -980,37 +1004,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "ferrflow"
-version = "7.36.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "852ddb6f64490e7e5f4e89feba3b0ea0f57a5b65502b2c85a5f646f73bb96732"
-dependencies = [
- "anyhow",
- "base64",
- "chrono",
- "glob-match",
- "hex",
- "json5",
- "regex",
- "semver",
- "serde",
- "serde_ignored",
- "serde_json",
- "sha2",
- "strsim",
- "tempfile",
- "toml_edit",
- "tracing",
-]
-
-[[package]]
 name = "ferrflow-api"
 version = "2026.11.6"
 dependencies = [
  "anyhow",
  "axum",
  "chrono",
- "ferrflow 7.36.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ferrflow 7.36.5",
  "ferrlabs-api-version",
  "hex",
  "hmac",
@@ -1029,9 +1029,9 @@ dependencies = [
 
 [[package]]
 name = "ferrflow-wasm"
-version = "7.36.5"
+version = "7.36.6"
 dependencies = [
- "ferrflow 7.36.5",
+ "ferrflow 7.36.6",
  "serde",
  "serde_json",
  "wasm-bindgen",

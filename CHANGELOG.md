@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.36.6] - 2026-11-15
+
+### Refactoring
+
+- refactor(site): read docs from docs/site instead of @ferrflow/doc (#1406)
+
 ## [7.36.5] - 2026-11-15
 
 ### Bug Fixes
