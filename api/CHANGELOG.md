@@ -1,5 +1,12 @@
 # Changelog
 
+## [2026.11.7] - 2026-11-15
+
+### Features
+
+- feat: benchmark tool_configs, reset version, disable skipCi (#279)
+- Feat/status command (#41)
+
 ## [2026.11.6] - 2026-11-15
 
 ### Breaking Changes

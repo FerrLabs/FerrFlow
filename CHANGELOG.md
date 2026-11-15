@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.36.7] - 2026-11-15
+
+### Bug Fixes
+
+- fix(forge): keep non-latest monorepo packages off GitHub's Latest flag (#1411)
+
 ## [7.36.6] - 2026-11-15
 
 ### Refactoring
