@@ -283,6 +283,22 @@ impl VersionTemplate {
     }
 }
 
+const UNORDERED_AROUND_NEW_YEAR: &str = "combines a week variable with month, day or quarter. \
+These versions are not ordered around New Year: the year follows the ISO week-numbering year while \
+month, day and quarter stay on the calendar.";
+
+pub fn ordering_warning(template: &str) -> Option<&'static str> {
+    let template = VersionTemplate::parse(template).ok()?;
+    let has_week = template.vars().any(Var::is_week);
+    let has_calendar_unit = template.vars().any(|v| {
+        matches!(
+            v,
+            Var::Month | Var::PaddedMonth | Var::Day | Var::PaddedDay | Var::Quarter
+        )
+    });
+    (has_week && has_calendar_unit).then_some(UNORDERED_AROUND_NEW_YEAR)
+}
+
 pub fn validate(template: &str) -> Result<()> {
     VersionTemplate::parse(template).map(|_| ())
 }
@@ -514,6 +530,41 @@ mod tests {
             ),
             "2026.10.1"
         );
+    }
+
+    #[test]
+    fn ordering_warning_fires_for_every_week_and_calendar_unit_pair() {
+        for week in ["{week}", "{padded_week}"] {
+            for unit in [
+                "{month}",
+                "{padded_month}",
+                "{day}",
+                "{padded_day}",
+                "{quarter}",
+            ] {
+                let template = format!("{{year}}.{unit}.{week}.{{seq}}");
+                assert!(ordering_warning(&template).is_some(), "{template}");
+            }
+        }
+    }
+
+    #[test]
+    fn ordering_warning_is_silent_for_week_only_and_calendar_only_templates() {
+        for template in [
+            "{year}.{week}.{seq}",
+            "{short_year}.{padded_week}",
+            "{year}.{month}.{day}",
+            "{year}.{quarter}.{seq}",
+            "{major}.{minor}.{patch}",
+            "{year}.{week}.{patch}",
+        ] {
+            assert!(ordering_warning(template).is_none(), "{template}");
+        }
+    }
+
+    #[test]
+    fn ordering_warning_ignores_an_invalid_template() {
+        assert!(ordering_warning("{week}{month}").is_none());
     }
 
     #[test]

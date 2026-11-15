@@ -8,6 +8,7 @@ mod strategies;
 mod template;
 
 pub use detect::detect_strategy_from_tags;
+pub use template::ordering_warning as version_template_ordering_warning;
 pub use template::validate as validate_version_template;
 
 use strategies::{bump_semver, bump_sequential, bump_zerover, calver_seq_version, calver_version};
