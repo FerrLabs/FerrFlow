@@ -19,7 +19,6 @@
     "pnpm": ">=11.8.0"
   },
   "devDependencies": {
-    "prettier": "^3.4.2",
-    "prettier-plugin-astro": "^1.0.0"
+    "prettier": "^3.4.2"
   }
 }

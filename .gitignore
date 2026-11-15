@@ -14,5 +14,4 @@ scripts/node_modules/
 node_modules/
 .pnpm-store/
 dist/
-.astro/
 *.tsbuildinfo
