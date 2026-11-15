@@ -2,6 +2,8 @@ pub mod bitbucket;
 pub mod gitea;
 pub mod github;
 pub mod gitlab;
+#[cfg(test)]
+mod latest_tests;
 mod rest;
 #[cfg(test)]
 pub(crate) mod test_server;
@@ -25,6 +27,23 @@ pub enum LatestRelease {
     #[default]
     Auto,
     Never,
+}
+
+impl LatestRelease {
+    pub fn of(config: &crate::config::Config, package: &str) -> Self {
+        let Some(pkg) = config.packages.iter().find(|p| p.name == package) else {
+            return Self::Auto;
+        };
+        let someone_owns_latest = config
+            .packages
+            .iter()
+            .any(|p| p.owns_repo_latest(&config.workspace));
+        if config.is_monorepo() && someone_owns_latest && !pkg.owns_repo_latest(&config.workspace) {
+            Self::Never
+        } else {
+            Self::Auto
+        }
+    }
 }
 
 #[derive(Debug, Default)]

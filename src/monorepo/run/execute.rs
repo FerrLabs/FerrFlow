@@ -412,7 +412,7 @@ fn publish_releases_with(plan: &mut ReleasePlan<'_>, forge: &dyn Forge) -> Resul
                     &t.body,
                     t.is_prerelease,
                     draft,
-                    plan.config.release_latest(&t.package),
+                    LatestRelease::of(plan.config, &t.package),
                 );
                 (t.tag.clone(), t.package.clone(), outcome)
             })
