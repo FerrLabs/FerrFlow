@@ -28,9 +28,14 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    name: Changed paths
+    uses: ./.github/workflows/changes.yml
+
   test:
     name: Test
-    if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):')
+    needs: changes
+    if: needs.changes.outputs.cli == 'true' && (github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -65,12 +70,14 @@ jobs:
 
   kani:
     name: Kani
+    needs: changes
     uses: FerrLabs/.github/.github/workflows/reusable-kani.yml@7c51d18aedc7e04f1a8360e68c0c0933fd773ac0 # main
-    if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):')
+    if: needs.changes.outputs.cli == 'true' && (github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):'))
 
   msrv:
     name: MSRV
-    if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):')
+    needs: changes
+    if: needs.changes.outputs.cli == 'true' && (github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -90,7 +97,8 @@ jobs:
 
   security:
     name: Cargo Security
-    if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):')
+    needs: changes
+    if: (needs.changes.outputs.cli == 'true' || needs.changes.outputs.api == 'true') && (github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -163,7 +171,8 @@ jobs:
     # the wait put the release build, the fixture jobs behind it and therefore
     # the whole merge gate 1m10 later than they need to be. A failing test still
     # fails the run; it just no longer holds the queue.
-    if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):')
+    needs: changes
+    if: needs.changes.outputs.cli == 'true' && (github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -180,7 +189,8 @@ jobs:
 
   fixture-generate:
     name: Generate Fixtures
-    if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):')
+    needs: changes
+    if: needs.changes.outputs.cli == 'true' && (github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):'))
     runs-on: ubuntu-latest
     outputs:
       cache-key: ${{ steps.fixture-cache.outputs.cache-primary-key }}
@@ -380,10 +390,12 @@ jobs:
   # measurement step. See FerrLabs/FerrFlow#397.
   micro-bench-build:
     name: Build micro bench binary
+    needs: changes
     if: >-
+      needs.changes.outputs.cli == 'true' && (
       (github.event_name == 'push' && github.ref == 'refs/heads/main'
       && !startsWith(github.event.head_commit.message, 'chore(release):'))
-      || github.event_name == 'workflow_dispatch'
+      || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -689,22 +701,130 @@ jobs:
           ferrflow-token: ${{ secrets.GITHUB_TOKEN }}
           merge-partials: partials
 
+  check-api:
+    name: API
+    needs: changes
+    if: needs.changes.outputs.api == 'true' && (github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):'))
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
+        with:
+          toolchain: '1.99'
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - name: Format check
+        run: cargo fmt --check
+      - name: Clippy
+        run: cargo clippy --locked --no-deps --all-targets -- -D warnings
+      - name: Tests
+        run: cargo test --locked --all-targets
+
+  check-site:
+    name: Site
+    needs: changes
+    if: needs.changes.outputs.site == 'true' && (github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release):'))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Check i18n parity
+        run: pnpm check:i18n
+      - name: Build
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: pnpm build:site
+
+  image-api:
+    name: API image
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
+        with:
+          context: .
+          file: api/Dockerfile
+          push: false
+          cache-from: type=gha,scope=image-api
+          cache-to: type=gha,scope=image-api,mode=max
+
+  image-site:
+    name: Site image
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.site == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
+        with:
+          context: .
+          file: site/Dockerfile
+          push: false
+          cache-from: type=gha,scope=image-site
+          cache-to: type=gha,scope=image-site,mode=max
+
+  gate:
+    name: CI gate
+    needs:
+      - changes
+      - test
+      - kani
+      - msrv
+      - security
+      - build
+      - fixture-monorepo
+      - fixture-single
+      - fixture-config
+      - fixture-advanced
+      - benchmark-aggregate
+      - check-api
+      - check-site
+      - image-api
+      - image-site
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail when any job failed or was cancelled
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          set -euo pipefail
+          jq -r 'to_entries[] | "\(.key): \(.value.result)"' <<< "$RESULTS"
+          jq -e '[.[].result] | any(. == "failure" or . == "cancelled") | not' <<< "$RESULTS" > /dev/null
+
   release:
     name: Release
-    needs: [test, kani, fixture-monorepo, fixture-single, fixture-config, fixture-advanced, benchmark-aggregate]
+    needs: [gate, benchmark-aggregate]
     runs-on: ubuntu-latest
     concurrency:
       group: release-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: false
     if: |
       always() &&
-      needs.test.result == 'success' &&
-      needs.kani.result == 'success' &&
-      needs.fixture-monorepo.result == 'success' &&
-      needs.fixture-single.result == 'success' &&
-      needs.fixture-config.result == 'success' &&
-      needs.fixture-advanced.result == 'success' &&
-      (needs.benchmark-aggregate.result == 'success' || needs.benchmark-aggregate.result == 'skipped') &&
+      needs.gate.result == 'success' &&
+      !startsWith(github.event.head_commit.message, 'chore(release):') &&
       (
         (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
         github.event_name == 'workflow_dispatch'
@@ -803,7 +923,7 @@ jobs:
             echo "No benchmark summary found, skipping"
             exit 0
           fi
-          TAG=$(./target/release/ferrflow tag --json 2>/dev/null | jq -r '.tag // empty')
+          TAG=$(./target/release/ferrflow tag ferrflow --json 2>/dev/null | jq -r '.tag // empty')
           if [[ -z "$TAG" ]]; then
             echo "No tag found, skipping"
             exit 0

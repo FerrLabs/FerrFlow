@@ -1,0 +1,127 @@
+name: Docker
+
+on:
+  push:
+    tags:
+      - 'site@v[0-9]*'
+      - 'api@v[0-9]*'
+  workflow_dispatch:
+    inputs:
+      package:
+        description: 'Package to build'
+        type: choice
+        options:
+          - site
+          - api
+      version:
+        description: 'Version to tag (e.g. 2026.11.10)'
+        required: true
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.package }}-${{ inputs.version }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  meta:
+    name: Resolve build parameters
+    runs-on: ubuntu-latest
+    outputs:
+      package: ${{ steps.meta.outputs.package }}
+      version: ${{ steps.meta.outputs.version }}
+      major_minor: ${{ steps.meta.outputs.major_minor }}
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - id: meta
+        env:
+          EVENT: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_PACKAGE: ${{ inputs.package }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            PACKAGE="$INPUT_PACKAGE"
+            VERSION="$INPUT_VERSION"
+          else
+            PACKAGE="${REF_NAME%@*}"
+            VERSION="${REF_NAME##*@v}"
+          fi
+          case "$PACKAGE" in
+            site | api) ;;
+            *) echo "::error::unknown package ${PACKAGE}"; exit 1 ;;
+          esac
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::${VERSION} is not a calver version"
+            exit 1
+          fi
+          {
+            echo "package=${PACKAGE}"
+            echo "version=${VERSION}"
+            echo "major_minor=$(echo "${VERSION}" | cut -d. -f1-2)"
+            echo "tag=${PACKAGE}@v${VERSION}"
+          } >> "$GITHUB_OUTPUT"
+
+  site:
+    name: Build & Push Site
+    needs: meta
+    if: needs.meta.outputs.package == 'site'
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+      security-events: write
+    uses: FerrLabs/.github/.github/workflows/reusable-docker-build.yml@7c51d18aedc7e04f1a8360e68c0c0933fd773ac0 # main
+    with:
+      image-name: ghcr.io/ferrlabs/ferrflow-cloud/site
+      tag: ${{ needs.meta.outputs.version }}
+      context: .
+      dockerfile: site/Dockerfile
+      platforms: linux/amd64
+      extra-tags: ghcr.io/ferrlabs/ferrflow-cloud/site:${{ needs.meta.outputs.major_minor }}
+      ref: refs/tags/${{ needs.meta.outputs.tag }}
+
+  api:
+    name: Build & Push API
+    needs: meta
+    if: needs.meta.outputs.package == 'api'
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+      security-events: write
+    uses: FerrLabs/.github/.github/workflows/reusable-docker-build.yml@7c51d18aedc7e04f1a8360e68c0c0933fd773ac0 # main
+    with:
+      image-name: ghcr.io/ferrlabs/ferrflow-cloud/api
+      tag: ${{ needs.meta.outputs.version }}
+      context: .
+      dockerfile: api/Dockerfile
+      platforms: linux/amd64
+      extra-tags: ghcr.io/ferrlabs/ferrflow-cloud/api:${{ needs.meta.outputs.major_minor }}
+      ref: refs/tags/${{ needs.meta.outputs.tag }}
+
+  publish-release:
+    name: Publish the draft release
+    needs: [meta, site, api]
+    if: >-
+      always() && github.event_name == 'push' &&
+      !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Publish the draft without making it the latest release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.meta.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ "$(gh release view "$TAG" --json isDraft --jq .isDraft 2>/dev/null || true)" = "true" ]; then
+            gh release edit "$TAG" --draft=false --latest=false
+          fi

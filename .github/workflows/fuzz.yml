@@ -5,6 +5,9 @@ on:
     paths:
       - 'src/**'
       - 'fuzz/**'
+      - 'api/**'
+      - '.github/workflows/changes.yml'
+      - 'scripts/changed-paths.sh'
       - 'Cargo.toml'
       - 'Cargo.lock'
       - '.github/workflows/fuzz.yml'
@@ -20,9 +23,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Changed paths
+    uses: ./.github/workflows/changes.yml
+
   smoke:
     name: Smoke
-    if: github.event_name == 'pull_request'
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.cli == 'true'
     permissions:
       contents: read
     uses: FerrLabs/.github/.github/workflows/reusable-fuzz-rust.yml@7c51d18aedc7e04f1a8360e68c0c0933fd773ac0 # main
@@ -39,3 +47,26 @@ jobs:
     with:
       max-total-time: 600
       timeout-minutes: 60
+
+  api-smoke:
+    name: API smoke
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.api == 'true'
+    permissions:
+      contents: read
+    uses: FerrLabs/.github/.github/workflows/reusable-fuzz-rust.yml@7c51d18aedc7e04f1a8360e68c0c0933fd773ac0 # main
+    with:
+      working-directory: api
+      max-total-time: 45
+      timeout-minutes: 20
+
+  api-nightly:
+    name: API nightly
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+    uses: FerrLabs/.github/.github/workflows/reusable-fuzz-rust.yml@7c51d18aedc7e04f1a8360e68c0c0933fd773ac0 # main
+    with:
+      working-directory: api
+      max-total-time: 300
+      timeout-minutes: 45

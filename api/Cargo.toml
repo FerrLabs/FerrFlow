@@ -44,9 +44,8 @@ ferrlabs-api-version = { version = "1.0.0" }
 # The FerrFlow CLI core, linked as a library so `/validate`, `/preview` and
 # `/schema` answer with the exact same code the CLI runs — there is no second
 # implementation that can drift. `default-features = false` drops the `cli`
-# feature, so none of the git/process machinery comes along. Tracks the
-# published crate so Renovate bumps it with each FerrFlow release.
-ferrflow = { version = "7", default-features = false }
+# feature, so none of the git/process machinery comes along.
+ferrflow = { path = "..", default-features = false }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "test-util"] }
