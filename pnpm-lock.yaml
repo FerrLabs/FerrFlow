@@ -204,9 +204,6 @@ importers:
       '@angular/router':
         specifier: ^22.0.0
         version: 22.2.3(@angular/common@22.2.3(@angular/core@22.2.3(@angular/compiler@22.2.3)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.2.3(@angular/compiler@22.2.3)(rxjs@7.8.2))(@angular/platform-browser@22.2.3(@angular/common@22.2.3(@angular/core@22.2.3(@angular/compiler@22.2.3)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.2.3(@angular/compiler@22.2.3)(rxjs@7.8.2)))(rxjs@7.8.2)
-      '@ferrflow/doc':
-        specifier: 7.35.1
-        version: 7.35.1
       '@ferrlabs/ui-foundation':
         specifier: ^5.5.0
         version: 5.5.0(tailwindcss@4.3.3)
@@ -773,9 +770,6 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
-
-  '@ferrflow/doc@7.35.1':
-    resolution: {integrity: sha512-GGnYBjHahE/5aZg0NbzCJF6AFpVffxQn3sG6UVqgYAy/PYfI8J4ribnGSzWvZktbuUuChLk8brxq2EXU7jAwFA==}
 
   '@ferrlabs/ui-foundation@5.5.0':
     resolution: {integrity: sha512-A+toHoXZqZZkUHnTLdhvlHXVvvw30U1m2Tbr8fsCjdCXuyRxPM4L1OY9+GQtcUeqC7Oxlz1OEVsW/yGtSnFyxg==}
@@ -4445,8 +4439,6 @@ snapshots:
 
   '@esbuild/win32-x64@0.28.2':
     optional: true
-
-  '@ferrflow/doc@7.35.1': {}
 
   '@ferrlabs/ui-foundation@5.5.0(tailwindcss@4.3.3)':
     dependencies:
