@@ -46,18 +46,34 @@ impl Var {
         !matches!(self, Self::Seq | Self::Major | Self::Minor | Self::Patch)
     }
 
-    fn render_calendar(self, now: DateTime<Utc>) -> String {
+    fn is_week(self) -> bool {
+        matches!(self, Self::Week | Self::PaddedWeek)
+    }
+
+    fn calendar_value(self, now: DateTime<Utc>, iso_year: bool) -> i64 {
+        let year = if iso_year {
+            now.iso_week().year()
+        } else {
+            now.year()
+        };
         match self {
-            Self::Year => now.year().to_string(),
-            Self::ShortYear => format!("{:02}", now.year() % 100),
-            Self::Month => now.month().to_string(),
-            Self::PaddedMonth => format!("{:02}", now.month()),
-            Self::Day => now.day().to_string(),
-            Self::PaddedDay => format!("{:02}", now.day()),
-            Self::Week => now.iso_week().week().to_string(),
-            Self::PaddedWeek => format!("{:02}", now.iso_week().week()),
-            Self::Quarter => ((now.month() - 1) / 3 + 1).to_string(),
+            Self::Year => year.into(),
+            Self::ShortYear => year.rem_euclid(100).into(),
+            Self::Month | Self::PaddedMonth => now.month().into(),
+            Self::Day | Self::PaddedDay => now.day().into(),
+            Self::Week | Self::PaddedWeek => now.iso_week().week().into(),
+            Self::Quarter => ((now.month() - 1) / 3 + 1).into(),
             _ => unreachable!(),
+        }
+    }
+
+    fn render_calendar(self, now: DateTime<Utc>, iso_year: bool) -> String {
+        let value = self.calendar_value(now, iso_year);
+        match self {
+            Self::ShortYear | Self::PaddedMonth | Self::PaddedDay | Self::PaddedWeek => {
+                format!("{value:02}")
+            }
+            _ => value.to_string(),
         }
     }
 }
@@ -191,6 +207,10 @@ impl VersionTemplate {
         })
     }
 
+    fn uses_iso_year(&self) -> bool {
+        self.vars().any(Var::is_week)
+    }
+
     fn read_back(&self, current: &str) -> Result<Option<Vec<(Var, u64)>>> {
         let mut pattern = String::from("^");
         for segment in &self.segments {
@@ -221,10 +241,11 @@ impl VersionTemplate {
     pub fn render(&self, current: &str, bump: BumpType, now: DateTime<Utc>) -> Result<String> {
         let previous = self.read_back(current)?;
 
+        let iso_year = self.uses_iso_year();
         let calendar_rolled = previous.as_ref().is_none_or(|vals| {
             vals.iter()
                 .filter(|(v, _)| v.is_calendar())
-                .any(|(v, n)| v.render_calendar(now) != n.to_string())
+                .any(|(v, n)| u64::try_from(v.calendar_value(now, iso_year)) != Ok(*n))
         });
 
         let previous_of = |want: Var| {
@@ -256,10 +277,26 @@ impl VersionTemplate {
                 Segment::Var(Var::Major) => major.to_string(),
                 Segment::Var(Var::Minor) => minor.to_string(),
                 Segment::Var(Var::Patch) => patch.to_string(),
-                Segment::Var(var) => var.render_calendar(now),
+                Segment::Var(var) => var.render_calendar(now, iso_year),
             })
             .collect())
     }
+}
+
+const UNORDERED_AROUND_NEW_YEAR: &str = "combines a week variable with month, day or quarter. \
+These versions are not ordered around New Year: the year follows the ISO week-numbering year while \
+month, day and quarter stay on the calendar.";
+
+pub fn ordering_warning(template: &str) -> Option<&'static str> {
+    let template = VersionTemplate::parse(template).ok()?;
+    let has_week = template.vars().any(Var::is_week);
+    let has_calendar_unit = template.vars().any(|v| {
+        matches!(
+            v,
+            Var::Month | Var::PaddedMonth | Var::Day | Var::PaddedDay | Var::Quarter
+        )
+    });
+    (has_week && has_calendar_unit).then_some(UNORDERED_AROUND_NEW_YEAR)
 }
 
 pub fn validate(template: &str) -> Result<()> {
@@ -396,6 +433,159 @@ mod tests {
         assert_eq!(
             render_at("{year}.Q{quarter}", "0.0", BumpType::None, now),
             "2026.Q3"
+        );
+    }
+
+    #[test]
+    fn week_templates_use_the_iso_year_at_new_year() {
+        let template = "{year}.{week}.{seq}";
+        assert_eq!(
+            render_at(template, "0.0.0", BumpType::None, at(2025, 12, 29)),
+            "2026.1.1"
+        );
+        assert_eq!(
+            render_at(template, "0.0.0", BumpType::None, at(2027, 1, 1)),
+            "2026.53.1"
+        );
+        assert_eq!(
+            render_at(
+                "{short_year}.{padded_week}",
+                "0.0",
+                BumpType::None,
+                at(2027, 1, 1)
+            ),
+            "26.53"
+        );
+        assert_eq!(
+            render_at(template, "0.0.0", BumpType::None, at(2026, 8, 5)),
+            "2026.32.1"
+        );
+    }
+
+    #[test]
+    fn week_templates_keep_seq_ordering_across_new_year() {
+        let template = "{year}.{week}.{seq}";
+        assert_eq!(
+            render_at(template, "2026.1.1", BumpType::None, at(2025, 12, 30)),
+            "2026.1.2"
+        );
+        assert_eq!(
+            render_at(template, "2026.53.2", BumpType::None, at(2027, 1, 2)),
+            "2026.53.3"
+        );
+        assert_eq!(
+            render_at(template, "2026.53.2", BumpType::None, at(2027, 1, 4)),
+            "2027.1.1"
+        );
+        assert_eq!(
+            render_at(template, "2026.32.4", BumpType::None, at(2026, 8, 6)),
+            "2026.32.5"
+        );
+    }
+
+    #[test]
+    fn seq_increments_within_a_period_for_padded_variables() {
+        for (template, current, now, expected) in [
+            (
+                "{year}.{padded_week}.{seq}",
+                "2001.01.1",
+                at(2001, 1, 2),
+                "2001.01.2",
+            ),
+            (
+                "{short_year}.{week}.{seq}",
+                "01.1.1",
+                at(2001, 1, 2),
+                "01.1.2",
+            ),
+            (
+                "{year}.{padded_month}.{seq}",
+                "2026.01.1",
+                at(2026, 1, 20),
+                "2026.01.2",
+            ),
+            (
+                "{year}.{month}.{padded_day}.{seq}",
+                "2026.8.05.3",
+                at(2026, 8, 5),
+                "2026.8.05.4",
+            ),
+        ] {
+            assert_eq!(
+                render_at(template, current, BumpType::None, now),
+                expected,
+                "{template} {current}"
+            );
+        }
+    }
+
+    #[test]
+    fn seq_resets_when_a_padded_variable_rolls() {
+        assert_eq!(
+            render_at(
+                "{year}.{padded_week}.{seq}",
+                "2026.09.4",
+                BumpType::None,
+                at(2026, 3, 4)
+            ),
+            "2026.10.1"
+        );
+    }
+
+    #[test]
+    fn ordering_warning_fires_for_every_week_and_calendar_unit_pair() {
+        for week in ["{week}", "{padded_week}"] {
+            for unit in [
+                "{month}",
+                "{padded_month}",
+                "{day}",
+                "{padded_day}",
+                "{quarter}",
+            ] {
+                let template = format!("{{year}}.{unit}.{week}.{{seq}}");
+                assert!(ordering_warning(&template).is_some(), "{template}");
+            }
+        }
+    }
+
+    #[test]
+    fn ordering_warning_is_silent_for_week_only_and_calendar_only_templates() {
+        for template in [
+            "{year}.{week}.{seq}",
+            "{short_year}.{padded_week}",
+            "{year}.{month}.{day}",
+            "{year}.{quarter}.{seq}",
+            "{major}.{minor}.{patch}",
+            "{year}.{week}.{patch}",
+        ] {
+            assert!(ordering_warning(template).is_none(), "{template}");
+        }
+    }
+
+    #[test]
+    fn ordering_warning_ignores_an_invalid_template() {
+        assert!(ordering_warning("{week}{month}").is_none());
+    }
+
+    #[test]
+    fn templates_without_a_week_keep_the_calendar_year() {
+        assert_eq!(
+            render_at(
+                "{year}.{month}.{seq}",
+                "2025.12.1",
+                BumpType::None,
+                at(2025, 12, 29)
+            ),
+            "2025.12.2"
+        );
+        assert_eq!(
+            render_at(
+                "{year}.{month}.{day}",
+                "0.0.0",
+                BumpType::None,
+                at(2027, 1, 1)
+            ),
+            "2027.1.1"
         );
     }
 

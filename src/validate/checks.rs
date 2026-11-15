@@ -53,6 +53,13 @@ pub(super) fn check_version_templates(config: &Config) -> Vec<ValidationEntry> {
                 path: context.to_string(),
                 message: err.to_string(),
             });
+        } else if let Some(warning) = crate::versioning::version_template_ordering_warning(template)
+        {
+            entries.push(ValidationEntry {
+                level: ValidationLevel::Warning,
+                path: context.to_string(),
+                message: format!("versionTemplate {template:?} {warning}"),
+            });
         }
     };
 

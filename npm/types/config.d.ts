@@ -160,7 +160,7 @@ export interface FerrFlowConfiguration {
       feat?: 'minor' | 'patch';
     };
     /**
-     * Version format built from named variables. Variables: year, short_year, month, padded_month, day, padded_day, week, padded_week, quarter, seq, major, minor, patch. Each must be separated by a literal so the previous version can be read back. The literals cannot carry whitespace, control characters, or the characters git reserves in a ref name (~ ^ : ? * [ backslash), because the version becomes a git tag. Takes precedence over 'versioning'.
+     * Version format built from named variables. Variables: year, short_year, month, padded_month, day, padded_day, week, padded_week, quarter, seq, major, minor, patch. Each must be separated by a literal so the previous version can be read back. The literals cannot carry whitespace, control characters, or the characters git reserves in a ref name (~ ^ : ? * [ backslash), because the version becomes a git tag. When the template has week or padded_week, year and short_year use the ISO week-numbering year (2027-01-01 is week 53 of 2026) and seq resets on it. Combining week with month, day or quarter gives versions that are not ordered around New Year, because those stay on the calendar. Takes precedence over 'versioning'.
      */
     versionTemplate?: string;
     /**
@@ -507,7 +507,7 @@ export interface FerrFlowConfiguration {
       feat?: 'minor' | 'patch';
     };
     /**
-     * Version format built from named variables. Variables: year, short_year, month, padded_month, day, padded_day, week, padded_week, quarter, seq, major, minor, patch. Each must be separated by a literal so the previous version can be read back. The literals cannot carry whitespace, control characters, or the characters git reserves in a ref name (~ ^ : ? * [ backslash), because the version becomes a git tag. Overrides workspace default. Takes precedence over 'versioning'.
+     * Version format built from named variables. Variables: year, short_year, month, padded_month, day, padded_day, week, padded_week, quarter, seq, major, minor, patch. Each must be separated by a literal so the previous version can be read back. The literals cannot carry whitespace, control characters, or the characters git reserves in a ref name (~ ^ : ? * [ backslash), because the version becomes a git tag. Overrides workspace default. When the template has week or padded_week, year and short_year use the ISO week-numbering year (2027-01-01 is week 53 of 2026) and seq resets on it. Combining week with month, day or quarter gives versions that are not ordered around New Year, because those stay on the calendar. Takes precedence over 'versioning'.
      */
     versionTemplate?: string;
     /**
