@@ -8,7 +8,6 @@ import { SiteShellComponent } from '@ferrlabs/ui-ng';
   template: `
     <flr-site-shell [title]="title" [description]="description">
       <section class="error-page">
-        <p class="kicker" i18n="@@notfound.kicker">Error 404</p>
         <h1 i18n="@@notfound.heading">Page not found</h1>
         <p class="lede" i18n="@@notfound.lede">
           The route you tried doesn't exist on ferrflow.com.
@@ -32,14 +31,6 @@ import { SiteShellComponent } from '@ferrlabs/ui-ng';
       padding: 96px 24px;
       text-align: center;
       color: var(--color-ink-2, #475569);
-    }
-    .kicker {
-      font-family: var(--font-mono, ui-monospace, monospace);
-      font-size: 11px;
-      letter-spacing: 0.32em;
-      text-transform: uppercase;
-      color: var(--color-ink-3, #94a3b8);
-      margin: 0 0 18px;
     }
     h1 {
       font-size: clamp(32px, 5vw, 48px);

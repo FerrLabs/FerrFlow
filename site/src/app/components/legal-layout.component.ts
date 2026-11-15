@@ -22,7 +22,6 @@ import { SiteShellComponent } from '@ferrlabs/ui-ng';
           </div>
         }
         <header class="legal-header">
-          <p class="mono legal-eyebrow">{{ eyebrow() }}</p>
           <h1 class="legal-title">{{ title() }}</h1>
           <p class="mono legal-meta">{{ updatedLabel }}: {{ lastUpdatedFmt() }}</p>
         </header>
@@ -60,13 +59,6 @@ import { SiteShellComponent } from '@ferrlabs/ui-ng';
     .legal-header {
       margin: 24px 0 56px;
     }
-    .legal-eyebrow {
-      font-size: 11px;
-      letter-spacing: 0.32em;
-      text-transform: uppercase;
-      color: var(--paper-ink-3);
-      margin: 0 0 14px;
-    }
     .legal-title {
       font-family: var(--font-display);
       font-weight: 700;
@@ -92,7 +84,6 @@ export class LegalLayoutComponent {
 
   private readonly locale = inject(LOCALE_ID);
 
-  readonly eyebrow = input($localize`:@@legal.eyebrow:Legal document`);
   readonly draftNotice = input(
     $localize`:@@legal.draftNotice:initial text, undergoing legal review. Clauses may change.`,
   );

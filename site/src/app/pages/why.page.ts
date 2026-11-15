@@ -14,7 +14,6 @@ import {
     <flr-site-shell [title]="title" [description]="description">
       <main class="why-main">
         <flr-comparison-table
-          [eyebrow]="eyebrow"
           [heading]="heading"
           headingAccent="FerrFlow"
           [lead]="lead"
@@ -44,7 +43,6 @@ export default class WhyPage {
   protected readonly title = $localize`:@@why.flow.metaTitle:Why FerrFlow: vs semantic-release, release-please, Changesets`;
   protected readonly description = $localize`:@@why.flow.metaDescription:A feature-by-feature comparison of FerrFlow against semantic-release, release-please and Changesets: file formats, monorepos, runtime and release workflow.`;
 
-  protected readonly eyebrow = $localize`:@@why.flow.eyebrow:Comparison`;
   protected readonly heading = $localize`:@@why.flow.h1:Why FerrFlow?`;
   protected readonly lead = $localize`:@@why.flow.lead:A single native binary, language-agnostic across 14+ manifest formats, driven purely by conventional commits. Here is how it lines up against the JavaScript-ecosystem release tools, feature by feature.`;
 

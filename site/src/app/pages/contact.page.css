@@ -6,13 +6,6 @@
 .contact-header {
   margin: 24px 0 40px;
 }
-.contact-eyebrow {
-  font-size: 11px;
-  letter-spacing: 0.32em;
-  text-transform: uppercase;
-  color: var(--paper-ink-3);
-  margin: 0 0 14px;
-}
 .contact-title {
   font-family: var(--font-display);
   font-weight: 700;

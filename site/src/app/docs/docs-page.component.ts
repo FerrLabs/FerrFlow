@@ -6,7 +6,7 @@ import {
   input,
   LOCALE_ID,
 } from '@angular/core';
-import { DocsLayoutComponent } from '@ferrlabs/ui-ng/docs';
+import { DocsLayoutComponent, type DocsLang } from '@ferrlabs/ui-ng/docs';
 import { resolveLocale, SiteShellComponent } from '@ferrlabs/ui-ng';
 import { DOC_VERSIONS, DOCS_NAV } from './docs-nav';
 import { availableSlugs, navForVersion } from './docs-availability';
@@ -27,7 +27,7 @@ const VERSIONED_SLUG_PREFIX = /^\/?(?:[a-z]{2}\/)?(?:v\d+\/)?docs\//;
       <flr-docs-layout
         [nav]="nav()"
         [versions]="DOC_VERSIONS"
-        [lang]="locale"
+        [lang]="docsLang"
         [slug]="slug()"
         [version]="version()"
       >
@@ -45,6 +45,8 @@ export class DocsPageComponent {
   protected readonly DOC_VERSIONS = DOC_VERSIONS;
 
   protected readonly locale = resolveLocale(inject(LOCALE_ID));
+
+  protected readonly docsLang: DocsLang = this.locale === 'fr' ? 'fr' : 'en';
 
   protected readonly nav = computed(() => navForVersion(DOCS_NAV, this.version(), this.locale));
 

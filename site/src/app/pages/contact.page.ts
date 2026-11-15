@@ -45,7 +45,6 @@ export default class ContactPage {
 
   protected readonly title = $localize`:@@contact.metaTitle:Contact: FerrFlow`;
   protected readonly description = $localize`:@@contact.metaDescription:Write to the FerrFlow team: questions, billing, security reports or requests about your personal data.`;
-  protected readonly eyebrow = $localize`:@@contact.eyebrow:Contact`;
   protected readonly heading = $localize`:@@contact.h1:Talk to the team`;
   protected readonly lead = $localize`:@@contact.lead:A question about FerrFlow, a billing issue or something about your data: write to us here and a person on the team will answer.`;
   protected readonly emailPrompt = $localize`:@@contact.emailPrompt:Prefer email? Write to`;

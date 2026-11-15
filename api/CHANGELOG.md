@@ -1,5 +1,23 @@
 # Changelog
 
+## [2026.11.6] - 2026-11-15
+
+### Breaking Changes
+
+- feat(api)!: retire les montages /v1 et /api/v1 (#788)
+
+## [2026.11.5] - 2026-11-14
+
+### Bug Fixes
+
+- fix(deps): update rust crate jsonwebtoken to v12 (#1163)
+
+## [2026.10.15] - 2026-10-31
+
+### Bug Fixes
+
+- fix(api): link the published ferrflow 7 crate instead of a v5 git rev (#1123)
+
 ## [2026.10.13] - 2026-10-25
 
 ### Bug Fixes

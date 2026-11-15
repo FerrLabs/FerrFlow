@@ -129,7 +129,7 @@ const FORMATS = [
 
     <section class="formats-strip">
       <div class="container formats-row">
-        <span class="mono formats-eyebrow" i18n="@@formats.label">Reads natively</span>
+        <span class="mono formats-label" i18n="@@formats.label">Reads natively</span>
         <div class="formats-chips">
           @for (f of formats; track f) {
             <span class="mono formats-chip">{{ f }}</span>
@@ -316,7 +316,7 @@ const FORMATS = [
       gap: 32px;
       flex-wrap: wrap;
     }
-    .formats-eyebrow {
+    .formats-label {
       font-size: 11px;
       letter-spacing: 0.14em;
       text-transform: uppercase;
