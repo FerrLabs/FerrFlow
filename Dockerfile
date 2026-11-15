@@ -7,14 +7,16 @@ WORKDIR /app
 # Cache dependencies — copy all workspace manifests
 COPY Cargo.toml Cargo.lock ./
 COPY ferrflow-wasm/Cargo.toml ferrflow-wasm/Cargo.toml
+COPY api/Cargo.toml api/Cargo.toml
 
 # Create stubs for all crates/bins so cargo resolves the workspace
 RUN mkdir src && echo 'fn main() {}' > src/main.rs && echo '' > src/lib.rs \
     && mkdir -p benchmarks/fixtures && echo 'fn main() {}' > benchmarks/fixtures/generate.rs \
     && mkdir -p benches && echo 'fn main() {}' > benches/ferrflow_benchmarks.rs \
     && mkdir -p ferrflow-wasm/src && echo '' > ferrflow-wasm/src/lib.rs \
-    && cargo build --release --package ferrflow \
-    && rm -rf src benchmarks benches ferrflow-wasm/src
+    && mkdir -p api/src && echo 'fn main() {}' > api/src/main.rs && echo '' > api/src/lib.rs \
+    && cargo build --release --bin ferrflow \
+    && rm -rf src benchmarks benches ferrflow-wasm/src api/src
 
 # Build for real
 COPY src ./src
@@ -22,8 +24,9 @@ COPY schema ./schema
 COPY benchmarks ./benchmarks
 RUN mkdir -p benches && echo 'fn main() {}' > benches/ferrflow_benchmarks.rs \
     && mkdir -p ferrflow-wasm/src && echo '' > ferrflow-wasm/src/lib.rs \
+    && mkdir -p api/src && echo 'fn main() {}' > api/src/main.rs && echo '' > api/src/lib.rs \
     && touch src/main.rs src/lib.rs \
-    && cargo build --release --package ferrflow
+    && cargo build --release --bin ferrflow
 
 # Runtime stage
 FROM alpine:3.24@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a

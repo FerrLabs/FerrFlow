@@ -1,0 +1,8 @@
+node_modules
+dist
+build
+.vite
+pnpm-lock.yaml
+*.tsbuildinfo
+CHANGELOG.md
+site/public/schema/

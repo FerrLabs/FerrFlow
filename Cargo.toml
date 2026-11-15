@@ -1,6 +1,6 @@
 [workspace]
-members = [".", "ferrflow-wasm"]
-exclude = ["__fixtures__", "fuzz"]
+members = [".", "api", "ferrflow-wasm"]
+exclude = ["__fixtures__", "fuzz", "api/fuzz"]
 resolver = "3"
 
 [workspace.lints.rust]
