@@ -146,9 +146,7 @@ try {
   console.log(`[docs] ${entries.length} changelog entries from ${SOURCE}@${version}`);
 
   const pages = versions.reduce((total, name) => total + countPages(join(packageRoot, name)), 0);
-  console.log(
-    `[docs] ${pages} pages from ${SOURCE}@${version} across ${versions.length} versions`,
-  );
+  console.log(`[docs] ${pages} pages from ${SOURCE}@${version} across ${versions.length} versions`);
   console.log(`[docs] benchmarks and schema from ${SOURCE}@${version}`);
 } catch (error) {
   fail(error.message);
