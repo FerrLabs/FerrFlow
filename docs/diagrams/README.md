@@ -2,6 +2,7 @@
 
 | Diagram | Covers |
 |---|---|
+| [monorepo.md](monorepo.md) | The three packages, their licences, what depends on what, and which tag triggers which workflow |
 | [release-algorithm.md](release-algorithm.md) | Commit analysis → bump → manifest writes → commit/tag/push/publish, the crash-resume checkpoint, and why the step order is what it is |
 
 Mermaid, so GitHub renders inline.

@@ -744,7 +744,33 @@ Everywhere else, and without `bot: true`, the commit is built by local git exact
 
 Annotated tags are still created and pushed by git, so they are not covered by this. Only the commit is.
 
+## Repository layout
+
+This repository holds the CLI and the two services around it.
+
+| Folder | What | Serves |
+| --- | --- | --- |
+| `.` (root, `src/`, `npm/`, `ferrflow-wasm/`) | The `ferrflow` CLI and library | crates.io, npm, GitHub releases |
+| [`site/`](site) | Angular 22 + Analog + Tailwind site, EN and FR, prerendered | [ferrflow.com](https://ferrflow.com) |
+| [`api/`](api) | Rust + axum API: schema, validate, preview, latest, bot token | [api.ferrflow.com](https://api.ferrflow.com) |
+| [`docs/site/`](docs/site) | Documentation and changelog pages, published as `@ferrflow/doc` | rendered by the site at `/docs` |
+
+Accounts, auth and billing are not here. They live in [FerrLabs-Cloud](https://github.com/FerrLabs/FerrLabs-Cloud),
+the one backend shared by every FerrLabs product. What is left here is FerrFlow-specific and needs no
+user session, so the API is entirely public.
+
+The API links the CLI as a library (`ferrflow` with `default-features = false`) instead of reimplementing it,
+so `validate` and `preview` answer exactly what the binary would answer. See [ARCHITECTURE.md](ARCHITECTURE.md).
+
 ## License
 
-[MIT](LICENSE)
+Each folder keeps its own licence.
 
+| Path | Licence |
+| --- | --- |
+| Root, `src/`, `npm/`, `ferrflow-wasm/`, `fuzz/` | [MIT](LICENSE) |
+| `docs/site/` (`@ferrflow/doc`) | MIT, declared in its `package.json` |
+| `site/` | [MPL-2.0](site/LICENSE) |
+| `api/` | [MPL-2.0](api/LICENSE) |
+
+GitHub only shows the root licence. The crate and the npm packages published from the root are MIT only.

@@ -4,7 +4,7 @@
     "title": "FerrFlow API",
     "description": "Hosted FerrFlow endpoints under /v1/ferrflow/*: health, schema, latest-release resolution, and hosted config validation + bump preview backed by the FerrFlow CLI core.",
     "version": "1.0.0",
-    "license": { "name": "Proprietary" }
+    "license": { "name": "MPL-2.0", "identifier": "MPL-2.0" }
   },
   "servers": [
     { "url": "https://api.ferrflow.com", "description": "Production" },
