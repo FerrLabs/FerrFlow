@@ -50,23 +50,30 @@ impl Var {
         matches!(self, Self::Week | Self::PaddedWeek)
     }
 
-    fn render_calendar(self, now: DateTime<Utc>, iso_year: bool) -> String {
+    fn calendar_value(self, now: DateTime<Utc>, iso_year: bool) -> i64 {
         let year = if iso_year {
             now.iso_week().year()
         } else {
             now.year()
         };
         match self {
-            Self::Year => year.to_string(),
-            Self::ShortYear => format!("{:02}", year.rem_euclid(100)),
-            Self::Month => now.month().to_string(),
-            Self::PaddedMonth => format!("{:02}", now.month()),
-            Self::Day => now.day().to_string(),
-            Self::PaddedDay => format!("{:02}", now.day()),
-            Self::Week => now.iso_week().week().to_string(),
-            Self::PaddedWeek => format!("{:02}", now.iso_week().week()),
-            Self::Quarter => ((now.month() - 1) / 3 + 1).to_string(),
+            Self::Year => year.into(),
+            Self::ShortYear => year.rem_euclid(100).into(),
+            Self::Month | Self::PaddedMonth => now.month().into(),
+            Self::Day | Self::PaddedDay => now.day().into(),
+            Self::Week | Self::PaddedWeek => now.iso_week().week().into(),
+            Self::Quarter => ((now.month() - 1) / 3 + 1).into(),
             _ => unreachable!(),
+        }
+    }
+
+    fn render_calendar(self, now: DateTime<Utc>, iso_year: bool) -> String {
+        let value = self.calendar_value(now, iso_year);
+        match self {
+            Self::ShortYear | Self::PaddedMonth | Self::PaddedDay | Self::PaddedWeek => {
+                format!("{value:02}")
+            }
+            _ => value.to_string(),
         }
     }
 }
@@ -238,7 +245,7 @@ impl VersionTemplate {
         let calendar_rolled = previous.as_ref().is_none_or(|vals| {
             vals.iter()
                 .filter(|(v, _)| v.is_calendar())
-                .any(|(v, n)| v.render_calendar(now, iso_year) != n.to_string())
+                .any(|(v, n)| u64::try_from(v.calendar_value(now, iso_year)) != Ok(*n))
         });
 
         let previous_of = |want: Var| {
@@ -457,6 +464,55 @@ mod tests {
         assert_eq!(
             render_at(template, "2026.32.4", BumpType::None, at(2026, 8, 6)),
             "2026.32.5"
+        );
+    }
+
+    #[test]
+    fn seq_increments_within_a_period_for_padded_variables() {
+        for (template, current, now, expected) in [
+            (
+                "{year}.{padded_week}.{seq}",
+                "2001.01.1",
+                at(2001, 1, 2),
+                "2001.01.2",
+            ),
+            (
+                "{short_year}.{week}.{seq}",
+                "01.1.1",
+                at(2001, 1, 2),
+                "01.1.2",
+            ),
+            (
+                "{year}.{padded_month}.{seq}",
+                "2026.01.1",
+                at(2026, 1, 20),
+                "2026.01.2",
+            ),
+            (
+                "{year}.{month}.{padded_day}.{seq}",
+                "2026.8.05.3",
+                at(2026, 8, 5),
+                "2026.8.05.4",
+            ),
+        ] {
+            assert_eq!(
+                render_at(template, current, BumpType::None, now),
+                expected,
+                "{template} {current}"
+            );
+        }
+    }
+
+    #[test]
+    fn seq_resets_when_a_padded_variable_rolls() {
+        assert_eq!(
+            render_at(
+                "{year}.{padded_week}.{seq}",
+                "2026.09.4",
+                BumpType::None,
+                at(2026, 3, 4)
+            ),
+            "2026.10.1"
         );
     }
 
