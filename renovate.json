@@ -6,6 +6,11 @@
       "matchManagers": ["cargo"],
       "matchPackageNames": ["gix", "gix-*"],
       "groupName": "gix"
+    },
+    {
+      "description": "TypeScript 7 is outside Angular's supported range: @angular/compiler-cli 22 declares `typescript: >=6.0 <6.1`, and the compiler errors out rather than warns on an unsupported version. Hold at 6.x until Angular ships support, then drop this rule. See FerrLabs/.github#313.",
+      "matchPackageNames": ["typescript"],
+      "allowedVersions": "<7"
     }
   ]
 }

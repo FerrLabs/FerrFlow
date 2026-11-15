@@ -9,3 +9,10 @@ benchmarks/fixtures/mono-medium/
 benchmarks/fixtures/mono-large/
 .claude/
 scripts/node_modules/
+
+# Node
+node_modules/
+.pnpm-store/
+dist/
+.astro/
+*.tsbuildinfo
