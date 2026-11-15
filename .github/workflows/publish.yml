@@ -416,7 +416,7 @@ jobs:
   publish-crate:
     name: Publish crates.io
     needs: upload
-    if: ${{ !cancelled() && (github.event_name == 'workflow_dispatch' || needs.upload.result == 'success') }}
+    if: ${{ !cancelled() && ((github.event_name == 'workflow_dispatch' && startsWith(inputs.crate_tag, 'v')) || needs.upload.result == 'success') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read

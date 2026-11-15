@@ -9,6 +9,7 @@ permissions: {}
 jobs:
   refresh:
     name: Refresh the awesome-alternatives listing
+    if: startsWith(github.event.release.tag_name, 'v')
     runs-on: ubuntu-latest
     permissions:
       id-token: write
