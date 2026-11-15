@@ -1,0 +1,60 @@
+name: Changed paths
+
+on:
+  workflow_call:
+    outputs:
+      cli:
+        description: 'The CLI crate or anything outside site/ and api/ changed'
+        value: ${{ jobs.detect.outputs.cli }}
+      api:
+        description: 'api/ or something the API builds against changed'
+        value: ${{ jobs.detect.outputs.api }}
+      site:
+        description: 'site/ or its inputs changed'
+        value: ${{ jobs.detect.outputs.site }}
+
+permissions:
+  contents: read
+
+jobs:
+  detect:
+    name: Detect
+    runs-on: ubuntu-latest
+    outputs:
+      cli: ${{ steps.paths.outputs.cli }}
+      api: ${{ steps.paths.outputs.api }}
+      site: ${{ steps.paths.outputs.site }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Classify the changed files
+        id: paths
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          scripts/changed-paths.test.sh
+          case "$EVENT" in
+            pull_request)
+              range=(HEAD^1 HEAD)
+              ;;
+            push)
+              if [ -n "$BEFORE" ] && git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+                range=("$BEFORE" "$SHA")
+              else
+                range=()
+              fi
+              ;;
+            *)
+              range=()
+              ;;
+          esac
+          if [ "${#range[@]}" -eq 0 ]; then
+            printf 'cli=true\napi=true\nsite=true\n' | tee -a "$GITHUB_OUTPUT"
+          else
+            git diff --name-only "${range[@]}" | scripts/changed-paths.sh | tee -a "$GITHUB_OUTPUT"
+          fi
