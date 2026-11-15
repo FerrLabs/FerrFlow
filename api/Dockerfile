@@ -18,11 +18,13 @@ RUN mkdir -p src benches benchmarks/fixtures ferrflow-wasm/src api/src \
  && printf 'fn main() {}' > api/src/main.rs \
  && printf '' > api/src/lib.rs \
  && cargo build --release --locked -p ferrflow-api --bin ferrflow-api \
- && rm -rf api/src
+ && rm -rf src api/src
 
+COPY schema ./schema
+COPY src ./src
 COPY api/openapi ./api/openapi
 COPY api/src ./api/src
-RUN touch api/src/main.rs api/src/lib.rs \
+RUN touch src/main.rs src/lib.rs api/src/main.rs api/src/lib.rs \
  && cargo build --release --locked -p ferrflow-api --bin ferrflow-api
 
 FROM gcr.io/distroless/cc-debian12:nonroot
