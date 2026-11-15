@@ -1,0 +1,25 @@
+{
+  "name": "ferrflow-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev:site": "pnpm --filter @ferrflow/site dev",
+    "dev": "pnpm dev:site",
+    "build:site": "pnpm --filter @ferrflow/site build",
+    "build": "pnpm build:site",
+    "typecheck": "pnpm -r typecheck",
+    "check:i18n": "pnpm --filter @ferrflow/site run check:i18n",
+    "ci:local": "pnpm typecheck && pnpm build && pnpm check:i18n",
+    "format": "prettier --write site",
+    "format:check": "prettier --check site"
+  },
+  "packageManager": "pnpm@12.16.1",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=11.8.0"
+  },
+  "devDependencies": {
+    "prettier": "^3.4.2",
+    "prettier-plugin-astro": "^1.0.0"
+  }
+}

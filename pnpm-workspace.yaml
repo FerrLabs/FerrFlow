@@ -1,0 +1,27 @@
+overrides:
+  # esbuild below 0.28.1 does not verify the integrity of the platform binary
+  # it downloads (GHSA-gv7w-rqvm-qjhr), so a hostile registry turns an install
+  # into code execution. 0.27.7 arrives through @analogjs/vite-plugin-nitro.
+  esbuild: '>=0.28.1'
+
+packages:
+  - 'site'
+
+allowBuilds:
+  '@parcel/watcher': false
+  esbuild: true
+  lmdb: false
+  msgpackr-extract: false
+  sharp: true
+
+# @analogjs/vite-plugin-nitro imports tinyglobby without declaring it, so
+# pnpm's isolated layout leaves it unresolvable and `vite build` dies while
+# loading vite.config.ts. Declare it on the package's behalf.
+packageExtensions:
+  '@analogjs/vite-plugin-nitro':
+    dependencies:
+      tinyglobby: ^0.2.14
+
+minimumReleaseAgeExclude:
+  - '@ferrlabs/*'
+  - '@ferrflow/*'
