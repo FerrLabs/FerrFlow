@@ -1,0 +1,72 @@
+[package]
+name = "ferrflow-api"
+version = "2026.10.14"
+edition = "2024"
+license = "LicenseRef-FerrLabs-Proprietary"
+publish = false
+authors = ["FerrLabs"]
+rust-version = "1.88"
+
+[features]
+fuzzing = []
+
+[dependencies]
+axum = { version = "0.8", features = ["macros"] }
+tower-http = { version = "0.7", features = ["cors", "trace", "compression-gzip"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal"] }
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = { version = "0.4", features = ["serde"] }
+
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+reqwest = { version = "0.13", default-features = false, features = ["rustls", "json"] }
+# Signature du JWT d'App GitHub pour `/ferrflow/token`. Les features par
+# défaut de jsonwebtoken 10 n'activent aucun backend cryptographique : la
+# signature panique alors au runtime, pas seulement en test — c'est le même
+# piège que ferrfleet-api et ferrlabs-api ont déjà rencontré. `rust_crypto`
+# est le backend pur Rust (pas de dépendance de build C/NASM, pas de
+# `CryptoProvider::install_default()` à appeler).
+jsonwebtoken = { version = "11", features = ["rust_crypto"] }
+
+hmac = "0.13"
+sha2 = "0.11"
+hex = "0.4"
+
+# Négociation du contrat par en-tête (`x-ferrflow-api-version`), partagée avec
+# les autres APIs FerrLabs. C'est ce qui rend le versionnage par chemin
+# redondant : voir le retrait de `/v1` dans `lib.rs`.
+ferrlabs-api-version = { version = "1.0.0" }
+
+# The FerrFlow CLI core, linked as a library so `/validate`, `/preview` and
+# `/schema` answer with the exact same code the CLI runs — there is no second
+# implementation that can drift. `default-features = false` drops the `cli`
+# feature, so none of the git/process machinery comes along. Pinned by rev:
+# a moving `main` would silently change what the API returns.
+ferrflow = { git = "https://github.com/FerrLabs/FerrFlow", rev = "6d36aa59fc4b87f8f4f578cf14744131157ead3e", default-features = false }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "test-util"] }
+tower = { version = "0.5", features = ["util"] }
+tempfile = "3"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+module_name_repetitions = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+# Every doc comment here names FerrFlow, GitHub, OIDC or FerrLabs. Backticking
+# a product name mid-sentence reads worse than the lint is worth.
+doc_markdown = "allow"
+# Internal binary crate: nothing downstream can ignore a return value.
+must_use_candidate = "allow"
+
+[profile.release]
+strip = "symbols"

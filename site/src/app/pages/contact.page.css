@@ -1,0 +1,43 @@
+.contact-main {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 64px 24px 96px;
+}
+.contact-header {
+  margin: 24px 0 40px;
+}
+.contact-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--paper-ink-3);
+  margin: 0 0 14px;
+}
+.contact-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 0.96;
+  letter-spacing: -0.025em;
+  color: var(--paper-ink);
+  font-size: clamp(40px, 6vw, 60px);
+  margin: 0;
+}
+.contact-lead {
+  margin: 20px 0 0;
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--paper-ink-2);
+}
+.contact-email {
+  margin: 12px 0 0;
+  font-size: 15px;
+  color: var(--paper-ink-3);
+}
+.contact-email .mono {
+  color: var(--paper-ink);
+}
+@media (max-width: 720px) {
+  .contact-main {
+    padding: 48px 16px 64px;
+  }
+}
