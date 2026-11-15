@@ -56,5 +56,5 @@ jobs:
           if [ "${#range[@]}" -eq 0 ]; then
             printf 'cli=true\napi=true\nsite=true\n' | tee -a "$GITHUB_OUTPUT"
           else
-            git diff --name-only "${range[@]}" | scripts/changed-paths.sh | tee -a "$GITHUB_OUTPUT"
+            git -c core.quotePath=false diff --name-only "${range[@]}" | scripts/changed-paths.sh | tee -a "$GITHUB_OUTPUT"
           fi

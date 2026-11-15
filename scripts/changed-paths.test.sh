@@ -25,6 +25,7 @@ expect "cli=true api=false site=false" tests/fixtures/run-tests.sh
 expect "cli=true api=false site=false" README.md
 expect "cli=true api=false site=false" npm/package.json
 expect "cli=true api=true site=true" .github/workflows/ci.yml
+expect "cli=true api=true site=true" .dockerignore
 expect "cli=true api=false site=true" site/src/main.ts README.md
 expect "cli=false api=false site=false"
 

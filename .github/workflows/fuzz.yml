@@ -6,6 +6,8 @@ on:
       - 'src/**'
       - 'fuzz/**'
       - 'api/**'
+      - '.github/workflows/changes.yml'
+      - 'scripts/changed-paths.sh'
       - 'Cargo.toml'
       - 'Cargo.lock'
       - '.github/workflows/fuzz.yml'
