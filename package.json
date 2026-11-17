@@ -13,7 +13,7 @@
     "format": "prettier --write site",
     "format:check": "prettier --check site"
   },
-  "packageManager": "pnpm@12.20.0",
+  "packageManager": "pnpm@12.21.0",
   "engines": {
     "node": ">=22.0.0",
     "pnpm": ">=11.8.0"
