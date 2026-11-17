@@ -220,7 +220,7 @@ importers:
         specifier: ^5.8.0
         version: 5.8.0(tailwindcss@4.3.5)
       '@ferrlabs/ui-ng':
-        specifier: ^1.52.0
+        specifier: ^1.52.1
         version: 1.52.1(f29d0ab3979b1fa3a1cd7948285399f3)
       chart.js:
         specifier: ^4.5.1
