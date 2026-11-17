@@ -1,5 +1,20 @@
 # Changelog
 
+## [2026.11.11] - 2026-11-17
+
+### Features
+
+- feat: benchmark tool_configs, reset version, disable skipCi (#279)
+- Feat/status command (#41)
+
+### Bug Fixes
+
+- fix(deps): update dependency @ferrlabs/ui-ng to ^1.52.1 (#1428)
+
+### Refactoring
+
+- refactor(site): read docs from docs/site instead of @ferrflow/doc (#1406)
+
 ## [2026.11.10] - 2026-11-15
 
 ### Bug Fixes
