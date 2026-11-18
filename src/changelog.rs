@@ -357,6 +357,7 @@ fn build_rich_section(
     if config.include_compare_link
         && let (Some(base), Some(last), Some(new_tag)) =
             (&render.forge_base, &render.last_tag, &render.new_tag)
+        && [base, last, new_tag].iter().all(|part| is_link_safe(part))
     {
         section.push_str(&format!(
             "\n[{new_version}]: {base}/compare/{last}...{new_tag}\n"
@@ -364,6 +365,10 @@ fn build_rich_section(
     }
 
     section
+}
+
+fn is_link_safe(part: &str) -> bool {
+    !part.chars().any(|c| c.is_whitespace() || c.is_control())
 }
 
 fn build_entry(commit: &GitLog, config: &ChangelogConfig, render: &ChangelogRender) -> Entry {
@@ -1332,6 +1337,26 @@ mod tests {
         };
         let s = build_section_with("1.2.3", &commits, &r);
         assert!(s.contains("[1.2.3]: https://github.com/owner/repo/compare/v1.2.2...v1.2.3"));
+    }
+
+    #[test]
+    fn rich_render_compare_link_omitted_when_a_part_carries_a_newline() {
+        let cfg = ChangelogConfig {
+            sections: Some(sections(&[("feat", enabled())])),
+            include_compare_link: true,
+            ..Default::default()
+        };
+        let commits = make_commits(&["feat: x"]);
+        let r = ChangelogRender {
+            formats: None,
+            config: Some(&cfg),
+            forge_base: Some("https://github.com/owner/repo\n## [1.2.3]".to_string()),
+            last_tag: Some("v1.2.2".to_string()),
+            new_tag: Some("v1.2.3".to_string()),
+        };
+        let s = build_section_with("1.2.3", &commits, &r);
+        assert!(!s.contains("/compare/"));
+        assert_eq!(section_for_version(&s, "1.2.3").as_deref(), Some(s.trim()));
     }
 
     #[test]
