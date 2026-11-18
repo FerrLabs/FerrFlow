@@ -5,7 +5,7 @@ FROM docker.io/library/node:26-alpine AS builder
 WORKDIR /app
 
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
-RUN corepack enable
+RUN npm install -g corepack && corepack enable
 
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
 COPY site/package.json ./site/
