@@ -18,7 +18,7 @@ while IFS= read -r file; do
       api=true
       site=true
       ;;
-    site/* | docs/site/* | package.json | pnpm-lock.yaml | pnpm-workspace.yaml | .npmrc | .prettierrc.json | .prettierignore)
+    site/* | docs/site/*)
       site=true
       ;;
     api/*)

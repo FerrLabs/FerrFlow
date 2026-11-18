@@ -14,7 +14,10 @@
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
     "check:i18n": "node ./scripts/check-i18n.mjs",
     "preview": "vite preview",
-    "docs:sync": "node scripts/sync-docs.mjs"
+    "docs:sync": "node scripts/sync-docs.mjs",
+    "ci:local": "pnpm typecheck && pnpm build && pnpm check:i18n",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@analogjs/content": "^2.6.1",
@@ -45,8 +48,10 @@
     "@angular/compiler": "^22.0.0",
     "@angular/compiler-cli": "^22.0.0",
     "@tailwindcss/vite": "^4.3.0",
+    "prettier": "^3.4.2",
     "tailwindcss": "^4.3.0",
     "typescript": "~6.0.0",
     "vite": "^8.0.0"
-  }
+  },
+  "packageManager": "pnpm@12.21.0"
 }

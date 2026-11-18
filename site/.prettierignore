@@ -5,4 +5,4 @@ build
 pnpm-lock.yaml
 *.tsbuildinfo
 CHANGELOG.md
-site/public/schema/
+public/schema/

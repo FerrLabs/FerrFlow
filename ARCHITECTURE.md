@@ -14,7 +14,8 @@ One repository, three released packages. Diagrams are in [docs/diagrams/monorepo
 reads it from the working tree at build time.
 
 The Cargo workspace is `.`, `api` and `ferrflow-wasm`. `fuzz/` and `api/fuzz/` are separate crates outside it.
-The pnpm workspace is `site/` only.
+The pnpm workspace root is `site/` (`package.json`, `pnpm-workspace.yaml`, `pnpm-lock.yaml`, `.npmrc` and the
+Prettier config live there), so a dependency bump touches no file that belongs to the `ferrflow` package.
 
 ## Dependencies between packages
 

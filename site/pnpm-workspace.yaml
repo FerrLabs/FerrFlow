@@ -4,9 +4,6 @@ overrides:
   # into code execution. 0.27.7 arrives through @analogjs/vite-plugin-nitro.
   esbuild: '>=0.28.1'
 
-packages:
-  - 'site'
-
 allowBuilds:
   '@parcel/watcher': false
   esbuild: true

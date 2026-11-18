@@ -50,8 +50,9 @@ cargo run -p ferrflow-api
 Site:
 
 ```bash
+cd site
 pnpm install
-pnpm dev:site
+pnpm dev
 pnpm ci:local
 ```
 
