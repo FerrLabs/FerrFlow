@@ -7,16 +7,19 @@ WORKDIR /app
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 RUN npm install -g corepack@0.36.0 && corepack enable
 
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
-COPY site/package.json ./site/
+WORKDIR /app/site
 
-RUN pnpm install --frozen-lockfile --filter @ferrflow/site...
+COPY site/package.json site/pnpm-workspace.yaml site/pnpm-lock.yaml site/.npmrc ./
 
+RUN pnpm install --frozen-lockfile
+
+WORKDIR /app
 COPY docs/site ./docs/site
 COPY site ./site
 
+WORKDIR /app/site
 ENV NODE_OPTIONS=--max-old-space-size=4096
-RUN pnpm --filter @ferrflow/site build
+RUN pnpm build
 
 # Runtime stage — Analog static output (prerendered HTML + client bundles).
 FROM docker.io/nginxinc/nginx-unprivileged:alpine

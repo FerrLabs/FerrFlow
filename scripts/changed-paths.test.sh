@@ -16,7 +16,9 @@ expect() {
 }
 
 expect "cli=false api=false site=true" site/src/app/app.ts
-expect "cli=false api=false site=true" docs/site/docs-en/index.md pnpm-lock.yaml
+expect "cli=false api=false site=true" docs/site/docs-en/index.md site/pnpm-lock.yaml
+expect "cli=false api=false site=true" site/package.json site/pnpm-lock.yaml
+expect "cli=true api=false site=false" pnpm-lock.yaml
 expect "cli=false api=true site=false" api/src/lib.rs api/Dockerfile
 expect "cli=true api=true site=false" src/main.rs
 expect "cli=true api=true site=false" Cargo.lock

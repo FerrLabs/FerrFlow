@@ -735,19 +735,25 @@ jobs:
         with:
           persist-credentials: false
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          package_json_file: site/package.json
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '26'
       - name: Install dependencies
+        working-directory: site
         run: pnpm install --frozen-lockfile
       - name: Typecheck
+        working-directory: site
         run: pnpm typecheck
       - name: Check i18n parity
+        working-directory: site
         run: pnpm check:i18n
       - name: Build
+        working-directory: site
         env:
           NODE_OPTIONS: --max-old-space-size=4096
-        run: pnpm build:site
+        run: pnpm build
 
   image-api:
     name: API image
