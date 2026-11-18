@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.11.13] - 2026-11-18
+
+### Bug Fixes
+
+- fix(docker): pin corepack in the image build (#1433)
+
 ## [2026.11.11] - 2026-11-17
 
 ### Features
