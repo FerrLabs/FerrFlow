@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.11.15] - 2026-11-19
+
+### Bug Fixes
+
+- fix(site): drop the SIREN from the footer (#1437)
+
 ## [2026.11.13] - 2026-11-18
 
 ### Bug Fixes
