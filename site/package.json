@@ -31,7 +31,7 @@
     "@angular/router": "^22.0.0",
     "@ferrlabs/telemetry": "^0.5.1",
     "@ferrlabs/ui-foundation": "^5.8.0",
-    "@ferrlabs/ui-ng": "^1.52.1",
+    "@ferrlabs/ui-ng": "^1.57.1",
     "chart.js": "^4.5.1",
     "front-matter": "^4.0.2",
     "marked": "^18.0.0",

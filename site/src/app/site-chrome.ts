@@ -73,7 +73,6 @@ export function ferrflowChrome(): SiteChromeConfig {
         },
       ],
       bottomLeft: $localize`:@@footer.rights:© 2026 FerrLabs. FerrFlow is a FerrLabs product.`,
-      bottomRight: 'SIREN 104 243 951',
     },
     labels: {
       menu: $localize`:@@nav.menu:Menu`,
