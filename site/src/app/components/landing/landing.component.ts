@@ -2,7 +2,9 @@ import { ChangeDetectionStrategy, Component, inject, LOCALE_ID } from '@angular/
 import { resolveLocale, withLocaleBase } from '@ferrlabs/ui-ng';
 import { benchmarks } from '../../data/benchmarks';
 import { CopyCommandComponent } from './copy-command.component';
+import { HeroTerminalComponent } from './hero-terminal.component';
 import { InstallSwitcherComponent } from './install-switcher.component';
+import { speedBenchmark } from './speed-benchmark';
 
 interface HeroStat {
   readonly k: string;
@@ -44,13 +46,12 @@ const FORMATS = [
   'composer.json',
 ] as const;
 
-const SPEED_FIXTURE = 'mono-medium';
 const DEFAULT_RUNS = 30;
 
 @Component({
   selector: 'flr-landing',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CopyCommandComponent, InstallSwitcherComponent],
+  imports: [CopyCommandComponent, HeroTerminalComponent, InstallSwitcherComponent],
   templateUrl: './landing.component.html',
   styleUrl: './landing.component.css',
 })
@@ -74,6 +75,7 @@ export class LandingComponent {
     { k: $localize`:@@hero.stat.lang:Lang`, v: 'Rust' },
   ];
 
+  protected readonly speed = speedBenchmark();
   protected readonly runs = benchmarks.runs ?? DEFAULT_RUNS;
 
   protected readonly facts: readonly Fact[] = [
@@ -143,14 +145,11 @@ export class LandingComponent {
   ];
 
   private speedFact(): Fact[] {
-    const cells = benchmarks.benchmarks;
-    const ours = cells[`${SPEED_FIXTURE}-ferrflow-binary-release-dry-run`];
-    const theirs = cells[`${SPEED_FIXTURE}-semantic-release-npm-release-dry-run`];
-    if (!ours || !theirs) return [];
-    const theirsMs = this.number.format(theirs.median_ms);
+    if (!this.speed || this.speed.competitorMs === undefined) return [];
+    const theirsMs = this.number.format(this.speed.competitorMs);
     return [
       {
-        value: `${this.number.format(ours.median_ms)} ms`,
+        value: `${this.number.format(this.speed.ferrflowMs)} ms`,
         label: $localize`:@@facts.speed.label:release --dry-run, 50 packages × 500 commits`,
         detail: $localize`:@@facts.speed.detail:semantic-release: ${theirsMs}:INTERPOLATION: ms`,
       },

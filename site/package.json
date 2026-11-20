@@ -11,6 +11,7 @@
   "scripts": {
     "dev": "node scripts/sync-docs.mjs && vite",
     "build": "node scripts/sync-docs.mjs && vite build && node scripts/gen-rss.mjs && node scripts/gen-sitemap.mjs",
+    "test": "node --experimental-strip-types --test 'src/**/*.spec.ts'",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
     "check:i18n": "node ./scripts/check-i18n.mjs",
     "preview": "vite preview",
