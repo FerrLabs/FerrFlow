@@ -103,6 +103,7 @@ jobs:
       dockerfile: api/Dockerfile
       platforms: linux/amd64
       extra-tags: ghcr.io/ferrlabs/ferrflow-cloud/api:${{ needs.meta.outputs.major_minor }}
+      trivyignores: api/.trivyignore
       ref: refs/tags/${{ needs.meta.outputs.tag }}
 
   publish-release:
