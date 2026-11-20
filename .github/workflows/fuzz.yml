@@ -33,7 +33,7 @@ jobs:
     if: github.event_name == 'pull_request' && needs.changes.outputs.cli == 'true'
     permissions:
       contents: read
-    uses: FerrLabs/.github/.github/workflows/reusable-fuzz-rust.yml@52d6593a2a7b5d6742d1dd68fddb01bb82282c18 # main
+    uses: FerrLabs/.github/.github/workflows/reusable-fuzz-rust.yml@532e765d8b055d300bc2beeff3c981ed2938759f # main
     with:
       max-total-time: 45
       timeout-minutes: 20
@@ -43,7 +43,7 @@ jobs:
     if: github.event_name != 'pull_request'
     permissions:
       contents: read
-    uses: FerrLabs/.github/.github/workflows/reusable-fuzz-rust.yml@52d6593a2a7b5d6742d1dd68fddb01bb82282c18 # main
+    uses: FerrLabs/.github/.github/workflows/reusable-fuzz-rust.yml@532e765d8b055d300bc2beeff3c981ed2938759f # main
     with:
       max-total-time: 600
       timeout-minutes: 60
@@ -54,7 +54,7 @@ jobs:
     if: github.event_name == 'pull_request' && needs.changes.outputs.api == 'true'
     permissions:
       contents: read
-    uses: FerrLabs/.github/.github/workflows/reusable-fuzz-rust.yml@52d6593a2a7b5d6742d1dd68fddb01bb82282c18 # main
+    uses: FerrLabs/.github/.github/workflows/reusable-fuzz-rust.yml@532e765d8b055d300bc2beeff3c981ed2938759f # main
     with:
       working-directory: api
       max-total-time: 45
@@ -65,7 +65,7 @@ jobs:
     if: github.event_name != 'pull_request'
     permissions:
       contents: read
-    uses: FerrLabs/.github/.github/workflows/reusable-fuzz-rust.yml@52d6593a2a7b5d6742d1dd68fddb01bb82282c18 # main
+    uses: FerrLabs/.github/.github/workflows/reusable-fuzz-rust.yml@532e765d8b055d300bc2beeff3c981ed2938759f # main
     with:
       working-directory: api
       max-total-time: 300

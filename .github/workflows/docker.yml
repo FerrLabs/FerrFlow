@@ -75,7 +75,7 @@ jobs:
       id-token: write
       attestations: write
       security-events: write
-    uses: FerrLabs/.github/.github/workflows/reusable-docker-build.yml@52d6593a2a7b5d6742d1dd68fddb01bb82282c18 # main
+    uses: FerrLabs/.github/.github/workflows/reusable-docker-build.yml@532e765d8b055d300bc2beeff3c981ed2938759f # main
     with:
       image-name: ghcr.io/ferrlabs/ferrflow-cloud/site
       tag: ${{ needs.meta.outputs.version }}
@@ -95,7 +95,7 @@ jobs:
       id-token: write
       attestations: write
       security-events: write
-    uses: FerrLabs/.github/.github/workflows/reusable-docker-build.yml@52d6593a2a7b5d6742d1dd68fddb01bb82282c18 # main
+    uses: FerrLabs/.github/.github/workflows/reusable-docker-build.yml@532e765d8b055d300bc2beeff3c981ed2938759f # main
     with:
       image-name: ghcr.io/ferrlabs/ferrflow-cloud/api
       tag: ${{ needs.meta.outputs.version }}
