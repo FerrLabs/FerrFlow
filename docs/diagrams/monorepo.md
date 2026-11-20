@@ -22,6 +22,7 @@ flowchart LR
     CLI -->|published as| CRATES
     API -->|"version = 7, default-features = false"| CRATES
     SITE -->|"sync-docs.mjs copies pages,<br/>changelog and schemas"| DOCS
+    SITE -.->|"dependsOn, propagate patch"| CLI
 ```
 
 The API takes the CLI from crates.io today. FLOW-10 (PR 1409) turns that edge into a path dependency on the root.
@@ -35,6 +36,7 @@ flowchart TB
     REL --> CFG[".ferrflow: 3 packages,<br/>nestedPackages = exclusive"]
     CFG --> TCLI["tag v7.x.y"]
     CFG --> TSITE["tag site@vYYYY.M.N"]
+    TCLI -->|"cascade: site dependsOn ferrflow"| TSITE
     CFG --> TAPI["tag api@vYYYY.M.N"]
     TCLI --> PUB["publish.yml"]
     PUB --> OUT["release assets, crates.io, npm,<br/>@ferrflow/wasm, @ferrflow/doc,<br/>ghcr.io/ferrlabs/ferrflow"]

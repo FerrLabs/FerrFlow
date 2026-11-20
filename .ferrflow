@@ -72,6 +72,12 @@
     {
       "name": "site",
       "path": "site",
+      "dependsOn": [
+        {
+          "name": "ferrflow",
+          "propagate": "patch"
+        }
+      ],
       "changelog": "site/CHANGELOG.md",
       "versioning": "calver-seq",
       "tagTemplate": "{name}@v{version}",

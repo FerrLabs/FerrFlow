@@ -38,6 +38,13 @@ and benchmark jobs pass. It tags each package that has releasable commits since 
 for the others. Pushes that only touch `docs/site/**` skip the workflow, so a documentation change cannot cut a CLI
 release.
 
+`site` declares `dependsOn: ferrflow` with `propagate: patch`. `docs/site/` belongs to `ferrflow` under
+`nestedPackages = "exclusive"`, and the CLI's `postBump` hook rewrites `docs/site/data/` (benchmarks, schemas) and
+the `@ferrflow/doc` version into the release commit, whose `chore(release)` subject never counts as a releasable
+commit. Without the dependency, nothing ever bumped `site` for those changes and its image was not rebuilt. With it,
+every CLI release also tags `site@v*` on the same release commit, so the image carries the numbers that were just
+embedded. Nothing depends on `site`, and the `Release` job skips `chore(release)` pushes, so this cannot loop.
+
 Only the `v*` tag has a consumer on `main`: `publish.yml` builds the binaries, attaches the release assets, then
 publishes the crate, the npm packages, `@ferrflow/wasm`, `@ferrflow/doc` and the `ghcr.io/ferrlabs/ferrflow` image.
 No workflow on `main` reacts to `site@v*` or `api@v*`.
