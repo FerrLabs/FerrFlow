@@ -147,10 +147,11 @@ export class LandingComponent {
   private speedFact(): Fact[] {
     if (!this.speed || this.speed.competitorMs === undefined) return [];
     const theirsMs = this.number.format(this.speed.competitorMs);
+    const { packages, commitsPerPackage } = this.speed;
     return [
       {
         value: `${this.number.format(this.speed.ferrflowMs)} ms`,
-        label: $localize`:@@facts.speed.label:release --dry-run, 50 packages × 500 commits`,
+        label: $localize`:@@facts.speed.label:release --dry-run, ${packages}:PACKAGES: packages × ${commitsPerPackage}:COMMITS: commits`,
         detail: $localize`:@@facts.speed.detail:semantic-release: ${theirsMs}:INTERPOLATION: ms`,
       },
     ];

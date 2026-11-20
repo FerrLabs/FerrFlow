@@ -25,4 +25,10 @@ describe('speed-race', () => {
     assert.equal(formatMs(2100, 'en'), '2,100 ms');
     assert.equal(formatMs(14.6, 'en'), '15 ms');
   });
+
+  it('keeps each locale on its own formatting when called repeatedly', () => {
+    assert.equal(formatMs(2100, 'de'), '2.100 ms');
+    assert.equal(formatMs(2100, 'en'), '2,100 ms');
+    assert.equal(formatMs(2100, 'de'), '2.100 ms');
+  });
 });

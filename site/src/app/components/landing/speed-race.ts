@@ -12,6 +12,17 @@ export function speedup(ferrflowMs: number, semanticReleaseMs: number): number {
   return Math.round(semanticReleaseMs / ferrflowMs);
 }
 
+const formatters = new Map<string, Intl.NumberFormat>();
+
+function formatterFor(locale: string): Intl.NumberFormat {
+  let formatter = formatters.get(locale);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 });
+    formatters.set(locale, formatter);
+  }
+  return formatter;
+}
+
 export function formatMs(ms: number, locale: string): string {
-  return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(ms)} ms`;
+  return `${formatterFor(locale).format(ms)} ms`;
 }

@@ -35,6 +35,10 @@ export class HeroTerminalComponent {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private sequence: RaceSequence | undefined;
   private observer: IntersectionObserver | undefined;
+  private motionQuery: MediaQueryList | undefined;
+  private readonly onMotionChange = (): void => {
+    if (this.motionQuery?.matches) this.showReducedMotion();
+  };
 
   protected readonly packages = computed(() => this.benchmark().packages);
   protected readonly commits = computed(() => {
@@ -83,6 +87,7 @@ export class HeroTerminalComponent {
     afterNextRender(() => this.init());
     inject(DestroyRef).onDestroy(() => {
       this.observer?.disconnect();
+      this.motionQuery?.removeEventListener('change', this.onMotionChange);
       this.sequence?.destroy();
     });
   }
@@ -96,9 +101,10 @@ export class HeroTerminalComponent {
     this.sequence = new RaceSequence(COMMAND, { ferrflowMs, competitorMs }, (state) =>
       this.state.set(state),
     );
-    if (matchMedia(REDUCED_MOTION_QUERY).matches) {
-      this.reducedMotion.set(true);
-      this.sequence.showFinal();
+    this.motionQuery = matchMedia(REDUCED_MOTION_QUERY);
+    this.motionQuery.addEventListener('change', this.onMotionChange);
+    if (this.motionQuery.matches) {
+      this.showReducedMotion();
       return;
     }
     this.observer = new IntersectionObserver((entries) => {
@@ -107,5 +113,11 @@ export class HeroTerminalComponent {
       this.sequence?.start();
     });
     this.observer.observe(this.host.nativeElement);
+  }
+
+  private showReducedMotion(): void {
+    this.observer?.disconnect();
+    this.reducedMotion.set(true);
+    this.sequence?.showFinal();
   }
 }
