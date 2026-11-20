@@ -170,5 +170,7 @@
   "start.release.body": "Bump les fichiers, écrit le changelog, commit, tag, push et crée la release.",
   "start.quickstart": "Démarrage rapide complet",
   "start.actions": "Publier à chaque push avec GitHub Actions",
-  "start.allInstalls": "Toutes les méthodes d'installation"
+  "start.allInstalls": "Toutes les méthodes d'installation",
+  "copy.failed": "Échec de la copie",
+  "copy.failedAnnounce": "Impossible de copier la commande, sélectionnez-la à la place"
 }
