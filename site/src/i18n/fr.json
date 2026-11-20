@@ -146,7 +146,7 @@
   "contact.emailPrompt": "Vous préférez l'e-mail ? Écrivez à",
   "hero.otherInstalls": "npm, Docker, GitHub Actions",
   "terminal.label": "Exemple de sortie de ferrflow release",
-  "copy.action": "Copier",
+  "copy.action": "Copier la commande",
   "copy.done": "Copié",
   "copy.announce": "Commande copiée dans le presse-papiers",
   "install.tabsLabel": "Méthode d'installation",

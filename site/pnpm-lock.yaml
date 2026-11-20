@@ -214,8 +214,8 @@ importers:
         specifier: ^5.8.0
         version: 5.8.0(tailwindcss@4.3.5)
       '@ferrlabs/ui-ng':
-        specifier: ^1.57.1
-        version: 1.57.1(a5a4f2911f807f83243286c6aae5a36a)
+        specifier: ^1.60.0
+        version: 1.60.0(a5a4f2911f807f83243286c6aae5a36a)
       chart.js:
         specifier: ^4.5.1
         version: 4.6.1
@@ -790,8 +790,8 @@ packages:
     peerDependencies:
       tailwindcss: ^4.0.0
 
-  '@ferrlabs/ui-ng@1.57.1':
-    resolution: {integrity: sha512-ehK6SBeHXwtJoClr42fSZRFuQKE8WdK9bTRss7+04wEs6Ft2Kw0u2t9ff3tuQF9vhW8d0CjbfIk4LMVEeSS7BQ==}
+  '@ferrlabs/ui-ng@1.60.0':
+    resolution: {integrity: sha512-KE7J8eeIr25xthlo7VElKxTKPG31VQLhi8xoBMa3MiO06Y7K/eDpCPBlHdyMR8oAJrXHOVTQsBUa3vOqWi0vwQ==}
     peerDependencies:
       '@angular/cdk': ^22.0.0
       '@angular/common': ^22.0.0
@@ -4591,7 +4591,7 @@ snapshots:
       '@fontsource/fraunces': 5.3.0
       tailwindcss: 4.3.5
 
-  '@ferrlabs/ui-ng@1.57.1(a5a4f2911f807f83243286c6aae5a36a)':
+  '@ferrlabs/ui-ng@1.60.0(a5a4f2911f807f83243286c6aae5a36a)':
     dependencies:
       '@angular/cdk': 22.2.0(@angular/common@22.2.6(@angular/core@22.2.6(@angular/compiler@22.2.6)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.2.6(@angular/compiler@22.2.6)(rxjs@7.8.2))(@angular/forms@22.2.6(@angular/common@22.2.6(@angular/core@22.2.6(@angular/compiler@22.2.6)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.2.6(@angular/compiler@22.2.6)(rxjs@7.8.2))(@angular/platform-browser@22.2.6(@angular/common@22.2.6(@angular/core@22.2.6(@angular/compiler@22.2.6)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.2.6(@angular/compiler@22.2.6)(rxjs@7.8.2)))(rxjs@7.8.2))(@angular/platform-browser@22.2.6(@angular/common@22.2.6(@angular/core@22.2.6(@angular/compiler@22.2.6)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.2.6(@angular/compiler@22.2.6)(rxjs@7.8.2)))(rxjs@7.8.2)
       '@angular/common': 22.2.6(@angular/core@22.2.6(@angular/compiler@22.2.6)(rxjs@7.8.2))(rxjs@7.8.2)
