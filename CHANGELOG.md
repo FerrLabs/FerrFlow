@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.36.10] - 2026-11-20
+
+### Bug Fixes
+
+- fix(release): bump site with every CLI release so the embedded docs data ships (#1457)
+
 ## [7.36.9] - 2026-11-20
 
 ### Bug Fixes
