@@ -148,7 +148,7 @@
   "hero.otherInstalls": "npm, Docker, GitHub Actions",
   "terminal.label": "ferrflow release --dry-run sur {$PACKAGES} packages se termine en {$OURS}, {$COMPETITOR} prend {$THEIRS}",
   "terminal.labelSolo": "ferrflow release --dry-run sur {$PACKAGES} packages se termine en {$OURS}",
-  "copy.action": "Copier",
+  "copy.action": "Copier la commande",
   "copy.done": "Copié",
   "copy.announce": "Commande copiée dans le presse-papiers",
   "install.tabsLabel": "Méthode d'installation",

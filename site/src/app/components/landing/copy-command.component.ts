@@ -7,6 +7,7 @@ import {
   input,
   signal,
 } from '@angular/core';
+import { CopyIconComponent } from '@ferrlabs/ui-ng';
 
 const RESET_MS = 2000;
 
@@ -15,6 +16,7 @@ type CopyStatus = 'idle' | 'copied' | 'failed';
 @Component({
   selector: 'flr-copy-command',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [CopyIconComponent],
   templateUrl: './copy-command.component.html',
   styleUrl: './copy-command.component.css',
 })
@@ -23,6 +25,11 @@ export class CopyCommandComponent {
   readonly prompt = input(true);
 
   protected readonly status = signal<CopyStatus>('idle');
+  protected readonly labels: Record<CopyStatus, string> = {
+    idle: $localize`:@@copy.action:Copy command`,
+    copied: $localize`:@@copy.done:Copied`,
+    failed: $localize`:@@copy.failed:Copy failed`,
+  };
   private readonly document = inject(DOCUMENT);
   private resetTimer: ReturnType<typeof setTimeout> | undefined;
 
