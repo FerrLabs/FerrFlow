@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.11.17] - 2026-11-20
+
+### Features
+
+- feat(site): restructure the landing page (#1453)
+
 ## [2026.11.15] - 2026-11-19
 
 ### Bug Fixes
