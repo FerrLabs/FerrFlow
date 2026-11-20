@@ -6,9 +6,8 @@ use crate::conventional_commits::{BumpType, determine_bump};
 use crate::error_code::{self, ErrorCodeExt};
 use crate::formats::read_version;
 use crate::git::{
-    Repository, TagIndex, find_highest_semver_tag_with_cache, get_changed_files_for_commit,
-    get_changed_files_since_oid, get_changed_files_since_tag, get_commits_since_last_stable_tag,
-    get_commits_since_last_tag,
+    Repository, TagIndex, find_highest_semver_tag_with_cache, get_changed_files_since_oid,
+    get_changed_files_since_tag, get_commits_since_last_stable_tag, get_commits_since_last_tag,
 };
 use crate::prerelease::PrereleaseContext;
 use gix::ObjectId;
@@ -19,6 +18,7 @@ use std::sync::{Arc, Mutex};
 
 use super::super::util::{is_package_touched, tags_for_package};
 use super::super::version_source::VersionSource;
+use super::commit_index::CommitIndex;
 use super::forced::{Forced, forced_version_for};
 
 pub(super) enum SkipReason {
@@ -100,7 +100,6 @@ impl PackagePlan {
 }
 
 pub(super) type ChangedFilesCache = Mutex<HashMap<Option<ObjectId>, Arc<Vec<String>>>>;
-pub(super) type CommitFilesCache = Mutex<HashMap<ObjectId, Arc<Vec<String>>>>;
 
 pub(super) struct PlanInputs<'a> {
     pub config: &'a Config,
@@ -114,7 +113,7 @@ pub(super) struct PlanInputs<'a> {
     pub changed_files: &'a [String],
     pub short_hash: &'a str,
     pub changed_files_cache: &'a ChangedFilesCache,
-    pub commit_files_cache: &'a CommitFilesCache,
+    pub commit_index: &'a CommitIndex,
     pub commit_walk: &'a crate::git::CommitWalkCache,
 }
 
@@ -138,59 +137,64 @@ fn changed_files_since_oid_cached(
     Ok(files)
 }
 
-fn files_for_commit_cached(
-    repo: &Repository,
-    commit: ObjectId,
-    cache: &CommitFilesCache,
-) -> Arc<Vec<String>> {
-    if let Some(hit) = cache
-        .lock()
-        .expect("commit-files cache poisoned")
-        .get(&commit)
+const PARALLEL_TAG_DIFF_THRESHOLD: usize = 16;
+
+pub(super) fn prefetch_changed_files_since_tags(repo: &Repository, inputs: &PlanInputs<'_>) {
+    let config = inputs.config;
+    let strategy = config.workspace.orphaned_tag_strategy;
+    let (Some(idx), OrphanedTagStrategy::Warn) = (inputs.tag_index, strategy) else {
+        return;
+    };
+    if !config.workspace.recover_missed_releases
+        || !config.is_monorepo()
+        || crate::concurrency::max_jobs() < 2
+        || rayon::current_num_threads() < 2
     {
-        return Arc::clone(hit);
-    }
-    let files = Arc::new(get_changed_files_for_commit(repo, commit).unwrap_or_default());
-    cache
-        .lock()
-        .expect("commit-files cache poisoned")
-        .insert(commit, Arc::clone(&files));
-    files
-}
-
-const PARALLEL_PREFETCH_THRESHOLD: usize = 768;
-
-fn prefetch_commit_files(repo: &Repository, commits: &[ObjectId], cache: &CommitFilesCache) {
-    if crate::concurrency::max_jobs() < 2 {
         return;
     }
-    let missing: Vec<ObjectId> = {
-        let known = cache.lock().expect("commit-files cache poisoned");
-        commits
-            .iter()
-            .copied()
-            .filter(|id| !known.contains_key(id))
+
+    let nested_of = |pkg: &PackageConfig| config.nested_package_paths(pkg);
+    let wanted: HashSet<Option<ObjectId>> = config
+        .packages
+        .iter()
+        .filter(|pkg| !inputs.excluded.contains(&pkg.name))
+        .filter(|pkg| !is_package_touched(pkg, inputs.changed_files, true, &nested_of(pkg)))
+        .map(|pkg| {
+            let prefix = pkg.tag_prefix(&config.workspace, true);
+            idx.find_last_tag_commit(&prefix, strategy)
+        })
+        .collect();
+    let missing: Vec<Option<ObjectId>> = {
+        let known = inputs
+            .changed_files_cache
+            .lock()
+            .expect("changed-files cache poisoned");
+        wanted
+            .into_iter()
+            .filter(|oid| !known.contains_key(oid))
             .collect()
     };
-    if missing.len() < PARALLEL_PREFETCH_THRESHOLD || rayon::current_num_threads() < 2 {
+    if missing.len() < PARALLEL_TAG_DIFF_THRESHOLD {
         return;
     }
 
     let shared = repo.clone().into_sync();
-    let fetched: Vec<(ObjectId, Arc<Vec<String>>)> = missing
+    let fetched: Vec<(Option<ObjectId>, Arc<Vec<String>>)> = missing
         .par_iter()
         .map_init(
             || shared.to_thread_local(),
-            |worker, id| {
-                let files = get_changed_files_for_commit(worker, *id).unwrap_or_default();
-                (*id, Arc::new(files))
+            |worker, &oid| {
+                get_changed_files_since_oid(worker, oid)
+                    .ok()
+                    .map(|files| (oid, Arc::new(files)))
             },
         )
+        .flatten()
         .collect();
-
-    cache
+    inputs
+        .changed_files_cache
         .lock()
-        .expect("commit-files cache poisoned")
+        .expect("changed-files cache poisoned")
         .extend(fetched);
 }
 
@@ -203,15 +207,15 @@ fn scope_commit_ids_to_package(
     if !inputs.config.is_monorepo() {
         return commits;
     }
-    prefetch_commit_files(repo, &commits, inputs.commit_files_cache);
-    let nested = inputs.config.nested_package_paths(pkg);
-    commits
-        .into_iter()
-        .filter(|&id| {
-            let files = files_for_commit_cached(repo, id, inputs.commit_files_cache);
-            files.is_empty() || pkg.is_touched_by(&files, true, &nested)
-        })
-        .collect()
+    let Some(package) = inputs
+        .config
+        .packages
+        .iter()
+        .position(|p| p.name == pkg.name)
+    else {
+        return commits;
+    };
+    inputs.commit_index.retain_touching(repo, package, commits)
 }
 
 fn scope_commits_to_package(
@@ -664,7 +668,7 @@ mod tests {
         config: Config,
         root: std::path::PathBuf,
         cache: ChangedFilesCache,
-        commit_files: CommitFilesCache,
+        commit_index: CommitIndex,
         commit_walk: crate::git::CommitWalkCache,
     }
 
@@ -690,7 +694,7 @@ mod tests {
             short_hash: "deadbee",
             commit_walk: &fx.commit_walk,
             changed_files_cache: &fx.cache,
-            commit_files_cache: &fx.commit_files,
+            commit_index: &fx.commit_index,
         }
     }
 
@@ -753,10 +757,10 @@ mod tests {
         let fx = Fixture {
             _dir: dir,
             repo,
+            commit_index: CommitIndex::new(&config),
             config,
             root: root.clone(),
             cache: ChangedFilesCache::default(),
-            commit_files: CommitFilesCache::default(),
             commit_walk,
         };
 
@@ -820,10 +824,10 @@ mod tests {
         let fx = Fixture {
             _dir: dir,
             repo,
+            commit_index: CommitIndex::new(&config),
             config,
             root: root.clone(),
             cache: ChangedFilesCache::default(),
-            commit_files: CommitFilesCache::default(),
             commit_walk,
         };
         let all_tags = collect_all_tags(&fx.repo);
@@ -909,10 +913,10 @@ mod tests {
         let fx = Fixture {
             _dir: dir,
             repo,
+            commit_index: CommitIndex::new(&config),
             config,
             root,
             cache: ChangedFilesCache::default(),
-            commit_files: CommitFilesCache::default(),
             commit_walk,
         };
         let changed_files = get_changed_files(&fx.repo).unwrap();
@@ -1156,140 +1160,12 @@ mod tests {
         );
     }
 
-    fn fast_import_history(dir: &Path, commits: usize) {
-        use std::io::Write;
-        let mut stream = String::new();
-        for i in 0..commits {
-            let pkg = if i % 3 == 0 { "api" } else { "sdk" };
-            let body = format!("fix({pkg}): change {i}\n");
-            stream.push_str("commit refs/heads/main\n");
-            stream.push_str(&format!(
-                "committer Test <test@test.com> {} +0000\n",
-                1_950_000_000 + i
-            ));
-            stream.push_str(&format!("data {}\n{body}", body.len()));
-            let content = format!("{i}\n");
-            stream.push_str(&format!(
-                "M 100644 inline {pkg}/file.txt\ndata {}\n{content}",
-                content.len()
-            ));
-        }
-        let mut child = crate::test_utils::git_command()
-            .current_dir(dir)
-            .args(["fast-import", "--quiet"])
-            .stdin(std::process::Stdio::piped())
-            .spawn()
-            .expect("git should be on PATH");
-        child
-            .stdin
-            .take()
-            .unwrap()
-            .write_all(stream.as_bytes())
-            .unwrap();
-        assert!(child.wait().unwrap().success(), "git fast-import failed");
-    }
-
-    fn history(repo: &Repository) -> Vec<GitLog> {
-        let head = repo.head_id().unwrap().detach();
-        repo.rev_walk([head])
-            .all()
-            .unwrap()
-            .map(|info| {
-                let id = info.unwrap().id.to_string();
-                GitLog {
-                    hash: id[..7].to_string(),
-                    id,
-                    message: String::new(),
-                }
-            })
-            .collect()
-    }
-
-    fn commit_ids(commits: &[GitLog]) -> Vec<ObjectId> {
-        commits
-            .iter()
-            .map(|c| ObjectId::from_hex(c.id.as_bytes()).unwrap())
-            .collect()
-    }
-
     fn in_pool<T: Send>(threads: usize, f: impl FnOnce() -> T + Send) -> T {
         rayon::ThreadPoolBuilder::new()
             .num_threads(threads)
             .build()
             .unwrap()
             .install(f)
-    }
-
-    #[test]
-    fn a_parallel_prefetch_caches_exactly_what_the_sequential_path_computes() {
-        let dir = tempfile::tempdir().unwrap();
-        crate::test_utils::init_repo_at(dir.path());
-        fast_import_history(dir.path(), PARALLEL_PREFETCH_THRESHOLD + 40);
-        let repo = crate::git::open_repo(dir.path()).unwrap();
-        let commits = history(&repo);
-        assert!(commits.len() > PARALLEL_PREFETCH_THRESHOLD);
-
-        let prefetched = CommitFilesCache::default();
-        in_pool(4, || {
-            let worker = crate::git::open_repo(dir.path()).unwrap();
-            prefetch_commit_files(&worker, &commit_ids(&commits), &prefetched);
-        });
-        let prefetched = prefetched.into_inner().unwrap();
-        assert_eq!(
-            prefetched.len(),
-            commits.len(),
-            "every commit in the range should have been diffed up front"
-        );
-
-        for commit in &commits {
-            let id = ObjectId::from_hex(commit.id.as_bytes()).unwrap();
-            let sequential = get_changed_files_for_commit(&repo, id).unwrap();
-            assert_eq!(
-                *prefetched[&id], sequential,
-                "commit {} differs between the two paths",
-                commit.hash
-            );
-        }
-        let touched_api = prefetched
-            .values()
-            .filter(|files| files.iter().any(|f| f.starts_with("api/")))
-            .count();
-        assert_eq!(touched_api, commits.len().div_ceil(3));
-    }
-
-    #[test]
-    fn a_single_threaded_pool_leaves_the_work_to_the_sequential_path() {
-        let dir = tempfile::tempdir().unwrap();
-        crate::test_utils::init_repo_at(dir.path());
-        fast_import_history(dir.path(), PARALLEL_PREFETCH_THRESHOLD + 40);
-        let repo = crate::git::open_repo(dir.path()).unwrap();
-        let commits = history(&repo);
-
-        let cache = CommitFilesCache::default();
-        in_pool(1, || {
-            let worker = crate::git::open_repo(dir.path()).unwrap();
-            prefetch_commit_files(&worker, &commit_ids(&commits), &cache);
-        });
-        assert!(
-            cache.lock().unwrap().is_empty(),
-            "--jobs 1 must not pay for a thread-safe clone it cannot use"
-        );
-    }
-
-    #[test]
-    fn a_short_range_is_not_worth_a_prefetch() {
-        let dir = tempfile::tempdir().unwrap();
-        crate::test_utils::init_repo_at(dir.path());
-        fast_import_history(dir.path(), 20);
-        let repo = crate::git::open_repo(dir.path()).unwrap();
-        let commits = history(&repo);
-
-        let cache = CommitFilesCache::default();
-        in_pool(4, || {
-            let worker = crate::git::open_repo(dir.path()).unwrap();
-            prefetch_commit_files(&worker, &commit_ids(&commits), &cache);
-        });
-        assert!(cache.lock().unwrap().is_empty());
     }
 
     fn write_config_raw(dir: &Path, workspace: &str, packages: &str) {
@@ -1311,10 +1187,10 @@ mod tests {
         Fixture {
             _dir: dir,
             repo,
+            commit_index: CommitIndex::new(&config),
             config,
             root,
             cache: ChangedFilesCache::default(),
-            commit_files: CommitFilesCache::default(),
             commit_walk,
         }
     }
@@ -1418,6 +1294,129 @@ mod tests {
     }
 
     #[test]
+    fn prefetching_tag_diffs_in_parallel_fills_the_cache_with_what_the_serial_path_computes() {
+        let (dir, repo) = init_repo();
+        let root = dir.path().to_path_buf();
+        let names: Vec<String> = (0..PARALLEL_TAG_DIFF_THRESHOLD + 4)
+            .map(|i| format!("pkg{i}"))
+            .collect();
+        for n in &names {
+            write_pkg(&root, n, "1.0.0");
+        }
+        let packages = names
+            .iter()
+            .map(|n| {
+                format!(
+                    r#"{{"name":"{n}","path":"{n}","versionedFiles":[{{"path":"{n}/Cargo.toml","format":"toml"}}]}}"#
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(",");
+        write_config_raw(&root, r#""recoverMissedReleases":true"#, &packages);
+        git(&root, &["add", "-A"]);
+        commit_file(&root, "seed.txt", "x", "chore: seed", 1_950_000_000);
+        for (i, n) in names.iter().enumerate() {
+            git(&root, &["tag", &format!("{n}@v1.0.0")]);
+            commit_file(
+                &root,
+                &format!("{n}/change.rs"),
+                "x",
+                &format!("fix({n}): change {i}"),
+                1_950_000_100 + i as i64,
+            );
+        }
+
+        let fx = build_fixture(root, dir, repo);
+        let all_tags = collect_all_tags(&fx.repo);
+        let head_ancestors = build_head_ancestors(&fx.repo).ok();
+        let tag_index = TagIndex::build(&fx.repo).ok();
+        let prerelease_ctx = PrereleaseContext::resolve(None, "main", None).unwrap();
+        let forced: Vec<Forced<'_>> = Vec::new();
+        let changed_files = get_changed_files(&fx.repo).unwrap();
+        let inputs = build_inputs(
+            &fx,
+            &tag_index,
+            &head_ancestors,
+            &all_tags,
+            &prerelease_ctx,
+            &forced,
+            &changed_files,
+        );
+
+        let worktree = fx.root.clone();
+        in_pool(4, || {
+            let worker = crate::git::open_repo(&worktree).unwrap();
+            prefetch_changed_files_since_tags(&worker, &inputs)
+        });
+
+        let cached = fx.cache.lock().unwrap();
+        let idx = tag_index.as_ref().unwrap();
+        let strategy = fx.config.workspace.orphaned_tag_strategy;
+        let untouched_by_head = fx
+            .config
+            .packages
+            .iter()
+            .filter(|pkg| !is_package_touched(pkg, &changed_files, true, &[]))
+            .count();
+        assert_eq!(cached.len(), untouched_by_head);
+        for pkg in &fx.config.packages {
+            let prefix = pkg.tag_prefix(&fx.config.workspace, true);
+            let oid = idx.find_last_tag_commit(&prefix, strategy);
+            if let Some(files) = cached.get(&oid) {
+                assert_eq!(
+                    **files,
+                    get_changed_files_since_oid(&fx.repo, oid).unwrap(),
+                    "package {}",
+                    pkg.name
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn a_short_package_list_does_not_prefetch_tag_diffs() {
+        let (dir, repo) = init_repo();
+        let root = dir.path().to_path_buf();
+        write_pkg(&root, "site", "1.0.0");
+        write_pkg(&root, "server", "1.0.0");
+        write_config_raw(
+            &root,
+            r#""recoverMissedReleases":true"#,
+            r#"{"name":"site","path":"site","versionedFiles":[{"path":"site/Cargo.toml","format":"toml"}]},{"name":"server","path":"server","versionedFiles":[{"path":"server/Cargo.toml","format":"toml"}]}"#,
+        );
+        git(&root, &["add", "-A"]);
+        commit_file(&root, "seed.txt", "x", "chore: seed", 1_950_000_000);
+        git(&root, &["tag", "site@v1.0.0"]);
+        git(&root, &["tag", "server@v1.0.0"]);
+        commit_file(&root, "site/a.rs", "x", "fix(site): a", 1_950_000_100);
+        commit_file(&root, "server/a.rs", "x", "fix(server): a", 1_950_000_200);
+
+        let fx = build_fixture(root, dir, repo);
+        let all_tags = collect_all_tags(&fx.repo);
+        let head_ancestors = build_head_ancestors(&fx.repo).ok();
+        let tag_index = TagIndex::build(&fx.repo).ok();
+        let prerelease_ctx = PrereleaseContext::resolve(None, "main", None).unwrap();
+        let forced: Vec<Forced<'_>> = Vec::new();
+        let changed_files = get_changed_files(&fx.repo).unwrap();
+        let inputs = build_inputs(
+            &fx,
+            &tag_index,
+            &head_ancestors,
+            &all_tags,
+            &prerelease_ctx,
+            &forced,
+            &changed_files,
+        );
+
+        let worktree = fx.root.clone();
+        in_pool(4, || {
+            let worker = crate::git::open_repo(&worktree).unwrap();
+            prefetch_changed_files_since_tags(&worker, &inputs)
+        });
+        assert!(fx.cache.lock().unwrap().is_empty());
+    }
+
+    #[test]
     fn a_recovered_release_does_not_list_another_packages_commits() {
         let (dir, repo) = init_repo();
         let root = dir.path().to_path_buf();
@@ -1506,10 +1505,10 @@ mod tests {
         let fx = Fixture {
             _dir: dir,
             repo,
+            commit_index: CommitIndex::new(&config),
             config,
             root: root.clone(),
             cache: ChangedFilesCache::default(),
-            commit_files: CommitFilesCache::default(),
             commit_walk,
         };
 

@@ -10,9 +10,9 @@ use crate::prerelease::PrereleaseContext;
 
 use super::super::util::tags_for_package;
 use super::super::version_source::VersionSource;
+use super::commit_index::CommitIndex;
 use super::plan::{
-    ChangedFilesCache, CommitFilesCache, PackagePlan, PlanInputs, commits_for_package,
-    compute_plan, evaluate_touch,
+    ChangedFilesCache, PackagePlan, PlanInputs, commits_for_package, compute_plan, evaluate_touch,
 };
 
 mod render;
@@ -179,7 +179,7 @@ fn explain(
         .unwrap_or_default();
     let changed_files = get_changed_files(repo)?;
     let changed_files_cache = ChangedFilesCache::default();
-    let commit_files_cache = CommitFilesCache::default();
+    let commit_index = CommitIndex::new(config);
     let commit_walk =
         crate::git::CommitWalkCache::new(config.workspace.effective_commit_skip_markers());
 
@@ -195,7 +195,7 @@ fn explain(
         changed_files: &changed_files,
         short_hash: &short_hash,
         changed_files_cache: &changed_files_cache,
-        commit_files_cache: &commit_files_cache,
+        commit_index: &commit_index,
         commit_walk: &commit_walk,
     };
 

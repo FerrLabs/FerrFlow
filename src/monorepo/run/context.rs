@@ -125,7 +125,7 @@ impl ReleaseInputs {
         excluded: &[String],
     ) -> Result<Vec<Option<PackagePlan>>> {
         let changed_files_cache = plan::ChangedFilesCache::default();
-        let commit_files_cache = plan::CommitFilesCache::default();
+        let commit_index = super::commit_index::CommitIndex::new(config);
         let commit_walk =
             crate::git::CommitWalkCache::new(config.workspace.effective_commit_skip_markers());
         let plan_inputs = PlanInputs {
@@ -144,9 +144,10 @@ impl ReleaseInputs {
             changed_files: &self.changed_files,
             short_hash: &self.short_hash,
             changed_files_cache: &changed_files_cache,
-            commit_files_cache: &commit_files_cache,
+            commit_index: &commit_index,
             commit_walk: &commit_walk,
         };
+        plan::prefetch_changed_files_since_tags(&self.repo, &plan_inputs);
         let plans: Vec<PackagePlan> = config
             .packages
             .iter()
