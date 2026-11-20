@@ -31,57 +31,9 @@
       </dl>
     </div>
 
-    <figure
-      class="terminal"
-      aria-label="Example output of ferrflow release"
-      i18n-aria-label="@@terminal.label"
-    >
-      <div class="terminal-chrome" aria-hidden="true">
-        <span class="terminal-dot terminal-dot-accent"></span>
-        <span class="terminal-dot"></span>
-        <span class="terminal-dot"></span>
-        <span class="terminal-title">~/code/monorepo</span>
-      </div>
-      <div class="terminal-body">
-        <div class="terminal-line">
-          <span class="terminal-prompt">$</span><span>ferrflow release</span>
-        </div>
-        <div class="terminal-line is-dim">
-          <span class="terminal-prompt">→</span
-          ><span i18n="@@terminal.reading">reading 184 commits since last release...</span>
-        </div>
-        <div class="terminal-line is-dim">
-          <span class="terminal-prompt">→</span
-          ><span i18n="@@terminal.detected">detected: 12 features, 9 fixes, 1 breaking</span>
-        </div>
-        <div class="terminal-line is-dim">
-          <span class="terminal-prompt">→</span
-          ><span i18n="@@terminal.scanning">scanning 4 packages...</span>
-        </div>
-        <div class="terminal-line">
-          <span class="terminal-prompt is-ok">✓</span
-          ><span>bump api v4.1.7 → v5.0.0 (breaking)</span>
-        </div>
-        <div class="terminal-line">
-          <span class="terminal-prompt is-ok">✓</span><span>bump app v4.1.4 → v4.2.0 (minor)</span>
-        </div>
-        <div class="terminal-line">
-          <span class="terminal-prompt is-ok">✓</span><span>bump site v1.3.9 → v1.4.0 (minor)</span>
-        </div>
-        <div class="terminal-line">
-          <span class="terminal-prompt is-ok">✓</span
-          ><span>bump admin v0.8.2 → v0.8.3 (patch)</span>
-        </div>
-        <div class="terminal-line is-dim">
-          <span class="terminal-prompt">→</span
-          ><span i18n="@@terminal.generating">generating changelogs, tagging, pushing...</span>
-        </div>
-        <div class="terminal-line">
-          <span class="terminal-prompt is-ok">✓</span
-          ><span i18n="@@terminal.published">4 GitHub releases published · 0.42s</span>
-        </div>
-      </div>
-    </figure>
+    @if (speed; as s) {
+      <flr-hero-terminal [benchmark]="s" />
+    }
   </div>
 </section>
 

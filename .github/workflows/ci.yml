@@ -746,6 +746,9 @@ jobs:
       - name: Typecheck
         working-directory: site
         run: pnpm typecheck
+      - name: Test
+        working-directory: site
+        run: pnpm test
       - name: Check i18n parity
         working-directory: site
         run: pnpm check:i18n

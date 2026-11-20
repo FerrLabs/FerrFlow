@@ -1,0 +1,80 @@
+<figure class="terminal" [attr.aria-label]="label()">
+  <div class="terminal-chrome" aria-hidden="true">
+    <span class="terminal-dot terminal-dot-accent"></span>
+    <span class="terminal-dot"></span>
+    <span class="terminal-dot"></span>
+    <span class="terminal-title">~/code/monorepo</span>
+    <span class="terminal-badge" [class.is-hidden]="!state().resultShown">{{ doneBadge() }}</span>
+  </div>
+  <div class="terminal-body" aria-hidden="true">
+    <div class="terminal-line">
+      <span class="terminal-prompt">$</span
+      ><span class="terminal-text"
+        >{{ state().typed
+        }}<span class="terminal-cursor" [class.is-hidden]="state().resultShown"></span
+      ></span>
+    </div>
+    <div class="terminal-output" [class.is-hidden]="!state().resultShown">
+      <div class="terminal-line is-dim">
+        <span class="terminal-prompt">→</span
+        ><span class="terminal-text" i18n="@@terminal.reading"
+          >reading {{ commits() }} commits across {{ packages() }} packages</span
+        >
+      </div>
+      <div class="terminal-line is-dim">
+        <span class="terminal-prompt">→</span
+        ><span class="terminal-text" i18n="@@terminal.resolving"
+          >resolving bumps from conventional commits</span
+        >
+      </div>
+      <div class="terminal-line">
+        <span class="terminal-prompt is-ok">✓</span
+        ><span class="terminal-text">bump api v4.1.7 → v5.0.0 (breaking)</span>
+      </div>
+      <div class="terminal-line">
+        <span class="terminal-prompt is-ok">✓</span
+        ><span class="terminal-text">bump app v4.1.4 → v4.2.0 (minor)</span>
+      </div>
+      <div class="terminal-line">
+        <span class="terminal-prompt is-ok">✓</span
+        ><span class="terminal-text">bump site v1.3.9 → v1.4.0 (minor)</span>
+      </div>
+      <div class="terminal-line is-dim">
+        <span class="terminal-prompt">…</span
+        ><span class="terminal-text" i18n="@@terminal.more"
+          >{{ morePackages() }} more packages</span
+        >
+      </div>
+    </div>
+  </div>
+  @if (hasComparison()) {
+    <div class="race" aria-hidden="true">
+      <div class="race-row">
+        <span class="race-label">ferrflow</span>
+        <span class="race-track"
+          ><span class="race-bar is-accent" [style.width.%]="ferrflowBar()"></span
+        ></span>
+        <span class="race-time">{{ ferrflowReadout() }}</span>
+      </div>
+      <div class="race-row">
+        <span class="race-label">{{ benchmark().competitor }}</span>
+        <span class="race-track"
+          ><span class="race-bar" [style.width.%]="competitorBar()"></span
+        ></span>
+        <span class="race-time">{{ competitorReadout() }}</span>
+      </div>
+    </div>
+  }
+  <div class="race-footer" [class.is-hidden]="!state().finished">
+    @if (hasComparison()) {
+      <span class="race-verdict" aria-hidden="true" i18n="@@terminal.faster"
+        >{{ speedup() }}× faster, in real time. Same repo, same commits.</span
+      >
+    }
+    @if (!reducedMotion()) {
+      <button type="button" class="race-replay" (click)="replay()" i18n="@@terminal.replay">
+        Replay
+      </button>
+    }
+  </div>
+</figure>
