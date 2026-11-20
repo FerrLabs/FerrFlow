@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.36.9] - 2026-11-20
+
+### Bug Fixes
+
+- perf(monorepo): scope recover-mode commits through a shared package index (#1454)
+
 ## [7.36.8] - 2026-11-17
 
 ### Bug Fixes
