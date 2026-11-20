@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.37.0] - 2026-11-20
+
+### Features
+
+- feat(site): add animated speed race terminal to the hero (#1461)
+
 ## [7.36.10] - 2026-11-20
 
 ### Bug Fixes

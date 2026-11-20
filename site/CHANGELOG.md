@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.11.19] - 2026-11-20
+
+### Features
+
+- feat(site): add animated speed race terminal to the hero (#1461)
+
 ## [2026.11.18] - 2026-11-20
 
 ## [2026.11.17] - 2026-11-20
