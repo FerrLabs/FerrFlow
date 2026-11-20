@@ -1,0 +1,33 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.tab {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--paper-rule);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--paper-ink-2);
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.tab:hover {
+  background: var(--paper-2);
+}
+.tab[aria-selected='true'] {
+  background: var(--paper-ink);
+  border-color: var(--paper-ink);
+  color: var(--paper);
+}
+.tab:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}

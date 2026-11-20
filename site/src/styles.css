@@ -161,26 +161,6 @@ h3 {
   text-wrap: pretty;
 }
 
-.btn-primary {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  background: var(--accent);
-  color: #fff;
-  padding: 14px 24px;
-  border-radius: 999px;
-  font-family: var(--font-mono);
-  font-size: 13px;
-  letter-spacing: 0.04em;
-  transition:
-    transform 180ms,
-    opacity 180ms;
-}
-.btn-primary:hover {
-  transform: translateY(-1px);
-  opacity: 0.92;
-}
-
 .btn-ghost {
   display: inline-flex;
   align-items: center;

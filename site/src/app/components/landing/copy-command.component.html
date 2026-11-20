@@ -1,0 +1,17 @@
+<div class="cmd">
+  <pre
+    class="mono cmd-text"
+  ><code>@if (prompt()) {<span class="cmd-prompt" aria-hidden="true">$ </span>}{{ command() }}</code></pre>
+  <button type="button" class="mono cmd-copy" (click)="copy()">
+    @if (copied()) {
+      <span i18n="@@copy.done">Copied</span>
+    } @else {
+      <span i18n="@@copy.action">Copy</span>
+    }
+  </button>
+  <span class="visually-hidden" aria-live="polite">
+    @if (copied()) {
+      <span i18n="@@copy.announce">Command copied to the clipboard</span>
+    }
+  </span>
+</div>
