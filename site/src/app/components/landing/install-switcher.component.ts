@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
+import { TabComponent, TabsComponent } from '@ferrlabs/ui-ng';
 import { CopyCommandComponent } from './copy-command.component';
 
 interface InstallMethod {
@@ -8,30 +9,17 @@ interface InstallMethod {
   readonly prompt: boolean;
 }
 
-function targetIndex(key: string, index: number, count: number): number | undefined {
-  switch (key) {
-    case 'ArrowRight':
-      return (index + 1) % count;
-    case 'ArrowLeft':
-      return (index - 1 + count) % count;
-    case 'Home':
-      return 0;
-    case 'End':
-      return count - 1;
-    default:
-      return undefined;
-  }
-}
-
 @Component({
   selector: 'flr-install-switcher',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CopyCommandComponent],
+  imports: [CopyCommandComponent, TabsComponent, TabComponent],
   templateUrl: './install-switcher.component.html',
   styleUrl: './install-switcher.component.css',
 })
 export class InstallSwitcherComponent {
   readonly actionMajor = input.required<string>();
+
+  protected readonly tabsLabel = $localize`:@@install.tabsLabel:Install method`;
 
   protected readonly methods = computed<readonly InstallMethod[]>(() => [
     { id: 'cargo', label: 'Cargo', command: 'cargo install ferrflow', prompt: true },
@@ -54,15 +42,5 @@ export class InstallSwitcherComponent {
 
   protected select(id: string): void {
     this.selected.set(id);
-  }
-
-  protected onKeydown(event: KeyboardEvent, index: number): void {
-    const methods = this.methods();
-    const target = targetIndex(event.key, index, methods.length);
-    if (target === undefined) return;
-    event.preventDefault();
-    this.selected.set(methods[target].id);
-    const tablist = (event.currentTarget as HTMLElement).parentElement;
-    tablist?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[target]?.focus();
   }
 }

@@ -1,26 +1,18 @@
-<div class="tabs" role="tablist" aria-label="Install method" i18n-aria-label="@@install.tabsLabel">
-  @for (m of methods(); track m.id; let i = $index) {
-    <button
-      type="button"
-      role="tab"
-      class="mono tab"
-      [id]="'install-tab-' + m.id"
-      [attr.aria-selected]="selected() === m.id"
-      [attr.aria-controls]="'install-panel-' + m.id"
-      [attr.tabindex]="selected() === m.id ? 0 : -1"
-      (click)="select(m.id)"
-      (keydown)="onKeydown($event, i)"
-    >
-      {{ m.label }}
-    </button>
+<flr-tabs mode="panel" [ariaLabel]="tabsLabel">
+  @for (m of methods(); track m.id) {
+    <flr-tab
+      [label]="m.label"
+      [active]="selected() === m.id"
+      [panelId]="'install-panel-' + m.id"
+      (selected)="select(m.id)"
+    />
   }
-</div>
+</flr-tabs>
 @for (m of methods(); track m.id) {
   <div
     role="tabpanel"
-    class="panel"
     [id]="'install-panel-' + m.id"
-    [attr.aria-labelledby]="'install-tab-' + m.id"
+    [attr.aria-label]="m.label"
     [hidden]="selected() !== m.id"
   >
     <flr-copy-command [command]="m.command" [prompt]="m.prompt" />

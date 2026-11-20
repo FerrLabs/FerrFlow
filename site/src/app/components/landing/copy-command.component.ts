@@ -1,3 +1,4 @@
+import { DOCUMENT } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -22,6 +23,7 @@ export class CopyCommandComponent {
   readonly prompt = input(true);
 
   protected readonly status = signal<CopyStatus>('idle');
+  private readonly document = inject(DOCUMENT);
   private resetTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor() {
@@ -29,8 +31,13 @@ export class CopyCommandComponent {
   }
 
   protected async copy(): Promise<void> {
+    const clipboard = this.document.defaultView?.navigator.clipboard;
+    if (!clipboard) {
+      this.show('failed');
+      return;
+    }
     try {
-      await navigator.clipboard.writeText(this.command());
+      await clipboard.writeText(this.command());
       this.show('copied');
     } catch {
       this.show('failed');

@@ -2,32 +2,38 @@
   display: block;
   min-width: 0;
 }
-.tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+flr-tabs {
   margin-bottom: 12px;
 }
-.tab {
+:host ::ng-deep .flr-tabs {
+  flex-wrap: wrap;
+  gap: 6px;
+  box-shadow: none;
+}
+:host ::ng-deep .flr-tabs .flr-tab {
   min-height: 44px;
   padding: 0 16px;
   border: 1px solid var(--paper-rule);
   border-radius: 999px;
-  background: transparent;
   color: var(--paper-ink-2);
+  font-family: var(--font-mono);
   font-size: 12.5px;
+  font-weight: 400;
   letter-spacing: 0.04em;
-  cursor: pointer;
 }
-.tab:hover {
+:host ::ng-deep .flr-tabs .flr-tab:hover:not(:disabled) {
   background: var(--paper-2);
+  border-color: var(--paper-rule);
+  color: var(--paper-ink-2);
 }
-.tab[aria-selected='true'] {
+:host ::ng-deep .flr-tabs .flr-tab.flr-tab--active,
+:host ::ng-deep .flr-tabs .flr-tab.flr-tab--active:hover:not(:disabled) {
   background: var(--paper-ink);
   border-color: var(--paper-ink);
   color: var(--paper);
 }
-.tab:focus-visible {
+:host ::ng-deep .flr-tabs .flr-tab:focus-visible {
   outline: 2px solid var(--accent-strong);
   outline-offset: 2px;
+  border-radius: 999px;
 }
