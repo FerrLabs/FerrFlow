@@ -18,6 +18,7 @@ mod build_metadata;
 mod cascade;
 pub(crate) mod checkpoint;
 mod commit_body;
+mod commit_index;
 mod context;
 mod drafts;
 mod execute;

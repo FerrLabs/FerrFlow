@@ -142,6 +142,11 @@ pub enum FloatingTagLevel {
     Minor,
 }
 
+fn is_inside_dir(file: &str, dir: &str) -> bool {
+    file.strip_prefix(dir)
+        .is_some_and(|rest| rest.starts_with('/'))
+}
+
 impl PackageConfig {
     /// Whether this package owns any of `changed_files`: its own `path`, minus
     /// the `nested` package paths it contains, or one of its `shared_paths`.
@@ -173,11 +178,10 @@ impl PackageConfig {
     }
 
     pub fn owns_file(&self, file: &str, nested: &[String]) -> bool {
-        let inside = match self.relative_path() {
-            None => true,
-            Some(path) => file.starts_with(&format!("{path}/")),
-        };
-        inside && !nested.iter().any(|n| file.starts_with(&format!("{n}/")))
+        let inside = self
+            .relative_path()
+            .is_none_or(|path| is_inside_dir(file, path));
+        inside && !nested.iter().any(|n| is_inside_dir(file, n))
     }
 
     pub fn relative_path(&self) -> Option<&str> {
