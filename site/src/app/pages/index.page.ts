@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { SiteShellComponent } from '@ferrlabs/ui-ng';
-import { LandingComponent } from '../components/landing.component';
+import { LandingComponent } from '../components/landing/landing.component';
 
 @Component({
   selector: 'flr-home',

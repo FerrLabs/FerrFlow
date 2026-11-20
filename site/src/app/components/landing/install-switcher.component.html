@@ -1,0 +1,20 @@
+<flr-tabs mode="panel" [ariaLabel]="tabsLabel">
+  @for (m of methods(); track m.id) {
+    <flr-tab
+      [label]="m.label"
+      [active]="selected() === m.id"
+      [panelId]="'install-panel-' + m.id"
+      (selected)="select(m.id)"
+    />
+  }
+</flr-tabs>
+@for (m of methods(); track m.id) {
+  <div
+    role="tabpanel"
+    [id]="'install-panel-' + m.id"
+    [attr.aria-label]="m.label"
+    [hidden]="selected() !== m.id"
+  >
+    <flr-copy-command [command]="m.command" [prompt]="m.prompt" />
+  </div>
+}

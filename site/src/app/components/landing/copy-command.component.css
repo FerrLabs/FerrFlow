@@ -1,0 +1,48 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+.cmd {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  background: var(--paper-card);
+  border: 1px solid var(--paper-rule-strong);
+  border-radius: 14px;
+  padding: 6px 6px 6px 18px;
+}
+.cmd-text {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 10px 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--paper-ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.cmd-prompt {
+  color: var(--color-primary-800);
+}
+.cmd-copy {
+  flex: none;
+  align-self: flex-start;
+  min-width: 72px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--paper-rule-strong);
+  border-radius: 10px;
+  background: var(--paper-2);
+  color: var(--paper-ink);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.cmd-copy:hover {
+  background: var(--paper);
+}
+.cmd-copy:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}

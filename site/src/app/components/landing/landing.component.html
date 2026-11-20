@@ -1,0 +1,180 @@
+<section class="hero-section">
+  <div class="container hero-grid">
+    <div class="hero-left">
+      <h1 class="hero-title">
+        <span i18n="@@hero.h1">Release.</span>
+        <br />
+        <span class="hero-italic" i18n="@@hero.h2">Automatically.</span>
+      </h1>
+      <p class="hero-sub" i18n="@@hero.sub">
+        Conventional commits in, semantic versions out. FerrFlow reads your git history, bumps
+        versions across your monorepo, writes changelogs, tags, and ships GitHub releases, straight
+        from CI.
+      </p>
+
+      <flr-copy-command class="hero-cmd" command="cargo install ferrflow" />
+
+      <div class="hero-actions">
+        <a [href]="docsHref" class="btn-ghost" i18n="@@hero.cta2">Read the docs</a>
+        <a href="#install" class="hero-link mono" i18n="@@hero.otherInstalls"
+          >npm, Docker, GitHub Actions</a
+        >
+      </div>
+
+      <dl class="hero-stats">
+        @for (s of heroStats; track s.k) {
+          <div>
+            <dt class="mono hero-stat-key">{{ s.k }}</dt>
+            <dd class="mono hero-stat-val">{{ s.v }}</dd>
+          </div>
+        }
+      </dl>
+    </div>
+
+    <figure
+      class="terminal"
+      aria-label="Example output of ferrflow release"
+      i18n-aria-label="@@terminal.label"
+    >
+      <div class="terminal-chrome" aria-hidden="true">
+        <span class="terminal-dot terminal-dot-accent"></span>
+        <span class="terminal-dot"></span>
+        <span class="terminal-dot"></span>
+        <span class="terminal-title">~/code/monorepo</span>
+      </div>
+      <div class="terminal-body">
+        <div class="terminal-line">
+          <span class="terminal-prompt">$</span><span>ferrflow release</span>
+        </div>
+        <div class="terminal-line is-dim">
+          <span class="terminal-prompt">→</span
+          ><span i18n="@@terminal.reading">reading 184 commits since last release...</span>
+        </div>
+        <div class="terminal-line is-dim">
+          <span class="terminal-prompt">→</span
+          ><span i18n="@@terminal.detected">detected: 12 features, 9 fixes, 1 breaking</span>
+        </div>
+        <div class="terminal-line is-dim">
+          <span class="terminal-prompt">→</span
+          ><span i18n="@@terminal.scanning">scanning 4 packages...</span>
+        </div>
+        <div class="terminal-line">
+          <span class="terminal-prompt is-ok">✓</span
+          ><span>bump api v4.1.7 → v5.0.0 (breaking)</span>
+        </div>
+        <div class="terminal-line">
+          <span class="terminal-prompt is-ok">✓</span><span>bump app v4.1.4 → v4.2.0 (minor)</span>
+        </div>
+        <div class="terminal-line">
+          <span class="terminal-prompt is-ok">✓</span><span>bump site v1.3.9 → v1.4.0 (minor)</span>
+        </div>
+        <div class="terminal-line">
+          <span class="terminal-prompt is-ok">✓</span
+          ><span>bump admin v0.8.2 → v0.8.3 (patch)</span>
+        </div>
+        <div class="terminal-line is-dim">
+          <span class="terminal-prompt">→</span
+          ><span i18n="@@terminal.generating">generating changelogs, tagging, pushing...</span>
+        </div>
+        <div class="terminal-line">
+          <span class="terminal-prompt is-ok">✓</span
+          ><span i18n="@@terminal.published">4 GitHub releases published · 0.42s</span>
+        </div>
+      </div>
+    </figure>
+  </div>
+</section>
+
+<section class="facts-section" aria-labelledby="facts-title">
+  <div class="container">
+    <h2 id="facts-title" class="sr-only" i18n="@@facts.title">FerrFlow in numbers</h2>
+    <ul class="facts-grid">
+      @for (f of facts; track f.label) {
+        <li class="fact">
+          <span class="fact-value">{{ f.value }}</span>
+          <span class="mono fact-label">{{ f.label }}</span>
+          <span class="fact-detail">{{ f.detail }}</span>
+        </li>
+      }
+    </ul>
+    <p class="mono facts-note">
+      <span i18n="@@facts.note"
+        >Median of {{ runs }} hyperfine runs, cold cache, FerrFlow on one thread.</span
+      >
+      <a [href]="performanceHref" class="text-link" i18n="@@facts.link">See the benchmarks</a>
+    </p>
+  </div>
+</section>
+
+<section id="features" class="features-section" aria-labelledby="features-title">
+  <div class="container">
+    <div class="section-header">
+      <h2 id="features-title" class="section-title" i18n="@@features.title">
+        Everything you need to release.
+      </h2>
+      <a [href]="whyHref" class="text-link" i18n="@@features.compare"
+        >Compare with semantic-release, release-please and Changesets</a
+      >
+    </div>
+
+    <ul class="features-grid">
+      @for (cell of features; track cell.key) {
+        <li class="feature-cell">
+          <span class="mono feature-key" aria-hidden="true">{{ cell.key }}</span>
+          <h3 class="feature-title">{{ cell.title }}</h3>
+          @if (cell.body) {
+            <p class="feature-body">{{ cell.body }}</p>
+          }
+          @if (cell.formats) {
+            <ul class="formats-chips">
+              @for (f of cell.formats; track f) {
+                <li class="mono formats-chip">{{ f }}</li>
+              }
+            </ul>
+          }
+        </li>
+      }
+    </ul>
+  </div>
+</section>
+
+<section id="install" class="install-section" aria-labelledby="install-title">
+  <div class="container">
+    <div class="section-header">
+      <h2 id="install-title" class="section-title" i18n="@@install.title">Install in seconds.</h2>
+      <p class="section-sub" i18n="@@install.sub">
+        Works on Linux, macOS, and Windows. Available as a GitHub Action and a GitLab CI template.
+      </p>
+    </div>
+
+    <ol class="steps">
+      <li class="step">
+        <span class="mono step-num" aria-hidden="true">1</span>
+        <div class="step-body">
+          <h3 class="step-title" i18n="@@start.install.title">Install</h3>
+          <flr-install-switcher [actionMajor]="actionMajor" />
+        </div>
+      </li>
+      @for (s of steps; track s.title; let i = $index) {
+        <li class="step">
+          <span class="mono step-num" aria-hidden="true">{{ i + 2 }}</span>
+          <div class="step-body">
+            <h3 class="step-title">{{ s.title }}</h3>
+            <p class="step-text">{{ s.body }}</p>
+            <flr-copy-command [command]="s.command" />
+          </div>
+        </li>
+      }
+    </ol>
+
+    <p class="install-links">
+      <a [href]="quickstartHref" class="btn-ghost" i18n="@@start.quickstart">Full quick start</a>
+      <a [href]="actionsDocsHref" class="text-link" i18n="@@start.actions"
+        >Release on every push with GitHub Actions</a
+      >
+      <a [href]="installDocsHref" class="text-link" i18n="@@start.allInstalls"
+        >All install methods</a
+      >
+    </p>
+  </div>
+</section>
