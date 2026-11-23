@@ -18,10 +18,10 @@ In a workspace those routinely differ, because the config keeps short names whil
 
 ```toml
 [package]
-name = "idlewarden-bridge"
+name = "acme-bridge"
 ```
 
-That produced `crates.io/crates/bridge/26.8.27` instead of `crates.io/crates/idlewarden-bridge/26.8.27`. Short crate names have been taken for years, so the link resolved to a real, unrelated crate rather than returning a 404. A log line pointing at somebody else's project as if it were the release that just went out is worse than a missing link, and it is the sort of thing that gets pasted into a release announcement.
+That produced `crates.io/crates/bridge/26.8.27` instead of `crates.io/crates/acme-bridge/26.8.27`. Short crate names have been taken for years, so the link resolved to a real, unrelated crate rather than returning a 404. A log line pointing at somebody else's project as if it were the release that just went out is worse than a missing link, and it is the sort of thing that gets pasted into a release announcement.
 
 FerrFlow now reads the name from `Cargo.toml`, and falls back to the config name when the manifest cannot be read or carries no `[package]` table. The "already exists on the registry" message uses the real name for the same reason: it makes a claim about the registry, so it has to name the crate the registry knows. Messages about which of your packages failed keep the config name, since that is the one you would look for in your config.
 

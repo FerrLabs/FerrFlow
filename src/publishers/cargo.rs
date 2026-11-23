@@ -203,7 +203,7 @@ fn strip_ansi(text: &str) -> String {
 /// manifest and not the FerrFlow package name.
 ///
 /// A workspace routinely uses short FerrFlow names against prefixed crate names
-/// (`bridge` for `idlewarden-bridge`), and short crate names are long since
+/// (`bridge` for `acme-bridge`), and short crate names are long since
 /// taken on crates.io, so the wrong one links a stranger's crate rather than
 /// 404ing. Falls back to the FerrFlow name when the manifest cannot be read or
 /// carries no `[package]` table, which is no worse than what it replaces.
@@ -399,14 +399,14 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         std::fs::write(
             dir.path().join("Cargo.toml"),
-            "[package]\nname = \"idlewarden-bridge\"\nversion = \"26.8.27\"\n",
+            "[package]\nname = \"acme-bridge\"\nversion = \"26.8.27\"\n",
         )
         .unwrap();
         let registries = BTreeMap::new();
 
         let name = published_name(&ctx_at(&registries, dir.path(), "bridge"));
 
-        assert_eq!(name, "idlewarden-bridge");
+        assert_eq!(name, "acme-bridge");
     }
 
     #[test]
@@ -533,8 +533,8 @@ mod tests {
 
     #[test]
     fn the_crate_url_uses_the_manifest_name() {
-        let url = derive_crate_url("idlewarden-bridge", "26.8.27", None).unwrap();
+        let url = derive_crate_url("acme-bridge", "26.8.27", None).unwrap();
 
-        assert_eq!(url, "https://crates.io/crates/idlewarden-bridge/26.8.27");
+        assert_eq!(url, "https://crates.io/crates/acme-bridge/26.8.27");
     }
 }
