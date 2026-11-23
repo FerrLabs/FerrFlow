@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.11.23] - 2026-11-23
+
+### Bug Fixes
+
+- fix(deps): update ferrlabs npm packages (#1471)
+
 ## [2026.11.19] - 2026-11-20
 
 ### Features
