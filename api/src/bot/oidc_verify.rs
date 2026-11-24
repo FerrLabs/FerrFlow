@@ -7,7 +7,8 @@
 //! `aud`, `exp`, signature.
 
 use anyhow::{Context, Result, anyhow};
-use jsonwebtoken::{DecodingKey, Validation, decode, decode_header};
+use jsonwebtoken::jwk::JwkSet;
+use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode, decode_header};
 use serde::Deserialize;
 
 use super::jwks;
@@ -75,14 +76,22 @@ pub async fn verify(jwt: &str, expected_audience: &str) -> Result<GhaClaims> {
         .clone()
         .ok_or_else(|| anyhow!("JWT header missing kid"))?;
 
-    let alg = jwks::pick_algorithm(&header);
     let set = jwks::load(GHA_JWKS_URL).await?;
+    verify_with_jwks(jwt, &kid, expected_audience, &set)
+}
+
+fn verify_with_jwks(
+    jwt: &str,
+    kid: &str,
+    expected_audience: &str,
+    set: &JwkSet,
+) -> Result<GhaClaims> {
     let jwk = set
-        .find(&kid)
+        .find(kid)
         .ok_or_else(|| anyhow!("no JWKS entry matches kid {kid}"))?;
     let key = DecodingKey::from_jwk(jwk).context("unsupported JWK")?;
 
-    let mut validation = Validation::new(alg);
+    let mut validation = Validation::new(Algorithm::RS256);
     validation.set_issuer(&[GHA_ISSUER]);
     validation.set_audience(&[expected_audience]);
     // Runners can sit on the token for a few seconds before POSTing it.
@@ -105,7 +114,90 @@ pub async fn verify(jwt: &str, expected_audience: &str) -> Result<GhaClaims> {
 
 #[cfg(test)]
 mod tests {
+    use jsonwebtoken::errors::ErrorKind;
+    use jsonwebtoken::{EncodingKey, Header, encode};
+
     use super::*;
+
+    const TEST_PRIVATE_KEY: &str = include_str!("../../tests/fixtures/ferrflow_test_rsa.pem");
+    const TEST_PUBLIC_KEY: &str = include_str!("../../tests/fixtures/ferrflow_test_rsa.pub.pem");
+    const TEST_MODULUS: &str = "4r7LVJmQyk0QQHW4_qdVvpQJTomYDVL-Mc9nHvfw0OxYUHfFllb5uYXzGmqRvL_4gAW_4k9U29xI5xJMIqOT1V9yV7n0HFnMfZfNI-okH3m6vZiXwrfCEhzmxd1mXo2SqsaZLOxKiWplDdD8SZQIU7tno3D7l50hWd2wNyctG3a-nam7k-VcoZeC21JJ5k-fgHmaqq9rDT4EMnkWYOPgbrT8mwb4nWkU_es-s3tZLqg1USc7TUXMekkrNgzWtskiyJJxaregRuLWU2_WglusWNPQfuFwKemrFuvlze4tX0at5IDb_8WLw30BXnAHAxMYMkx6OQ53RRzWB0F5Wkngew";
+    const KID: &str = "test-kid";
+    const AUDIENCE: &str = "ferrflow.ferrlabs.com";
+
+    fn test_jwks() -> JwkSet {
+        serde_json::from_value(serde_json::json!({
+            "keys": [{
+                "kty": "RSA",
+                "kid": KID,
+                "alg": "RS256",
+                "use": "sig",
+                "n": TEST_MODULUS,
+                "e": "AQAB",
+            }]
+        }))
+        .unwrap()
+    }
+
+    fn sign(alg: Algorithm, key: &EncodingKey) -> String {
+        let mut header = Header::new(alg);
+        header.kid = Some(KID.to_string());
+        let claims = serde_json::json!({
+            "repository": "acme/widget",
+            "repository_owner": "acme",
+            "ref": "refs/heads/main",
+            "event_name": "push",
+            "workflow": "Release",
+            "run_id": "123456",
+            "actor": "someone",
+            "sub": "repo:acme/widget:ref:refs/heads/main",
+            "iss": GHA_ISSUER,
+            "aud": AUDIENCE,
+            "exp": 4_102_444_800_u64,
+        });
+        encode(&header, &claims, key).unwrap()
+    }
+
+    fn rsa_key() -> EncodingKey {
+        EncodingKey::from_rsa_pem(TEST_PRIVATE_KEY.as_bytes()).unwrap()
+    }
+
+    fn assert_invalid_algorithm(jwt: &str) {
+        let err = verify_with_jwks(jwt, KID, AUDIENCE, &test_jwks()).unwrap_err();
+        let kind = err
+            .root_cause()
+            .downcast_ref::<jsonwebtoken::errors::Error>()
+            .map(jsonwebtoken::errors::Error::kind);
+        assert!(matches!(kind, Some(ErrorKind::InvalidAlgorithm)), "{err:#}");
+    }
+
+    #[test]
+    fn an_rs256_token_verifies() {
+        let jwt = sign(Algorithm::RS256, &rsa_key());
+        let claims = verify_with_jwks(&jwt, KID, AUDIENCE, &test_jwks()).unwrap();
+        assert_eq!(claims.repository, "acme/widget");
+    }
+
+    #[test]
+    fn other_rsa_algorithms_are_rejected_even_with_the_right_key() {
+        for alg in [
+            Algorithm::RS384,
+            Algorithm::RS512,
+            Algorithm::PS256,
+            Algorithm::PS384,
+            Algorithm::PS512,
+        ] {
+            assert_invalid_algorithm(&sign(alg, &rsa_key()));
+        }
+    }
+
+    #[test]
+    fn an_hmac_token_keyed_with_the_public_key_is_rejected() {
+        let key = EncodingKey::from_secret(TEST_PUBLIC_KEY.as_bytes()).unwrap();
+        for alg in [Algorithm::HS256, Algorithm::HS384, Algorithm::HS512] {
+            assert_invalid_algorithm(&sign(alg, &key));
+        }
+    }
 
     #[test]
     fn audience_matches_a_bare_string() {
