@@ -28,15 +28,16 @@
 .cmd-copy {
   flex: none;
   align-self: flex-start;
-  min-width: 72px;
-  min-height: 44px;
-  padding: 0 16px;
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
   border: 1px solid var(--paper-rule-strong);
   border-radius: 10px;
   background: var(--paper-2);
   color: var(--paper-ink);
-  font-size: 12px;
-  letter-spacing: 0.04em;
+  font-size: 18px;
   cursor: pointer;
 }
 .cmd-copy:hover {

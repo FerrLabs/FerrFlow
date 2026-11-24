@@ -2,18 +2,14 @@
   <pre
     class="mono cmd-text"
   ><code>@if (prompt()) {<span class="cmd-prompt" aria-hidden="true">$ </span>}{{ command() }}</code></pre>
-  <button type="button" class="mono cmd-copy" (click)="copy()">
-    @switch (status()) {
-      @case ('copied') {
-        <span i18n="@@copy.done">Copied</span>
-      }
-      @case ('failed') {
-        <span i18n="@@copy.failed">Copy failed</span>
-      }
-      @default {
-        <span i18n="@@copy.action">Copy</span>
-      }
-    }
+  <button
+    type="button"
+    class="cmd-copy"
+    [attr.aria-label]="labels[status()]"
+    [title]="labels[status()]"
+    (click)="copy()"
+  >
+    <flr-copy-icon [copied]="status() === 'copied'" />
   </button>
   <span class="sr-only" aria-live="polite">
     @switch (status()) {
