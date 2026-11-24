@@ -6,7 +6,7 @@ use anyhow::{Context, Result, anyhow};
 use jsonwebtoken::jwk::JwkSet;
 use std::sync::LazyLock;
 
-const CACHE_TTL: Duration = Duration::from_secs(60 * 60);
+const CACHE_TTL: Duration = Duration::from_hours(1);
 
 struct Cached {
     fetched_at: Instant,
