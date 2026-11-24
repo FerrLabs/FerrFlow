@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.11.26] - 2026-11-24
+
+### Features
+
+- feat(site): use the animated ui-ng copy icon on the landing copy buttons (#1478)
+
 ## [2026.11.25] - 2026-11-23
 
 ## [2026.11.23] - 2026-11-23
