@@ -327,10 +327,6 @@ criteria = "safe-to-deploy"
 version = "0.16.1"
 criteria = "safe-to-deploy"
 
-[[exemptions.heapless]]
-version = "0.8.0"
-criteria = "safe-to-deploy"
-
 [[exemptions.hmac]]
 version = "0.13.0"
 criteria = "safe-to-deploy"
