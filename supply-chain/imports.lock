@@ -44,8 +44,8 @@ user-login = "epage"
 user-name = "Ed Page"
 
 [[publisher.anyhow]]
-version = "1.0.104"
-when = "2026-07-18"
+version = "1.0.105"
+when = "2026-11-23"
 user-id = 3618
 user-login = "dtolnay"
 user-name = "David Tolnay"
