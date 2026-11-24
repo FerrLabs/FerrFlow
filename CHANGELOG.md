@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.37.2] - 2026-11-24
+
+### Bug Fixes
+
+- fix(deps): update gix (#1479)
+
 ## [7.37.1] - 2026-11-23
 
 ### Bug Fixes

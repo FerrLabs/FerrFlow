@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.11.10] - 2026-11-24
+
+### Bug Fixes
+
+- fix(deps): update gix (#1479)
+
 ## [2026.11.9] - 2026-11-24
 
 ### Bug Fixes
