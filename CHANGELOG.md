@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.37.3] - 2026-11-24
+
+### Bug Fixes
+
+- fix(supply-chain): certify json5 1.3.8 and refresh anyhow publisher (#1488)
+
 ## [7.37.2] - 2026-11-24
 
 ### Bug Fixes
