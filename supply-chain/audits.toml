@@ -1,7 +1,11 @@
 
 # cargo-vet audits file
 
-[audits]
+[[audits.json5]]
+who = "BryanFRD <bryanferrando59@gmail.com>"
+criteria = "safe-to-deploy"
+delta = "1.3.7 -> 1.3.8"
+notes = "Only change is parsing -0 (decimal and hex) as f64 negative zero instead of U128(0); no unsafe, no new imports or I/O."
 
 [[trusted.aho-corasick]]
 criteria = "safe-to-deploy"
