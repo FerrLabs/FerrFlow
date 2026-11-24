@@ -3,7 +3,7 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result, anyhow};
-use jsonwebtoken::{Algorithm, jwk::JwkSet};
+use jsonwebtoken::jwk::JwkSet;
 use std::sync::LazyLock;
 
 const CACHE_TTL: Duration = Duration::from_secs(60 * 60);
@@ -73,52 +73,4 @@ fn insert(url: String, jwks: JwkSet) {
             jwks,
         },
     );
-}
-
-/// The algorithm to verify with, taken from the token header but confined to
-/// the asymmetric families. An OIDC issuer never signs with a shared secret,
-/// so an `HS*` header is an attempt to have us verify a forgery with a public
-/// key as the HMAC secret — forcing RS256 makes the JWK decode reject it.
-pub fn pick_algorithm(header: &jsonwebtoken::Header) -> Algorithm {
-    match header.alg {
-        Algorithm::RS256
-        | Algorithm::RS384
-        | Algorithm::RS512
-        | Algorithm::ES256
-        | Algorithm::ES384
-        | Algorithm::PS256
-        | Algorithm::PS384
-        | Algorithm::PS512 => header.alg,
-        _ => Algorithm::RS256,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn header(alg: Algorithm) -> jsonwebtoken::Header {
-        jsonwebtoken::Header::new(alg)
-    }
-
-    #[test]
-    fn asymmetric_algorithms_pass_through() {
-        for alg in [
-            Algorithm::RS256,
-            Algorithm::RS512,
-            Algorithm::ES256,
-            Algorithm::PS384,
-        ] {
-            assert_eq!(pick_algorithm(&header(alg)), alg);
-        }
-    }
-
-    // The alg-confusion attack: claim HS256 so the verifier treats the public
-    // key as an HMAC secret the attacker also knows.
-    #[test]
-    fn hmac_algorithms_are_forced_to_rs256() {
-        for alg in [Algorithm::HS256, Algorithm::HS384, Algorithm::HS512] {
-            assert_eq!(pick_algorithm(&header(alg)), Algorithm::RS256);
-        }
-    }
 }
