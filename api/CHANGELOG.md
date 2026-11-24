@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.11.9] - 2026-11-24
+
+### Bug Fixes
+
+- fix(api): accept only RS256 on GitHub Actions OIDC tokens (#1480)
+
 ## [2026.11.7] - 2026-11-15
 
 ### Features

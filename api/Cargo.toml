@@ -1,6 +1,6 @@
 [package]
 name = "ferrflow-api"
-version = "2026.11.8"
+version = "2026.11.9"
 edition = "2024"
 license = "MPL-2.0"
 publish = false
