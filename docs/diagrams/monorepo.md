@@ -1,7 +1,7 @@
 # Monorepo layout and release
 
 Which package depends on which, and what happens to a tag. Describes `main`; see
-[ARCHITECTURE.md](../../ARCHITECTURE.md) for the pending CI changes.
+[ARCHITECTURE.md](../../ARCHITECTURE.md) for the CI jobs.
 
 ## Packages and dependencies
 
@@ -20,12 +20,12 @@ flowchart LR
 
     WASM -->|path| CLI
     CLI -->|published as| CRATES
-    API -->|"version = 7, default-features = false"| CRATES
+    API -->|"path, default-features = false"| CLI
     SITE -->|"sync-docs.mjs copies pages,<br/>changelog and schemas"| DOCS
     SITE -.->|"dependsOn, propagate patch"| CLI
 ```
 
-The API takes the CLI from crates.io today. FLOW-10 (PR 1409) turns that edge into a path dependency on the root.
+The API takes the CLI as a path dependency on the root, so both always build from the same commit.
 
 ## From a commit to a published artefact
 
@@ -40,8 +40,10 @@ flowchart TB
     CFG --> TAPI["tag api@vYYYY.M.N"]
     TCLI --> PUB["publish.yml"]
     PUB --> OUT["release assets, crates.io, npm,<br/>@ferrflow/wasm, @ferrflow/doc,<br/>ghcr.io/ferrlabs/ferrflow"]
-    TSITE --> NONE1["no workflow on main"]
-    TAPI --> NONE2["no workflow on main"]
+    TSITE --> DOCK["docker.yml"]
+    TAPI --> DOCK
+    DOCK --> IMG["ghcr.io/ferrlabs/ferrflow-cloud/site or api<br/>tags X.Y.Z and X.Y"]
+    IMG --> REL2["publish the draft release<br/>(--latest=false)"]
 ```
 
 A push that only touches `docs/site/**` does not start `ci.yml`, so it cannot reach the Release job.
