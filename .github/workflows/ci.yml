@@ -111,7 +111,10 @@ jobs:
         with:
           tool: cargo-audit,cargo-deny,cargo-machete,cargo-vet@0.10.2
       - name: cargo audit (RustSec advisories)
-        run: cargo audit --deny warnings
+        run: |
+          cargo audit --deny warnings
+          cargo audit --deny warnings -f fuzz/Cargo.lock
+          cargo audit --deny warnings -f api/fuzz/Cargo.lock
       - name: cargo deny (licenses + bans + sources)
         run: cargo deny --all-features check
       - name: cargo machete (unused deps)
