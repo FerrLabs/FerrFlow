@@ -22,6 +22,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 - fix(deps): update gix (#1479)
 
+### Changed
+
+- The minimum supported Rust version goes from 1.88 to 1.95, required by gix 0.91 (#1479). This should have been a minor release, see #1485.
+
 ## [7.37.1] - 2026-11-23
 
 ### Bug Fixes

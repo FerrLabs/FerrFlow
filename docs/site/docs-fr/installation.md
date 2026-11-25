@@ -8,6 +8,7 @@ description: Comment installer FerrFlow en local ou en CI.
 <div class="ferr-tabs">
   <div class="ferr-tab" data-label="Cargo"><p class="ferr-tab__label">Cargo</p><div class="ferr-tab__body"><pre><code class="language-bash">cargo install ferrflow
 </code></pre>
+<p>La compilation depuis les sources demande Rust 1.95 ou plus récent.</p>
 </div></div>
   <div class="ferr-tab" data-label="npm"><p class="ferr-tab__label">npm</p><div class="ferr-tab__body"><pre><code class="language-bash">npm install -g @ferrlabs/ferrflow
 # ou en dépendance de développement

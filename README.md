@@ -62,6 +62,8 @@ That is the whole release: bump, changelog, tag, GitHub release.
 cargo install ferrflow
 ```
 
+Building from source needs Rust 1.95 or newer. The prebuilt binaries, the npm package and the Docker image have no such requirement.
+
 **npm**
 
 ```bash

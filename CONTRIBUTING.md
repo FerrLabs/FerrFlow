@@ -87,7 +87,14 @@ runs, so the nightly run starts where the last one left off.
 
 `rust-version` in `Cargo.toml` is the MSRV, and the `MSRV` CI job runs `cargo check --workspace --locked` on exactly that toolchain.
 
-Raise it only when a dependency or a language feature we want requires it, never speculatively. Bump it in the same PR that needs it, and keep it to the oldest stable release that compiles. A bump ships as a minor release.
+Raise it only when a dependency or a language feature we want requires it, never speculatively. Bump it in the same PR that needs it, and keep it to the oldest stable release that compiles. A bump ships as a minor release, so the PR title must be a `feat`, and the README states the new version next to `cargo install`.
+
+When the bump lands on a Renovate PR, retitling it is not enough. Renovate enables auto-merge when it opens the PR, and GitHub stores the squash commit title at that moment, so the PR still merges under Renovate's original `fix(deps)` or `chore(deps)` subject and releases as a patch. After retitling, disable auto-merge and enable it again:
+
+```bash
+gh pr merge <number> --disable-auto
+gh pr merge <number> --auto --squash
+```
 
 ## Git hooks
 
