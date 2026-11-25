@@ -1,6 +1,12 @@
 
 # cargo-vet audits file
 
+[[audits.faster-hex]]
+who = "BryanFRD <bryanferrando59@gmail.com>"
+criteria = "safe-to-deploy"
+version = "2.0.0"
+notes = "No build script, proc macro or I/O. Reviewed all compiled unsafe: CPUID/XGETBV dispatch checks OS state before AVX2/AVX-512; SSE4.1/AVX2/AVX-512/NEON kernels bound every load and store; MaybeUninit output is fully initialized before set_len/from_utf8_unchecked. Safe serde/format code not reviewed line by line."
+
 [[audits.json5]]
 who = "BryanFRD <bryanferrando59@gmail.com>"
 criteria = "safe-to-deploy"
