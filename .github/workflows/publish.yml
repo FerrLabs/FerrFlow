@@ -59,7 +59,7 @@ jobs:
           targets: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
       # macos-15-arm64 ships with a `cargo` shim at /usr/local/bin/cargo
-      # that delegates to rustup-init when no managed toolchain is set —
+      # that delegates to rustup-init when no managed toolchain is set:
       # the dtolnay action installs into ~/.cargo but PATH ordering can
       # leave the broken shim winning, surfacing as "unexpected argument
       # 'build' found / Usage: rustup-init" (see v4.7.5 Publish run).
@@ -75,7 +75,7 @@ jobs:
           cargo --version
       - name: Install cross
         if: matrix.os == 'ubuntu-latest'
-        # Download via curl with retries â€” we hit GitHub 504s here from time to
+        # Download via curl with retries, we hit GitHub 504s here from time to
         # time (see FerrLabs/FerrFlow Publish run 24610662869), and the
         # whole release pipeline deserves better than a single-shot fetch.
         run: |
@@ -97,7 +97,7 @@ jobs:
         shell: bash
         run: |
           if ! bash scripts/pgo-build.sh x86_64-unknown-linux-musl; then
-            echo "::warning::PGO build failed — falling back to LTO-only cross build for x64-linux"
+            echo "::warning::PGO build failed, falling back to LTO-only cross build for x64-linux"
             n=0
             until cross build --release --target x86_64-unknown-linux-musl; do
               n=$((n + 1))
@@ -205,7 +205,7 @@ jobs:
         uses: ./.github/actions/install-cosign
 
       - name: Sign release artifacts with cosign (keyless)
-        # Keyless Sigstore signing — no private key to manage. Identity
+        # Keyless Sigstore signing: no private key to manage. Identity
         # is the workflow's OIDC token, recorded in the Rekor transparency
         # log. Verify with:
         #   cosign verify-blob \
@@ -229,7 +229,7 @@ jobs:
           set -euo pipefail
           shopt -s nullglob
           # Retry: Sigstore hiccups ("stream error: INTERNAL_ERROR") killed
-          # this step twice (v5.2.2, v5.3.0) and orphaned their drafts — the
+          # this step twice (v5.2.2, v5.3.0) and orphaned their drafts. The
           # known failure mode here is transient, so give it three shots.
           sign_with_retry() {
             local artifact="$1" attempt
@@ -302,8 +302,8 @@ jobs:
         # - `/releases/tags/{tag}` excludes drafts entirely (404).
         #   Verified locally on v4.7.2.
         # - `gh release view "$TAG"` returned 404 in the runner for the
-        #   v4.7.2 draft despite the draft existing in the UI — gh CLI
-        #   version skew, can't pin the runner gh reliably.
+        #   v4.7.2 draft despite the draft existing in the UI (gh CLI
+        #   version skew), can't pin the runner gh reliably.
         # - The fine-grained PAT in `secrets.FERRFLOW_TOKEN` lacks
         #   read scope on `/releases?per_page=100` and returns 403
         #   "Resource not accessible by personal access token"
@@ -333,7 +333,7 @@ jobs:
             echo "Release $TAG not yet visible, retrying in 5s ($i/60)..."
             sleep 5
           done
-          echo "::warning::Release $TAG never appeared after 300s — creating it now as self-heal"
+          echo "::warning::Release $TAG never appeared after 300s, creating it now as self-heal"
           gh release create "$TAG" \
             --draft \
             --title "$TAG" \
