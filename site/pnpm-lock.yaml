@@ -214,8 +214,8 @@ importers:
         specifier: ^5.12.0
         version: 5.12.0(tailwindcss@4.3.5)
       '@ferrlabs/ui-ng':
-        specifier: ^1.61.1
-        version: 1.61.1(24cd71e4d92b6b8b750d78061ec0edef)
+        specifier: ^1.62.0
+        version: 1.62.0(24cd71e4d92b6b8b750d78061ec0edef)
       chart.js:
         specifier: ^4.5.1
         version: 4.6.1
@@ -789,8 +789,8 @@ packages:
     peerDependencies:
       tailwindcss: ^4.0.0
 
-  '@ferrlabs/ui-ng@1.61.1':
-    resolution: {integrity: sha512-wqzdR/CUj9JfAfiNMz+bZ4oskUoniyyMVqKaWWy0dqw3+2HyIJ3ovn2ZZVlF/QaB/VQCPCNIMn048twod7rE2g==}
+  '@ferrlabs/ui-ng@1.62.0':
+    resolution: {integrity: sha512-T1EUoiM8FkSwREzyF8xaIaymLWdq7Peu+EE4ChC1MFG4Qkd0+aIDc4/869vnXGZE0sEMb/YbPUOnYZab/SWNKA==}
     peerDependencies:
       '@angular/cdk': ^22.0.0
       '@angular/common': ^22.0.0
@@ -3255,9 +3255,6 @@ packages:
   parse5-sax-parser@8.0.1:
     resolution: {integrity: sha512-6eHc4FeWwv8uBX1yMZ8Vl5zcT61k8EpK/rgRwNl/BLY4pOkUqXI1RIwGSIvxyBXzl5TGj4TvIQBJGwTU4P+ddg==}
 
-  parse5@8.0.1:
-    resolution: {integrity: sha512-z1e/HMG90obSGeidlli3hj7cbocou0/wa5HacvI3ASx34PecNjNQeaHNo5WIZpWofN9kgkqV1q5YvXe3F0FoPw==}
-
   parse5@8.1.1:
     resolution: {integrity: sha512-EcR/6WDcU7b2N3vQSxKALCk9lXGtUMQxXio008OEMBE0kavu/7JLfBEeFPzi43nMqVDSbEn3QCK+BMCc9zO//w==}
 
@@ -4375,7 +4372,7 @@ snapshots:
       '@angular/core': 22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2)
       '@angular/forms': 22.3.0(@angular/common@22.3.0(@angular/core@22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2))(@angular/platform-browser@22.3.0(@angular/common@22.3.0(@angular/core@22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2)))(rxjs@7.8.2)
       '@angular/platform-browser': 22.3.0(@angular/common@22.3.0(@angular/core@22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2))
-      parse5: 8.0.1
+      parse5: 8.1.1
       rxjs: 7.8.2
       tslib: 2.9.1
 
@@ -4668,7 +4665,7 @@ snapshots:
       '@fontsource/geist-sans': 5.3.0
       tailwindcss: 4.3.5
 
-  '@ferrlabs/ui-ng@1.61.1(24cd71e4d92b6b8b750d78061ec0edef)':
+  '@ferrlabs/ui-ng@1.62.0(24cd71e4d92b6b8b750d78061ec0edef)':
     dependencies:
       '@angular/cdk': 22.2.0(@angular/common@22.3.0(@angular/core@22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2))(@angular/forms@22.3.0(@angular/common@22.3.0(@angular/core@22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2))(@angular/platform-browser@22.3.0(@angular/common@22.3.0(@angular/core@22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2)))(rxjs@7.8.2))(@angular/platform-browser@22.3.0(@angular/common@22.3.0(@angular/core@22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2)))(rxjs@7.8.2)
       '@angular/common': 22.3.0(@angular/core@22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2))(rxjs@7.8.2)
@@ -6760,10 +6757,6 @@ snapshots:
   parse5-sax-parser@8.0.1:
     dependencies:
       parse5: 8.1.1
-
-  parse5@8.0.1:
-    dependencies:
-      entities: 8.1.0
 
   parse5@8.1.1:
     dependencies:
