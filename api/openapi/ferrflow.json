@@ -76,7 +76,7 @@
       "get": {
         "tags": ["ferrflow"],
         "summary": "Latest release + platform asset resolution",
-        "description": "Resolves the latest FerrFlow release from GitHub. Assets are sigstore-signed (`.sig` + `.crt`); there is no sha256 checksums file.",
+        "description": "Resolves the latest FerrFlow release from GitHub. Assets are sigstore-signed: each ships a `.sigstore.json` bundle (releases up to v5.47.4 carry a `.sig` + `.crt` pair instead); there is no sha256 checksums file. Signature fields are omitted when the release has no such asset.",
         "parameters": [
           {
             "name": "platform",
@@ -291,8 +291,9 @@
           "published_at": { "type": "string", "format": "date-time" },
           "platform": { "type": "string" },
           "download_url": { "type": "string" },
-          "signature_url": { "type": "string" },
-          "cert_url": { "type": "string" },
+          "bundle_url": { "type": "string", "description": "`{asset}.sigstore.json` bundle." },
+          "signature_url": { "type": "string", "description": "Legacy `.sig`, releases up to v5.47.4 only." },
+          "cert_url": { "type": "string", "description": "Legacy `.crt`, releases up to v5.47.4 only." },
           "assets": {
             "type": "array",
             "items": {
@@ -300,6 +301,7 @@
               "properties": {
                 "platform": { "type": "string" },
                 "download_url": { "type": "string" },
+                "bundle_url": { "type": "string" },
                 "signature_url": { "type": "string" },
                 "cert_url": { "type": "string" }
               }
