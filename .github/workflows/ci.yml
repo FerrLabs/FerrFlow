@@ -470,7 +470,7 @@ jobs:
           bench_exit=${PIPESTATUS[0]}
           set -e
           if [ "$bench_exit" != "0" ]; then
-            echo "::warning::bench binary exited ${bench_exit} — tolerating as long as rows were captured. Stderr tail:"
+            echo "::warning::bench binary exited ${bench_exit}, tolerating as long as rows were captured. Stderr tail:"
             tail -40 bench-stderr.log || true
           fi
           grep -E '^test .+ \.\.\. bench:[[:space:]]+[0-9,]+ ns/iter' raw-output.txt > output.txt || true
@@ -688,7 +688,7 @@ jobs:
   benchmark-aggregate:
     name: Benchmark (aggregate)
     # Merges the shards and runs the regression check, comment and uploads once
-    # over the whole result — the shards deliberately skip all of that.
+    # over the whole result. The shards deliberately skip all of that.
     needs: benchmark
     runs-on: ubuntu-latest
     steps:
@@ -853,7 +853,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
-          # Don't bake GITHUB_TOKEN into the git remote — ferrflow's OIDC
+          # Don't bake GITHUB_TOKEN into the git remote: ferrflow's OIDC
           # exchange yields an App installation token that authenticates as
           # ferrflow[bot]. Without this, every git push silently reverts
           # to GITHUB_TOKEN (i.e. github-actions[bot]) which isn't in the

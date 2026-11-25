@@ -36,7 +36,7 @@ jobs:
           fetch-depth: 0
       - id: tag
         # Highest semver release tag (vX.Y.Z), independent of branch
-        # reachability — `git describe` would return the nearest ancestor
+        # reachability: `git describe` would return the nearest ancestor
         # tag, which goes stale on feature branches and PRs. The floating
         # major tag (v5) is excluded by requiring the two dots.
         run: |
