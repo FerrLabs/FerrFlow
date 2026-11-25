@@ -145,7 +145,7 @@ export class LandingComponent {
   ];
 
   private speedFact(): Fact[] {
-    if (!this.speed || this.speed.competitorMs === undefined) return [];
+    if (this.speed?.competitorMs === undefined) return [];
     const theirsMs = this.number.format(this.speed.competitorMs);
     const { packages, commitsPerPackage } = this.speed;
     return [
@@ -162,10 +162,10 @@ export class LandingComponent {
     const ours = sizes['ferrflow']?.binary;
     const theirs = sizes['release-please']?.npm;
     if (!ours || !theirs) return [];
-    const theirsMb = this.number.format(parseFloat(theirs));
+    const theirsMb = this.number.format(Number.parseFloat(theirs));
     return [
       {
-        value: `${this.number.format(parseFloat(ours))} MB`,
+        value: `${this.number.format(Number.parseFloat(ours))} MB`,
         label: $localize`:@@facts.footprint.label:on disk, native binary`,
         detail: $localize`:@@facts.footprint.detail:release-please: ${theirsMb}:INTERPOLATION: MB via npm`,
       },

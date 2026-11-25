@@ -49,7 +49,9 @@
           var b = (navigator.language || 'en').slice(0, 2).toLowerCase();
           if (b === 'fr')
             location.replace('/fr' + (p === '/' ? '/' : p) + location.search + location.hash);
-        } catch (e) {}
+        } catch (e) {
+          console.warn('language redirect skipped', e);
+        }
       })();
     </script>
 

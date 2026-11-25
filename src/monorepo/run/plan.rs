@@ -1416,8 +1416,7 @@ mod tests {
         assert!(fx.cache.lock().unwrap().is_empty());
     }
 
-    #[test]
-    fn a_recovered_release_does_not_list_another_packages_commits() {
+    fn recoverable_fixture() -> (Fixture, Vec<String>) {
         let (dir, repo) = init_repo();
         let root = dir.path().to_path_buf();
         write_pkg(&root, "site", "1.0.0");
@@ -1453,6 +1452,12 @@ mod tests {
             !changed_files.iter().any(|f| f.starts_with("site/")),
             "the head commit must not touch site, or there is nothing to recover"
         );
+        (fx, changed_files)
+    }
+
+    #[test]
+    fn a_recovered_release_does_not_list_another_packages_commits() {
+        let (fx, changed_files) = recoverable_fixture();
 
         let all_tags = collect_all_tags(&fx.repo);
         let head_ancestors = build_head_ancestors(&fx.repo).ok();
@@ -1543,5 +1548,155 @@ mod tests {
             result.is_err(),
             "a broken package must abort the collection"
         );
+    }
+
+    fn plan_without_tag_index(
+        fx: &Fixture,
+        changed_files: &[String],
+        channel: Option<&str>,
+        name: &str,
+    ) -> PackagePlan {
+        let all_tags = collect_all_tags(&fx.repo);
+        let head_ancestors = build_head_ancestors(&fx.repo).ok();
+        let tag_index: Option<TagIndex> = None;
+        let prerelease_ctx = PrereleaseContext::resolve(channel, "main", None).unwrap();
+        let forced: Vec<Forced<'_>> = Vec::new();
+        let inputs = build_inputs(
+            fx,
+            &tag_index,
+            &head_ancestors,
+            &all_tags,
+            &prerelease_ctx,
+            &forced,
+            changed_files,
+        );
+        plan_for(fx, &inputs, name)
+    }
+
+    fn site_commit(root: &Path) {
+        commit_file(
+            root,
+            "site/hero.rs",
+            "x",
+            "feat(site): dress the site",
+            1_950_000_200,
+        );
+    }
+
+    #[test]
+    fn without_a_tag_index_a_stable_release_still_scopes_commits_to_its_package() {
+        let (fx, changed_files) = two_package_fixture(site_commit);
+
+        let site = subjects(&plan_without_tag_index(&fx, &changed_files, None, "site"));
+
+        assert!(
+            site.iter().any(|s| s.contains("dress the site")),
+            "site release must carry its own commit, got {site:?}"
+        );
+        assert!(
+            !site.iter().any(|s| s.contains("object id")),
+            "a server-only commit must not appear in the site changelog, got {site:?}"
+        );
+    }
+
+    #[test]
+    fn without_a_tag_index_a_prerelease_still_scopes_commits_to_its_package() {
+        let (fx, changed_files) = two_package_fixture(site_commit);
+
+        let site = subjects(&plan_without_tag_index(
+            &fx,
+            &changed_files,
+            Some("beta"),
+            "site",
+        ));
+
+        assert!(
+            site.iter().any(|s| s.contains("dress the site")),
+            "site prerelease must carry its own commit, got {site:?}"
+        );
+        assert!(
+            !site.iter().any(|s| s.contains("object id")),
+            "a server-only commit must not appear in the site prerelease, got {site:?}"
+        );
+    }
+
+    #[test]
+    fn without_a_tag_index_a_recovered_release_reads_the_diff_since_the_package_tag() {
+        let (fx, changed_files) = recoverable_fixture();
+
+        let plan = plan_without_tag_index(&fx, &changed_files, None, "site");
+
+        let PackagePlan::Bump(bump) = &plan else {
+            panic!("site should be recovered, got a skip");
+        };
+        assert!(bump.recovered, "site should come back through recovery");
+        let site = subjects(&plan);
+        assert!(
+            site.iter().any(|s| s.contains("dress the site")),
+            "the recovered release must carry the commit it missed, got {site:?}"
+        );
+        assert!(
+            !site.iter().any(|s| s.contains("object id")),
+            "a server-only commit must not ride along in a recovered release, got {site:?}"
+        );
+    }
+
+    #[test]
+    fn a_single_package_keeps_every_commit_when_there_is_no_tag_index() {
+        let (dir, repo) = init_repo();
+        let root = dir.path().to_path_buf();
+        write_pkg(&root, "app", "1.0.0");
+        write_config(&root, &["app"]);
+        git(&root, &["add", "-A"]);
+        commit_file(&root, "seed.txt", "x", "chore: seed", 1_950_000_000);
+        git(&root, &["tag", "app-v1.0.0"]);
+        commit_file(
+            &root,
+            "top.md",
+            "x",
+            "fix: outside the package dir",
+            1_950_000_100,
+        );
+        commit_file(
+            &root,
+            "app/b.rs",
+            "x",
+            "feat: inside the package dir",
+            1_950_000_200,
+        );
+
+        let fx = build_fixture(root, dir, repo);
+        let changed_files = get_changed_files(&fx.repo).unwrap();
+
+        let app = subjects(&plan_without_tag_index(&fx, &changed_files, None, "app"));
+
+        assert!(
+            app.iter().any(|s| s.contains("outside the package dir")),
+            "a single package owns the whole repo, got {app:?}"
+        );
+        assert!(app.iter().any(|s| s.contains("inside the package dir")));
+    }
+
+    #[test]
+    fn prefetching_needs_a_tag_index() {
+        let (fx, changed_files) = recoverable_fixture();
+        let all_tags = collect_all_tags(&fx.repo);
+        let head_ancestors = build_head_ancestors(&fx.repo).ok();
+        let tag_index: Option<TagIndex> = None;
+        let prerelease_ctx = PrereleaseContext::resolve(None, "main", None).unwrap();
+        let forced: Vec<Forced<'_>> = Vec::new();
+        let inputs = build_inputs(
+            &fx,
+            &tag_index,
+            &head_ancestors,
+            &all_tags,
+            &prerelease_ctx,
+            &forced,
+            &changed_files,
+        );
+
+        prefetch_changed_files_since_tags(&fx.repo, &inputs);
+
+        assert!(fx.cache.lock().unwrap().is_empty());
     }
 }

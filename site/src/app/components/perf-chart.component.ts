@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Chart, registerables, type ChartDataset, type Plugin } from 'chart.js';
+import { formatMs } from './perf-series';
 
 export interface PerfChartConfig {
   readonly data: Record<string, Record<string, Record<string, number>>>;
@@ -228,8 +229,6 @@ export class PerfChartComponent {
 
   private build(): void {
     const cfg = this.config();
-    const fmt = (v: number | null): string =>
-      v == null ? '' : v < 1000 ? `${Math.round(v)} ms` : `${(v / 1000).toFixed(2)} s`;
 
     // The label above ferrflow's bar reads the total, not the top segment: once
     // the bar is split, dataset 'ferrflow' carries work only.
@@ -249,7 +248,7 @@ export class PerfChartComponent {
         meta.data.forEach((bar, i) => {
           const v = values[i];
           if (v == null) return;
-          c.fillText(fmt(v), bar.x, bar.y - 6);
+          c.fillText(formatMs(v), bar.x, bar.y - 6);
         });
         c.restore();
       },
@@ -267,7 +266,7 @@ export class PerfChartComponent {
         plugins: {
           legend: { display: false },
           tooltip: {
-            callbacks: { label: (i) => `${i.dataset.label}: ${fmt(i.parsed.y)}` },
+            callbacks: { label: (i) => `${i.dataset.label}: ${formatMs(i.parsed.y)}` },
           },
         },
         scales: {
@@ -275,7 +274,7 @@ export class PerfChartComponent {
             type: 'linear',
             beginAtZero: true,
             stacked: this.isSplit(),
-            ticks: { callback: (v) => fmt(Number(v)) },
+            ticks: { callback: (v) => formatMs(Number(v)) },
           },
           x: { grid: { display: false }, stacked: this.isSplit() },
         },

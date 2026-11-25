@@ -23,7 +23,7 @@ function docSlugs(dir: string): string[] {
       const full = join(d, e.name);
       if (e.isDirectory()) walk(full);
       else if (e.name.endsWith('.md'))
-        out.push(relative(base, full).replace(/\\/g, '/').replace(/\.md$/, ''));
+        out.push(relative(base, full).replaceAll('\\', '/').replace(/\.md$/, ''));
     }
   };
   walk(base);

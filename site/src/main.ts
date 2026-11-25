@@ -6,4 +6,8 @@ import { initTelemetry } from '@ferrlabs/telemetry';
 
 initTelemetry({ appName: 'ferrflow-site' });
 
-bootstrapApplication(AppComponent, appConfig).catch((err) => console.error(err));
+try {
+  await bootstrapApplication(AppComponent, appConfig);
+} catch (err) {
+  console.error(err);
+}
