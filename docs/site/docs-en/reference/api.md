@@ -39,12 +39,12 @@ curl "https://api.ferrflow.com/ferrflow/latest?platform=linux-x64"
   "tag": "v5.48.0",
   "platform": "linux-x64",
   "download_url": "https://github.com/FerrLabs/FerrFlow/releases/download/v5.48.0/ferrflow-linux-x64.tar.gz",
-  "bundle_url": "https://github.com/FerrLabs/FerrFlow/releases/download/v5.48.0/ferrflow-linux-x64.tar.gz.bundle",
+  "bundle_url": "https://github.com/FerrLabs/FerrFlow/releases/download/v5.48.0/ferrflow-linux-x64.tar.gz.sigstore.json",
   "published_at": "2026-07-27T19:20:00Z"
 }
 ```
 
-Releases are signed with [Sigstore](/docs/verifying-releases/): verify the `.bundle` rather than a checksum (releases up to v5.47.4 carry a `.sig` + `.crt` pair instead). Without `platform`, the response lists `assets` for every platform. Valid platforms: `linux-x64`, `linux-arm64`, `linux-arm`, `darwin-x64`, `darwin-arm64`, `win32-x64`, `win32-arm64`.
+Releases are signed with [Sigstore](/docs/verifying-releases/): verify the `.sigstore.json` bundle rather than a checksum (releases up to v5.47.4 carry a `.sig` + `.crt` pair instead). Without `platform`, the response lists `assets` for every platform. Valid platforms: `linux-x64`, `linux-arm64`, `linux-arm`, `darwin-x64`, `darwin-arm64`, `win32-x64`, `win32-arm64`.
 
 ## `POST /ferrflow/validate`
 

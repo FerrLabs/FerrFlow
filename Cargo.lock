@@ -921,7 +921,7 @@ checksum = "da7c62ceae207dd37ea5b845da6a0696c799f85e97da1ab5b7910be3c1c80223"
 
 [[package]]
 name = "ferrflow"
-version = "7.37.3"
+version = "7.37.4"
 dependencies = [
  "anyhow",
  "base64",
@@ -959,7 +959,7 @@ dependencies = [
 
 [[package]]
 name = "ferrflow-api"
-version = "2026.11.10"
+version = "2026.11.11"
 dependencies = [
  "anyhow",
  "axum",
@@ -983,7 +983,7 @@ dependencies = [
 
 [[package]]
 name = "ferrflow-wasm"
-version = "7.37.3"
+version = "7.37.4"
 dependencies = [
  "ferrflow",
  "serde",

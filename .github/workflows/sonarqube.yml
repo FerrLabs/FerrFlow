@@ -65,7 +65,7 @@ jobs:
           tool: cargo-llvm-cov
       - name: Generate coverage
         run: cargo llvm-cov --cobertura --output-path cobertura.xml
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: coverage-cobertura
           path: cobertura.xml
@@ -99,7 +99,7 @@ jobs:
         run: pnpm test:coverage
       - name: Rebase lcov paths onto the repository root
         run: sed -i 's#^SF:#SF:site/#' site/coverage/lcov.info
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: coverage-site-lcov
           path: site/coverage/lcov.info

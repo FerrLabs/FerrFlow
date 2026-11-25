@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.11.11] - 2026-11-25
+
+### Bug Fixes
+
+- fix(api): emit bundle_url and omit empty signature fields on /ferrflow/latest (#1494)
+
 ## [2026.11.10] - 2026-11-24
 
 ### Bug Fixes
