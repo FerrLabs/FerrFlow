@@ -11,7 +11,8 @@
   "scripts": {
     "dev": "node scripts/sync-docs.mjs && vite",
     "build": "node scripts/sync-docs.mjs && vite build && node scripts/gen-rss.mjs && node scripts/gen-sitemap.mjs",
-    "test": "node --experimental-strip-types --test 'src/**/*.spec.ts'",
+    "test": "node --experimental-strip-types --test 'src/**/*.spec.ts' 'scripts/**/*.spec.mjs'",
+    "test:coverage": "node --experimental-strip-types --test --experimental-test-coverage --test-coverage-include='src/**/*.ts' --test-coverage-include='scripts/**/*.mjs' --test-coverage-exclude='**/*.spec.*' --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info 'src/**/*.spec.ts' 'scripts/**/*.spec.mjs'",
     "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.spec.json --noEmit",
     "check:i18n": "node ./scripts/check-i18n.mjs",
     "preview": "vite preview",

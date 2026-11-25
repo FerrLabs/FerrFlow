@@ -76,8 +76,38 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
 
+  site-coverage:
+    name: Site coverage
+    needs: changes
+    if: needs.changes.outputs.site == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          package_json_file: site/package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '26'
+      - name: Install dependencies
+        working-directory: site
+        run: pnpm install --frozen-lockfile
+      - name: Generate coverage
+        working-directory: site
+        run: pnpm test:coverage
+      - name: Rebase lcov paths onto the repository root
+        run: sed -i 's#^SF:#SF:site/#' site/coverage/lcov.info
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: coverage-site-lcov
+          path: site/coverage/lcov.info
+          retention-days: 1
+
   scan:
-    needs: [version, coverage]
+    needs: [version, coverage, site-coverage]
+    if: ${{ !cancelled() && needs.version.result == 'success' && needs.coverage.result != 'failure' && needs.site-coverage.result != 'failure' }}
     # The reusable workflow declares `pull-requests: write` (it posts the diff
     # against the base project). The job would otherwise inherit the read-only
     # workflow-level block above, and GitHub rejects the run before it starts.
@@ -88,8 +118,9 @@ jobs:
     with:
       runner: ubuntu-latest
       project-key: ferrflow
-      coverage-artifact: coverage-cobertura
+      coverage-artifact-pattern: coverage-*
       args: >-
         -Dsonar.projectVersion=${{ needs.version.outputs.version }}
         -Dsonar.rust.cobertura.reportPaths=.sonarcov/cobertura.xml
+        -Dsonar.javascript.lcov.reportPaths=.sonarcov/lcov.info
     secrets: inherit

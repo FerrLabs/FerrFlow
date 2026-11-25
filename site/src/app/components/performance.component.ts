@@ -6,6 +6,7 @@ import {
   type ParallelCell,
 } from '../data/benchmarks';
 import { PerfChartComponent, type PerfChartConfig } from './perf-chart.component';
+import { buildSeries } from './perf-series';
 
 const KNOWN_TOOLS = [
   'commit-and-tag-version',
@@ -120,7 +121,7 @@ function buildGrid(): Grid {
   });
   const orderedCommands = Array.from(commands)
     .filter((c) => comparableCommands.has(c))
-    .sort();
+    .sort((a, b) => a.localeCompare(b));
 
   return { cells, fixtures: orderedFixtures, tools: orderedTools, commands: orderedCommands };
 }
@@ -642,26 +643,7 @@ export class PerformanceComponent {
 
   protected readonly chartConfig = computed<PerfChartConfig>(() => {
     const { cells, fixtures, tools, commands } = this.grid();
-    const data: Record<string, Record<string, Record<string, number>>> = {};
-    const startup: Record<string, Record<string, Record<string, number>>> = {};
-    for (const fix of fixtures) {
-      for (const cmd of commands) {
-        const row: Record<string, number> = {};
-        const startupRow: Record<string, number> = {};
-        for (const tool of tools) {
-          const cell = cells[`${fix}|${tool}|${cmd}`];
-          if (!cell) continue;
-          row[tool] = cell.median_ms;
-          if (cell.startup_ms !== undefined) startupRow[tool] = cell.startup_ms;
-        }
-        if (Object.keys(row).length > 0) {
-          (data[fix] ??= {})[cmd] = row;
-        }
-        if (Object.keys(startupRow).length > 0) {
-          (startup[fix] ??= {})[cmd] = startupRow;
-        }
-      }
-    }
+    const { data, startup } = buildSeries(cells, fixtures, commands, tools);
     return {
       data,
       startup,
@@ -706,7 +688,7 @@ export class PerformanceComponent {
     return Object.entries(parallelData)
       .map(([key, cell]): ParallelRow | null => {
         const p = parseParallelKey(key);
-        if (!p || p.cmd !== PARALLEL_CMD) return null;
+        if (p?.cmd !== PARALLEL_CMD) return null;
         const single = cells[`${p.fixture}|ferrflow|${p.cmd}`];
         if (!single) return null;
         return { fixture: p.fixture, single, parallel: cell };
