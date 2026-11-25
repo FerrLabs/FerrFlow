@@ -179,4 +179,63 @@ describe('planImages', () => {
     assert.equal(imageByPage.get('/'), '/og/index.png');
     assert.equal(jobs.length, 1);
   });
+
+  describe('default locale pages', () => {
+    const localized: Page[] = [
+      { path: '/', meta: meta('Home', '/') },
+      { path: '/en/', meta: meta('Home en', '/en/') },
+      { path: '/guides/setup/', meta: meta('Setup', '/guides/setup/') },
+      { path: '/en/guides/setup/', meta: meta('Setup en', '/en/guides/setup/') },
+      { path: '/v9/guides/setup/', meta: meta('Setup old', '/guides/setup/') },
+      { path: '/en/v9/guides/setup/', meta: meta('Setup old en', '/en/v9/guides/setup/') },
+      { path: '/en/only-here/', meta: meta('Only here', '/en/only-here/') },
+      { path: '/enterprise/', meta: meta('Enterprise', '/enterprise/') },
+      { path: '/en/404/', meta: meta('404: FerrFlow') },
+    ];
+
+    it('reuses the unprefixed card for an /en/ page and its root', () => {
+      const { imageByPage } = planImages(localized);
+      assert.equal(imageByPage.get('/en/guides/setup/'), '/og/guides/setup.png');
+      assert.equal(imageByPage.get('/en/'), '/og/index.png');
+    });
+
+    it('ends on the same card as the unprefixed page when a canonical also applies', () => {
+      const { imageByPage } = planImages(localized);
+      assert.equal(imageByPage.get('/v9/guides/setup/'), '/og/guides/setup.png');
+      assert.equal(imageByPage.get('/en/v9/guides/setup/'), '/og/guides/setup.png');
+    });
+
+    it('keeps its own card when there is no unprefixed counterpart', () => {
+      const { imageByPage } = planImages(localized);
+      assert.equal(imageByPage.get('/en/only-here/'), '/og/en/only-here.png');
+    });
+
+    it('does not treat a path merely starting with /en as a locale prefix', () => {
+      const { imageByPage } = planImages([
+        { path: '/', meta: meta('Home', '/') },
+        { path: '/enterprise/', meta: meta('Enterprise', '/enterprise/') },
+      ]);
+      assert.equal(imageByPage.get('/enterprise/'), '/og/enterprise.png');
+    });
+
+    it('renders no job under /og/en/ for pages with a counterpart', () => {
+      const { jobs } = planImages(localized);
+      assert.deepEqual(
+        jobs.map((job) => job.imagePath).filter((p) => p.startsWith('/og/en/')),
+        ['/og/en/only-here.png'],
+      );
+    });
+
+    it('leaves the /en/ 404 page without a card', () => {
+      assert.equal(planImages(localized).imageByPage.has('/en/404/'), false);
+    });
+
+    it('does not use an /en/ counterpart that has no metadata', () => {
+      const { imageByPage } = planImages([
+        { path: '/lonely/', meta: undefined },
+        { path: '/en/lonely/', meta: meta('Lonely', '/en/lonely/') },
+      ]);
+      assert.equal(imageByPage.get('/en/lonely/'), '/og/en/lonely.png');
+    });
+  });
 });

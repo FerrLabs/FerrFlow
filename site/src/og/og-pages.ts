@@ -34,6 +34,7 @@ const NAMED_ENTITIES: Record<string, string> = {
 const TITLE_DECORATIONS =
   /^FerrFlow: |(?: \| (?:FerrFlow Changelog|Changelog FerrFlow)|: FerrFlow(?: Docs)?)$/g;
 const NOT_FOUND = /^\/(?:(?:fr|en)\/)?404\/$/;
+const DEFAULT_LOCALE_PREFIX = '/en/';
 const OG_IMAGE_TAGS = [
   /(<meta property="og:image" content=")[^"]*(")/,
   /(<meta name="twitter:image" content=")[^"]*(")/,
@@ -86,6 +87,15 @@ export function withImage(html: string, imagePath: string): string {
   return OG_IMAGE_TAGS.reduce((out, tag) => out.replace(tag, `$1${url}$2`), html);
 }
 
+function ownerOf(path: string, withMeta: Map<string, PageMeta>): string {
+  const unprefixed = path.startsWith(DEFAULT_LOCALE_PREFIX)
+    ? path.slice(DEFAULT_LOCALE_PREFIX.length - 1)
+    : undefined;
+  const start = unprefixed !== undefined && withMeta.has(unprefixed) ? unprefixed : path;
+  const canonical = withMeta.get(start)!.canonicalPath;
+  return canonical !== undefined && withMeta.has(canonical) ? canonical : start;
+}
+
 export function planImages(pages: Page[]): ImagePlan {
   const withMeta = new Map(
     pages.flatMap((page) =>
@@ -94,11 +104,8 @@ export function planImages(pages: Page[]): ImagePlan {
   );
   const imageByPage = new Map<string, string>();
   const jobs = new Map<string, CardJob>();
-  for (const [path, meta] of withMeta) {
-    const owner =
-      meta.canonicalPath !== undefined && withMeta.has(meta.canonicalPath)
-        ? meta.canonicalPath
-        : path;
+  for (const path of withMeta.keys()) {
+    const owner = ownerOf(path, withMeta);
     const imagePath = imagePathFor(owner);
     imageByPage.set(path, imagePath);
     if (!jobs.has(imagePath)) {
