@@ -4,6 +4,12 @@ All notable changes to `ferrflow` will be documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.37.5] - 2026-11-25
+
+### Bug Fixes
+
+- fix(site): clear Sonar violations and report site coverage (#1495)
+
 ## [7.37.4] - 2026-11-25
 
 ### Bug Fixes
