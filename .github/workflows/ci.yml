@@ -234,7 +234,7 @@ jobs:
           key: ${{ steps.fixture-cache.outputs.cache-primary-key }}
 
   fixture-monorepo:
-    name: Fixtures — Monorepo
+    name: Fixtures (Monorepo)
     needs: [build, fixture-generate]
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -271,7 +271,7 @@ jobs:
           if-no-files-found: ignore
 
   fixture-single:
-    name: Fixtures — Single Package
+    name: Fixtures (Single Package)
     needs: [build, fixture-generate]
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -308,7 +308,7 @@ jobs:
           if-no-files-found: ignore
 
   fixture-config:
-    name: Fixtures — Config & Formats
+    name: Fixtures (Config & Formats)
     needs: [build, fixture-generate]
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -345,7 +345,7 @@ jobs:
           if-no-files-found: ignore
 
   fixture-advanced:
-    name: Fixtures — Advanced Features
+    name: Fixtures (Advanced Features)
     needs: [build, fixture-generate]
     runs-on: ubuntu-latest
     timeout-minutes: 5
