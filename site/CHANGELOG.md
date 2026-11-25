@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.11.32] - 2026-11-25
+
+### Features
+
+- feat(site): generate a social preview image per page (#1498)
+
 ## [2026.11.31] - 2026-11-25
 
 ## [2026.11.29] - 2026-11-25
