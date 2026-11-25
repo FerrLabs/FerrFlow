@@ -34,8 +34,12 @@ pub struct LatestQuery {
 pub struct AssetEntry {
     pub platform: String,
     pub download_url: String,
-    pub signature_url: String,
-    pub cert_url: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bundle_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub signature_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cert_url: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -47,6 +51,8 @@ pub struct LatestResponse {
     pub platform: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub download_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bundle_url: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub signature_url: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -119,21 +125,21 @@ fn asset_name_for(platform: &str) -> Option<&'static str> {
         .map(|(_, name)| *name)
 }
 
+fn companion(release: &Release, asset: &str, extension: &str) -> Option<String> {
+    release
+        .downloads
+        .get(&format!("{asset}.{extension}"))
+        .cloned()
+}
+
 fn asset_entry(release: &Release, platform: &str, asset: &str) -> Option<AssetEntry> {
     let download_url = release.downloads.get(asset)?.clone();
     Some(AssetEntry {
         platform: platform.to_string(),
         download_url,
-        signature_url: release
-            .downloads
-            .get(&format!("{asset}.sig"))
-            .cloned()
-            .unwrap_or_default(),
-        cert_url: release
-            .downloads
-            .get(&format!("{asset}.crt"))
-            .cloned()
-            .unwrap_or_default(),
+        bundle_url: companion(release, asset, "sigstore.json"),
+        signature_url: companion(release, asset, "sig"),
+        cert_url: companion(release, asset, "crt"),
     })
 }
 
@@ -145,6 +151,7 @@ fn build_response(release: &Release, platform: Option<&str>) -> ApiResult<Latest
         published_at: release.published_at.clone(),
         platform: None,
         download_url: None,
+        bundle_url: None,
         signature_url: None,
         cert_url: None,
         assets: None,
@@ -164,8 +171,9 @@ fn build_response(release: &Release, platform: Option<&str>) -> ApiResult<Latest
         Ok(LatestResponse {
             platform: Some(entry.platform),
             download_url: Some(entry.download_url),
-            signature_url: Some(entry.signature_url),
-            cert_url: Some(entry.cert_url),
+            bundle_url: entry.bundle_url,
+            signature_url: entry.signature_url,
+            cert_url: entry.cert_url,
             ..base
         })
     } else {
@@ -240,35 +248,79 @@ fn upstream(err: &reqwest::Error) -> ApiError {
 mod tests {
     use super::*;
 
-    fn sample_release() -> Release {
+    fn release_with(extensions: &[&str]) -> Release {
         let mut downloads = BTreeMap::new();
         for (_, asset) in PLATFORMS {
             let base =
-                format!("https://github.com/FerrLabs/FerrFlow/releases/download/v5.45.0/{asset}");
+                format!("https://github.com/FerrLabs/FerrFlow/releases/download/v5.48.0/{asset}");
             downloads.insert(asset.to_string(), base.clone());
-            downloads.insert(format!("{asset}.sig"), format!("{base}.sig"));
-            downloads.insert(format!("{asset}.crt"), format!("{base}.crt"));
+            for extension in extensions {
+                downloads.insert(
+                    format!("{asset}.{extension}"),
+                    format!("{base}.{extension}"),
+                );
+            }
         }
         Release {
-            tag: "v5.45.0".to_string(),
-            published_at: "2026-07-21T13:24:24Z".to_string(),
+            tag: "v5.48.0".to_string(),
+            published_at: "2026-07-27T19:20:00Z".to_string(),
             downloads,
         }
     }
 
+    fn sample_release() -> Release {
+        release_with(&["sigstore.json"])
+    }
+
+    fn legacy_release() -> Release {
+        release_with(&["sig", "crt"])
+    }
+
     #[test]
-    fn platform_query_returns_single_asset_with_signature() {
+    fn platform_query_returns_single_asset_with_bundle() {
         let out = build_response(&sample_release(), Some("linux-x64")).unwrap();
-        assert_eq!(out.version, "5.45.0");
+        assert_eq!(out.version, "5.48.0");
         assert_eq!(out.platform.as_deref(), Some("linux-x64"));
         let download_url = out.download_url.unwrap();
         assert!(download_url.ends_with("ferrflow-linux-x64.tar.gz"));
         assert_eq!(
-            out.signature_url.unwrap(),
-            format!("{download_url}.sig"),
-            "the signature must sit next to the artefact it signs"
+            out.bundle_url.unwrap(),
+            format!("{download_url}.sigstore.json"),
+            "the bundle must sit next to the artefact it signs"
         );
+        assert!(out.signature_url.is_none());
+        assert!(out.cert_url.is_none());
         assert!(out.assets.is_none());
+    }
+
+    #[test]
+    fn legacy_release_keeps_signature_and_cert() {
+        let out = build_response(&legacy_release(), Some("linux-x64")).unwrap();
+        let download_url = out.download_url.unwrap();
+        assert_eq!(out.signature_url.unwrap(), format!("{download_url}.sig"));
+        assert_eq!(out.cert_url.unwrap(), format!("{download_url}.crt"));
+        assert!(out.bundle_url.is_none());
+    }
+
+    #[test]
+    fn serialized_response_has_no_empty_strings() {
+        for release in [sample_release(), legacy_release(), release_with(&[])] {
+            for platform in [Some("linux-x64"), None] {
+                let json =
+                    serde_json::to_string(&build_response(&release, platform).unwrap()).unwrap();
+                assert!(!json.contains("\"\""), "empty string in {json}");
+            }
+        }
+    }
+
+    #[test]
+    fn unsigned_release_omits_signature_fields() {
+        let json =
+            serde_json::to_value(build_response(&release_with(&[]), Some("linux-x64")).unwrap())
+                .unwrap();
+        for field in ["bundle_url", "signature_url", "cert_url"] {
+            assert!(json.get(field).is_none(), "{field} should be omitted");
+        }
     }
 
     #[test]
@@ -286,6 +338,7 @@ mod tests {
         let out = build_response(&sample_release(), None).unwrap();
         let assets = out.assets.unwrap();
         assert_eq!(assets.len(), PLATFORMS.len());
+        assert!(assets.iter().all(|a| a.bundle_url.is_some()));
         assert!(out.download_url.is_none());
     }
 
