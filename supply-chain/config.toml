@@ -463,14 +463,6 @@ criteria = "safe-to-deploy"
 version = "1.0.0"
 criteria = "safe-to-deploy"
 
-[[exemptions.lock_api]]
-version = "0.4.14"
-criteria = "safe-to-deploy"
-
-[[exemptions.lock_api]]
-version = "0.5.0"
-criteria = "safe-to-deploy"
-
 [[exemptions.log]]
 version = "0.4.34"
 criteria = "safe-to-deploy"
@@ -530,22 +522,6 @@ criteria = "safe-to-deploy"
 [[exemptions.page_size]]
 version = "0.6.0"
 criteria = "safe-to-run"
-
-[[exemptions.parking_lot]]
-version = "0.12.5"
-criteria = "safe-to-deploy"
-
-[[exemptions.parking_lot]]
-version = "0.13.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.parking_lot_core]]
-version = "0.9.12"
-criteria = "safe-to-deploy"
-
-[[exemptions.parking_lot_core]]
-version = "0.10.0"
-criteria = "safe-to-deploy"
 
 [[exemptions.pem]]
 version = "4.0.0"
@@ -638,6 +614,7 @@ criteria = "safe-to-deploy"
 [[exemptions.redox_syscall]]
 version = "0.9.5"
 criteria = "safe-to-deploy"
+notes = 'Only compiled for target_os = "redox", which FerrFlow neither builds nor ships, and the 0.5.18 to 0.9.5 diff adds a Deref from the packed StdFsCallMeta to &[u64] that can create a misaligned reference, so no audit is proposed.'
 
 [[exemptions.reqwest]]
 version = "0.13.5"
@@ -962,6 +939,7 @@ criteria = "safe-to-deploy"
 [[exemptions.winreg]]
 version = "0.56.0"
 criteria = "safe-to-deploy"
+notes = "Windows-only dependency of gix-path; review of 0.56.0 found RegKey::enum_value retrying RegEnumValueW with name_len + 1 against a fixed 2048-element buffer, which the Win32 docs do not make safe for long value names, so no audit is recorded yet."
 
 [[exemptions.wnaf]]
 version = "0.14.1"
