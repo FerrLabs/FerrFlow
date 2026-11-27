@@ -128,7 +128,6 @@ docs: update CLI reference
 ```
 
 - Single line, no body
-- Sign off every commit with `git commit -s`; the DCO check fails without a `Signed-off-by` line
 - Scope is optional but recommended
 - Breaking changes: add `!` after type/scope (e.g. `feat(config)!: rename field`)
 
@@ -210,6 +209,10 @@ imported audits now cover.
 
 Release artifacts carry [SLSA build provenance](https://ferrflow.com/docs/verifying-releases/#slsa-build-provenance);
 verify a downloaded binary with `gh attestation verify`.
+
+## Contributor License Agreement
+
+Contributions are covered by the [CLA](https://github.com/FerrLabs/.github/blob/main/CLA.md). Sign it once on https://cla.ferrlabs.com, using the link in the `cla` check of your first pull request.
 
 ## License
 
