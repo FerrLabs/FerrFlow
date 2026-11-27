@@ -22,8 +22,19 @@ export function splitFrontmatter(raw) {
   return { frontmatter: raw.slice(0, end), body: raw.slice(end) };
 }
 
+const QUOTED_SPECIFIER = /^['"][^'"]*['"];?$/;
+
+function isImportLine(line) {
+  if (!line.startsWith('import ')) return false;
+  const from = line.lastIndexOf(' from ');
+  return from > 'import'.length && QUOTED_SPECIFIER.test(line.slice(from + ' from '.length).trim());
+}
+
 export function dropImports(body) {
-  return body.replace(/^import\s+.*\sfrom\s+['"].*['"];?\s*$/gm, '');
+  return body
+    .split('\n')
+    .filter((line) => !isImportLine(line))
+    .join('\n');
 }
 
 function md(inner) {

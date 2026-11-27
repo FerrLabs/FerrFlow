@@ -12,7 +12,7 @@ function prerenderedPages(dir) {
     const full = join(dir, entry.name);
     if (entry.isDirectory()) return prerenderedPages(full);
     if (entry.name !== 'index.html') return [];
-    const path = relative(outDir, dir).replace(/\\/g, '/');
+    const path = relative(outDir, dir).replaceAll('\\', '/');
     return [{ path: path ? `/${path}/` : '/', file: full, html: readFileSync(full, 'utf8') }];
   });
 }
