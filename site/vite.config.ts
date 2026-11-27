@@ -4,6 +4,8 @@ import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fm from 'front-matter';
 import analog from '@analogjs/platform';
+import angular from '@analogjs/vite-plugin-angular';
+import nitro from '@analogjs/vite-plugin-nitro';
 import tailwindcss from '@tailwindcss/vite';
 import { LOCALES, DEFAULT_LOCALE } from './src/app/i18n/locales';
 
@@ -133,6 +135,8 @@ export default defineConfig({
         routes: prerenderRoutes,
       },
     }),
+    angular(),
+    nitro(),
     tailwindcss(),
   ],
 });
