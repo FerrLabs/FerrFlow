@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.11.37] - 2026-11-27
+
+### Bug Fixes
+
+- fix(site): resolve the five new Sonar violations in the og and docs scripts (#1514)
+
 ## [2026.11.33] - 2026-11-25
 
 ## [2026.11.32] - 2026-11-25
