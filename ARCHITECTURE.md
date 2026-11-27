@@ -65,7 +65,7 @@ stays the latest one. `docker.yml` can also be started by hand (`workflow_dispat
 | `docker.yml` | `site@v*` and `api@v*` tags, manual | Builds and pushes the site or API image, then publishes the draft release. |
 | `publish.yml` | `v*` tags | CLI release artefacts and registries |
 | `site-docs.yml` | PRs and pushes touching `docs/site/**` | Frontmatter validation, frozen snapshot guard |
-| `fuzz.yml`, `scorecard.yml`, `security-scan.yml`, `sonarqube.yml`, `dco.yml`, `pr-title.yml` | per workflow | repository wide |
+| `fuzz.yml`, `scorecard.yml`, `security-scan.yml`, `sonarqube.yml`, `pr-title.yml` | per workflow | repository wide |
 
 `ci.yml` jobs, by the output that gates them:
 
