@@ -1,5 +1,12 @@
 # Changelog
 
+## [2026.11.38] - 2026-11-27
+
+### Bug Fixes
+
+- fix(site): adapt to Analog v3 plugin split and router API removals (#1516)
+- fix(deps): update analog monorepo to v3 (#1515)
+
 ## [2026.11.37] - 2026-11-27
 
 ### Bug Fixes
