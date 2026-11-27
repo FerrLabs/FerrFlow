@@ -42,7 +42,11 @@ const LOGO_URI = `data:image/svg+xml;base64,${Buffer.from(LOGO).toString('base64
 
 const el = (type, style, children) => ({ type, props: { style, children } });
 
-const titleSize = (title) => (title.length > 80 ? 48 : title.length > 40 ? 58 : 72);
+function titleSize(title) {
+  if (title.length > 80) return 48;
+  if (title.length > 40) return 58;
+  return 72;
+}
 
 function brand() {
   return el('div', { display: 'flex', alignItems: 'center', gap: 20 }, [

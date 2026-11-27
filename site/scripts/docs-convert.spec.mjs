@@ -47,7 +47,16 @@ describe('splitFrontmatter', () => {
 describe('dropImports', () => {
   it('removes import lines and keeps the rest', () => {
     const out = dropImports('import { Card } from \'@lib/ui\';\nkeep me\nimport X from "y"\n');
-    assert.equal(out, '\nkeep me\n');
+    assert.equal(out, 'keep me\n');
+  });
+
+  it('keeps lines that only mention from or import', () => {
+    const body = 'import is a word\nwe copy from "here"\nimport { a } from b\n';
+    assert.equal(dropImports(body), body);
+  });
+
+  it('handles CRLF line endings', () => {
+    assert.equal(dropImports('import X from "y";\r\nkeep\r\n'), 'keep\r\n');
   });
 });
 

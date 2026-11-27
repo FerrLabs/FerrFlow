@@ -42,7 +42,7 @@ const OG_IMAGE_TAGS = [
 function decodeEntities(text: string): string {
   return text.replace(/&(?:#(\d+)|#x([0-9a-f]+)|(\w+));/gi, (match, dec, hex, name) => {
     if (dec) return String.fromCodePoint(Number(dec));
-    if (hex) return String.fromCodePoint(parseInt(hex, 16));
+    if (hex) return String.fromCodePoint(Number.parseInt(hex, 16));
     return NAMED_ENTITIES[name.toLowerCase()] ?? match;
   });
 }
@@ -54,7 +54,7 @@ function metaContent(html: string, attribute: string): string | undefined {
 
 function canonicalPathOf(html: string): string | undefined {
   const href = /<link rel="canonical" href="([^"]+)"/.exec(html)?.[1];
-  if (href === undefined || !href.startsWith(`${SITE}/`)) return undefined;
+  if (!href?.startsWith(`${SITE}/`)) return undefined;
   return href.slice(SITE.length);
 }
 
