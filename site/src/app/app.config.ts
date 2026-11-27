@@ -2,18 +2,14 @@ import {
   ApplicationConfig,
   ErrorHandler,
   LOCALE_ID,
+  inject,
   provideZonelessChangeDetection,
 } from '@angular/core';
-import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
+import { provideHttpClient, withFetch } from '@angular/common/http';
 import { provideClientHydration } from '@angular/platform-browser';
-import { Route } from '@angular/router';
+import { ROUTES, Route } from '@angular/router';
 import { provideContent, withMarkdownRenderer } from '@analogjs/content';
-import {
-  provideFileRouter,
-  requestContextInterceptor,
-  routes,
-  withExtraRoutes,
-} from '@analogjs/router';
+import { provideFileRouter, withExtraRoutes } from '@analogjs/router';
 import { provideI18n } from '@analogjs/router/i18n';
 import { injectLocale } from '@analogjs/router/tokens';
 import { provideSiteChrome } from '@ferrlabs/ui-ng';
@@ -26,9 +22,16 @@ const changelogPostRoute: Route = {
   loadComponent: () => import('./pages/changelog/[slug].page'),
 };
 
-const localizedRoutes = LOCALES.map((locale) => ({
+const isLocaleRoute = (route: Route): boolean => LOCALES.some((locale) => route.path === locale);
+
+const localizedRoutes: Route[] = LOCALES.map((locale) => ({
   path: locale,
-  children: [changelogPostRoute, ...routes],
+  loadChildren: () => {
+    const siteRoutes = inject(ROUTES)
+      .flat()
+      .filter((route) => !isLocaleRoute(route));
+    return [changelogPostRoute, ...siteRoutes.filter((route) => route !== changelogPostRoute)];
+  },
 }));
 
 export const appConfig: ApplicationConfig = {
@@ -37,7 +40,7 @@ export const appConfig: ApplicationConfig = {
     provideZonelessChangeDetection(),
     provideFileRouter(withExtraRoutes([...localizedRoutes, changelogPostRoute])),
     provideClientHydration(),
-    provideHttpClient(withFetch(), withInterceptors([requestContextInterceptor])),
+    provideHttpClient(withFetch()),
     provideContent(withMarkdownRenderer()),
     provideI18n({
       loader: async (locale) => (await import(`../i18n/${locale}.json`)).default,
