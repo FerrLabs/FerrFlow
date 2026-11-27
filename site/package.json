@@ -22,8 +22,8 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
-    "@analogjs/content": "^2.6.1",
-    "@analogjs/router": "^2.6.1",
+    "@analogjs/content": "^3.0.0",
+    "@analogjs/router": "^3.0.0",
     "@angular/common": "^22.0.0",
     "@angular/core": "^22.0.0",
     "@angular/forms": "^22.0.0",
@@ -45,7 +45,7 @@
     "tslib": "^2.8.0"
   },
   "devDependencies": {
-    "@analogjs/platform": "^2.6.1",
+    "@analogjs/platform": "^3.0.0",
     "@angular/build": "^22.0.0",
     "@angular/compiler": "^22.0.0",
     "@angular/compiler-cli": "^22.0.0",
