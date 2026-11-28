@@ -218,14 +218,14 @@ importers:
         specifier: ^22.0.0
         version: 22.3.0(@angular/common@22.3.0(@angular/core@22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2))(@angular/platform-browser@22.3.0(@angular/common@22.3.0(@angular/core@22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2)))(rxjs@7.8.2)
       '@ferrlabs/telemetry':
-        specifier: ^0.6.1
-        version: 0.6.1(@angular/core@22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2))
+        specifier: ^0.6.3
+        version: 0.6.3(@angular/core@22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2))
       '@ferrlabs/ui-foundation':
-        specifier: ^5.12.0
-        version: 5.12.0(tailwindcss@4.3.5)
+        specifier: ^5.13.1
+        version: 5.13.1(tailwindcss@4.3.5)
       '@ferrlabs/ui-ng':
-        specifier: ^1.62.0
-        version: 1.62.0(fd41930aaf9edc2d31e99f8b2239bf74)
+        specifier: ^1.66.3
+        version: 1.66.3(13ba568cea40be9d62d6fa6757bc70a8)
       chart.js:
         specifier: ^4.5.1
         version: 4.6.2
@@ -833,28 +833,28 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@ferrlabs/telemetry@0.6.1':
-    resolution: {integrity: sha512-kTHxw+lI0ysT2irKLCX2H1/iu4v0PCJzN2g5PI6VCu2PQv2Z51x5ncqByZYQr3p3jzlJf8gPS05h6w3464vWCA==}
+  '@ferrlabs/telemetry@0.6.3':
+    resolution: {integrity: sha512-HivZHP0LskJHEYLWtyv9ctWw0bZSRNNzdNjdi/2CsnJMFAVPp4V2ME/96PIkbb4ZhvTBPHSKuLftdtHzN9TvaA==}
     peerDependencies:
       '@angular/core': ^22.0.0
     peerDependenciesMeta:
       '@angular/core':
         optional: true
 
-  '@ferrlabs/ui-foundation@5.12.0':
-    resolution: {integrity: sha512-TnGqjdqaiEp+KZIR4Y6ZCIM9qTl8Wet3+KaVvybO83MI/jnWCrupMstCHn7WabhYgRVjk7ewMLLpyY6ggrPmXg==}
+  '@ferrlabs/ui-foundation@5.13.1':
+    resolution: {integrity: sha512-54uVmX06xsWhJdCHStZlgEp4bsk6jYlGTFhBk8TWqjAbrT8DqhhWx6jLOr9ekDoidXheqhvUnjN3akCeE7pr8A==}
     peerDependencies:
       tailwindcss: ^4.0.0
 
-  '@ferrlabs/ui-ng@1.62.0':
-    resolution: {integrity: sha512-T1EUoiM8FkSwREzyF8xaIaymLWdq7Peu+EE4ChC1MFG4Qkd0+aIDc4/869vnXGZE0sEMb/YbPUOnYZab/SWNKA==}
+  '@ferrlabs/ui-ng@1.66.3':
+    resolution: {integrity: sha512-EAHWKx3YFralNgEqQ58dsvqtkw/YtFEwHyMJTuP8D0pKnEQWPGxAOLsCdA38yBO5/FxFetNlVBKy13seuJAnNA==}
     peerDependencies:
       '@angular/cdk': ^22.0.0
       '@angular/common': ^22.0.0
       '@angular/core': ^22.0.0
       '@angular/forms': ^22.0.0
       '@angular/platform-browser': ^22.0.0
-      '@ferrlabs/ui-foundation': ^5.12.0
+      '@ferrlabs/ui-foundation': ^5.13.0
       marked: ^18.0.0
       marked-highlight: ^2.2.0
       prismjs: ^1.29.0
@@ -877,11 +877,11 @@ packages:
   '@fontsource/geist-sans@5.3.0':
     resolution: {integrity: sha512-AmG7cE1AvE4NHROPaOl1sN+a02cB5xy6pA/ZV76HXqWTCsJTV2SCBc9DTFHfJqnVOODm7HhXIYtUIb75NP5QXQ==}
 
-  '@grafana/faro-core@2.14.0':
-    resolution: {integrity: sha512-U1dydD2pQa3sgnaoGQsmsDoecef2S90Y6kVYyhdXjaSg8+bzJWwW5mGtO+7V15PjZSKA4tdXGKRHa1RGGJPY8Q==}
+  '@grafana/faro-core@2.15.0':
+    resolution: {integrity: sha512-kya8i2FHCKT7oVoh42KY5zUYZmeyPpmAJ5dfAwbv0YYzgakTytPkXD+zYCx17A8LHysQZzl5mz81zsgtDjufUw==}
 
-  '@grafana/faro-web-sdk@2.14.0':
-    resolution: {integrity: sha512-ZZu5GmNvx+2pA+ma8dMER7GiJ/UVbI5qXWV5rK5ms6uK6hrh2xXKNETp9s1R+U/yVfHlo7n/ArtjQB/8/8noTw==}
+  '@grafana/faro-web-sdk@2.15.0':
+    resolution: {integrity: sha512-d9xMaHUCoqZ2rwFd6emFxmz7Vdw1fJPhdbEoz4pke2m2eGG8dd6acqQBCA+rPAtVfOI39/GlwGXNR1fhgE1+6w==}
 
   '@harperfast/extended-iterable@1.0.3':
     resolution: {integrity: sha512-sSAYhQca3rDWtQUHSAPeO7axFIUJOI6hn1gjRC5APVE1a90tuyT8f5WIgRsFhhWA7htNkju2veB9eWL6YHi/Lw==}
@@ -4824,20 +4824,20 @@ snapshots:
   '@esbuild/win32-x64@0.28.2':
     optional: true
 
-  '@ferrlabs/telemetry@0.6.1(@angular/core@22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2))':
+  '@ferrlabs/telemetry@0.6.3(@angular/core@22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2))':
     dependencies:
-      '@grafana/faro-web-sdk': 2.14.0
+      '@grafana/faro-web-sdk': 2.15.0
     optionalDependencies:
       '@angular/core': 22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2)
 
-  '@ferrlabs/ui-foundation@5.12.0(tailwindcss@4.3.5)':
+  '@ferrlabs/ui-foundation@5.13.1(tailwindcss@4.3.5)':
     dependencies:
       '@fontsource/dm-mono': 5.3.0
       '@fontsource/fraunces': 5.3.0
       '@fontsource/geist-sans': 5.3.0
       tailwindcss: 4.3.5
 
-  '@ferrlabs/ui-ng@1.62.0(fd41930aaf9edc2d31e99f8b2239bf74)':
+  '@ferrlabs/ui-ng@1.66.3(13ba568cea40be9d62d6fa6757bc70a8)':
     dependencies:
       '@angular/cdk': 22.2.0(@angular/common@22.3.0(@angular/core@22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2))(@angular/forms@22.3.0(@angular/common@22.3.0(@angular/core@22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2))(@angular/platform-browser@22.3.0(@angular/common@22.3.0(@angular/core@22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2)))(rxjs@7.8.2))(@angular/platform-browser@22.3.0(@angular/common@22.3.0(@angular/core@22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2)))(rxjs@7.8.2)
       '@angular/common': 22.3.0(@angular/core@22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2))(rxjs@7.8.2)
@@ -4846,7 +4846,7 @@ snapshots:
       '@angular/platform-browser': 22.3.0(@angular/common@22.3.0(@angular/core@22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.3.0(@angular/compiler@22.3.0)(rxjs@7.8.2))
       tslib: 2.9.1
     optionalDependencies:
-      '@ferrlabs/ui-foundation': 5.12.0(tailwindcss@4.3.5)
+      '@ferrlabs/ui-foundation': 5.13.1(tailwindcss@4.3.5)
       marked: 18.3.0
       marked-highlight: 2.2.4(marked@18.3.0)
       prismjs: 1.30.0
@@ -4857,14 +4857,14 @@ snapshots:
 
   '@fontsource/geist-sans@5.3.0': {}
 
-  '@grafana/faro-core@2.14.0':
+  '@grafana/faro-core@2.15.0':
     dependencies:
       '@opentelemetry/api': 1.10.0
       '@opentelemetry/otlp-transformer': 0.223.2(@opentelemetry/api@1.10.0)
 
-  '@grafana/faro-web-sdk@2.14.0':
+  '@grafana/faro-web-sdk@2.15.0':
     dependencies:
-      '@grafana/faro-core': 2.14.0
+      '@grafana/faro-core': 2.15.0
       ua-parser-js: 1.0.41
       web-vitals: 6.2.3
 
