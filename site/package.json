@@ -2,7 +2,7 @@
   "name": "@ferrflow/site",
   "private": true,
   "license": "MPL-2.0",
-  "version": "2026.11.39",
+  "version": "2026.11.40",
   "type": "module",
   "engines": {
     "node": ">=22.0.0",
