@@ -22,7 +22,9 @@ const changelogPostRoute: Route = {
   loadComponent: () => import('./pages/changelog/[slug].page'),
 };
 
-const isLocaleRoute = (route: Route): boolean => LOCALES.some((locale) => route.path === locale);
+const localePaths: ReadonlySet<string | undefined> = new Set(LOCALES);
+
+const isLocaleRoute = (route: Route): boolean => localePaths.has(route.path);
 
 const localizedRoutes: Route[] = LOCALES.map((locale) => ({
   path: locale,
