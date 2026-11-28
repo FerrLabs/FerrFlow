@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.11.41] - 2026-11-28
+
+### Bug Fixes
+
+- fix(site): use a set lookup for locale routes (#1520)
+
 ## [2026.11.38] - 2026-11-27
 
 ### Bug Fixes
